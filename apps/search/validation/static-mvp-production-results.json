@@ -7,25 +7,26 @@
   "overlappingSearches": true,
   "staticSizeAgeTypeAc": true,
   "hardFairness": true,
+  "asyncJobs": true,
   "measurements": [
     {
       "path": "/api/search/parse",
-      "ms": 3074,
+      "ms": 3065,
       "status": 200
     },
     {
       "path": "/api/listings/search",
-      "ms": 3859,
+      "ms": 3963,
       "status": 200
     },
     {
       "path": "/api/listings/search",
-      "ms": 801,
+      "ms": 826,
       "status": 200
     },
     {
       "path": "/api/listings/search",
-      "ms": 149,
+      "ms": 146,
       "status": 200
     },
     {
@@ -35,33 +36,53 @@
     },
     {
       "path": "/api/listings/:id",
-      "ms": 45,
+      "ms": 44,
       "status": 404
     },
     {
       "path": "/api/listings/search",
-      "ms": 5,
+      "ms": 4,
       "status": 422
     },
     {
       "path": "/api/listings/search",
-      "ms": 48,
+      "ms": 51,
       "status": 200
     },
     {
       "path": "/api/listings/search",
-      "ms": 49,
+      "ms": 51,
       "status": 200
     },
     {
       "path": "/api/listings/search",
-      "ms": 227,
+      "ms": 86,
       "status": 200
     },
     {
       "path": "/api/listings/search",
-      "ms": 45,
+      "ms": 50,
       "status": 200
+    },
+    {
+      "path": "/api/listings/search",
+      "ms": 10,
+      "status": 200
+    },
+    {
+      "path": "/api/listings/search/jobs/:token",
+      "ms": 9,
+      "status": 200
+    },
+    {
+      "path": "/api/listings/search/jobs/:token",
+      "ms": 6,
+      "status": 200
+    },
+    {
+      "path": "/api/listings/search/jobs/:token",
+      "ms": 4,
+      "status": 410
     }
   ]
 }

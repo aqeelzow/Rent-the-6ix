@@ -9,7 +9,7 @@ async function call(path, body, expected = 200) {
   const response = await fetch(base + path, { method: body ? 'POST' : 'GET', headers: { 'content-type': 'application/json' }, body: body ? JSON.stringify(body) : undefined, signal: AbortSignal.timeout(120000) });
   const data = await response.json();
   assert.equal(response.status, expected, JSON.stringify(data));
-  measurements.push({ path: path.split('?')[0].replace(/[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}/gi, ':id'), ms: Math.round(performance.now() - start), status: response.status });
+  measurements.push({ path: path.split('?')[0].replace(/jobs\/[A-Za-z0-9_-]+$/, 'jobs/:token').replace(/[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}/gi, ':id'), ms: Math.round(performance.now() - start), status: response.status });
   return data;
 }
 try {
@@ -60,5 +60,17 @@ try {
   const fairness = await call('/api/listings/search', { ...narrow, intent: { ...narrow.intent, criteria: { ...narrow.intent.criteria, priceFairness: { value: ['underpriced'], hard: true } } } });
   assert.equal(fairness.status, 'completed');
   assert.ok(fairness.results.length > 0 && fairness.results.every(row => row.valuation.priceLabel === 'underpriced'));
-  console.log(JSON.stringify({ parser: parsed.parser, eligible: expected.length, returned: results.results.length, percentile: count, liveDetail: true, overlappingSearches: true, staticSizeAgeTypeAc: true, hardFairness: true, measurements }, null, 2));
+  const travelIntent = { ...narrow.intent, numericExtreme: { field: 'travel', direction: 'min', percentage: 5, targetId: 'union' }, travelTargets: [{ id: 'union', kind: 'place', label: 'Union Station', query: 'Union Station', mode: 'walk', hard: false, resolved: { lng: -79.3806, lat: 43.6453, label: 'Union Station', source: 'known_place' } }] };
+  const job = await call('/api/listings/search', { ...narrow, intent: travelIntent });
+  assert.equal(job.status, 'pending');
+  let terminal;
+  for (let attempt = 0; attempt < 50; attempt++) {
+    terminal = await call(job.pollUrl);
+    if (terminal.status !== 'pending') break;
+    await new Promise(resolve => setTimeout(resolve, 100));
+  }
+  assert.equal(terminal.status, 'unavailable');
+  assert.equal(terminal.reason, 'routing_incomplete');
+  await call(job.pollUrl, undefined, 410);
+  console.log(JSON.stringify({ parser: parsed.parser, eligible: expected.length, returned: results.results.length, percentile: count, liveDetail: true, overlappingSearches: true, staticSizeAgeTypeAc: true, hardFairness: true, asyncJobs: true, measurements }, null, 2));
 } finally { await sql.end({ timeout: 1 }); }
