@@ -1,0 +1,43 @@
+{
+  "scope": "Direct C listingContext calls; read-only live DB; 32 evenly spaced cheap-pool listings per pass",
+  "databaseClient": "Unchanged owner getClient, max 2 connections, installed postgres default pipeline",
+  "cache": "clearValuationCache before each pass; B public context cache bypassed",
+  "comparison": "Same fixed now; identical values and caveats after canonicalizing comparable/adjustment array tie order",
+  "runs": [
+    {
+      "concurrency": 2,
+      "count": 32,
+      "ms": 1037,
+      "sameResults": true
+    },
+    {
+      "concurrency": 4,
+      "count": 32,
+      "ms": 714,
+      "sameResults": true
+    },
+    {
+      "concurrency": 8,
+      "count": 32,
+      "ms": 599,
+      "sameResults": true
+    },
+    {
+      "concurrency": 16,
+      "count": 32,
+      "ms": 602,
+      "sameResults": true
+    },
+    {
+      "concurrency": 2,
+      "count": 32,
+      "ms": 822,
+      "sameResults": true
+    }
+  ],
+  "limits": [
+    "One modest sample; not a full-pool latency guarantee",
+    "Owner queries and algorithms unchanged",
+    "Existing KNN equal-distance comparable order can differ across queries"
+  ]
+}

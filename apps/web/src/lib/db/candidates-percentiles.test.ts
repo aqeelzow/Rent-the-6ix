@@ -98,10 +98,19 @@ test('shared deadline and caller abort bound enrichment and uncooperative routin
   const result = await searchPercentileCandidates({ intent: exact, hideUnconfirmed: false }, deps, { referenceYear: 2026, deadline: Date.now() + 25 });
   assert.equal(result.status, 'unavailable'); assert.ok(budgets.every(budget => budget <= 25)); assert.ok(signals.every(signal => signal.aborted));
   const controller = new AbortController();
-  const pending = searchPercentileCandidates({ intent: exact, hideUnconfirmed: false }, { listings: sampleListings, enrich: () => new Promise<never>(() => {}) }, { referenceYear: 2026, signal: controller.signal });
+  const pending = searchPercentileCandidates({ intent: exact, hideUnconfirmed: false }, { listings: sampleListings, enrich: () => new Promise<never>(() => {}), routeTimes: router }, { referenceYear: 2026, signal: controller.signal });
   controller.abort(); assert.equal((await pending).status, 'unavailable');
   const expired = await searchPercentileCandidates({ intent: exact, hideUnconfirmed: false }, deps, { referenceYear: 2026, deadline: Date.now() - 1 });
   assert.equal(expired.status, 'unavailable');
+});
+test('exact travel without a router skips owner reads and retains empty-pool completion', async () => {
+  let calls = 0;
+  const dependencies = { listings: sampleListings, enrich: async (...args: Parameters<SearchDependencies['enrich']>) => { calls++; return enrich(...args); } };
+  const result = await execute(exact, dependencies);
+  assert.equal(result.status, 'unavailable'); if (result.status === 'unavailable') assert.equal(result.reason, 'routing_incomplete');
+  assert.equal(calls, 0);
+  const empty = await execute(exact, { ...dependencies, listings: [] });
+  assert.equal(empty.status, 'completed'); if (empty.status === 'completed') { assert.equal(empty.eligibleCount, 0); assert.deepEqual(empty.results, []); }
 });
 
 test('scalar hard-place hide confirms through full-pool routing before percentile selection', async () => {
