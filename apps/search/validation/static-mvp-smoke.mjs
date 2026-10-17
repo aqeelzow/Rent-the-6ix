@@ -62,7 +62,12 @@ try {
   assert.deepEqual(detail.listing, row.listing);
   assert.deepEqual(detail.valuation, row.valuation);
   assert.deepEqual(detail.matchScore, row.matchScore);
-  assert.deepEqual(detail.areas, []);
+  const detailAreas = await sql`SELECT id FROM neighbourhoods WHERE id = ${row.listing.neighbourhoodId} UNION ALL SELECT id FROM wards WHERE id = ${row.listing.wardId}`;
+  assert.deepEqual(detail.areas.map(area => area.id).sort(), detailAreas.map(area => area.id).sort());
+  assert.ok(detail.indicators.every(indicator => !/^crime[:_]/.test(indicator.indicatorId)));
+  const duplicateIds = await sql`SELECT id FROM listings WHERE duplicate_of = ${row.listing.id}`;
+  assert.deepEqual(new Set(detail.duplicates.map(listing => listing.id)), new Set(duplicateIds.map(listing => listing.id)));
+  if (row.listing.buildingId) assert.equal(detail.building?.id, row.listing.buildingId);
   await call(`/api/listings/00000000-0000-4000-8000-000000000000?intent=${encodeURIComponent(JSON.stringify(intent))}`, undefined, 404);
   await call('/api/listings/search', {}, 422);
   const narrow = { ...request, intent: { ...intent, criteria: { ...intent.criteria, rent: { value: { max: expected[0].rent }, hard: true } } } };
@@ -81,6 +86,20 @@ try {
   const fairness = await call('/api/listings/search', { ...narrow, intent: { ...narrow.intent, criteria: { ...narrow.intent.criteria, priceFairness: { value: ['underpriced'], hard: true } } } });
   assert.equal(fairness.status, 'completed');
   assert.ok(fairness.results.length > 0 && fairness.results.every(row => row.valuation.priceLabel === 'underpriced'));
+  const safetyIntent = { ...narrow.intent, safety: { enabled: true, hard: false } };
+  const withSafety = await call('/api/listings/search', { ...narrow, intent: safetyIntent });
+  assert.ok(withSafety.results.length > 0 && withSafety.eligibleCount <= 500);
+  for (const result of withSafety.results) {
+    assert.equal(result.safety?.areaId, result.listing.neighbourhoodId);
+    assert.equal(typeof result.safety.relativeRate, 'number');
+    assert.ok(result.matchScore.parts.find(part => part.id === 'safety').effectiveWeight > 0);
+    assert.ok(result.matchScore.caveats.some(caveat => caveat.code === 'safety_city_rate'));
+  }
+  const maxRelativeRate = Math.min(5, Math.max(0.01, withSafety.results[0].safety.relativeRate));
+  const hardSafety = await call('/api/listings/search', { ...narrow, intent: { ...safetyIntent, safety: { enabled: true, hard: true, maxRelativeRate } } });
+  const expectedSafety = withSafety.results.filter(result => result.safety.relativeRate <= maxRelativeRate);
+  assert.equal(hardSafety.eligibleCount, expectedSafety.length);
+  assert.deepEqual(new Set(hardSafety.results.map(result => result.listing.id)), new Set(expectedSafety.map(result => result.listing.id)));
   const travelIntent = { ...narrow.intent, numericExtreme: { field: 'travel', direction: 'min', percentage: 5, targetId: 'union' }, travelTargets: [{ id: 'union', kind: 'place', label: 'Union Station', query: 'Union Station', mode: 'walk', hard: false, resolved: { lng: -79.3806, lat: 43.6453, label: 'Union Station', source: 'known_place' } }] };
   const job = await call('/api/listings/search', { ...narrow, intent: travelIntent });
   assert.equal(job.status, 'pending');
@@ -103,5 +122,5 @@ try {
   assert.equal(terminal.status, 'unavailable');
   assert.equal(terminal.reason, 'routing_incomplete');
   await call(broadJob.pollUrl, undefined, 410);
-  console.log(JSON.stringify({ parser: parsed.parser, eligible: expected.length, returned: results.results.length, percentile: count, liveDetail: true, overlappingSearches: true, staticSizeAgeTypeAc: true, compoundPromptParsing: true, hardFairness: true, asyncJobs: true, broadMissingRouter: true, measurements }, null, 2));
+  console.log(JSON.stringify({ parser: parsed.parser, eligible: expected.length, returned: results.results.length, percentile: count, liveDetail: true, overlappingSearches: true, staticSizeAgeTypeAc: true, compoundPromptParsing: true, hardFairness: true, liveSafety: true, asyncJobs: true, broadMissingRouter: true, measurements }, null, 2));
 } finally { await sql.end({ timeout: 1 }); }
