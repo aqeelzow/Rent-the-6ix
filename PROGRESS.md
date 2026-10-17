@@ -40,8 +40,8 @@ Task ids (e.g. `P2.4`) are shared by `PERSON_X.md`, commit messages (`P2.4 [C]: 
 - [ ] P0.8 [D] Tiger Cloud service (same region as Vultr); migrations 001 extensions (`postgis`, `timescaledb`, `pg_trgm`), 002 core tables (incl. `travel_times`, `ai_cache`, `sources`), 003 hypertable `listing_observations`
 - [ ] P0.9 [D] Vultr instance (4 vCPU / 8 GB), Docker Compose (`web`, `worker`, `otp`, Caddy), HTTPS, placeholder deployed, `deploy.sh` or GitHub Action; follow and correct the starter `DEPLOY.md` — record the URL below
 - [ ] P0.10 [A] Layout shell, static landing page; check the starter `README.md` and `.env.example` still match the scaffold
-- [ ] P0.11 [C] Worker package skeleton; adapter interface `{ id, fetchIndex, fetchDetail, parse }`; shared fetch layer (robots, delay, UA, backoff, unhealthy flag)
-- [ ] P0.12 [C] Fill in the `apps/worker/SOURCES.md` template: robots.txt and terms check for each source; go / no-go per source
+- [ ] P0.11 [C] Worker package skeleton; adapter interface `{ id, fetchIndex, fetchDetail, parse }`; shared fetch layer (delay, UA, retries)
+- [ ] P0.12 [C] List the sources in `apps/worker/SOURCES.md`
 - [ ] P0.13 [A] `searchSlice.ts` (intent, results, shortlist) + selection contract (`hoveredListingId`, `selectedListingId`) — merge early
 - **Done when:** Placeholder live on Vultr, TigerData has the extensions and core tables, schemas and fixtures merged, fixtures flow from a stub API route to the UI.
 

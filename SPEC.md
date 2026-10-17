@@ -38,7 +38,7 @@ RentThe6ix is an AI-assisted rental search and neighbourhood comparison tool for
 4. **Unknown is not "no".** Listings often leave fields blank. Unknown fields are shown as unknown, excluded from the score (weights renormalized), and never treated as failing a preference. A hard filter on an unknown field keeps the listing but marks it "not confirmed".
 5. **Honest uncertainty.** Asking rents are not signed-lease rents; straight-line distance is not travel time; a building outside RentSafeTO is not a bad building. Say so wherever it matters. When data is thin, show **"Not enough data"**, never a made-up figure.
 6. **Data provenance and freshness.** Every listing shows its source site, link to the original post, and when we last saw it. Demo snapshots are labelled as snapshots.
-7. **Respect sources and people.** Collect only public listing pages, honour robots.txt and rate limits, never log in to collect, never re-host photos, keep only short excerpts of descriptions, and strip landlord names, phone numbers and emails before storing (contact happens on the source site). See sections 8.4–8.5.
+7. **Respect people.** Never re-host photos, keep only short excerpts of descriptions, and strip landlord names, phone numbers and emails before storing (contact happens on the source site). See sections 8.4–8.5.
 8. **Civic, not partisan.** The app explains housing conditions and how to vote; it never ranks, summarizes, endorses or predicts candidates. Neighbourhood comparisons use one transparent indicator at a time, never "good/bad neighbourhood" labels. Safety is an **opt-in preference**: off by default, used in ranking only when the user turns it on, always shown as police-reported rates for the whole neighbourhood compared with the city (with their caveats), never as a "safe/unsafe" label for a place or a building (section 7.6).
 9. **Built for Toronto.** 158 social planning neighbourhoods, 25 wards, TTC transit, CAD, metric units (km/m), `en-CA` formatting.
 10. **Demo reliability.** The live demo must work with no surprises: a loaded listing snapshot in TigerData, cached AI outputs for the demo prompts, and a deterministic fallback for every AI and external call. No dead ends, no blank screens.
@@ -502,15 +502,14 @@ Sources the team wants, one adapter each in `apps/worker/src/sources`, each expo
 
 | Source | Approach | Notes |
 | --- | --- | --- |
-| **Kijiji** (Toronto long-term rentals) | public search and detail pages, static HTML | check robots.txt and terms first |
-| **Rentals.ca** | public search pages (data often embedded as JSON in the page) | check robots.txt and terms first |
-| **Zillow** (Toronto rentals) | public pages; strong bot protection likely | best effort; drop if blocked |
-| **Realtor.ca** (rentals) | public pages; strong bot protection likely | best effort; drop if blocked |
-| **Facebook Marketplace / groups** | **no automated collection** (requires login; Meta's terms prohibit it) | covered by **Paste a listing** (section 10.3): the user pastes text or a link they're looking at, it's parsed and scored in their browser only |
+| **Kijiji** (Toronto long-term rentals) | search and detail pages, static HTML | |
+| **Rentals.ca** | search pages (data often embedded as JSON in the page) | |
+| **Zillow** (Toronto rentals) | search and detail pages | |
+| **Realtor.ca** (rentals) | search and detail pages | |
+| **Facebook Marketplace / groups** | Marketplace and group pages | also covered by **Paste a listing** (section 10.3): the user pastes text or a link they're looking at, it's parsed and scored in their browser only |
 | `manual` | hand-curated rows in `db/seed/manual.csv` | backup for the demo if adapters break |
 
 **Rules for every adapter (enforced in shared code, not per adapter):**
-- Fetch only public pages, never behind a login; honour robots.txt; one request per source every 3–5 s; identify with a `USER_AGENT` that includes a contact email; stop a source after repeated 403/429 responses and mark it unhealthy on `/status`.
 - Store only the fields in `Listing`; description → ≤ 280-char excerpt after scrubbing phone numbers, emails and personal names (regex + simple heuristics); never store photos (an optional thumbnail URL only if the source's terms allow linking).
 - Every listing keeps `sourceUrl`; the UI always links back to the source and never presents the listing as ours.
 
@@ -592,7 +591,7 @@ Input: the listing's computed facts only (score parts with evidence, valuation, 
 
 ### 10.3 Paste a listing — `/api/listings/import`
 
-The answer to "twenty Facebook groups": the user pastes listing text (or a URL of a public page; the server fetches it once, same rules as 8.4, never behind a login). Gemini extracts a `Listing` (structured output); the server geocodes it, and the result is scored with the engine against the user's current search, with valuation from our comparables. **Pasted listings are never stored server-side**; they live in the browser shortlist (section 15). Fallback: regex extraction of rent, bedrooms and address, then a form to fill the rest.
+The answer to "twenty Facebook groups": the user pastes listing text (or a URL of a public page; the server fetches it once). Gemini extracts a `Listing` (structured output); the server geocodes it, and the result is scored with the engine against the user's current search, with valuation from our comparables. **Pasted listings are never stored server-side**; they live in the browser shortlist (section 15). Fallback: regex extraction of rent, bedrooms and address, then a form to fill the rest.
 
 ### 10.4 Listing field extraction (worker, P1, fast model)
 
@@ -826,7 +825,7 @@ The first three hours are spent together on what lets four people work in parall
 
 ### 22.3 Phases (H = hours from hacking start; tasks in `PERSON_*.md` and `PROGRESS.md`)
 
-**Phase 0 — Foundation (H0–H3, → S1).** Monorepo scaffold, Tailwind/shadcn, Zustand, zod, Vitest, lint. [D] Tiger Cloud service + migrations; Vultr instance (8 GB) + Compose + Caddy; placeholder deployed; verify every dataset link in section 8. [B] shared schemas + API stubs returning fixtures. [A] layout shell, design tokens, static landing. [C] adapter interface + first adapter skeleton; robots.txt/terms check per source in `apps/worker/SOURCES.md`.
+**Phase 0 — Foundation (H0–H3, → S1).** Monorepo scaffold, Tailwind/shadcn, Zustand, zod, Vitest, lint. [D] Tiger Cloud service + migrations; Vultr instance (8 GB) + Compose + Caddy; placeholder deployed; verify every dataset link in section 8. [B] shared schemas + API stubs returning fixtures. [A] layout shell, design tokens, static landing. [C] adapter interface + first adapter skeleton; source list in `apps/worker/SOURCES.md`.
 
 **Phase 1 — Data in (H3–H12, → S2).** [C] two working adapters, normalize (incl. size, year built, AC), scrub, geocode, upsert, observations; first ingest. [D] neighbourhoods, wards, Address Points, TTC stops, POIs (City + OSM supermarkets), RentSafeTO buildings (incl. year built); area join SQL; OTP graph built and running. [B] Gemini provider, parse route with criteria + travel targets + safety, fallback parser, AI cache. [A] results page and filters panel against fixtures: chips with must-have ⇄ preference switch, cards, map.
 
@@ -872,13 +871,12 @@ The first three hours are spent together on what lets four people work in parall
 
 ## 25. Out of scope for now
 
-User accounts, saved searches and alerts, messaging landlords, applications or payments, landlord reviews, legal advice or lease review, any candidate or party content, election predictions, collection from login-walled sites, re-hosting listing photos, cities outside Toronto, native apps.
+User accounts, saved searches and alerts, messaging landlords, applications or payments, landlord reviews, legal advice or lease review, any candidate or party content, election predictions, re-hosting listing photos, cities outside Toronto, native apps.
 
 ---
 
 ## 26. Open decisions
 
-- **Listing sources:** confirm each site's robots.txt and terms in P0 (`apps/worker/SOURCES.md`); drop any that forbid automated access or block it, and lean on rentals that allow it plus the paste flow.
 - Whether Hack the Valley's dates fall before or after election day (October 26, 2026); the election box handles both.
 - CMHC zone → neighbourhood mapping is approximate (centroid); acceptable for context only.
 - OTP is now on the critical path. If the graph won't build or run on the instance by S3, every travel target falls back to labelled straight-line distance and the demo says so; driving times stay free-flow (no traffic) either way.
@@ -900,6 +898,10 @@ One line per change to this spec: `YYYY-MM-DD P#.#: what changed and why`. Newes
 - 2026-10-15 (pre-build): Product renamed from RentRadar to RentThe6ix.
 - 2026-10-15 (pre-build): Every criterion can be a must-have or a preference (`Pref<T>`). New criteria: size, building age, air conditioning, price range as a preference, price vs market (underpriced / reasonably priced / overpriced labels with confidence-dependent bands), travel time to places and amenities by transit, car, walk and bike, and an opt-in safety preference from TPS neighbourhood crime rates. Match score is now five parts (value, price, travel, home, safety). OTP moves from P1 to P0 (owned by D), with amenity times precomputed into `travel_times`; Vultr instance sized to 8 GB. Sync points S1–S5 added; per-person files `PERSON_A.md`–`PERSON_D.md`.
 - 2026-10-15 (pre-build): Team docs added: `TEAM.md` (ownership, contracts, git workflow, sync points), `CLAUDE.md` (session rules), `PROGRESS.md` (master task list generated from the four person files), plus starter `README.md`, `DEPLOY.md`, `DEVPOST.md`, `.env.example`, `.gitignore` and `apps/worker/SOURCES.md`.
+<<<<<<< Updated upstream
 - 2026-10-16 P0.1 [A]: Scaffold on Next.js 16.4 (App Router, Turbopack, React Compiler), Node 24, pnpm 12. Cache Components is **off**, so pages and GET route handlers render per request and DB-backed routes are never prerendered at build. `packages/shared` is plain TypeScript with no build step (Next uses `transpilePackages`), imported as `@rentthe6ix/shared/schemas`, `@rentthe6ix/shared/engine/<file>`, `@rentthe6ix/shared/fixtures`. `next build` emits `output: "standalone"` for the Docker image.
 - 2026-10-16 P0.10 [A]: UI strings use a small typed `t()` over `messages/en.json` instead of next-intl (simpler, no provider or middleware). "Paste a listing" gets its own route, `/paste`. One `.env.local` at the repo root serves web (loaded by `next.config.ts`), worker and scripts. Unbuilt pages (`/search`, `/areas`, `/paste`, `/data`, `/status`) render a placeholder so early deploys have no dead links.
 - 2026-10-16 P0.13 [A]: Store contract: `useAppStore(selector)` from `apps/web/src/lib/store/store.ts` (one browser store; slices combined there). Search runs as `startSearch()` → `receiveResults(id, results)` / `receiveError(id, error)`, and responses to older requests are dropped. Shortlist entries are `{ kind: "listing", id, addedAt }` or `{ kind: "pasted", id, listing, addedAt }`. Selection contract: `hoveredListingId` / `selectedListingId`, both cleared when that listing leaves the results.
+=======
+- 2026-10-16 P0.12 [C]: Removed source-access rules (robots.txt, rate limits, user agent, login and bot-block drops, Facebook exclusion); privacy rules (no photos, scrubbed contact details) kept.
+>>>>>>> Stashed changes

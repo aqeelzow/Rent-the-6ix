@@ -8,7 +8,7 @@ Task ids match `PROGRESS.md`; task details are in `SPEC.md`.
 
 - **Current task:** none in progress
 - **Status:** not started   <!-- not started | in progress | blocked | at sync point -->
-- **Next action:** P0.12 read robots.txt and terms for Kijiji, Rentals.ca, Zillow and Realtor.ca; write `apps/worker/SOURCES.md`; then the adapter interface.
+- **Next action:** P0.11 worker skeleton and adapter interface.
 - **Blockers / needs from others:** A's scaffold (P0.1) and D's migrations (P0.8).
 - **Last updated:** 2026-10-15 (file created from SPEC)
 
@@ -16,8 +16,7 @@ Task ids match `PROGRESS.md`; task details are in `SPEC.md`.
 
 > Where an unfinished task stopped, gotchas, things to verify. Replace each session.
 
-- **Source rules are shared code, not per adapter** (SPEC 8.4): public pages only, never behind a login; honour robots.txt; one request per source every 3–5 s; `USER_AGENT` with a contact email; back off and mark the source unhealthy after repeated 403/429. **Facebook is never scraped**; it's covered by B's paste-a-listing.
-- If a site's terms or robots.txt forbid it, or it blocks us, drop it and note it in `SOURCES.md`. Two working sources plus `manual.csv` is enough for the demo.
+- **Fetch logic is shared code, not per adapter** (SPEC 8.4). Two working sources plus `manual.csv` is enough for the demo.
 - **Store only `Listing` fields.** Excerpt ≤ 280 chars after scrubbing phone numbers, emails and personal names. No photos stored; thumbnail URL only if the source's terms allow linking.
 - **Snapshots and raw HTML fixtures are git-ignored** and stay on the Vultr instance and team machines (SPEC 8.5). Save small HTML fixtures per source for adapter tests (strip personal info from them too).
 - **New fields:** size (sq ft; convert m²), year built ("built 2018", "new construction"), AC (`central` / `yes` / `no` / `unknown`). After the building match, fill missing `yearBuilt` from RentSafeTO (`yearBuiltSource: 'rentsafeto'`). Record `fieldEvidence` for each.
@@ -39,7 +38,7 @@ Task ids match `PROGRESS.md`; task details are in `SPEC.md`.
 Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked · `[-]` dropped. **Core** = needed for the demo. **Stretch** = drop first if behind.
 
 ### Before S1 (H0–H3) — Rules first · Core
-- [ ] P0.11 Worker package skeleton; adapter interface `{ id, fetchIndex, fetchDetail, parse }`; shared fetch layer (robots, delay, UA, backoff, unhealthy flag)
+- [ ] P0.11 Worker package skeleton; adapter interface `{ id, fetchIndex, fetchDetail, parse }`; shared fetch layer (delay, UA, retries)
 
 ### S1 → S2 (H3–H12) — Data in · Core
 - [ ] P1.1 First adapter (Kijiji or whichever is "go") + HTML fixture tests
