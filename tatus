@@ -1,0 +1,5 @@
+[33m59c5944[m[33m ([m[1;31morigin/devansh[m[33m)[m P0.12 [C]: remove source-access rules from docs
+[33m1679892[m P0.13 [A]: mark P0 foundation merged in PERSON_A.md
+[33mbcfd5ec[m P0.13 [A]: search store with intent, results, shortlist and selection contract
+[33mfe09680[m P0.10 [A]: layout shell, static landing, typed strings, root .env.local
+[33m8e97c48[m P0.3 [A]: Zustand, Vitest, ESLint (engine purity rules), Prettier and root scripts

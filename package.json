@@ -13,7 +13,11 @@
     "lint": "pnpm -r --if-present lint",
     "test": "pnpm -r --if-present test",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "db:migrate": "node db/migrate.mjs"
+  },
+  "dependencies": {
+    "postgres": "^3.4.5"
   },
   "devDependencies": {
     "prettier": "^3.9.10",

@@ -1,0 +1,44 @@
+# .dockerignore — owner: D (P0.9)
+# The build context is the repo root (needed for the pnpm workspace). Nothing here
+# may reach the image: no secrets, no local installs, no scraped data.
+
+# secrets (SPEC 20)
+.env
+.env.*
+!.env.example
+*.pem
+
+# installed / generated locally
+node_modules
+**/node_modules
+.next
+**/.next
+dist
+**/dist
+coverage
+.turbo
+*.tsbuildinfo
+
+# git and editor noise
+.git
+.gitignore
+.vscode
+.idea
+
+# large local data: OTP inputs/graphs and scraped snapshots (SPEC 8.5)
+otp/data
+otp/graphs
+db/snapshots
+apps/worker/fixtures/raw
+apps/worker/.cache
+*.osm.pbf
+*.obj
+*.log
+
+# docs are cheap to copy but pointless in the image
+DEVPOST.md
+SPEC.md
+PERSON_*.md
+PROGRESS.md
+TEAM.md
+DEPLOY.md
