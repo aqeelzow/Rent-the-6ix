@@ -6,11 +6,11 @@ Task ids match `PROGRESS.md`; task details are in `SPEC.md`.
 
 ## Current state
 
-- **Current task:** P2.1 waits on D's migrations for the comparables SQL (engine part done)
+- **Current task:** none in progress (P2.1 SQL waits on D's migrations)
 - **Status:** in progress   <!-- not started | in progress | blocked | at sync point -->
-- **Next action:** P2.4 dedupe matching (pure part), then P3.32 `caveats()`. When D's migrations land: `selectComparables` SQL (finishes P2.1), P1.6 upsert. P1.5 geocode once D's Address Points are loaded.
+- **Next action:** P3.32 `caveats()`. When D's migrations land: `selectComparables` SQL (finishes P2.1), P1.6 upsert. P1.5 geocode once D's Address Points are loaded.
 - **Blockers / needs from others:** B's `Listing` schema (P0.5; normalize uses a worker-local type until then), D's migrations (P0.8) for P1.6, D's Address Points and boundaries (P1.10, P1.11) for P1.5.
-- **Last updated:** 2026-10-16 (P1.3, P1.4, P2.2; P2.1 engine part)
+- **Last updated:** 2026-10-16 (P1.3, P1.4, P2.2, P2.4; P2.1 engine part)
 
 ## Handoff notes
 
@@ -26,6 +26,7 @@ Task ids match `PROGRESS.md`; task details are in `SPEC.md`.
 - **Store only `Listing` fields.** Excerpt ≤ 280 chars after scrubbing phone numbers, emails and personal names. No photos stored; thumbnail URL only if the source's terms allow linking.
 - **Snapshots and raw HTML fixtures are git-ignored** and stay on the Vultr instance and team machines (SPEC 8.5). Save small HTML fixtures per source for adapter tests (strip personal info from them too).
 - **New fields:** size (sq ft; convert m²), year built ("built 2018", "new construction"), AC (`central` / `yes` / `no` / `unknown`). After the building match, fill missing `yearBuilt` from RentSafeTO (`yearBuiltSource: 'rentsafeto'`). Record `fieldEvidence` for each.
+- **Dedupe (P2.4)** is `apps/worker/src/pipeline/dedupe.ts`: `isDuplicate`, `findDuplicates` (oldest = canonical), `alsoOn`, and a pg_trgm-compatible `similarity()`. Cross-source only, same bedrooms on both rules, text rule needs ≥ 40 chars. On 564 real cached listings: 1 duplicate (94 Caledonia Park Rd #4, Kijiji = Zillow), and every cross-source same-bedroom pair within 150 m was a different address. P1.6 still has to run it against the DB (SQL candidates via `ST_DWithin` + `pg_trgm`) and write `duplicateOf`. `ingest:once` now skips a `sourceListingId` already seen in the run (torontorentals repeats featured buildings on later pages).
 - **Valuation engine is in** `packages/shared/engine/valuation.ts` (constants in `engine/config.ts`, section `VALUATION`): `valuate(subject, candidates, benchmark, now)` and `priceLabel(differencePct, confidence)`. SQL only has to return pool candidates within 3 km with `distanceM`, `lastSeenAt`, `duplicateOf`; the engine re-checks the pool, picks the radius, adjusts and weights. Checked on ~500 real cached listings (straight-line distances): 16% insufficient, rest mostly reasonable, under/over roughly balanced. **Open question:** torontorentals floor plans in the same building are each other's comparables at 0 m, which inflates confidence; consider excluding same-building rows or capping their weight (ask the team).
 - **Valuation rules:** pool = same unit-type class (rooms only vs rooms), same bedrooms, bathrooms ±1, seen in the last 60 days; radius 1 → 2 → 3 km until ≥ 5; adjustments for utilities/parking/furnished/laundry; weighted median and 25th–75th percentiles; confidence high/medium/low (SPEC 7.2).
 - **Price label bands:** ±10% at medium/high confidence, ±15% at low; under 5 comparables → `unknown`. Wording on screen is A's, but labels and numbers come from you.
@@ -61,7 +62,7 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked · `[-]` 
 - [~] P2.1 Comparables SQL + `valuate()`: pool, radius widening, adjustments, weights, weighted median/percentiles, confidence + tests
 - [x] P2.2 `priceLabel()` with confidence-dependent bands + tests
 - [ ] P2.3 Benchmark line (StatCan CMA asking rent, CMHC zone) from D's `benchmarks`
-- [ ] P2.4 Dedupe (50 m + same bedrooms + rent within 3%, or trigram ≥ 0.6) → `duplicateOf`, "Also on" list + tests
+- [x] P2.4 Dedupe (50 m + same bedrooms + rent within 3%, or trigram ≥ 0.6) → `duplicateOf`, "Also on" list + tests
 - [ ] P2.5 Valuation cache (6 h) + `/api/listings/[id]/valuation`
 
 ### S3 → S4 (H16–H24) — Volume & caveats · Core
@@ -94,7 +95,7 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked · `[-]` 
 | --- | --- | --- |
 | Source rules & adapters | `apps/worker/SOURCES.md`, `src/sources/*.ts`, `src/lib/fetch.ts` | test fixtures are inline, same shape as the live data, made-up values |
 | One-off run | `apps/worker/src/ingest.ts` (`pnpm ingest:once`) | output in `.cache/ingest/` |
-| Pipeline | `apps/worker/src/pipeline/normalize.ts` (done), `scrub.ts` (done, first pass), `geocode.ts`, `dedupe.ts`, `upsert.ts` (+ tests) | normalize: structured fields first, then keyword rules; `fieldEvidence` per field |
+| Pipeline | `apps/worker/src/pipeline/normalize.ts` (done), `scrub.ts` (done), `dedupe.ts` (done, matching only), `geocode.ts`, `upsert.ts` (+ tests) | normalize: structured fields first, then keyword rules; `fieldEvidence` per field |
 | Schedule | `apps/worker/src/schedule.ts` | every 6 h |
 | Valuation | `packages/shared/engine/valuation.ts` (+ tests, done), `engine/config.ts` (`VALUATION`), `apps/web/src/lib/db/valuation.ts` (`selectComparables`, todo), `apps/web/src/app/api/listings/[id]/valuation/route.ts` | |
 | Caveats | `packages/shared/engine/caveats.ts` (+ tests) | |

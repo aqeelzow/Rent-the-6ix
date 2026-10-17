@@ -49,12 +49,16 @@ for (const id of requested) {
   }
   const run: SourceRun = { source: adapter.id, status: "ok", pages: 0, listings: 0, dropped: 0 };
   const rows: NormalizedListing[] = [];
+  // Featured listings repeat on later index pages (torontorentals); keep the first copy.
+  const seen = new Set<string>();
   const session = await openSession();
   try {
     let cursor: string | null = null;
     do {
       const page = await adapter.fetchIndex(session, cursor);
       for (const raw of page.listings) {
+        if (seen.has(raw.sourceListingId)) continue;
+        seen.add(raw.sourceListingId);
         const listing = normalize(raw);
         if (listing) rows.push(listing);
         else run.dropped++;
