@@ -5,6 +5,8 @@ dist/
 coverage/
 .turbo/
 .vercel/
+# MapLibre worker copied from node_modules at dev/build time
+apps/web/public/maplibre/
 *.tsbuildinfo
 
 # secrets (the repo is public at submission)

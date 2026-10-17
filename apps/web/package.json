@@ -3,8 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
+    "dev": "node scripts/copy-maplibre-worker.mjs && next dev",
+    "build": "node scripts/copy-maplibre-worker.mjs && next build",
     "start": "next start",
     "typecheck": "next typegen && tsc --noEmit",
     "lint": "eslint .",

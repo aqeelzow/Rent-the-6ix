@@ -6,16 +6,22 @@ Task ids match `PROGRESS.md`; task details are in `SPEC.md`.
 
 ## Current state
 
-- **Current task:** P1.34 results map
+- **Current task:** P1.35 mobile results
 - **Status:** in progress
-- **Branch:** `a/P1.30-landing-parse` (P1.30–P1.33 done, not merged yet)
-- **Next action:** P1.34 MapLibre results map in `src/components/map/results-map.tsx`, plus the desktop split on `/search` (list ~45%, map ~55%). Pins are clustered and coloured by score band, with a legend. Approximate locations (`locationPrecision` street/area) are circles, and place targets get pins. Hovering a pin sets `hoveredListingId` (the card ring already reacts); clicking one sets `selectedListingId` and scrolls to `#listing-<id>`. Basemap: MapTiler when `NEXT_PUBLIC_MAPTILER_KEY` is set, else OpenFreeMap.
+- **Branch:** `a/P1.30-landing-parse` (P1.30–P1.34 done, not merged yet)
+- **Next action:** P1.35 on phones: a sticky "Map ⇄ List" toggle on `/search`, a bottom sheet with the card when a pin is tapped (`selectedListingId`), and the filters as a sheet (already a full-width sheet). `ResultsMap` is `hidden lg:block` today, so mobile needs its own full-height instance behind the toggle.
 - **Blockers / needs from others:** none. Run the dev server with `SEARCH_FIXTURES=1`.
-- **Last updated:** 2026-10-17 (P1.33 done: result cards with price badge and note, segmented score bar, honest travel labels, safety rate, top caveat, not-confirmed notes, source and freshness, shortlist; card hover drives the selection contract)
+- **Last updated:** 2026-10-17 (P1.34 done: MapLibre results map beside the list on desktop; clustered pins by score band with legend, approximate circles, place pins, two-way hover and select with the list)
 
 ## Handoff notes
 
 > Where an unfinished task stopped, gotchas, things to verify. Replace each session.
+
+**Session 2026-10-17 (P1.34 map):**
+- **MapLibre 6 is ESM-only and loads its worker by URL.** `scripts/copy-maplibre-worker.mjs` copies the worker and shared chunk into `public/maplibre/` before `next dev` and `next build` (git-ignored). `ResultsMap` calls `setWorkerUrl("/maplibre/maplibre-gl-worker.mjs")`. A `vercel build` from the repo root ships `static/maplibre/`.
+- **Load MapLibre inside an effect** (`import("maplibre-gl")`); it touches `window`. **Size the container, don't position it**: `.maplibregl-map` forces `position: relative`, which collapsed an `absolute inset-0` container to nothing.
+- MapLibre can't parse `oklch()`; band colours are hex in `map-data.ts` (shades of the accent).
+- In development the map is on `window.__resultsMap` for browser tests (pin positions via `project()`).
 
 **Session 2026-10-17 (P1.30):**
 - **Search flow:** the landing `PromptBox` (next/form) GETs `/search?q=…`. `SearchView` calls `parseAndSearch(prompt)` from `src/lib/store/actions.ts` unless the store already holds that prompt's intent, so back/forward keeps edits. `runSearch()` re-searches with the current intent (for chip and filter edits) and polls B's `pending` jobs until done or expired. Responses are validated with B's zod schemas, and contract drift shows as an `unexpected_response` error.
@@ -73,8 +79,8 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked · `[-]` 
 - [x] P1.31 Filter chips: must-have/preference/default styles, source phrase, must-have ⇄ preference switch, remove, "dropped requests" notice
 - [x] P1.32 Filters panel (SPEC 11.2): Price (range, price vs market), Home (rooms, size, unit type, building age, AC, pets, furnished, parking, laundry, utilities, availability, lease), Getting around (add place or amenity, mode, minutes), Safety (switch + explanation), Area; each with must-have/preference
 - [x] P1.33 Results cards (SPEC 11.2): price badge, segmented score bar, travel targets with mode icon, size/year/AC, top caveat, source + freshness, "Also on", shortlist button
-- [~] P1.34 Results map (MapLibre): clustered pins coloured by score band, approximate circles, place pins, synced hover/select with the list
-- [ ] P1.35 Mobile: list with sticky Map toggle, bottom sheet on pin tap, filters as a sheet
+- [x] P1.34 Results map (MapLibre): clustered pins coloured by score band, approximate circles, place pins, synced hover/select with the list
+- [~] P1.35 Mobile: list with sticky Map toggle, bottom sheet on pin tap, filters as a sheet
 
 ### S2 → S3 (H10–H18) — Live search & detail · Core
 - [ ] P2.35 Wire results to B's live `/api/listings/search`; loading, empty and error states
@@ -125,7 +131,7 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked · `[-]` 
 | Search flow | `src/app/search/page.tsx`, `src/components/search/search-view.tsx`, `src/lib/store/actions.ts` (+ test) | parse → search → poll; states: parsing, searching, error + retry, ready; interim result rows until P1.33 |
 | Number formats | `src/lib/format/number.ts` (+ test) | `formatCad`, `formatCount` (en-CA) |
 | Chips & filters | `src/components/search/chips.ts` (+ test), `filter-chips.tsx`, `filters.ts` (+ test), `filter-fields.tsx`, `filters-panel.tsx`, `sort-select.tsx` | `buildChips(intent)`, `setChipHard`, `removeChip`, `setTargetModes`, `setTargetMinutes`; edits keep the intent valid under B's schema and never call the parser |
-| Results | `src/app/search/page.tsx`, `src/components/results/` (`card-data.ts` + test, `result-card.tsx`, `price-badge.tsx`, `score-bar.tsx`), `src/components/mode-icons.ts`, `src/components/map/results-map.tsx` | card helpers enforce honest labels; the card is a stretched link to `/listing/[id]` (placeholder until P2.30) |
+| Results | `src/app/search/page.tsx`, `src/components/results/` (`card-data.ts` + test, `result-card.tsx`, `price-badge.tsx`, `score-bar.tsx`), `src/components/mode-icons.ts`, `src/components/map/` (`map-data.ts` + test, `results-map.tsx`), `apps/web/scripts/copy-maplibre-worker.mjs` | card helpers enforce honest labels; the card is a stretched link to `/listing/[id]` (placeholder until P2.30) |
 | Listing detail | `src/app/listing/[id]/page.tsx`, `src/components/listing/*` | |
 | Explorer | `src/app/areas/*`, `src/components/areas/*` | |
 | Paste a listing | `src/components/listing/paste-listing.tsx` | |

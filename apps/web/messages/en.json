@@ -366,7 +366,17 @@
       "demo": "demo data"
     },
     "shortlistAdd": "Add {title} to shortlist",
-    "shortlistRemove": "Remove {title} from shortlist"
+    "shortlistRemove": "Remove {title} from shortlist",
+    "map": {
+      "label": "Map of results",
+      "legendTitle": "Match score",
+      "high": "75 and up",
+      "mid": "50 to 74",
+      "low": "Under 50",
+      "approx": "Shaded circle: approximate location",
+      "place": "Your places",
+      "unavailable": "The map couldn't load. The list has every result."
+    }
   },
   "listing": {
     "title": "Listing"

@@ -4,6 +4,7 @@ import { AlertCircle, Info, LoaderCircle } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { ResultsMap } from "@/components/map/results-map";
 import { ResultCard } from "@/components/results/result-card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { FilterChips } from "./filter-chips";
@@ -67,113 +68,117 @@ export function SearchView({ prompt }: { prompt: string | null }) {
     intent?.rawPrompt === prompt ? void runSearch() : void parseAndSearch(prompt);
 
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-4 py-6">
-      <h1 className="sr-only">{t("search.title")}</h1>
+    <div className="lg:grid lg:grid-cols-[minmax(0,45fr)_minmax(0,55fr)]">
+      <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-4 py-6 lg:max-w-none lg:px-6">
+        <h1 className="sr-only">{t("search.title")}</h1>
 
-      <section aria-labelledby="request-label" className="bg-card rounded-xl border p-4">
-        <div className="flex items-baseline justify-between gap-3">
-          <h2 id="request-label" className="text-muted-foreground text-sm font-medium">
-            {t("search.yourRequest")}
-          </h2>
-          <Link
-            href="/"
-            className="text-primary text-sm font-medium underline-offset-4 hover:underline"
-          >
-            {t("search.editRequest")}
-          </Link>
-        </div>
-        <p className="mt-1">{prompt}</p>
-      </section>
-
-      {intent && intent.rawPrompt === prompt && (
-        <div className="flex flex-col gap-3">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <FiltersPanel />
-            <SortSelect />
+        <section aria-labelledby="request-label" className="bg-card rounded-xl border p-4">
+          <div className="flex items-baseline justify-between gap-3">
+            <h2 id="request-label" className="text-muted-foreground text-sm font-medium">
+              {t("search.yourRequest")}
+            </h2>
+            <Link
+              href="/"
+              className="text-primary text-sm font-medium underline-offset-4 hover:underline"
+            >
+              {t("search.editRequest")}
+            </Link>
           </div>
-          <FilterChips intent={intent} />
-        </div>
-      )}
+          <p className="mt-1">{prompt}</p>
+        </section>
 
-      <div aria-live="polite" className="flex flex-col gap-4">
-        {busy && (
-          <p className="text-muted-foreground flex items-center gap-2 text-sm">
-            <LoaderCircle aria-hidden className="size-4 animate-spin" />
-            {t(status === "parsing" ? "search.parsing" : "search.searching")}
-          </p>
+        {intent && intent.rawPrompt === prompt && (
+          <div className="flex flex-col gap-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <FiltersPanel />
+              <SortSelect />
+            </div>
+            <FilterChips intent={intent} />
+          </div>
         )}
 
-        {status === "error" && error && (
-          <div
-            role="alert"
-            className="bg-caveat-high text-caveat-high-foreground flex flex-col items-start gap-3 rounded-xl p-4 sm:flex-row sm:items-center sm:justify-between"
-          >
-            <p className="flex items-start gap-2">
-              <AlertCircle aria-hidden className="mt-0.5 size-4 shrink-0" />
-              {errorMessage(error)}
+        <div aria-live="polite" className="flex flex-col gap-4">
+          {busy && (
+            <p className="text-muted-foreground flex items-center gap-2 text-sm">
+              <LoaderCircle aria-hidden className="size-4 animate-spin" />
+              {t(status === "parsing" ? "search.parsing" : "search.searching")}
             </p>
-            <Button variant="outline" size="sm" onClick={retry}>
-              {t("search.retry")}
-            </Button>
-          </div>
-        )}
+          )}
 
-        {parser === "fallback" && parseNotice && status !== "parsing" && (
-          <p className="bg-caveat-info text-caveat-info-foreground flex items-start gap-2 rounded-lg px-3 py-2 text-sm">
-            <Info aria-hidden className="mt-0.5 size-4 shrink-0" />
-            <span>
-              <span className="font-medium">{t("search.basicSearch")}.</span> {parseNotice}
-            </span>
-          </p>
-        )}
+          {status === "error" && error && (
+            <div
+              role="alert"
+              className="bg-caveat-high text-caveat-high-foreground flex flex-col items-start gap-3 rounded-xl p-4 sm:flex-row sm:items-center sm:justify-between"
+            >
+              <p className="flex items-start gap-2">
+                <AlertCircle aria-hidden className="mt-0.5 size-4 shrink-0" />
+                {errorMessage(error)}
+              </p>
+              <Button variant="outline" size="sm" onClick={retry}>
+                {t("search.retry")}
+              </Button>
+            </div>
+          )}
 
-        {intent && intent.droppedRequests.length > 0 && status !== "parsing" && (
-          <div className="rounded-lg border border-dashed px-3 py-2 text-sm">
-            <p className="font-medium">{t("search.droppedTitle")}</p>
-            <ul className="text-muted-foreground mt-1 list-disc pl-5">
-              {intent.droppedRequests.map((dropped) => (
-                <li key={dropped.phrase}>
-                  “{dropped.phrase}”: {dropped.reason}
+          {parser === "fallback" && parseNotice && status !== "parsing" && (
+            <p className="bg-caveat-info text-caveat-info-foreground flex items-start gap-2 rounded-lg px-3 py-2 text-sm">
+              <Info aria-hidden className="mt-0.5 size-4 shrink-0" />
+              <span>
+                <span className="font-medium">{t("search.basicSearch")}.</span> {parseNotice}
+              </span>
+            </p>
+          )}
+
+          {intent && intent.droppedRequests.length > 0 && status !== "parsing" && (
+            <div className="rounded-lg border border-dashed px-3 py-2 text-sm">
+              <p className="font-medium">{t("search.droppedTitle")}</p>
+              <ul className="text-muted-foreground mt-1 list-disc pl-5">
+                {intent.droppedRequests.map((dropped) => (
+                  <li key={dropped.phrase}>
+                    “{dropped.phrase}”: {dropped.reason}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+
+        {busy && results.length === 0 ? (
+          <ResultSkeletons />
+        ) : status === "ready" && results.length === 0 ? (
+          <p className="text-muted-foreground">{t("search.noResults")}</p>
+        ) : results.length > 0 ? (
+          <section aria-labelledby="results-count" className="flex flex-col gap-3">
+            <h2 id="results-count" className="text-muted-foreground figures text-sm">
+              {t("search.count", {
+                shown: formatCount(results.length),
+                eligible: formatCount(eligibleCount),
+              })}
+            </h2>
+            {notices.length > 0 && (
+              <ul className="text-muted-foreground text-xs">
+                {notices.map((notice) => (
+                  <li key={notice}>{notice}</li>
+                ))}
+              </ul>
+            )}
+            <ol className={`flex flex-col gap-3 ${busy ? "opacity-60" : ""}`}>
+              {results.map((result) => (
+                <li key={result.listing.id}>
+                  <ResultCard
+                    result={result}
+                    targets={intent?.travelTargets ?? []}
+                    safetyOn={intent?.safety.enabled ?? false}
+                    now={now}
+                  />
                 </li>
               ))}
-            </ul>
-          </div>
-        )}
+            </ol>
+          </section>
+        ) : null}
       </div>
-
-      {busy && results.length === 0 ? (
-        <ResultSkeletons />
-      ) : status === "ready" && results.length === 0 ? (
-        <p className="text-muted-foreground">{t("search.noResults")}</p>
-      ) : results.length > 0 ? (
-        <section aria-labelledby="results-count" className="flex flex-col gap-3">
-          <h2 id="results-count" className="text-muted-foreground figures text-sm">
-            {t("search.count", {
-              shown: formatCount(results.length),
-              eligible: formatCount(eligibleCount),
-            })}
-          </h2>
-          {notices.length > 0 && (
-            <ul className="text-muted-foreground text-xs">
-              {notices.map((notice) => (
-                <li key={notice}>{notice}</li>
-              ))}
-            </ul>
-          )}
-          <ol className={`flex flex-col gap-3 ${busy ? "opacity-60" : ""}`}>
-            {results.map((result) => (
-              <li key={result.listing.id}>
-                <ResultCard
-                  result={result}
-                  targets={intent?.travelTargets ?? []}
-                  safetyOn={intent?.safety.enabled ?? false}
-                  now={now}
-                />
-              </li>
-            ))}
-          </ol>
-        </section>
-      ) : null}
+      {/* Desktop: a sticky map beside the list. Mobile gets a Map toggle (P1.35). */}
+      <ResultsMap className="sticky top-14 hidden h-[calc(100dvh-3.5rem)] border-l lg:block" />
     </div>
   );
 }
