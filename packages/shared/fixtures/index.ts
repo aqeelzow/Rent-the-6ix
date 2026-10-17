@@ -39,7 +39,7 @@ const benchmark = { label: 'Synthetic asking-rent benchmark', valueCad: 2500, pe
 export const valuations = (['underpriced', 'reasonable', 'overpriced', 'unknown'] as const).map((priceLabel, i) => {
   const differencePct = [15, 0, -15, 0][i];
   return ValuationSchema.parse({ status: i === 3 ? 'insufficient_data' : 'ok', ...(i === 3 ? {} : { estimatedRentCad: 2500, lowCad: 2300, highCad: 2700, differenceCad: 25 * differencePct, differencePct }),
-    priceLabel, comparableCount: i === 3 ? 0 : 5, radiusM: 1000, windowDays: 60, confidence: 'low',
+    priceLabel, comparableCount: i === 3 ? 0 : 5, effectiveCount: i === 3 ? 0 : 5, radiusM: 1000, windowDays: 60, confidence: 'low',
     comparables: i === 3 ? [] : listings.slice(10, 15).map(l => ({ listingId: l.id, rentCad: l.monthlyRentCad, adjustedRentCad: 2500, distanceM: 500, weight: 1, lastSeenAt: fixtureTimestamp })),
     adjustments: [], benchmark, method: 'Synthetic fixture, not a valuation computation',
   });
@@ -56,7 +56,7 @@ function result(listing: Listing, i: number, withSafety = false): SearchResult {
   const sum = parts.reduce((n, p) => n + (p.score === null ? 0 : p.weight), 0);
   const weighted = parts.map(p => ({ ...p, effectiveWeight: p.score === null ? 0 : p.weight / sum, evidence: p.score === null ? [] : ['Synthetic illustrative evidence'] }));
   return { listing, valuation, travel: [{ listingId: listing.id, targetId: 'campus', mode: 'bike', distanceM: 600, poiId: null, computedAt: fixtureTimestamp, method: i % 2 ? 'otp' : 'straight_line', minutes: i % 2 ? 8 : null }],
-    safety: withSafety ? { areaId: listing.neighbourhoodId, rate: 700, relativeRate: .8, byType: { assault: 700 }, years: [2023, 2024, 2025], caveats: safetyCaveats } : null,
+    safety: withSafety && listing.neighbourhoodId ? { areaId: listing.neighbourhoodId, rate: 700, relativeRate: .8, byType: { assault: 700 }, years: [2023, 2024, 2025], caveats: safetyCaveats } : null,
     matchScore: MatchScoreSchema.parse({ total: Math.round(weighted.reduce((n, p) => n + (p.score ?? 0) * p.effectiveWeight, 0)), parts: weighted, hardFilterNotes: i % 2 ? [] : ['Travel time: not confirmed'], caveats: [caveat] }),
   };
 }
