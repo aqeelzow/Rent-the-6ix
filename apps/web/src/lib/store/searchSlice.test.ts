@@ -141,6 +141,7 @@ describe("shortlist", () => {
         bathrooms: listing.bathrooms,
         sqft: listing.sqft,
         source: listing.source,
+        imageUrl: listing.imageUrl,
       },
     });
 

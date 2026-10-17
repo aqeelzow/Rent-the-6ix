@@ -25,7 +25,10 @@ export type ResultOrder = "server" | "carbon" | "distance";
 export type SavedListing = Pick<
   Listing,
   "title" | "monthlyRentCad" | "rentIsPerRoom" | "bedrooms" | "bathrooms" | "sqft" | "source"
->;
+> & {
+  /** The source's thumbnail link, so the shortlist can show it; absent on older saves. */
+  imageUrl?: Listing["imageUrl"];
+};
 
 /** Shortlisted listings live only in the browser (SPEC 15); pasted ones keep the whole listing. */
 export type ShortlistEntry =
@@ -33,8 +36,9 @@ export type ShortlistEntry =
   | { kind: "pasted"; id: string; listing: Listing; addedAt: string };
 
 export function savedListing(listing: Listing): SavedListing {
-  const { title, monthlyRentCad, rentIsPerRoom, bedrooms, bathrooms, sqft, source } = listing;
-  return { title, monthlyRentCad, rentIsPerRoom, bedrooms, bathrooms, sqft, source };
+  const { title, monthlyRentCad, rentIsPerRoom, bedrooms, bathrooms, sqft, source, imageUrl } =
+    listing;
+  return { title, monthlyRentCad, rentIsPerRoom, bedrooms, bathrooms, sqft, source, imageUrl };
 }
 
 export interface SearchSlice {
