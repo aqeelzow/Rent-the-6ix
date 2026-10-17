@@ -116,6 +116,7 @@ apps/
       listing/[id]/page.tsx    listing detail
       areas/page.tsx           neighbourhood & ward explorer
       areas/[kind]/[id]/page.tsx  area page + briefing
+      paste/page.tsx           paste a listing
       compare/page.tsx         side-by-side (P1)
       data/page.tsx            data sources, licences, limitations, methodology
       status/page.tsx          live health: DB rows, last ingest, AI, Vultr host (for judges)
@@ -732,7 +733,7 @@ Sample search result item:
 
 ## 17. Internationalization
 
-English only. All UI strings in `messages/en.json` (next-intl or a simple dictionary). Numbers and currency via `Intl` for `en-CA`. French is a stretch goal and not planned.
+English only. All UI strings in `apps/web/messages/en.json`, read with the typed `t("namespace.key", params?)` helper in `apps/web/src/lib/format/messages.ts` (works in server and client components; `{name}` placeholders). Numbers and currency via `Intl` for `en-CA`. French is a stretch goal and not planned.
 
 ---
 
@@ -900,3 +901,4 @@ One line per change to this spec: `YYYY-MM-DD P#.#: what changed and why`. Newes
 - 2026-10-15 (pre-build): Every criterion can be a must-have or a preference (`Pref<T>`). New criteria: size, building age, air conditioning, price range as a preference, price vs market (underpriced / reasonably priced / overpriced labels with confidence-dependent bands), travel time to places and amenities by transit, car, walk and bike, and an opt-in safety preference from TPS neighbourhood crime rates. Match score is now five parts (value, price, travel, home, safety). OTP moves from P1 to P0 (owned by D), with amenity times precomputed into `travel_times`; Vultr instance sized to 8 GB. Sync points S1–S5 added; per-person files `PERSON_A.md`–`PERSON_D.md`.
 - 2026-10-15 (pre-build): Team docs added: `TEAM.md` (ownership, contracts, git workflow, sync points), `CLAUDE.md` (session rules), `PROGRESS.md` (master task list generated from the four person files), plus starter `README.md`, `DEPLOY.md`, `DEVPOST.md`, `.env.example`, `.gitignore` and `apps/worker/SOURCES.md`.
 - 2026-10-16 P0.1 [A]: Scaffold on Next.js 16.4 (App Router, Turbopack, React Compiler), Node 24, pnpm 12. Cache Components is **off**, so pages and GET route handlers render per request and DB-backed routes are never prerendered at build. `packages/shared` is plain TypeScript with no build step (Next uses `transpilePackages`), imported as `@rentthe6ix/shared/schemas`, `@rentthe6ix/shared/engine/<file>`, `@rentthe6ix/shared/fixtures`. `next build` emits `output: "standalone"` for the Docker image.
+- 2026-10-16 P0.10 [A]: UI strings use a small typed `t()` over `messages/en.json` instead of next-intl (simpler, no provider or middleware). "Paste a listing" gets its own route, `/paste`. One `.env.local` at the repo root serves web (loaded by `next.config.ts`), worker and scripts. Unbuilt pages (`/search`, `/areas`, `/paste`, `/data`, `/status`) render a placeholder so early deploys have no dead links.

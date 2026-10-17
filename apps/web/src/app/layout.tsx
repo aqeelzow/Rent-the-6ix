@@ -1,6 +1,9 @@
 import type { Metadata, Viewport } from "next";
 import { Public_Sans } from "next/font/google";
+import { SiteFooter } from "@/components/layout/site-footer";
+import { SiteHeader } from "@/components/layout/site-header";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { t } from "@/lib/format/messages";
 import "./globals.css";
 
 const publicSans = Public_Sans({
@@ -10,8 +13,8 @@ const publicSans = Public_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "RentThe6ix",
-  description: "AI-assisted rental search and neighbourhood context for Toronto.",
+  title: { default: t("common.appName"), template: `%s · ${t("common.appName")}` },
+  description: t("layout.metaDescription"),
 };
 
 export const viewport: Viewport = {
@@ -23,7 +26,13 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en-CA" className={`${publicSans.variable} h-full antialiased`}>
       <body className="flex min-h-full flex-col">
-        <TooltipProvider>{children}</TooltipProvider>
+        <TooltipProvider>
+          <SiteHeader />
+          <main id="main" className="flex flex-1 flex-col">
+            {children}
+          </main>
+          <SiteFooter />
+        </TooltipProvider>
       </body>
     </html>
   );

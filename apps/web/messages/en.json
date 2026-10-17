@@ -1,0 +1,75 @@
+{
+  "common": {
+    "appName": "RentThe6ix",
+    "search": "Search",
+    "close": "Close",
+    "menu": "Menu",
+    "comingSoon": "This page is still being built. Check back soon."
+  },
+  "layout": {
+    "skipToContent": "Skip to content",
+    "homeLink": "RentThe6ix home",
+    "nav": {
+      "label": "Main",
+      "areas": "Explore neighbourhoods",
+      "paste": "Paste a listing",
+      "data": "About the data"
+    },
+    "footer": {
+      "label": "Footer",
+      "askingRents": "Asking rents from public listings, not official statistics.",
+      "data": "Sources and methods",
+      "status": "Status"
+    },
+    "metaDescription": "Describe the rental you need. RentThe6ix searches Toronto listings, checks each price against similar homes, and shows the neighbourhood around it."
+  },
+  "landing": {
+    "title": "Find a Toronto rental that fits, at a fair price",
+    "subtitle": "Describe what you need in your own words. We search listings from several sites, check each price against similar homes nearby, and show you the neighbourhood around it.",
+    "promptLabel": "Describe the place you're looking for",
+    "promptPlaceholder": "e.g. 2-bedroom near UofT under $2,800, 25 minutes by transit, cat-friendly, with AC",
+    "submit": "Search",
+    "examplesLabel": "Or try an example",
+    "examples": {
+      "student": {
+        "label": "Student",
+        "prompt": "Room or studio near York University under $1,300, close to the subway, furnished."
+      },
+      "couple": {
+        "label": "Couple",
+        "prompt": "I need a 2-bedroom near UofT St. George under $2,800, within 25 minutes by transit, close to groceries, cat-friendly, and I really care about getting a good deal. I make about $95k with my roommate."
+      },
+      "family": {
+        "label": "Family",
+        "prompt": "3 bedrooms in Scarborough under $3,200, near a public school and a park, parking."
+      }
+    },
+    "areas": {
+      "title": "Explore neighbourhoods",
+      "body": "Rents, renters and housing pressure across Toronto's 158 neighbourhoods and 25 wards."
+    },
+    "paste": {
+      "title": "Paste a listing",
+      "body": "Found a place on Facebook or anywhere else? Paste it to check the price and the area."
+    },
+    "howTitle": "How it works",
+    "how": {
+      "filters": {
+        "title": "Your words become filters",
+        "body": "Each request turns into a filter you can edit. Must-haves exclude listings; preferences only change the ranking."
+      },
+      "price": {
+        "title": "Every price checked",
+        "body": "Each rent is compared with similar listings nearby, with the comparables shown. Not enough data? We say so."
+      },
+      "area": {
+        "title": "The City's data on every listing",
+        "body": "Travel times by transit, car, walk and bike, the building's RentSafeTO record, and neighbourhood facts from Toronto open data."
+      }
+    }
+  },
+  "search": {
+    "title": "Results",
+    "yourRequest": "Your request"
+  }
+}

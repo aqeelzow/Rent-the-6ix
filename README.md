@@ -28,15 +28,17 @@ otp/              OpenTripPlanner config (graph is built on the server, not comm
 
 ## Getting started
 
-Requirements: Node (current LTS), pnpm, access to the team's TigerData service. Docker only if you run the worker or OTP locally.
+Requirements: Node 24+, pnpm 12 (`npm install -g --allow-scripts=pnpm pnpm`), access to the team's TigerData service. Docker only if you run the worker or OTP locally.
 
 ```bash
 pnpm install
-cp .env.example .env.local        # fill in keys (ask the team; never commit them)
+cp .env.example .env.local        # at the repo root; fill in keys (ask the team; never commit them)
 pnpm db:migrate                   # apply db/migrations to DATABASE_URL
 pnpm data:civic                   # load Toronto civic data (D)
 pnpm dev                          # web app on http://localhost:3000
 ```
+
+One `.env.local` at the repo root is shared by the web app (loaded in `apps/web/next.config.ts`), the worker and scripts (`node --env-file-if-exists=../../.env.local`).
 
 The web app runs on fixtures from `packages/shared/fixtures` until the database has data. It also runs without AI (`AI_PROVIDER=none`), without a MapTiler key (OpenFreeMap basemap), and without OTP (travel falls back to labelled straight-line distance).
 
@@ -46,6 +48,7 @@ The web app runs on fixtures from `packages/shared/fixtures` until the database 
 | --- | --- | --- |
 | `pnpm dev` / `build` / `start` | web app | A |
 | `pnpm typecheck` / `lint` / `test` | all packages | A |
+| `pnpm format` / `format:check` | Prettier over the repo (Markdown docs excluded) | A |
 | `pnpm db:migrate` | apply SQL migrations | D |
 | `pnpm data:civic` | load Toronto open data, POIs, RentSafeTO, crime rates, benchmarks | D |
 | `pnpm ingest:once` | one listing collection run | C |

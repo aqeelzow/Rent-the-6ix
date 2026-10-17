@@ -6,12 +6,12 @@ Task ids match `PROGRESS.md`; task details are in `SPEC.md`.
 
 ## Current state
 
-- **Current task:** P0.10 Layout shell, static landing, README/.env.example check
+- **Current task:** P0.13 `searchSlice.ts` + selection contract
 - **Status:** in progress
 - **Branch:** `a/P0-foundation` (P0.1–P0.13, one commit per task; not pushed yet)
-- **Next action:** P0.10, then P0.13; merge to `main` at S1.
+- **Next action:** P0.13; then merge to `main` (S1).
 - **Blockers / needs from others:** none yet. Build against B's fixtures (P0.6) until live routes land.
-- **Last updated:** 2026-10-16 (P0.1 done: pnpm workspace, Next 16.4 in `apps/web`, `packages/shared` and `apps/worker` skeletons; `pnpm typecheck` and `pnpm build` pass. P0.2 done: shadcn + Public Sans + tokens, checked at 375 px. P0.3 done: Zustand, Vitest per package, ESLint with engine-purity rules, Prettier; root `typecheck`/`lint`/`test`/`format` green)
+- **Last updated:** 2026-10-16 (P0.1 done: pnpm workspace, Next 16.4 in `apps/web`, `packages/shared` and `apps/worker` skeletons; `pnpm typecheck` and `pnpm build` pass. P0.2 done: shadcn + Public Sans + tokens, checked at 375 px. P0.3 done: Zustand, Vitest per package, ESLint with engine-purity rules, Prettier; root `typecheck`/`lint`/`test`/`format` green. P0.10 done: header/footer shell, mobile menu, static landing, placeholders for unbuilt pages, `t()` helper, root `.env.local`)
 
 ## Handoff notes
 
@@ -43,8 +43,8 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked · `[-]` 
 - [x] P0.1 Monorepo scaffold: pnpm workspaces (`apps/web`, `apps/worker`, `packages/shared`), Next.js App Router, TypeScript strict — **merge first, everyone waits on it**
 - [x] P0.2 Tailwind + shadcn/ui + Public Sans + design tokens (light; dark if time), tabular numerals utility
 - [x] P0.3 Zustand, Vitest, ESLint, Prettier; root scripts `typecheck`, `lint`, `test`
-- [~] P0.10 Layout shell, static landing page; check the starter `README.md` and `.env.example` still match the scaffold
-- [ ] P0.13 `searchSlice.ts` (intent, results, shortlist) + selection contract (`hoveredListingId`, `selectedListingId`) — merge early
+- [x] P0.10 Layout shell, static landing page; check the starter `README.md` and `.env.example` still match the scaffold
+- [~] P0.13 `searchSlice.ts` (intent, results, shortlist) + selection contract (`hoveredListingId`, `selectedListingId`) — merge early
 
 ### S1 → S2 (H3–H12) — Search UI on fixtures · Core
 - [ ] P1.30 Landing: prompt box, 3 example chips (student, couple, family), "Explore neighbourhoods", "Paste a listing"; calls B's `/api/search/parse` (fixture until live)
@@ -97,7 +97,9 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked · `[-]` 
 | --- | --- | --- |
 | Layout shell, tokens | `apps/web/src/app/layout.tsx`, `src/app/globals.css`, `src/components/ui/*` | shadcn (Radix base, nova preset); tokens `price-*`, `caveat-*`, `score-*`; `figures` utility for numbers; light only |
 | Store | `apps/web/src/lib/store/searchSlice.ts` (+ test) | intent, results, shortlist, selection |
-| Landing | `src/app/page.tsx`, `src/components/search/prompt-box.tsx` | |
+| Layout shell | `src/components/layout/*` (header, mobile menu, footer, page placeholder) | nav links in `nav-links.ts` |
+| Strings | `apps/web/messages/en.json`, `src/lib/format/messages.ts` (+ test) | typed `t("ns.key", params?)` |
+| Landing | `src/app/page.tsx`, `src/components/search/prompt-box.tsx` | P0.10: static GET form to `/search?q=`; P1.30 wires parse |
 | Chips & filters | `src/components/search/filter-chips.tsx`, `filters-panel.tsx` | no Gemini call on edit |
 | Results | `src/app/search/page.tsx`, `src/components/results/*`, `src/components/map/results-map.tsx` | |
 | Listing detail | `src/app/listing/[id]/page.tsx`, `src/components/listing/*` | |
