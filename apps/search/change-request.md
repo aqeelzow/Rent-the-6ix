@@ -1,5 +1,13 @@
 # Search integration change requests
 
+## Static MVP live follow-up — 2026-10-17
+
+Database configuration is now supplied and verified. B static SQL filters/percentiles and live ID detail work against the existing owner tables. This supersedes older missing-DB/detail notes below.
+
+C performance request: `listingContext` currently performs comparable/observation/building reads per listing. A cold 183-result confirmed static search took20.1 seconds in the built server; B now overlaps two owner calls and caches validated context for60 seconds, but full fairness/best-value eligibility may scan16,892 listings and cannot rely on C's5,000-entry valuation cache. Please provide a batch context/valuation API retaining current comparable selection, caveats and confidence semantics. No owner algorithm/schema was copied or modified. B depends on that contract for consistently fast cold/full enriched searches.
+
+D static safety revalidation: current data now has15,510 active nonduplicate listings, all assigned neighbourhoods,158 neighbourhoods and1,422 crime indicators (nine types,2023–2025). The earlier missing-assignment blocker is resolved. Current upstream still lacks authoritative city-rate, safety lookup and score adapters; publish those contracts before B enables live rate/ranking confirmation. B does not infer a city rate by averaging neighbourhood rates, and never substitutes fixture rates. Dynamic distance/routing work is explicitly deferred by the user.
+
 ## Latest status — upstream 29a7393
 
 Supersedes older dependency notes: C’s comparable query/cache/listingContext and A’s actual search actions/UI/polling are now published. Current B composition consumes C unchanged and tests A actions against B runtime. CR-4’s missing implementation is resolved; live DB/performance acceptance remains open. CR-3 remains open for D routing/safety/geographic/cache/detail services and usable database configuration. Current SQL path returns unknown D values honestly; live detail remains503. Current patches target29a7393, while570300e variants are historical. One unfinished read/enrichment per process bounds background work but may reject overlapping searches; owner cancellation/server timeout support remains requested.
@@ -88,3 +96,7 @@ Gemini/MapTiler keys and main model are configured; no DATABASE_URL or fast-mode
 
 
 2026-10-16 — B-owned draft intent extensions for publication: SearchUnitTypeSchema accepts virtual `studio` while Listing UnitType remains unchanged; filters match studio to bedrooms 0 in a known whole-unit type and OR it with room, preserving unknown hard values. AreaFilter accepts `{kind:"configured",id,label,bounds:[west,south,east,north]}` for explicitly approximate configured search boundaries (Downtown/Scarborough); no D area IDs or civic geometry are invented. Owner: B schema publication with A UI/D geographic integration. Current root intent cannot represent room OR studio or configured rectangles. Reason: preserve root demo and local Downtown request. Compatibility: additive search payload variants only; no migration/data changes. Dependent engine/API work must handle these variants, and owner area lookup can replace boxes when authoritative definitions arrive. Root publication completed in the integration branch; A/D consumption remains pending.
+
+## Static MVP update — 2026-10-17
+
+Database configuration is now supplied and parent verified real listings are loaded. B's ID-based live detail lookup is implemented; details no longer require civic adapters to return listing/valuation/score. D-owned civic areas/indicators and live duplicate adapters remain unavailable and return empty arrays. Overlapping candidate/context operations are bounded at eight rather than one; D statement timeout/cancellation remains requested for production. Parent is assessing live SQL/enrichment latency before declaring acceptance.

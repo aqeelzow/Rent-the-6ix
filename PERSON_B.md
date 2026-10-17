@@ -6,11 +6,12 @@ Task ids match `PROGRESS.md`; task details are in `SPEC.md`.
 
 ## Current state
 
-- **Current task:** current C/SQL integration finished for user-requested wrap-up.
-- **Status:** paused at user request; current B changes are validated in /tmp/rent-search-upstream on b/search-owner-integration.
-- **Next action:** consume C’s now-published listingContext through SQL search dependencies, then verify database/routing/deployed acceptance when owner services/configuration are supplied.
-- **Blockers / needs from others:** no DATABASE_URL in this session; D’s concrete safety/router/geographic/cache/detail services; validated fast-model availability and parse latency; authoritative TD branch match; applying/publishing B patches outside the original read-only app/shared paths.
+- **Current task:** static-search MVP against the supplied PostgreSQL database.
+- **Status:** endpoint feature changes verified (281 tests, lint/typecheck/build and live native smoke); remaining owner integration tracked on `b/search-static-mvp` in `/tmp/rent-search-mvp`, based on canonical `f055a38`.
+- **Verified:** 20,956 live listings / 16,892 active nonduplicates at inspection; native SQL-backed cheapest/known filters, scalar percentiles, fairness, detail and overlap acceptance.
+- **Remaining:** broad enriched-scan performance, live D safety/civic adapters and deployment acceptance. Dynamic routing/distance computations are deferred by the user.
 - **Last updated:** 2026-10-17
+
 
 ## Handoff notes
 
@@ -35,8 +36,8 @@ Live provider evidence remains limited: configured main model parses took7–11s
 - **To A:** actual actions/store now pass B-runtime choice/polling/nested-ID integration tests. Complete rendered/deployed acceptance and provide trusted request identity and validated fast-model runtime configuration.
 
 - **To A:** mount the explanation slot on the detail page (P2.36) and the briefing on the ward page (P3.21); the chips need `fieldSources` and `droppedRequests`, already in the fixtures.
-- **To C:** listingContext/query/cache and effectiveCount contracts are now published; B is consuming them without replacing owner logic. Real DB population/performance acceptance remains open.
-- **To D:** client/migrations exist; provide DATABASE_URL/access, loaded geographic/cache/detail services, concrete routeTimes and safety lookup/functions. Current B consumer uses existing columns and leaves missing times/rates unconfirmed. No owner tables/functions are redefined.
+- **To C:** provide a batch `listingContext` API preserving current comparable/caveat semantics. Live static183-row cold search was20.143s; B two-call overlap and60s context cache improve repeats but full fairness/best-value scans still need owner batching. B consumes current queries/algorithms unchanged.
+- **To D:** database access and civic data are now supplied. Latest live audit found15,510 active nonduplicate listings, all assigned neighbourhoods,158 neighbourhoods and1,422 crime indicators (2023–2025). Publish the authoritative city-rate/safety lookup + safetyScore contracts: current upstream still lacks them, so B leaves rates unknown. Dynamic routeTimes remains deferred by the user. No owner algorithms/tables are redefined.
 
 ---
 

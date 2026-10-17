@@ -6,6 +6,7 @@ import { clamp, distanceM, targetModes } from '../../../../../packages/shared/en
 export type SearchDependencies = {
   // Fixture/detail pool; live search can inject the read-only SQL candidate loader.
   listings: readonly Listing[];
+  loadListing?: (id: string) => Promise<Listing | null>;
   loadCandidates?: (request: SearchRequest, signal?: AbortSignal) => Promise<readonly Listing[]>;
   // Full-pool hard gates/numeric ordering also use the owner context.
   enrich: (listing: Listing, intent: SearchRequest['intent'], signal?: AbortSignal) => Promise<ScoreContext>;
@@ -42,15 +43,18 @@ export async function searchCandidates(input: SearchRequest, dependencies: Searc
   // Fairness/safety hard filters must be known before taking the numeric candidate cap.
   const fullContextRequired = intent.sortBy === 'best_value' || intent.sortBy === 'shortest_trips' || intent.criteria.priceFairness?.hard || intent.safety.hard || intent.travelTargets.some(t => t.hard);
   const contextPool = fullContextRequired ? pool : pool.slice(0, engineConfig.candidateLimit);
-  for (const listing of contextPool) {
-    const owner = await dependencies.enrich(listing, intent);
-    const travel = owner.travel.map(row => TravelTimeRowSchema.parse(row)).filter(row => row.listingId === listing.id);
-    for (const target of intent.travelTargets) if (target.resolved) for (const mode of targetModes(target)) {
-      if (!travel.some(r => r.targetId === target.id && r.mode === mode)) travel.push({ listingId: listing.id, targetId: target.id, mode, distanceM: distanceM(listing.location, target.resolved), minutes: null, poiId: null, computedAt: listing.lastSeenAt, method: 'straight_line' });
-    }
-    const context = { ...owner, safety: intent.safety.enabled ? owner.safety : null, travel };
-    contexts.set(listing.id, context);
-    if (filterListing(listing, intent, context).passes) eligible.push(listing);
+  for (let offset = 0; offset < contextPool.length; offset += 2) {
+    const batch = await Promise.all(contextPool.slice(offset, offset + 2).map(async listing => {
+      const owner = await dependencies.enrich(listing, intent);
+      const travel = owner.travel.map(row => TravelTimeRowSchema.parse(row)).filter(row => row.listingId === listing.id);
+      for (const target of intent.travelTargets) if (target.resolved) for (const mode of targetModes(target)) {
+        if (!travel.some(r => r.targetId === target.id && r.mode === mode)) travel.push({ listingId: listing.id, targetId: target.id, mode, distanceM: distanceM(listing.location, target.resolved), minutes: null, poiId: null, computedAt: listing.lastSeenAt, method: 'straight_line' });
+      }
+      const context = { ...owner, safety: intent.safety.enabled ? owner.safety : null, travel };
+      contexts.set(listing.id, context);
+      return filterListing(listing, intent, context).passes ? listing : null;
+    }));
+    eligible.push(...batch.filter((listing): listing is Listing => listing !== null));
   }
   if (intent.sortBy === 'best_value' || intent.sortBy === 'shortest_trips') {
     const key = (listing: Listing) => {

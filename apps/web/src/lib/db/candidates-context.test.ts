@@ -29,7 +29,7 @@ function client(options: { candidates?: unknown[]; observations?: unknown[]; com
 }
 const input: SearchRequest = { intent: baseIntent, hideUnconfirmed: false };
 const http = (body: SearchRequest) => new Request('http://localhost/api/listings/search', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-afterEach(() => { clearValuationCache(); vi.mocked(getClient).mockReset(); vi.mocked(getClient).mockReturnValue(null); });
+afterEach(() => { vi.restoreAllMocks(); clearValuationCache(); vi.mocked(getClient).mockReset(); vi.mocked(getClient).mockReturnValue(null); });
 test('default SQL runtime consumes actual C context, cached valuation and stored caveats with nullable civic IDs', async () => {
   const db = client(); vi.mocked(getClient).mockReturnValue(db.sql);
   const api = createRuntime({ env: { DATABASE_URL: 'configured' } });
@@ -46,7 +46,8 @@ test('default SQL runtime consumes actual C context, cached valuation and stored
   assert.equal((await rejected.json()).results.length, 0);
   assert.equal(db.tagged.mock.calls.filter(([s]) => s.join('?').includes('FROM listings c')).length, 1);
   const detail = await api.detail(new Request(`http://localhost/api/listings/${listing.id}?intent=${encodeURIComponent(JSON.stringify(baseIntent))}`), { params: Promise.resolve({ id: listing.id }) });
-  assert.equal(detail.status, 503);
+  assert.equal(detail.status, 200);
+  const detailBody = await detail.json(); assert.equal(detailBody.listing.id, listing.id); assert.deepEqual(detailBody.areas, []); assert.deepEqual(detailBody.indicators, []); assert.deepEqual(detailBody.duplicates, []); assert.equal(detailBody.valuation.estimatedRentCad, 2500);
 });
 test('default config gate retains missing-config 503 and fixture opt-in wins over SQL', async () => {
   const unavailable = await createRuntime({ env: {} }).search(http(input), undefined); assert.equal(unavailable.status, 503); assert.equal(vi.mocked(getClient).mock.calls.length, 0);
@@ -75,7 +76,7 @@ test('missing routing/safety remain unknown and hide-unconfirmed excludes hard t
   const exact = await searchPercentileCandidates({ ...input, intent: { ...travelIntent, numericExtreme: { field: 'travel', direction: 'min', percentage: 5, minimumCount: 10, targetId: travelIntent.travelTargets[0].id } } }, dependencies, { referenceYear: 2026 });
   assert.equal(exact.status, 'unavailable'); if (exact.status === 'unavailable') assert.equal(exact.reason, 'routing_incomplete');
 });
-test('exact deadline aborts enrichment and bounds uncooperative C queries across runtimes', async () => {
+test('exact deadline aborts enrichment while another runtime can still serve static context', async () => {
   let finish: (rows: unknown[]) => void = () => {};
   let queries = 0;
   const db = client({ query: () => { queries++; return queries === 1 ? new Promise(resolve => { finish = resolve; }) : Promise.resolve([]); } });
@@ -85,9 +86,63 @@ test('exact deadline aborts enrichment and bounds uncooperative C queries across
   assert.equal(result.status, 'unavailable'); if (result.status === 'unavailable') assert.equal(result.reason, 'timeout');
   assert.equal(queries, 1);
   const retry = sqlSearchDependencies(() => db.sql);
-  await assert.rejects(retry.enrich(listing, baseIntent), SearchUnavailable); assert.equal(queries, 1);
+  const concurrent = await retry.enrich({ ...listing, id: sampleListings[2].id }, baseIntent); assert.equal(concurrent.valuation.status, 'insufficient_data'); assert.equal(queries, 3);
   finish(five());
   await new Promise(resolve => setTimeout(resolve, 0));
-  assert.equal(queries, 2);
-  const context = await retry.enrich(listing, baseIntent); assert.equal(context.valuation.status, 'ok'); assert.equal(queries, 3);
+  assert.equal(queries, 4);
+  const context = await retry.enrich(listing, baseIntent); assert.equal(context.valuation.status, 'ok'); assert.equal(queries, 5);
+});
+
+test('unfinished owner enrichments are bounded and release capacity when settled', async () => {
+  let finish: (rows: unknown[]) => void = () => {};
+  const rows = new Promise<unknown[]>(resolve => { finish = resolve; });
+  const db = client({ query: () => rows });
+  const dependencies = sqlSearchDependencies(() => db.sql);
+  const pending = Array.from({ length: 8 }, (_, i) => dependencies.enrich({ ...listing, id: sampleListings[i].id }, baseIntent));
+  await assert.rejects(dependencies.enrich(listing, baseIntent), SearchUnavailable);
+  finish([]);
+  assert.equal((await Promise.all(pending)).length, 8);
+  assert.equal((await dependencies.enrich(listing, baseIntent)).valuation.status, 'insufficient_data');
+});
+
+test('public owner context cache reuses across intents, isolates mutations, misses changed listings and expires', async () => {
+  const clock = vi.spyOn(Date, 'now').mockReturnValue(1000);
+  const db = client(), dependencies = sqlSearchDependencies(() => db.sql);
+  const first = await dependencies.enrich(listing, baseIntent);
+  const reads = db.tagged.mock.calls.length;
+  first.travel.push({ listingId: listing.id, targetId: 'injected', mode: 'walk', method: 'straight_line', minutes: null, distanceM: 1, poiId: null, computedAt: listing.lastSeenAt });
+  first.caveats?.splice(0);
+  const reused = await dependencies.enrich(listing, travelIntent);
+  assert.equal(db.tagged.mock.calls.length, reads); assert.deepEqual(reused.travel, []); assert.ok(reused.caveats?.length);
+  await dependencies.enrich({ ...listing, updatedAt: '2026-10-17T12:00:00Z' }, baseIntent);
+  assert.ok(db.tagged.mock.calls.length > reads);
+  const changedReads = db.tagged.mock.calls.length;
+  await dependencies.enrich({ ...listing, furnished: 'yes' }, baseIntent);
+  assert.ok(db.tagged.mock.calls.length > changedReads);
+  const beforeExpiry = db.tagged.mock.calls.length;
+  clock.mockReturnValue(61_000);
+  await dependencies.enrich(listing, baseIntent);
+  assert.ok(db.tagged.mock.calls.length > beforeExpiry);
+  const cancelled = new AbortController(); cancelled.abort();
+  await assert.rejects(dependencies.enrich(listing, baseIntent, cancelled.signal), SearchUnavailable);
+});
+
+test('failed and aborted owner reads never populate the context cache', async () => {
+  let finish: (rows: unknown[]) => void = () => {};
+  let reads = 0;
+  const db = client({ query: () => {
+    reads++;
+    if (reads === 1) return Promise.reject(new Error('private'));
+    if (reads === 2) return new Promise(resolve => { finish = resolve; });
+    return Promise.resolve([]);
+  } });
+  const dependencies = sqlSearchDependencies(() => db.sql);
+  await assert.rejects(dependencies.enrich(listing, baseIntent), SearchUnavailable);
+  const controller = new AbortController();
+  const pending = dependencies.enrich(listing, baseIntent, controller.signal);
+  controller.abort(); await assert.rejects(pending, SearchUnavailable);
+  finish([]); await new Promise(resolve => setTimeout(resolve, 0));
+  const afterAbort = reads;
+  await dependencies.enrich(listing, baseIntent);
+  assert.ok(reads > afterAbort);
 });

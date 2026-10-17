@@ -2,6 +2,7 @@ import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { baseIntent, sampleListings, valuations, travelIntent, safetySearchFixture } from '../../../../../packages/shared/fixtures/index';
 import { selectPercentile } from '../../../../../packages/shared/engine/score';
+import { filterListing } from '../../../../../packages/shared/engine/filters';
 import { SearchResponseSchema, type Listing, type NumericExtreme, type SearchIntent } from '../../../../../packages/shared/schemas/index';
 import { searchPercentileCandidates } from './candidates-percentiles';
 import type { SearchDependencies } from './candidates';
@@ -40,6 +41,22 @@ test('scalar full eligible pool before cap and full hard enriched filters before
   assert.equal(gated.status, 'completed'); if (gated.status !== 'completed') return;
   assert.equal(gated.eligibleCount, 5); assert.equal(gated.results.length, 5);
   SearchResponseSchema.parse(gated);
+});
+test('scalar selection enriches only selected rows while preserving full counts, unknowns and numeric order', async () => {
+  const pool: Listing[] = Array.from({ length: 520 }, (_, i) => ({ ...sampleListings[1], id: `00000000-0000-4000-8000-${String(i + 1).padStart(12, '0')}`, monthlyRentCad: 1500 + Math.floor(i / 3), bedrooms: i % 13 === 0 ? null : 1, sqft: i % 7 === 0 ? null : 500 + i, yearBuilt: i % 11 === 0 ? null : 1960 + i % 60 }));
+  for (const field of ['rent', 'bedrooms', 'bathrooms', 'sizeSqft', 'buildingAge'] as const) for (const hide of [false, true]) {
+    const intent: SearchIntent = { ...scalar, numericExtreme: { ...selector, field, direction: 'max' }, criteria: { bedrooms: { value: { min: 1 }, hard: true }, priceFairness: { value: ['underpriced'], hard: false } }, safety: { enabled: true, hard: false } };
+    const eligible = pool.filter(listing => filterListing(listing, intent, {}, hide, true).passes);
+    const expected = selectPercentile(eligible, intent.numericExtreme!, 2026).map(listing => listing.id);
+    const enriched: string[] = [];
+    const response = await execute(intent, { listings: pool, enrich: async (...args) => { enriched.push(args[0].id); return enrich(...args); } }, hide);
+    assert.equal(response.status, 'completed'); if (response.status !== 'completed') continue;
+    assert.equal(response.eligibleCount, eligible.length);
+    assert.deepEqual(response.results.map(result => result.listing.id), expected);
+    assert.deepEqual(enriched, expected);
+    assert.ok(enriched.length < eligible.length);
+    assert.ok(response.results.every(result => result.valuation.status === valuations[3].status && result.matchScore.parts.length === 5));
+  }
 });
 test('scalar hard unknowns remain noted unless hidden', async () => {
   const intent = { ...scalar, criteria: { bedrooms: { value: { min: 0 }, hard: true } } };

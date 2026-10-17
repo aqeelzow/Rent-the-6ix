@@ -1,12 +1,15 @@
 import { getClient } from '../db';
+import { z } from 'zod';
 import { ListingSchema, SearchRequestSchema, type Listing, type SearchRequest } from '../../../../../packages/shared/schemas/index';
 import { filterListing } from '../../../../../packages/shared/engine/filters';
 import { SearchUnavailable, type SearchDependencies } from './candidates';
 
 type Client = { unsafe: (statement: string, parameters: (string | number | boolean)[]) => PromiseLike<unknown> };
 const columns = ['id', 'source', 'sourceListingId', 'sourceUrl', 'title', 'excerpt', 'monthlyRentCad', 'rentIsPerRoom', 'bedrooms', 'bathrooms', 'unitType', 'sqft', 'yearBuilt', 'yearBuiltSource', 'airConditioning', 'locationPrecision', 'addressText', 'addressPointId', 'buildingId', 'neighbourhoodId', 'wardId', 'utilitiesIncluded', 'parking', 'petsAllowed', 'furnished', 'laundryInSuite', 'availableFrom', 'leaseTerm', 'imageUrl', 'firstSeenAt', 'lastSeenAt', 'updatedAt', 'status', 'duplicateOf', 'dataStatus', 'fieldEvidence'] as const;
-let candidateReadInFlight = false;
+// shortcut: retain at most eight unfinished reads after caller cancellation; use cancellable connections for higher production load.
+let candidateReadsInFlight = 0;
 const snake = (value: string) => value.replace(/[A-Z]/g, c => `_${c.toLowerCase()}`);
+const candidateColumns = `${columns.map(snake).join(', ')}, ST_X(location::geometry) AS lng, ST_Y(location::geometry) AS lat`;
 const numeric = (value: unknown) => typeof value === 'string' && /^-?\d+(?:\.\d+)?$/.test(value) ? Number(value) : value;
 export function listingFromRow(input: unknown): Listing {
   if (typeof input !== 'object' || input === null || Array.isArray(input)) throw new Error('Invalid listing row');
@@ -57,7 +60,7 @@ export function candidateQuery(input: SearchRequest) {
     const [west, south, east, north] = area.bounds;
     return `(ST_X(location::geometry) BETWEEN ${bind(west)} AND ${bind(east)} AND ST_Y(location::geometry) BETWEEN ${bind(south)} AND ${bind(north)})`;
   }).join(' OR ')})`);
-  return { statement: `SELECT ${columns.map(snake).join(', ')}, ST_X(location::geometry) AS lng, ST_Y(location::geometry) AS lat FROM listings WHERE ${gates.join(' AND ')} ORDER BY last_seen_at DESC, id`, parameters };
+  return { statement: `SELECT ${candidateColumns} FROM listings WHERE ${gates.join(' AND ')} ORDER BY last_seen_at DESC, id`, parameters };
 }
 
 export function sqlCandidateLoader(client: () => Client | null = getClient): NonNullable<SearchDependencies['loadCandidates']> {
@@ -67,18 +70,31 @@ export function sqlCandidateLoader(client: () => Client | null = getClient): Non
     const { statement, parameters } = candidateQuery(request);
     let abort: (() => void) | undefined;
     try {
-      if (candidateReadInFlight) throw new SearchUnavailable('Candidate read already in progress');
+      if (candidateReadsInFlight >= 8) throw new SearchUnavailable('Candidate read already in progress');
       const sql = client();
       if (!sql) throw new SearchUnavailable('Database is unavailable');
       const cancelled = new Promise<never>((_resolve, reject) => { abort = () => reject(new SearchUnavailable('Candidate loading cancelled')); signal?.addEventListener('abort', abort, { once: true }); });
       // shortcut: ignore late shared-client reads after abort; use dedicated cancellable connections if production query load requires it.
       const operation = Promise.resolve(sql.unsafe(statement, parameters));
-      candidateReadInFlight = true;
-      const rows = await Promise.race([operation.finally(() => { candidateReadInFlight = false; }), cancelled]);
+      candidateReadsInFlight++;
+      const rows = await Promise.race([operation.finally(() => { candidateReadsInFlight--; }), cancelled]);
       if (signal?.aborted) throw new SearchUnavailable('Candidate loading cancelled');
       if (!Array.isArray(rows)) throw new Error('Invalid candidate rows');
       return rows.map(listingFromRow).filter(listing => filterListing(listing, request.intent, {}, request.hideUnconfirmed, true).passes);
     } catch { throw new SearchUnavailable('Candidate data is unavailable'); }
     finally { if (abort) signal?.removeEventListener('abort', abort); }
+  };
+}
+
+export function sqlListingLoader(client: () => Client | null = getClient): NonNullable<SearchDependencies['loadListing']> {
+  return async id => {
+    const listingId = z.uuid().parse(id);
+    try {
+      const sql = client();
+      if (!sql) throw new SearchUnavailable('Database is unavailable');
+      const rows = await sql.unsafe(`SELECT ${candidateColumns} FROM listings WHERE id = $1`, [listingId]);
+      if (!Array.isArray(rows)) throw new Error('Invalid listing rows');
+      return rows.length ? listingFromRow(rows[0]) : null;
+    } catch { throw new SearchUnavailable('Listing data is unavailable'); }
   };
 }
