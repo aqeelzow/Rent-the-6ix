@@ -19,6 +19,7 @@ test('legacy single mode and explicit alternatives both validate without adding 
   const target = travelIntent.travelTargets[0];
   assert.equal(SearchIntentSchema.safeParse(travelIntent).success, true);
   const { alternativeModes, ...legacy } = target;
+  void alternativeModes; // destructured only to drop it from the legacy shape
   assert.equal(SearchIntentSchema.safeParse({ ...baseIntent, travelTargets: [legacy] }).success, true);
   assert.equal(SearchIntentSchema.safeParse({ ...baseIntent, travelTargets: [{ ...target, alternativeModes: ['bike'] }] }).success, false);
   assert.equal(SearchIntentSchema.safeParse({ ...baseIntent, travelTargets: [{ ...target, resolved: { ...target.resolved, representativePoint: true, label: undefined } }] }).success, false);
@@ -48,6 +49,33 @@ test('straight-line distance never fabricates minutes; routed rows require minut
   assert.equal(TravelTimeRowSchema.safeParse({ ...fallback, method: 'otp', minutes: null }).success, false);
   assert.equal(TravelTimeRowSchema.safeParse({ ...fallback, method: 'otp', minutes: 4 }).success, true);
 });
+test('torontorentals listings and listings not yet geocoded are representable', () => {
+  // C ingests torontorentals and geocodes later, so a live row can be missing its area ids.
+  const sourced = { ...listings[1], source: 'torontorentals' as const, neighbourhoodId: null, wardId: null };
+  assert.equal(ListingSchema.safeParse(sourced).success, true);
+  assert.equal(ListingSchema.safeParse({ ...sourced, source: 'craigslist' }).success, false);
+  const { areas: unusedAreas, indicators, duplicates, ...result } = detailFixture;
+  void unusedAreas; void indicators; void duplicates;
+  const safety = safetySearchFixture.status === 'completed' ? safetySearchFixture.results[0].safety! : undefined!;
+  assert.equal(SearchResultSchema.safeParse({ ...result, listing: sourced, safety: { ...safety, areaId: 'demo-neighbourhood-1' } }).success, false);
+  assert.equal(SearchResultSchema.safeParse({ ...result, listing: sourced, safety: null }).success, true);
+});
+test('valuation benchmark is optional context and adjustments identify what they changed', () => {
+  const adjustment = { code: 'parking', amountCad: -100, count: 3, label: '3 comparables had parking, this listing does not' };
+  assert.equal(ValuationSchema.safeParse({ ...valuations[0], benchmark: null }).success, true);
+  assert.equal(ValuationSchema.safeParse({ ...valuations[0], adjustments: [adjustment] }).success, true);
+  assert.equal(ValuationSchema.safeParse({ ...valuations[0], adjustments: [{ label: adjustment.label, amountCad: -100 }] }).success, true);
+  assert.equal(ValuationSchema.safeParse({ ...valuations[0], adjustments: [{ ...adjustment, count: -1 }] }).success, false);
+});
+test('the same-building cap counts effective comparables, not raw candidates', () => {
+  // Six floor plans in one building are six candidates but only two effective comparables (SPEC 7.2).
+  assert.equal(ValuationSchema.safeParse({ ...valuations[3], comparableCount: 6, effectiveCount: 2 }).success, true);
+  assert.equal(ValuationSchema.safeParse({ ...valuations[0], effectiveCount: 2 }).success, false);
+  assert.equal(ValuationSchema.safeParse({ ...valuations[0], effectiveCount: 6 }).success, false);
+  // `comparables` may be a subset of the candidates the engine considered.
+  assert.equal(ValuationSchema.safeParse({ ...valuations[0], comparableCount: 6 }).success, true);
+  assert.equal(ValuationSchema.safeParse({ ...valuations[0], comparableCount: 4 }).success, false);
+});
 test('valuation and match-score evidence stay internally consistent', () => {
   assert.equal(ValuationSchema.safeParse({ ...valuations[0], comparableCount: 3 }).success, false);
   assert.equal(ValuationSchema.safeParse({ ...valuations[3], estimatedRentCad: 2000 }).success, false);
@@ -58,6 +86,7 @@ test('valuation and match-score evidence stay internally consistent', () => {
   assert.equal(MatchScoreSchema.safeParse({ ...score, parts: Array(5).fill(score.parts[0]) }).success, false);
   assert.equal(SearchResultSchema.safeParse({ ...detailFixture, areas: undefined, indicators: undefined, duplicates: undefined }).success, false);
   const { areas: unusedAreas, indicators, duplicates, ...result } = detailFixture;
+  void unusedAreas; void indicators; void duplicates;
   assert.equal(SearchResultSchema.safeParse({ ...result, valuation: { ...result.valuation, differenceCad: 100, differencePct: 4 } }).success, false);
 });
 test('structured choices and async envelopes distinguish ambiguity, pending and unavailable', () => {

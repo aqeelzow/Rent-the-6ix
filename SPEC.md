@@ -234,7 +234,7 @@ UnitType = 'apartment' | 'condo' | 'basement' | 'house' | 'townhouse' | 'room'  
 
 Listing {
   id: string (uuid)
-  source: 'kijiji' | 'rentals_ca' | 'zillow' | 'realtor_ca' | 'manual' | 'pasted'
+  source: 'kijiji' | 'torontorentals' | 'rentals_ca' | 'zillow' | 'realtor_ca' | 'manual' | 'pasted'
   sourceListingId: string
   sourceUrl: string
   title: string
@@ -253,7 +253,8 @@ Listing {
   addressText: string | null            // shown only when the source shows it
   addressPointId: string | null         // City Address Points match
   buildingId: string | null             // RentSafeTO registered building, if matched
-  neighbourhoodId: string, wardId: string
+  neighbourhoodId: string | null, wardId: string | null   // null until geocoded against D's boundaries (P1.10);
+                                                          // area filters and safety need a match, so they skip such rows
   utilitiesIncluded: Tri, parking: Tri, petsAllowed: Tri | 'cats_only' | 'dogs_only',
   furnished: Tri, laundryInSuite: Tri   // Tri = 'yes' | 'no' | 'unknown'
   availableFrom: string | null, leaseTerm: string | null
@@ -301,12 +302,13 @@ Valuation {
   lowCad?: number, highCad?: number          // interquartile range of adjusted comparable rents
   differenceCad?: number, differencePct?: number   // positive = listing is below the estimate
   priceLabel: PriceLabel | 'unknown'         // section 7.2; 'unknown' when data is insufficient
-  comparableCount: number
+  comparableCount: number                    // candidates considered; comparables may be a subset (empty when insufficient)
+  effectiveCount: number                     // after the same-building cap (7.2); this drives the 5-comparable floor and confidence
   radiusM: number, windowDays: number
   confidence: 'low' | 'medium' | 'high'
   comparables: { listingId, rentCad, adjustedRentCad, distanceM, weight, lastSeenAt }[]
-  adjustments: { label, amountCad }[]        // e.g. "utilities included: −$150 to compare"
-  benchmark: { label, valueCad, period, sourceId }   // e.g. StatCan CMA asking rent for this bedroom count
+  adjustments: { code?, amountCad, count?, label }[]   // e.g. "utilities included: −$150 to compare", with (when known) how many comparables it moved
+  benchmark: { label, valueCad, period, sourceId } | null   // context, never the estimate; null until D's benchmarks seed (P2.15)
   method: string
 }
 ```

@@ -14,7 +14,7 @@ export const fixtureDependencies: SearchDependencies = {
   enrich: async (listing, intent) => {
     const result = searchFixture.status === 'completed' ? searchFixture.results.find(r => r.listing.id === listing.id)! : undefined!;
     const safety = safetySearchFixture.status === 'completed' ? safetySearchFixture.results[0].safety : null;
-    return { valuation: result.valuation, travel: [], safety: intent.safety.enabled && safety ? { ...safety, areaId: listing.neighbourhoodId } : null, safetyScore: 80, caveats: result.matchScore.caveats };
+    return { valuation: result.valuation, travel: [], safety: intent.safety.enabled && safety && listing.neighbourhoodId ? { ...safety, areaId: listing.neighbourhoodId } : null, safetyScore: 80, caveats: result.matchScore.caveats };
   },
 };
 type RuntimeOptions = { env?: Record<string, string | undefined>; parser?: ParseService; resolver?: DestinationResolver; dependencies?: SearchDependencies; jobs?: SearchJobs; identity?: (request: Request) => string; limiter?: IpLimiter; startLimiter?: IpLimiter; pollLimiter?: IpLimiter };

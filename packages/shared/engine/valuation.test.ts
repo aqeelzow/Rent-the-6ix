@@ -238,11 +238,12 @@ describe("same-building floor plans", () => {
   it("count as at most 2 comparables toward the floor", () => {
     const tower = comps([2400, 2420, 2440, 2460, 2480, 2500], { buildingKey: "b1", distanceM: 0 });
     const v = valuate(subject, tower, null, NOW);
-    expect(v).toMatchObject({ status: "insufficient_data", comparableCount: 6 });
+    expect(v).toMatchObject({ status: "insufficient_data", comparableCount: 6, effectiveCount: 2 });
     expect(v.method).toContain("floor plans in one building count as at most 2");
     // Three more buildings bring it to 2 + 3 = 5.
     const others = comps([2600, 2650, 2700], { distanceM: 800 });
-    expect(valuate(subject, [...tower, ...others], null, NOW).status).toBe("ok");
+    const mixed = valuate(subject, [...tower, ...others], null, NOW);
+    expect(mixed).toMatchObject({ status: "ok", comparableCount: 9, effectiveCount: 5 });
   });
 
   it("share the weight of 2, so one building can't decide the estimate", () => {

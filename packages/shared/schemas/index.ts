@@ -65,11 +65,14 @@ export const SearchIntentSchema = z.strictObject({
   if (!v.safety.enabled && v.weights?.safety) ctx.addIssue({ code: 'custom', message: 'Safety weight requires opt-in' });
 });
 export const ListingSchema = z.strictObject({
-  id: z.uuid(), source: z.enum(['kijiji', 'rentals_ca', 'zillow', 'realtor_ca', 'manual', 'pasted']), sourceListingId: text, sourceUrl: url,
+  id: z.uuid(), source: z.enum(['kijiji', 'torontorentals', 'rentals_ca', 'zillow', 'realtor_ca', 'manual', 'pasted']), sourceListingId: text, sourceUrl: url,
   title: text, excerpt: z.string().max(280), monthlyRentCad: positive, rentIsPerRoom: z.boolean(), bedrooms: nonnegative.int().nullable(), bathrooms: nonnegative.nullable(),
   unitType: UnitTypeSchema.nullable(), sqft: positive.nullable(), yearBuilt: year.nullable(), yearBuiltSource: z.enum(['listing', 'rentsafeto', 'ai_extracted']).nullable(),
   airConditioning: z.enum(['central', 'yes', 'no', 'unknown']), location: CoordinateSchema, locationPrecision: z.enum(['exact', 'street', 'area']),
-  addressText: text.nullable(), addressPointId: text.nullable(), buildingId: text.nullable(), neighbourhoodId: text, wardId: text,
+  addressText: text.nullable(), addressPointId: text.nullable(), buildingId: text.nullable(),
+  // Null until the listing is geocoded against D's boundaries (P1.10). Area filters and safety
+  // need a match, so they simply do not apply to a listing that has no area yet.
+  neighbourhoodId: text.nullable(), wardId: text.nullable(),
   utilitiesIncluded: tri, parking: tri, petsAllowed: z.enum(['yes', 'no', 'unknown', 'cats_only', 'dogs_only']), furnished: tri, laundryInSuite: tri,
   availableFrom: date.nullable(), leaseTerm: text.nullable(), imageUrl: url.nullable(), firstSeenAt: timestamp, lastSeenAt: timestamp, updatedAt: timestamp,
   status: z.enum(['active', 'stale', 'removed']), duplicateOf: z.uuid().nullable(), dataStatus: z.enum(['live', 'snapshot', 'demo']),
@@ -79,15 +82,27 @@ export const ListingSchema = z.strictObject({
   if (v.duplicateOf === v.id) ctx.addIssue({ code: 'custom', message: 'Listing cannot duplicate itself' });
 });
 export const CaveatSchema = z.strictObject({ severity: z.enum(['info', 'warning', 'high']), code: text, title: text, explanation: text });
+// `code` and `count` are optional so an adjustment written by another producer still validates.
+export const AdjustmentSchema = z.strictObject({
+  code: text.optional(), amountCad: z.number().finite(), count: nonnegative.int().optional(), label: text,
+});
 export const ValuationSchema = z.strictObject({
   status: z.enum(['ok', 'insufficient_data']), estimatedRentCad: positive.optional(), lowCad: positive.optional(), highCad: positive.optional(), differenceCad: z.number().finite().optional(), differencePct: z.number().finite().optional(),
-  priceLabel: z.enum(['underpriced', 'reasonable', 'overpriced', 'unknown']), comparableCount: nonnegative.int(), radiusM: nonnegative, windowDays: positive.int(), confidence: z.enum(['low', 'medium', 'high']),
+  priceLabel: z.enum(['underpriced', 'reasonable', 'overpriced', 'unknown']),
+  // Candidates the engine considered. `comparables` may be a subset (empty when data is insufficient).
+  comparableCount: nonnegative.int(),
+  // Candidates after the same-building cap (SPEC 7.2): this is the count behind the five-comparable
+  // floor and the confidence, so it can be lower than `comparableCount`.
+  effectiveCount: nonnegative.int(),
+  radiusM: nonnegative, windowDays: positive.int(), confidence: z.enum(['low', 'medium', 'high']),
   comparables: z.array(z.strictObject({ listingId: z.uuid(), rentCad: positive, adjustedRentCad: positive, distanceM: nonnegative, weight: positive, lastSeenAt: timestamp })),
-  adjustments: z.array(z.strictObject({ label: text, amountCad: z.number().finite() })), benchmark: z.strictObject({ label: text, valueCad: positive, period: text, sourceId: text }), method: text,
+  adjustments: z.array(AdjustmentSchema),
+  // Context only (SPEC 7.2), never the estimate; null until D's benchmarks seed exists (P2.15).
+  benchmark: z.strictObject({ label: text, valueCad: positive, period: text, sourceId: text }).nullable(), method: text,
 }).superRefine((v, ctx) => {
-  if (v.comparableCount !== v.comparables.length) ctx.addIssue({ code: 'custom', message: 'Comparable count mismatch' });
-  if (v.status === 'ok' && (v.comparableCount < 5 || v.estimatedRentCad === undefined || v.lowCad === undefined || v.highCad === undefined || v.differenceCad === undefined || v.differencePct === undefined || v.priceLabel === 'unknown')) ctx.addIssue({ code: 'custom', message: 'Successful valuation needs five comparables and computed amounts' });
-  if (v.status === 'insufficient_data' && (v.priceLabel !== 'unknown' || v.comparableCount >= 5 || [v.estimatedRentCad, v.lowCad, v.highCad, v.differenceCad, v.differencePct].some(n => n !== undefined))) ctx.addIssue({ code: 'custom', message: 'Insufficient data cannot claim computed value' });
+  if (v.comparables.length > v.comparableCount || v.effectiveCount > v.comparableCount) ctx.addIssue({ code: 'custom', message: 'Comparable counts out of order' });
+  if (v.status === 'ok' && (v.effectiveCount < 5 || v.estimatedRentCad === undefined || v.lowCad === undefined || v.highCad === undefined || v.differenceCad === undefined || v.differencePct === undefined || v.priceLabel === 'unknown')) ctx.addIssue({ code: 'custom', message: 'Successful valuation needs five effective comparables and computed amounts' });
+  if (v.status === 'insufficient_data' && (v.priceLabel !== 'unknown' || v.effectiveCount >= 5 || [v.estimatedRentCad, v.lowCad, v.highCad, v.differenceCad, v.differencePct].some(n => n !== undefined))) ctx.addIssue({ code: 'custom', message: 'Insufficient data cannot claim computed value' });
   if (v.lowCad !== undefined && v.highCad !== undefined && v.lowCad > v.highCad) ctx.addIssue({ code: 'custom', message: 'Valuation bounds out of order' });
   if (v.estimatedRentCad !== undefined && v.differenceCad !== undefined && v.differencePct !== undefined && Math.abs(v.differencePct - 100 * v.differenceCad / v.estimatedRentCad) > 0.1) ctx.addIssue({ code: 'custom', message: 'Valuation difference mismatch' });
 });
@@ -133,6 +148,7 @@ export type SearchIntent = z.infer<typeof SearchIntentSchema>;
 export type TravelTarget = z.infer<typeof TravelTargetSchema>;
 export type TravelTimeRow = z.infer<typeof TravelTimeRowSchema>;
 export type Valuation = z.infer<typeof ValuationSchema>;
+export type Adjustment = z.infer<typeof AdjustmentSchema>;
 export type Safety = z.infer<typeof SafetySchema>;
 export type Area = z.infer<typeof AreaSchema>;
 export type AreaIndicator = z.infer<typeof AreaIndicatorSchema>;
