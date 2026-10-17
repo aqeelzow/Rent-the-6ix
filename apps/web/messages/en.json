@@ -24,6 +24,41 @@
     "metaDescription": "Describe the rental you need. RentThe6ix searches Toronto listings, checks each price against similar homes, and shows the neighbourhood around it."
   },
   "landing": {
+    "tagline": "Toronto home finding, made easy",
+    "logoTop": "Rent the",
+    "logoBottom": "6ix",
+    "scrollCue": "Scroll",
+    "jump": "Skip to search",
+    "say": {
+      "title": "Say it how you would say it.",
+      "prompt": "2-bed near UofT under $2,800, cat-friendly, with AC",
+      "caption": "Every phrase becomes a filter you can change. Solid ones are must-haves; outlined ones only move a listing up or down.",
+      "chips": {
+        "beds": {
+          "phrase": "2-bed",
+          "label": "2 bedrooms"
+        },
+        "near": {
+          "phrase": "near UofT",
+          "label": "Near UofT by transit"
+        },
+        "rent": {
+          "phrase": "under $2,800",
+          "label": "Up to $2,800"
+        },
+        "pets": {
+          "phrase": "cat-friendly",
+          "label": "Cats allowed"
+        },
+        "ac": {
+          "phrase": "with AC",
+          "label": "Air conditioning"
+        }
+      }
+    },
+    "start": {
+      "title": "Where do you want to live?"
+    },
     "title": "Find a Toronto rental that fits, at a fair price",
     "subtitle": "Describe what you need in your own words. We search listings from several sites, check each price against similar homes nearby, and show you the neighbourhood around it.",
     "promptLabel": "Describe the place you're looking for",
@@ -51,21 +86,6 @@
     "paste": {
       "title": "Paste a listing",
       "body": "Found a place on Facebook or anywhere else? Paste it to check the price and the area."
-    },
-    "howTitle": "How it works",
-    "how": {
-      "filters": {
-        "title": "Your words become filters",
-        "body": "Each request turns into a filter you can edit. Must-haves exclude listings; preferences only change the ranking."
-      },
-      "price": {
-        "title": "Every price checked",
-        "body": "Each rent is compared with similar listings nearby, with the comparables shown. Not enough data? We say so."
-      },
-      "area": {
-        "title": "The City's data on every listing",
-        "body": "Travel times by transit, car, walk and bike, the building's RentSafeTO record, and neighbourhood facts from Toronto open data."
-      }
     }
   },
   "search": {
