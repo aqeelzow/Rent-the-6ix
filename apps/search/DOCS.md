@@ -228,3 +228,10 @@ Read-only `RUN_LIVE_STATIC_DETAIL=1 pnpm --filter web exec vitest run src/lib/db
 Merged main17bf safety integration and a separate live safety probe resolve EXT-2. Eleven benchmarks now exist in the DB, but affordability/C benchmark consumption remain open. OTP setup is published; routeTimes/precompute are still absent. Known-place, indexed Address Points and live MapTiler resolver paths are now verified; exact TD Bay/Queen matching remains a separate unresolved acceptance case. Latest direct Gemini generation returned503 UNAVAILABLE, so live Gemini success remains unverified.
 
 P2.25 static detail feature gate:19 focused tests passed (detail adapter, owner-context composition and API compatibility), one opt-in real DB acceptance passed, web TypeScript/focused ESLint and git diff whitespace checks passed. Parent owns broad workspace/build/native production verification.
+
+
+### Fallback destination punctuation (2026-10-17)
+
+Explicit timed destinations now keep periods in common street abbreviations (for example `UofT St. George` and `100 Queen St. W`). This prevents an extra truncated campus target, preserves the whole address for civic lookup, and stops a target before sentence punctuation or a separately timed `and` clause. Each independent trip keeps its own mode, minutes and verbatim source phrase. Existing timed grocery refinement remains covered.
+
+Focused parser/Address Points tests pass24 tests, including known-campus resolution, two arbitrary addresses separated by sentences or a timed conjunction, and source evidence. The read-only live Address Points acceptance also parses `10 min walk to 100 Queen St. W. Parking required.` into one target and resolves it from the civic table with zero geocoder calls; the existing index-plan assertion passes. Web TypeScript, focused ESLint and whitespace checks pass. This fix does not add general sentence understanding or a neighbourhood/ward parsing catalogue: only configured Downtown/Scarborough definitions currently enter prompt parsing, and AI area cleaning still rejects other owner IDs.

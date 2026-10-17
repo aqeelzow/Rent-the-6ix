@@ -1,6 +1,6 @@
 # Natural-language rental search — execution plan
 
-Status: active sequential completion on `b/search-plan-completion` in `/tmp/rent-search-mvp`, based on upstream main `f0d729b`. One subagent implements each feature; each feature receives database-backed validation before the next starts. The local plan covers the search pipeline; explanations/imports/briefings remain outside its scope. Incoming ranking/filter feedback is included in deterministic search acceptance. Historical entries below describe earlier checkpoints.
+Status: active sequential completion on `b/search-plan-completion` in `/tmp/rent-search-mvp`, based on upstream main `17bf8b4`. One subagent implements each feature; each feature receives database-backed validation before the next starts. The local plan covers the search pipeline; explanations/imports/briefings remain outside its scope. Incoming ranking/filter feedback is included in deterministic search acceptance. Historical entries below describe earlier checkpoints.
 
 ## Source of truth and scope
 
@@ -193,3 +193,6 @@ Feature2 final review — confirmed hard bedrooms take priority even when other 
 Merged dependency audit: EXT-2 safety is resolved with real DB opt-in/score/hard-limit acceptance; OTP setup exists but route adapter/precompute remain absent; benchmarks now contain11 sourced rows but affordability/C consumption remain unavailable. Known-place, indexed Address Points and actual MapTiler resolver fallback passed, while exact TD Bay/Queen matching remains open. Direct Gemini generation now returns503 UNAVAILABLE; no successful live AI interpretation claim. Parent owns final broad/build/publication gates.
 
 P2.25 static detail feature gate:19 focused tests passed (detail adapter, owner-context composition and API compatibility), one opt-in real DB acceptance passed, web TypeScript/focused ESLint and git diff whitespace checks passed. Parent owns broad workspace/build/native production verification.
+
+
+2026-10-17 — Sequential feature5 fixes fallback timed-destination truncation at street abbreviation periods. UofT St. George now produces one known-place target; arbitrary100QueenSt.W stays intact for Address Points. Sentence punctuation and separately timed conjunctions keep independent trips separate, retaining each mode/time and verbatim evidence. Focused parser/Address Points24 tests, read-only live end-to-end civic address/index test, web TypeScript, focused ESLint and whitespace checks pass. Existing grocery walkthrough remains covered. No provider calls or owner data/schema changes. Neighbourhood/ward parsing catalogue remains separate: fallback and AI grounding still accept only configured Downtown/Scarborough definitions despite now-published civic tables; whole parsing section stays open.

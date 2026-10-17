@@ -100,8 +100,8 @@ export function fallbackParse(rawPrompt: string, now = new Date()): SearchIntent
   for (const [category, re] of [['grocery', /\b(?:groceries|grocery|supermarkets?)\b/gi], ['school', /\b(?:public school|schools?)\b/gi], ['park', /\bparks?\b/gi], ['rapid_transit', /\bsubway\b/gi], ['library', /\blibrar(?:y|ies)\b/gi], ['pharmacy', /\bpharmac(?:y|ies)\b/gi], ['clinic', /\bclinics?\b/gi]] as const) {
     for (const m of rawPrompt.matchAll(re)) { if (category === 'rapid_transit' && /by\s*$/i.test(rawPrompt.slice(0, m.index))) continue; const before = rawPrompt.slice(0, m.index); const clause = before.slice(Math.max(before.lastIndexOf(','), before.lastIndexOf(';'), before.lastIndexOf(' and ')) + 1) + m[0]; addTarget(m[0], m[0], category, clause); }
   }
-  // Explicit mode/time-to arbitrary addresses complements the small known-place vocabulary.
-  for (const m of rawPrompt.matchAll(/(\d+\s*(?:minutes?|mins?)\s+(?:by\s+)?(?:transit|drive|walk|bike|car|walking|biking)\s+to\s+)([^,;.]+)/gi)) {
+  // Street abbreviations keep their dots; sentence ends and separately timed destinations stop capture.
+  for (const m of rawPrompt.matchAll(/(\d+\s*(?:minutes?|mins?)\s+(?:by\s+)?(?:transit|drive|walk|bike|car|walking|biking)\s+to\s+)((?:(?!\s+and\s+\d+\s*(?:minutes?|mins?)\b)(?:\b(?:st|ave|rd|blvd|dr|cres|ct|pl|hwy)\.(?=\s+\w)|[^,;.!?]))+)/gi)) {
     const amenity = /^(?:(?:a|the|nearest)\s+)?(supermarkets?|grocer(?:y|ies)|public schools?|schools?|parks?|subway|librar(?:y|ies)|pharmac(?:y|ies)|clinics?)\b/i.exec(m[2].trim());
     const category: TravelTarget['category'] | undefined = amenity ? /supermarket|grocer/i.test(amenity[1]) ? 'grocery' : /school/i.test(amenity[1]) ? 'school' : /park/i.test(amenity[1]) ? 'park' : /subway/i.test(amenity[1]) ? 'rapid_transit' : /librar/i.test(amenity[1]) ? 'library' : /pharmac/i.test(amenity[1]) ? 'pharmacy' : 'clinic' : undefined;
     if (category || !intent.travelTargets.some(t => t.query && m[2].toLowerCase().includes(t.query.toLowerCase()))) addTarget(m[2].trim(), m[0], category, m[0]);

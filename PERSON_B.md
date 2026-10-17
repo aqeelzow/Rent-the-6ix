@@ -9,7 +9,7 @@ Task ids match `PROGRESS.md`; task details are in `SPEC.md`.
 - **Current task:** sequential completion of apps/search/plan.md with a subagent per feature and live DB validation.
 - **Status:** active on `b/search-plan-completion` in `/tmp/rent-search-mvp`, based on main `f0d729b`. Feature1 parse ai_cache integration passes real PostgreSQL cross-runtime/privacy/expiry validation and154 web tests.
 - **Verified:** 20,956 live listings / 16,892 active nonduplicates at inspection; native SQL-backed cheapest/known filters, scalar percentiles, fairness, detail and overlap acceptance.
-- **Remaining:** cold/full enriched performance (latest ordinary8.863s) needs C optimization/bulk context; live static safety needs D city-rate/lookup/score exports. Owner changes remain outside B scope under TEAM.md. Dynamic routing/distance computations are deferred by the user.
+- **Remaining:** cold/full enriched performance needs C optimization/bulk context (post-merge SPEC16 observations5.406s/30.017s/2.752s); live static safety is now SQL-verified after PR22. Owner changes remain outside B scope under TEAM.md. Dynamic routing/distance computations are deferred by the user.
 - **Last updated:** 2026-10-17
 
 

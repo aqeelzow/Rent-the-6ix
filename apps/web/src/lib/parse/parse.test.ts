@@ -238,3 +238,21 @@ test('plain monthly budgets parse without currency signs and do not consume home
   assert.deepEqual(fallbackParse('maximum rent: 1800').criteria.rent?.value, { max: 1800 });
   for (const prompt of ['under 800 sqft', 'at least 2 bedrooms', 'under 10 minutes walk to Union Station', 'built after 2000']) assert.equal(fallbackParse(prompt).criteria.rent, undefined);
 });
+
+
+test('timed destinations preserve street dots without duplicate campuses or merged trips', async () => {
+  const campus = await new ParseService({ provider: new NoneProvider() }).parse({ prompt: 'Within 25 minutes by transit to UofT St. George.' }, 'destination-regression');
+  assert.equal(campus.intent.travelTargets.length, 1);
+  assert.equal(campus.intent.travelTargets[0].query, 'UofT St. George');
+  assert.equal(campus.intent.travelTargets[0].maxMinutes, 25);
+  assert.equal(campus.intent.travelTargets[0].hard, true);
+  assert.equal(campus.destinations[0].resolution.status, 'resolved');
+  if (campus.destinations[0].resolution.status === 'resolved') assert.equal(campus.destinations[0].resolution.destination.resolved.source, 'known_place');
+  const prompt = '10 min walk to 100 Queen St. W. Parking required. 20 min bike to 200 King St. E.';
+  const intent = fallbackParse(prompt);
+  assert.deepEqual(intent.travelTargets.map(t => [t.query, t.mode, t.maxMinutes]), [['100 Queen St. W', 'walk', 10], ['200 King St. E', 'bike', 20]]);
+  assert.equal(intent.fieldSources['travelTargets.target-1'].phrase, '10 min walk to 100 Queen St. W');
+  assert.equal(intent.fieldSources['travelTargets.target-2'].phrase, '20 min bike to 200 King St. E');
+  const joined = fallbackParse('10 min walk to 100 Queen St. W and 20 min bike to 200 King St. E');
+  assert.deepEqual(joined.travelTargets.map(t => [t.query, t.mode, t.maxMinutes]), [['100 Queen St. W', 'walk', 10], ['200 King St. E', 'bike', 20]]);
+});

@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import postgres from 'postgres';
 import { addressPointsLookup, addressPointsStatement } from './address-points';
 import { DestinationResolver } from './resolve';
+import { ParseService } from './index';
+import { NoneProvider } from '../ai/index';
 import { normalizeAddress } from '../../../../worker/src/civic/lib/address';
 
 // Opt in: RUN_LIVE_ADDRESS_POINTS=1 pnpm --filter web exec vitest run src/lib/parse/address-points.live.test.ts
@@ -24,6 +26,13 @@ test.skipIf(process.env.RUN_LIVE_ADDRESS_POINTS !== '1')('live normalized Addres
       assert.equal(normalizeAddress(choice.label), normalizeAddress(query));
       assert.equal(choice.resolved.source, 'address_points');
     }
+    const parsed = await new ParseService({ provider: new NoneProvider(), resolver }).parse({ prompt: '10 min walk to 100 Queen St. W. Parking required.' }, 'live-public-address');
+    assert.equal(parsed.intent.travelTargets.length, 1);
+    assert.equal(parsed.intent.travelTargets[0].query, '100 Queen St. W');
+    const parsedResolution = parsed.destinations[0].resolution;
+    assert.ok(parsedResolution.status === 'resolved' || parsedResolution.status === 'ambiguous');
+    const parsedChoices = parsedResolution.status === 'resolved' ? [parsedResolution.destination] : parsedResolution.choices;
+    assert.ok(parsedChoices.every(choice => choice.resolved.source === 'address_points'));
     assert.equal(geocodes, 0);
     const [explain] = await sql.unsafe(`EXPLAIN (ANALYZE, FORMAT JSON) ${addressPointsStatement}`, [normalizeAddress(query)]);
     const plan = explain['QUERY PLAN'][0];
