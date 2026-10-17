@@ -11,7 +11,7 @@ export type UnitType = "apartment" | "condo" | "basement" | "house" | "townhouse
 export type Tri = "yes" | "no" | "unknown";
 export type AirConditioning = "central" | "yes" | "no" | "unknown";
 export type Pets = Tri | "cats_only" | "dogs_only";
-export type Evidence = "structured" | "parsed_from_text";
+export type Evidence = "structured" | "parsed_from_text" | "ai_extracted";
 
 export interface NormalizedListing {
   source: SourceId;
@@ -28,8 +28,8 @@ export interface NormalizedListing {
   unitType: UnitType | null;
   sqft: number | null;
   yearBuilt: number | null;
-  /** 'rentsafeto' is filled after the building match (P1.5). */
-  yearBuiltSource: "listing" | null;
+  /** 'rentsafeto' is filled after the building match (P1.5); 'ai_extracted' by extract.ts. */
+  yearBuiltSource: "listing" | "ai_extracted" | null;
   airConditioning: AirConditioning;
   utilitiesIncluded: Tri;
   parking: Tri;

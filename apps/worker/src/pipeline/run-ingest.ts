@@ -24,7 +24,16 @@ import {
   scrubPatch,
 } from "./details.ts";
 import { normalize, type NormalizedListing } from "./normalize.ts";
+import { scrub } from "./scrub.ts";
 import { dedupeStored } from "./dedupe-store.ts";
+import {
+  aiText,
+  extractFields,
+  geminiExtractorFromEnv,
+  loadAiCache,
+  saveAiCache,
+  type Extractor,
+} from "./extract.ts";
 import { markFreshness, upsertListings } from "./upsert.ts";
 
 export interface SourceRun {
@@ -38,6 +47,8 @@ export interface SourceRun {
   details: number;
   /** Rows written to TigerData (0 when DATABASE_URL isn't set). */
   stored: number;
+  /** Listings that gained fields from AI extraction (0 when AI is off). */
+  aiFilled: number;
   message?: string;
 }
 
@@ -48,6 +59,8 @@ export interface IngestOptions {
   maxDetails: number;
   /** Resume a single-source run from this index cursor (e.g. "55"); first page if absent. */
   cursor?: string;
+  /** Listings per source per run sent to AI extraction (cache hits are free). */
+  maxAi: number;
 }
 
 export interface IngestResult {
@@ -63,7 +76,13 @@ const DEFAULT_SOURCES = "kijiji,torontorentals,zillow,realtor_ca";
  * `manual` is loaded separately.
  */
 export function ingestOptionsFromEnv(
-  overrides: { sources?: string; pages?: string; details?: string; cursor?: string } = {},
+  overrides: {
+    sources?: string;
+    pages?: string;
+    details?: string;
+    cursor?: string;
+    ai?: string;
+  } = {},
 ): IngestOptions {
   const list = overrides.sources ?? process.env.INGEST_SOURCES ?? DEFAULT_SOURCES;
   return {
@@ -74,6 +93,7 @@ export function ingestOptionsFromEnv(
     maxPages: Number(overrides.pages ?? process.env.INGEST_MAX_PAGES ?? 3),
     maxDetails: Number(overrides.details ?? process.env.INGEST_MAX_DETAILS ?? 50),
     cursor: overrides.cursor,
+    maxAi: Number(overrides.ai ?? process.env.INGEST_MAX_AI ?? 200),
   };
 }
 
@@ -82,6 +102,8 @@ export async function runIngest(options: IngestOptions): Promise<IngestResult> {
   await mkdir(outDir, { recursive: true });
   // With DATABASE_URL, every checkpoint and the final rows are also upserted into TigerData.
   const db = openDb();
+  // With AI_PROVIDER=gemini, a key and a model, unknown fields are read from descriptions.
+  const extractor = geminiExtractorFromEnv();
 
   const runs: SourceRun[] = [];
   for (const id of options.sources) {
@@ -95,6 +117,7 @@ export async function runIngest(options: IngestOptions): Promise<IngestResult> {
         dropped: 0,
         details: 0,
         stored: 0,
+        aiFilled: 0,
         message: "unknown source",
       });
       continue;
@@ -107,6 +130,7 @@ export async function runIngest(options: IngestOptions): Promise<IngestResult> {
       dropped: 0,
       details: 0,
       stored: 0,
+      aiFilled: 0,
     };
     const raws: RawListing[] = [];
     // Featured listings repeat on later index pages (torontorentals); keep the first copy.
@@ -142,7 +166,11 @@ export async function runIngest(options: IngestOptions): Promise<IngestResult> {
     } finally {
       await session.close();
     }
-    const { rows, dropped } = normalizeAll(raws);
+    const normalized = normalizeAll(raws);
+    const rows = extractor
+      ? await addExtraction(extractor, normalized.rows, raws, options.maxAi, run)
+      : normalized.rows;
+    const dropped = normalized.dropped;
     run.dropped = dropped;
     run.listings = rows.length;
     runs.push(run);
@@ -298,6 +326,43 @@ async function addDetails(
     if (entry) raws[i] = applyPatch(raws[i], entry.patch);
   }
   console.log(`${adapter.id}: ${run.details} detail pages fetched`);
+}
+
+/**
+ * AI extraction over the full descriptions (rows keep only an excerpt). A rate limit or error
+ * stops it for this source; rows keep their rule-based values.
+ */
+async function addExtraction(
+  extractor: Extractor,
+  rows: NormalizedListing[],
+  raws: RawListing[],
+  max: number,
+  run: SourceRun,
+): Promise<NormalizedListing[]> {
+  const rawById = new Map(raws.map((r) => [r.sourceListingId, r]));
+  const cache = await loadAiCache();
+  try {
+    const { targets, stats } = await extractFields(
+      rows,
+      (i) => {
+        const raw = rawById.get(rows[i].sourceListingId);
+        // Scrubbed like stored text: contact details never reach the model.
+        return aiText(rows[i].title, raw?.description ? scrub(raw.description) : rows[i].excerpt);
+      },
+      { extractor, cache, max, today: new Date().toISOString().slice(0, 10) },
+    );
+    run.aiFilled = stats.filled;
+    const fields = Object.entries(stats.fields)
+      .map(([f, n]) => `${f} ${n}`)
+      .join(", ");
+    console.log(
+      `${run.source}: AI read ${stats.sent} of ${stats.candidates} listings with gaps, filled ${stats.filled} (${fields || "none"})`,
+    );
+    if (stats.stopped) console.error(`${run.source}: AI extraction stopped: ${stats.stopped}`);
+    return targets;
+  } finally {
+    await saveAiCache(cache);
+  }
 }
 
 /** Share of rows with a known value per field, e.g. "sqft 31%, yearBuilt 0%, ...". */
