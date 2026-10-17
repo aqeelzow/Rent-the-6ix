@@ -136,7 +136,7 @@
     "comingSoon": "Other system checks will appear here as those services are connected.",
     "listingSources": {
       "title": "Listing sources",
-      "intro": "The worker collects listings from each site on a schedule. A site that blocks it is skipped until the next run: we never solve captchas or hide where requests come from.",
+      "intro": "The worker collects listings from each site on a schedule. A site that blocks it is skipped until the next run: we never solve captchas or use proxies.",
       "loadFailed": "Source health couldn't be read from the database.",
       "none": "No listings collected yet.",
       "never": "Never",
