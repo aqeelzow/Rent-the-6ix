@@ -1,26 +1,143 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
 
+/* Dark mode is not designed yet (SPEC 18: "if time"); the variant exists so shadcn classes compile. */
+@custom-variant dark (&:is(.dark *));
+
+/*
+ * Design tokens (SPEC 18). Use the Tailwind names, e.g. `bg-primary`, `text-muted-foreground`,
+ * `bg-price-underpriced text-price-underpriced-foreground`, `bg-score-travel`.
+ * shadcn naming: `primary` is the one accent colour (actions, match score); `accent` is only
+ * the hover/selected surface used by shadcn components.
+ * Colour is never the only signal: every badge, bar and map colour also has text or a legend.
+ */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --radius: 0.625rem;
+
+  /* Surfaces and text: light neutral surfaces, deep slate text */
+  --background: oklch(0.984 0.003 247.858);
+  --foreground: oklch(0.208 0.042 265.755);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.208 0.042 265.755);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.208 0.042 265.755);
+  --muted: oklch(0.968 0.007 247.896);
+  --muted-foreground: oklch(0.446 0.043 257.281);
+  --secondary: oklch(0.968 0.007 247.896);
+  --secondary-foreground: oklch(0.208 0.042 265.755);
+  --accent: oklch(0.951 0.012 245);
+  --accent-foreground: oklch(0.208 0.042 265.755);
+  --border: oklch(0.929 0.013 255.508);
+  --input: oklch(0.704 0.04 256.788);
+
+  /* The accent: primary actions and the match score */
+  --primary: oklch(0.47 0.12 245);
+  --primary-foreground: oklch(0.985 0.002 247);
+  --ring: oklch(0.47 0.12 245);
+  --destructive: oklch(0.577 0.245 27.325);
+
+  /* Price vs market badges (Valuation.priceLabel): green / neutral / amber */
+  --price-underpriced: oklch(0.962 0.044 156.743);
+  --price-underpriced-foreground: oklch(0.393 0.095 152.535);
+  --price-reasonable: oklch(0.929 0.013 255.508);
+  --price-reasonable-foreground: oklch(0.372 0.044 257.287);
+  --price-overpriced: oklch(0.962 0.059 95.617);
+  --price-overpriced-foreground: oklch(0.473 0.137 46.201);
+
+  /* Caveat severities (Caveat.severity): blue / amber / red */
+  --caveat-info: oklch(0.97 0.014 254.604);
+  --caveat-info-foreground: oklch(0.424 0.199 265.638);
+  --caveat-warning: oklch(0.962 0.059 95.617);
+  --caveat-warning-foreground: oklch(0.473 0.137 46.201);
+  --caveat-high: oklch(0.936 0.032 17.717);
+  --caveat-high-foreground: oklch(0.444 0.177 26.899);
+
+  /* Match score parts (MatchScore.parts[].id), for the segmented score bar.
+     Safety is a neutral slate on purpose: no red/green for safety anywhere (SPEC 7.6). */
+  --score-value: oklch(0.47 0.12 245);
+  --score-price: oklch(0.6 0.1 185);
+  --score-travel: oklch(0.55 0.15 295);
+  --score-home: oklch(0.72 0.13 70);
+  --score-safety: oklch(0.6 0.03 257);
 }
 
 @theme inline {
+  --font-sans: var(--font-public-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-heading: var(--font-sans);
+
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-ring: var(--ring);
+  --color-destructive: var(--destructive);
+
+  --color-price-underpriced: var(--price-underpriced);
+  --color-price-underpriced-foreground: var(--price-underpriced-foreground);
+  --color-price-reasonable: var(--price-reasonable);
+  --color-price-reasonable-foreground: var(--price-reasonable-foreground);
+  --color-price-overpriced: var(--price-overpriced);
+  --color-price-overpriced-foreground: var(--price-overpriced-foreground);
+
+  --color-caveat-info: var(--caveat-info);
+  --color-caveat-info-foreground: var(--caveat-info-foreground);
+  --color-caveat-warning: var(--caveat-warning);
+  --color-caveat-warning-foreground: var(--caveat-warning-foreground);
+  --color-caveat-high: var(--caveat-high);
+  --color-caveat-high-foreground: var(--caveat-high-foreground);
+
+  --color-score-value: var(--score-value);
+  --color-score-price: var(--score-price);
+  --color-score-travel: var(--score-travel);
+  --color-score-home: var(--score-home);
+  --color-score-safety: var(--score-safety);
+
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+/* Every figure (rents, minutes, scores, rates) uses `figures` so columns of numbers line up. */
+@utility figures {
+  font-variant-numeric: tabular-nums lining-nums;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html {
+    @apply font-sans;
+  }
+  body {
+    @apply bg-background text-foreground;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

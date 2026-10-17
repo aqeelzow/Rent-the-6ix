@@ -6,12 +6,12 @@ Task ids match `PROGRESS.md`; task details are in `SPEC.md`.
 
 ## Current state
 
-- **Current task:** P0.2 Tailwind + shadcn/ui + Public Sans + tokens
+- **Current task:** P0.3 Zustand, Vitest, ESLint, Prettier, root scripts
 - **Status:** in progress
 - **Branch:** `a/P0-foundation` (P0.1–P0.13, one commit per task; not pushed yet)
-- **Next action:** P0.2, then P0.3, P0.10, P0.13; merge to `main` at S1.
+- **Next action:** P0.3, then P0.10, P0.13; merge to `main` at S1.
 - **Blockers / needs from others:** none yet. Build against B's fixtures (P0.6) until live routes land.
-- **Last updated:** 2026-10-16 (P0.1 done: pnpm workspace, Next 16.4 in `apps/web`, `packages/shared` and `apps/worker` skeletons; `pnpm typecheck` and `pnpm build` pass)
+- **Last updated:** 2026-10-16 (P0.1 done: pnpm workspace, Next 16.4 in `apps/web`, `packages/shared` and `apps/worker` skeletons; `pnpm typecheck` and `pnpm build` pass. P0.2 done: shadcn + Public Sans + tokens, checked at 375 px)
 
 ## Handoff notes
 
@@ -41,8 +41,8 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked · `[-]` 
 
 ### Before S1 (H0–H3) — Foundation · Core
 - [x] P0.1 Monorepo scaffold: pnpm workspaces (`apps/web`, `apps/worker`, `packages/shared`), Next.js App Router, TypeScript strict — **merge first, everyone waits on it**
-- [ ] P0.2 Tailwind + shadcn/ui + Public Sans + design tokens (light; dark if time), tabular numerals utility
-- [ ] P0.3 Zustand, Vitest, ESLint, Prettier; root scripts `typecheck`, `lint`, `test`
+- [x] P0.2 Tailwind + shadcn/ui + Public Sans + design tokens (light; dark if time), tabular numerals utility
+- [~] P0.3 Zustand, Vitest, ESLint, Prettier; root scripts `typecheck`, `lint`, `test`
 - [ ] P0.10 Layout shell, static landing page; check the starter `README.md` and `.env.example` still match the scaffold
 - [ ] P0.13 `searchSlice.ts` (intent, results, shortlist) + selection contract (`hoveredListingId`, `selectedListingId`) — merge early
 
@@ -95,7 +95,7 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked · `[-]` 
 
 | Feature | Key files | Notes |
 | --- | --- | --- |
-| Layout shell, tokens | `apps/web/src/app/layout.tsx`, `src/app/globals.css`, `src/components/ui/*` | shadcn components |
+| Layout shell, tokens | `apps/web/src/app/layout.tsx`, `src/app/globals.css`, `src/components/ui/*` | shadcn (Radix base, nova preset); tokens `price-*`, `caveat-*`, `score-*`; `figures` utility for numbers; light only |
 | Store | `apps/web/src/lib/store/searchSlice.ts` (+ test) | intent, results, shortlist, selection |
 | Landing | `src/app/page.tsx`, `src/components/search/prompt-box.tsx` | |
 | Chips & filters | `src/components/search/filter-chips.tsx`, `filters-panel.tsx` | no Gemini call on edit |
