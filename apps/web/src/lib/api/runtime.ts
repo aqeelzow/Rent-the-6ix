@@ -16,11 +16,9 @@ import { loadBriefingFacts, cachedBriefing, cacheBriefing } from '../db/briefing
 import { civicAreasLookup } from '../parse/civic-areas-db';
 import { addressPointsLookup } from '../parse/address-points';
 import { areaPointsLookup } from '../parse/areas';
-import { amenityDistances, nearestAmenity } from '../db/pois';
+import { amenityDistances } from '../db/pois';
 import { searchCandidates, fillDistanceRows, fillAmenityDistances, routeCandidateContexts, SearchUnavailable, type SearchDependencies } from '../db/candidates';
 import { sqlSearchDependencies } from '../db/candidates-context';
-import { OtpClient } from '../geo/otp';
-import { createRouteTimes } from '../geo/route-times';
 import { searchPercentileCandidates } from '../db/candidates-percentiles';
 import { SearchJobs } from './jobs';
 import { ApiError, jsonRoute } from './json-route';
@@ -36,21 +34,6 @@ export const fixtureDependencies: SearchDependencies = {
     return { valuation, travel: [], safety: intent.safety.enabled && safety && listing.neighbourhoodId !== null ? { ...safety, areaId: listing.neighbourhoodId } : null, safetyScore: 80, caveats: listingCaveats };
   },
 };
-/** Shared across requests so a building's nearest grocery is looked up once, not per search. */
-const amenities = nearestAmenity();
-/**
- * Routed travel times stay opt-in: both TRAVEL_ROUTING=1 and OTP_URL must be set, and any routing
- * failure still leaves the straight-line distance in place rather than a blank figure.
- */
-function withRouting(dependencies: SearchDependencies, otpUrl: string | undefined): SearchDependencies {
-  if (!otpUrl) return dependencies;
-  return {
-    ...dependencies,
-    routeTimes: createRouteTimes(new OtpClient({ url: otpUrl }), {
-      destinationFor: (listing, target) => (target.category ? amenities(listing.location, target.category) : Promise.resolve(null)),
-    }),
-  };
-}
 type RuntimeOptions = { env?: Record<string, string | undefined>; parser?: ParseService; resolver?: DestinationResolver; dependencies?: SearchDependencies; jobs?: SearchJobs; identity?: (request: Request) => string; limiter?: IpLimiter; startLimiter?: IpLimiter; pollLimiter?: IpLimiter; explainProvider?: import('../ai/index').AIProvider };
 export function createRuntime(options: RuntimeOptions = {}) {
   const env = options.env ?? process.env;
@@ -65,7 +48,7 @@ export function createRuntime(options: RuntimeOptions = {}) {
   const jobs = options.jobs ?? new SearchJobs();
   // Wired on the base dependencies, not only when a router is: a card the router never reached must
   // still show a distance rather than a blank, and there is no router by default.
-  const dependencies = options.dependencies ?? (env.SEARCH_FIXTURES === '1' ? fixtureDependencies : env.DATABASE_URL ? withRouting({ ...sqlSearchDependencies(), amenityDistances: amenityDistances() }, env.TRAVEL_ROUTING === '1' ? env.OTP_URL : undefined) : undefined);
+  const dependencies = options.dependencies ?? (env.SEARCH_FIXTURES === '1' ? fixtureDependencies : env.DATABASE_URL ? { ...sqlSearchDependencies(), amenityDistances: amenityDistances() } : undefined);
   // Vercel overwrites this header; other deployments need their own trusted identity callback.
   const identity = options.identity ?? ((request: Request) => {
     const ip = env.VERCEL === '1' ? request.headers.get('x-vercel-forwarded-for') : null;
@@ -152,5 +135,10 @@ export function createRuntime(options: RuntimeOptions = {}) {
   };
 }
 type Runtime = ReturnType<typeof createRuntime>;
-const globalRuntime = globalThis as typeof globalThis & { __rentSearchRuntime?: Runtime };
-export const getRuntime = (): Runtime => globalRuntime.__rentSearchRuntime ??= createRuntime();
+type SharedState = Required<Pick<RuntimeOptions, 'jobs' | 'limiter' | 'startLimiter' | 'pollLimiter'>>;
+const globalState = globalThis as typeof globalThis & { __rentSearchState?: SharedState };
+let runtime: Runtime | undefined;
+// Keep jobs and quotas across route bundles/reloads, but let code reloads replace handler closures.
+export const getRuntime = (): Runtime => runtime ??= createRuntime(globalState.__rentSearchState ??= {
+  jobs: new SearchJobs(), limiter: new IpLimiter(60), startLimiter: new IpLimiter(10), pollLimiter: new IpLimiter(120),
+});

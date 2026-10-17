@@ -172,7 +172,7 @@ test('all confirmed must-haves precede any unknown hard fields', async () => {
 });
 
 test('eligibility context filters full pool before500 while bounding valuation and preserving hide/routing counts', async () => {
-  const listings = Array.from({ length: 620 }, (_, i) => ({ ...pool[i % pool.length], id: `00000000-0000-4000-8000-${String(i + 1).padStart(12, '0')}`, monthlyRentCad: 1000 + i, location: { lng: -79.401, lat: 43.6605 } }));
+  const listings = Array.from({ length: 620 }, (_, i) => ({ ...pool[i % pool.length], id: `00000000-0000-4000-8000-${String(i + 1).padStart(12, '0')}`, monthlyRentCad: 1000 + i, location: i < 100 ? { lng: -79.6, lat: 43.8 } : { lng: -79.401, lat: 43.6605 } }));
   const intent = { ...travelIntent, sortBy: 'lowest_rent' as const };
   let valuationsCalled = 0, filtersCalled = 0, routed = 0;
   const travel = (listing: Listing): TravelTimeRow[] => intent.travelTargets.flatMap(target => [target.mode, ...target.alternativeModes ?? []].map(mode => ({ listingId: listing.id, targetId: target.id, mode, minutes: listing.monthlyRentCad < 1100 ? 1000 : null, method: listing.monthlyRentCad < 1100 ? 'otp' : 'straight_line', distanceM: 100, computedAt: listing.lastSeenAt, poiId: null })));
@@ -189,8 +189,7 @@ test('eligibility context filters full pool before500 while bounding valuation a
   valuationsCalled = filtersCalled = 0;
   const hidden = await searchCandidates({ intent, hideUnconfirmed: true }, deps);
   assert.equal(filtersCalled, 620); assert.equal(valuationsCalled, 500);
-  // A straight-line distance confirms the hard travel target, so hiding no longer drops the 520
-  // listings that have one; only the 100 whose routed times miss the budget are removed.
+  // Distance estimates confirm the nearby 520 listings; the first 100 are too far away.
   assert.equal(hidden.eligibleCount, 520); assert.equal(hidden.results.length, 500);
   const unrouted = await searchCandidates({ intent, hideUnconfirmed: true }, { ...deps, routeTimes: undefined });
   assert.equal(unrouted.eligibleCount, 520); assert.equal(unrouted.results.length, 500);

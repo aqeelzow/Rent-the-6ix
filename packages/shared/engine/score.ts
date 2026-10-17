@@ -2,7 +2,7 @@ import type { Listing, SearchIntent, Valuation, TravelTimeRow, Safety, MatchScor
 import { CAVEATS, engineConfig } from './config';
 import { filterListing } from './filters';
 import { homeFit, homeCriteria } from './home-fit';
-import { clamp, travelScore, targetModes, distanceBudgetM } from './travel';
+import { clamp, travelScore, targetModes, targetDistanceM, estimateTravelMinutes, defaultMinutes } from './travel';
 // D computes the optional score; this is a composition input, not D's exported Safety shape.
 export type ScoreContext = { valuation: Valuation; travel: TravelTimeRow[]; safety: Safety | null; safetyScore?: number | null; caveats?: Caveat[] };
 /** Value part. More than 30% below the estimate scores 50 so the other parts cannot scale up into the gap. */
@@ -20,7 +20,7 @@ export function scoreListing(listing: Listing, intent: SearchIntent, context: Sc
   const scores = {
     value: valueScore(context.valuation),
     price: rent && !rent.hard ? max === undefined || listing.monthlyRentCad <= max ? 100 : clamp(100 * (1 - (listing.monthlyRentCad - max) / (max * engineConfig.priceOverrun))) : null,
-    travel: travelScore(intent.travelTargets, context.travel), home: homeFit(listing, intent),
+    travel: travelScore(intent.travelTargets, context.travel, listing.location), home: homeFit(listing, intent),
     safety: intent.safety.enabled && context.safety?.relativeRate != null ? context.safetyScore ?? null : null,
   };
   const sum = (Object.keys(scores) as (keyof typeof scores)[]).reduce((n, key) => n + (scores[key] === null ? 0 : weights[key]), 0);
@@ -28,7 +28,10 @@ export function scoreListing(listing: Listing, intent: SearchIntent, context: Sc
     value: [`Comparable asking rents: ${Math.abs(context.valuation.differencePct ?? 0)}% ${(context.valuation.differencePct ?? 0) < 0 ? 'above' : 'below'} estimate; ${context.valuation.comparableCount} comparables; ${context.valuation.confidence} confidence${(context.valuation.differencePct ?? 0) > CAVEATS.farBelowPct ? `; more than ${CAVEATS.farBelowPct}% below is scored neutral (check the listing)` : ''}`],
     price: [`Rent CAD/month ${listing.monthlyRentCad}; preferred range ${rent?.value.min ?? 'unbounded'}–${rent?.value.max ?? 'unbounded'}`],
     home: homeCriteria(listing, intent).filter(c => !c.hard && c.score !== null).map(c => `${c.name}: listing ${JSON.stringify(c.name === 'buildingAge' ? listing.yearBuilt : c.name === 'sizeSqft' ? listing.sqft : c.name === 'availableBy' ? listing.availableFrom : c.name === 'unitTypes' ? { unitType: listing.unitType, bedrooms: listing.bedrooms, rentIsPerRoom: listing.rentIsPerRoom } : listing[c.name as keyof Listing])}; preferred ${JSON.stringify(intent.criteria[c.name as keyof SearchIntent['criteria']]?.value)}; score ${c.score}`),
-    travel: intent.travelTargets.flatMap(t => context.travel.filter(r => r.targetId === t.id && targetModes(t).includes(r.mode)).map(r => `${t.label}: ${r.mode}; ${Math.round(r.distanceM)} m straight-line distance${r.method === 'otp' && r.minutes !== null ? ` (${r.minutes} minutes routed)` : ''}; budget ${Math.round(distanceBudgetM(t, r.mode))} m`)),
+    travel: intent.travelTargets.flatMap(target => {
+      const metres = targetDistanceM(target, context.travel, listing.location);
+      return metres === null ? [] : targetModes(target).map(mode => `${target.label}: ${mode}; ${Math.round(metres)} m straight-line distance; estimated ${estimateTravelMinutes(metres, mode)} minutes; budget ${target.maxMinutes ?? defaultMinutes(target, mode)} minutes`);
+    }),
     safety: context.safety ? [`Neighbourhood police-reported rate: ${context.safety.relativeRate}× city rate; years ${context.safety.years.join(', ')}; owner-supplied score`] : [],
   };
   const parts = (Object.keys(scores) as (keyof typeof scores)[]).map(id => ({ id, score: scores[id], weight: weights[id], effectiveWeight: scores[id] === null || !sum ? 0 : weights[id] / sum, evidence: scores[id] === null ? [] : evidence[id] }));

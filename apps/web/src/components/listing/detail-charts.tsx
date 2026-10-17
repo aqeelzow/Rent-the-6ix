@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { travelAdvice } from "@rentthe6ix/shared/engine/travel";
 import { modeIcons } from "@/components/mode-icons";
 import { t, type MessageKey } from "@/lib/format/messages";
 import { formatCad, formatCount } from "@/lib/format/number";
@@ -329,26 +328,21 @@ export function RangeBar({ low, high, rent }: { low: number; high: number; rent:
 }
 
 export function modeTimeText(time: ModeTime): string {
-  if (time.kind === "routed") {
-    return l(time.mode === "drive" ? "travel.routedDrive" : "travel.routed", {
+  if (time.kind === "estimated") {
+    return l("travel.estimated", {
       minutes: formatCount(time.minutes),
     });
-  }
-  if (time.kind === "straight_line") {
-    // Under 1.5 km the two addresses are a walk apart; beyond that the renter needs transport.
-    return l(travelAdvice(time.distanceM) === "walkable" ? "travel.walkable" : "travel.transport", { km: km(time.distanceM) });
   }
   return l("travel.missing");
 }
 
 /**
- * Travel time to each place by mode, as bars on one shared minutes scale. Straight-line
- * distances get no bar: they are never minutes (SPEC 7.4).
+ * Estimated travel time to each place by mode, as bars on one shared minutes scale.
  */
 export function TravelBars({ table }: { table: TargetTravel[] }) {
   const longest = Math.max(
     ...table.flatMap((target) =>
-      target.modes.map((time) => (time.kind === "routed" ? time.minutes : 0)),
+      target.modes.map((time) => (time.kind === "estimated" ? time.minutes : 0)),
     ),
     10,
   );
@@ -372,7 +366,7 @@ export function TravelBars({ table }: { table: TargetTravel[] }) {
                       {t(`filters.modes.${time.mode}` as MessageKey)}
                     </span>
                   </span>
-                  {time.kind === "routed" ? (
+                  {time.kind === "estimated" ? (
                     <span className="flex items-center gap-2">
                       <span
                         aria-hidden

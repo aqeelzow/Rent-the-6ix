@@ -260,6 +260,30 @@ test('known hard travel bounds cannot be softened, omitted or widened by AI', as
   assert.equal(result.intent.travelTargets[0].hard, false);
 });
 
+test('arbitrary mode-less travel bounds remain strict when AI softens, widens or changes the mode', async () => {
+  const prompt = 'within 10 minutes of allan gardens';
+  const fallback = fallbackParse(prompt);
+  assert.equal(fallback.travelTargets.length, 1);
+  assert.equal(fallback.travelTargets[0].query, 'allan gardens');
+  assert.equal(fallback.travelTargets[0].mode, 'walk');
+  assert.equal(fallback.travelTargets[0].maxMinutes, 10);
+  assert.equal(fallback.travelTargets[0].hard, true);
+  const resolver = new DestinationResolver({ maptilerKey: 'mock', fetch: async () => Response.json({ features: [] }) });
+  for (const change of ['soften', 'omit', 'widen', 'mode'] as const) {
+    const intent = structuredClone(fallback);
+    if (change === 'soften') intent.travelTargets[0].hard = false;
+    if (change === 'omit') intent.travelTargets = [];
+    if (change === 'widen') intent.travelTargets[0].maxMinutes = 20;
+    if (change === 'mode') intent.travelTargets[0].mode = 'drive';
+    const service = new ParseService({ resolver, provider: { generateStructured: async <T>() => intent as T, generateText: async () => '' } });
+    const result = await service.parse({ prompt }, 'strict-arbitrary-time');
+    assert.equal(result.parser, 'fallback');
+    assert.equal(result.intent.travelTargets[0].mode, 'walk');
+    assert.equal(result.intent.travelTargets[0].maxMinutes, 10);
+    assert.equal(result.intent.travelTargets[0].hard, true);
+  }
+});
+
 test('plain monthly budgets parse without currency signs and do not consume home or travel bounds', () => {
   assert.deepEqual(fallbackParse('2 bedrooms under 2500').criteria.rent, { value: { max: 2500 }, hard: true });
   assert.deepEqual(fallbackParse('budget of 2000, 1 bedroom').criteria.rent?.value, { max: 2000 });

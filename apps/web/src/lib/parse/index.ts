@@ -1,4 +1,5 @@
 import { ParseRequestSchema, ParseResponseSchema, SearchIntentSchema, type ParseResponse, type SearchIntent } from '../../../../../packages/shared/schemas/index';
+import { z } from 'zod';
 import { AIUnavailable, NoneProvider, type AIProvider } from '../ai/index';
 import { cleanAIIntent } from './clean';
 import type { IntentCache } from './db-cache';
@@ -8,6 +9,7 @@ import { parseInstruction } from './instruction';
 import { fallbackParse, configuredAreas } from './fallback';
 import { DestinationResolver } from './resolve';
 import { MemoryCache, IpLimiter, inputHash, type Cache } from './cache';
+import { targetModes } from '../../../../../packages/shared/engine/travel';
 export { fallbackParse, configuredAreas } from './fallback';
 export { DestinationResolver } from './resolve';
 export { IpLimiter, RateLimitError, MemoryCache } from './cache';
@@ -33,7 +35,7 @@ export class ParseService {
         if (basic.droppedRequests.some(request => request.reason === 'Area name is ambiguous; specify neighbourhood or ward.')) throw new AIUnavailable('invalid');
         if (basic.areas.some(required => !intent.areas.some(actual => JSON.stringify(actual) === JSON.stringify(required)))) throw new AIUnavailable('invalid');
         const requiredTravel = basic.travelTargets.filter(t => t.hard && t.maxMinutes !== undefined);
-        if (requiredTravel.some(required => !intent.travelTargets.some(actual => actual.kind === required.kind && (required.kind === 'place' ? actual.query?.toLowerCase() === required.query?.toLowerCase() : actual.category === required.category) && actual.hard && actual.maxMinutes === required.maxMinutes))) throw new AIUnavailable('invalid');
+        if (requiredTravel.some(required => !intent.travelTargets.some(actual => actual.kind === required.kind && (required.kind === 'place' ? actual.query?.toLowerCase() === required.query?.toLowerCase() : actual.category === required.category) && actual.hard && actual.maxMinutes === required.maxMinutes && targetModes(actual).length === targetModes(required).length && targetModes(actual).every(mode => targetModes(required).includes(mode))))) throw new AIUnavailable('invalid');
         parser = 'gemini';
       } catch (error) {
         console.warn('[search.parse] Gemini parse fell back', {

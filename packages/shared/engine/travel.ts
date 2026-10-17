@@ -13,14 +13,19 @@ export function defaultMinutes(target: TravelTarget, mode: TravelTimeRow['mode']
   const group = target.kind === 'place' || target.category === 'university' ? 'place' : ['grocery', 'pharmacy', 'rapid_transit'].includes(target.category ?? '') ? 'quick' : 'civic';
   return engineConfig.minutes[group][mode];
 }
-/**
- * The straight-line distance that stands for "within maxMinutes by this mode". Travel is measured
- * as distance from the listing to the target, so a minute budget becomes a metre budget by scaling
- * the mode's reference distance (SPEC 7.4) by how many minutes were asked for.
- */
-export function distanceBudgetM(target: TravelTarget, mode: TravelTimeRow['mode']): number {
-  const minutes = target.maxMinutes ?? defaultMinutes(target, mode);
-  return engineConfig.distanceM[mode] * minutes / defaultMinutes(target, mode);
+/** Rounded-up planning estimate from straight-line metres, including detours and mode overhead. */
+export function estimateTravelMinutes(metres: number, mode: TravelTimeRow['mode']): number {
+  if (!Number.isFinite(metres) || metres < 0) throw new RangeError('Travel distance must be finite and nonnegative');
+  if (metres === 0) return 0;
+  const { speedKmh, routeFactor, overheadMinutes } = engineConfig.travelEstimate[mode];
+  return Math.ceil(overheadMinutes + 60 * (metres / 1000) * routeFactor / speedKmh);
+}
+
+/** A named place uses its coordinates; amenities use the nearest measured destination. */
+export function targetDistanceM(target: TravelTarget, rows: TravelTimeRow[], origin?: Listing['location']): number | null {
+  if (origin && target.resolved) return distanceM(origin, target.resolved);
+  const distances = rows.filter(row => row.targetId === target.id).map(row => row.distanceM);
+  return distances.length ? Math.min(...distances) : null;
 }
 /**
  * The straight-line distance at which walking stops being the sensible answer (SPEC 7.4). Travel
@@ -33,31 +38,16 @@ export const WALKABLE_M = 1500;
  * than after a mode, so it can never be confused with the travel mode of the same idea.
  */
 export const travelAdvice = (metres: number): 'walkable' | 'transport' => metres < WALKABLE_M ? 'walkable' : 'transport';
-export function evaluateTarget(target: TravelTarget, rows: TravelTimeRow[]) {
-  const scores: number[] = [];
-  const confirmed: boolean[] = [];
-  for (const mode of targetModes(target)) {
-    const row = rows.find(r => r.targetId === target.id && r.mode === mode);
-    const minutes = target.maxMinutes ?? defaultMinutes(target, mode);
-    if (row?.method === 'otp' && row.minutes !== null) {
-      scores.push(decliningScore(row.minutes, minutes));
-      confirmed.push(row.minutes <= minutes);
-    } else {
-      if (row) {
-        const budget = distanceBudgetM(target, mode);
-        scores.push(decliningScore(row.distanceM, budget));
-        // A straight-line distance is a known answer, not a missing one, so a hard travel target is
-        // pass or fail against the same budget the score uses — never reported as unconfirmed.
-        confirmed.push(row.distanceM <= budget);
-      }
-    }
-  }
+export function evaluateTarget(target: TravelTarget, rows: TravelTimeRow[], origin?: Listing['location']) {
+  const metres = targetDistanceM(target, rows, origin);
+  if (metres === null) return { state: 'unknown' as const, score: null };
+  const estimates = targetModes(target).map(mode => ({ actual: estimateTravelMinutes(metres, mode), limit: target.maxMinutes ?? defaultMinutes(target, mode) }));
   return {
-    state: confirmed.some(Boolean) ? 'pass' as const : confirmed.length === targetModes(target).length ? 'fail' as const : 'unknown' as const,
-    score: scores.length ? Math.max(...scores) : null,
+    state: estimates.some(({ actual, limit }) => actual <= limit) ? 'pass' as const : 'fail' as const,
+    score: Math.max(...estimates.map(({ actual, limit }) => decliningScore(actual, limit))),
   };
 }
-export function travelScore(targets: TravelTarget[], rows: TravelTimeRow[]): number | null {
-  const scores = targets.map(t => evaluateTarget(t, rows).score).filter((v): v is number => v !== null);
+export function travelScore(targets: TravelTarget[], rows: TravelTimeRow[], origin?: Listing['location']): number | null {
+  const scores = targets.map(t => evaluateTarget(t, rows, origin).score).filter((v): v is number => v !== null);
   return scores.length ? scores.reduce((a, b) => a + b, 0) / scores.length : null;
 }

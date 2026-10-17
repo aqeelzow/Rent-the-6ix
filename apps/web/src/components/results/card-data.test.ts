@@ -34,7 +34,7 @@ describe("distance advice", () => {
 
 const results = searchFixture.status === "completed" ? searchFixture.results : [];
 const result = results[1]!;
-const campus = travelIntent.travelTargets;
+const campus = travelIntent.travelTargets.map(target => ({ ...target, resolved: undefined }));
 const row = (
   over: Partial<SearchResultItem["travel"][number]>,
 ): SearchResultItem["travel"][number] => ({
@@ -50,7 +50,7 @@ const row = (
 });
 
 describe("travelSummaries", () => {
-  it("prefers the fastest routed time across the target's modes", () => {
+  it("uses the fastest requested mode's estimate rather than stored routed minutes", () => {
     const withRows = {
       ...result,
       travel: [
@@ -60,27 +60,29 @@ describe("travelSummaries", () => {
       ],
     };
     expect(travelSummaries(withRows, campus)).toEqual([
-      { kind: "routed", target: campus[0]!.label, mode: "walk", minutes: 7 },
+      { kind: "estimated", target: campus[0]!.label, mode: "bike", minutes: 4, distanceM: 600 },
     ]);
   });
 
-  it("falls back to straight-line distance, never minutes", () => {
+  it("estimates minutes from a measured distance", () => {
     const summary = travelSummaries({ ...result, travel: [row({ distanceM: 1100 })] }, campus)[0];
     expect(summary).toEqual({
-      kind: "straight_line",
+      kind: "estimated",
       target: campus[0]!.label,
       mode: "bike",
       distanceM: 1100,
+      minutes: 7,
     });
-    expect(summary).not.toHaveProperty("minutes");
+    expect(summary).toHaveProperty("minutes");
   });
 
-  it("says when there's no travel data, and ignores rows for other modes", () => {
+  it("uses a measured distance from any mode and only reports missing when no location is available", () => {
     const summary = travelSummaries(
       { ...result, travel: [row({ mode: "drive", method: "otp", minutes: 4 })] },
       campus,
     );
-    expect(summary).toEqual([{ kind: "missing", target: campus[0]!.label, mode: "bike" }]);
+    expect(summary).toEqual([{ kind: "estimated", target: campus[0]!.label, mode: "bike", minutes: 4, distanceM: 600 }]);
+    expect(travelSummaries({ ...result, travel: [] }, campus)).toEqual([{ kind: "missing", target: campus[0]!.label, mode: "bike" }]);
   });
 
   it("shows at most the first two targets", () => {

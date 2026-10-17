@@ -1,4 +1,4 @@
-import { baseIntent, detailFixture, searchFixture } from "@rentthe6ix/shared/fixtures";
+import { baseIntent, detailFixture, searchFixture, travelIntent } from "@rentthe6ix/shared/fixtures";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   fetchListingDetail,
@@ -107,6 +107,41 @@ describe("parseAndSearch", () => {
 
 describe("runSearch", () => {
   beforeEach(() => store.getState().setIntent(parsed.intent));
+
+  it("keeps an already chosen campus without another lookup", async () => {
+    const target = { ...travelIntent.travelTargets[0]!, query: "uoft", resolved: { lng: -79.1857, lat: 43.7847, source: "known_place" as const } };
+    store.getState().setIntent({ ...parsed.intent, travelTargets: [target] });
+    const { fetch, calls } = fakeFetch({ body: searchFixture });
+    await runSearch(options(fetch));
+    expect(calls.map(call => call.url)).toEqual(["/api/listings/search"]);
+    expect(store.getState().intent?.travelTargets[0]?.resolved).toEqual(target.resolved);
+  });
+
+  it("ignores a late place lookup after a newer search starts", async () => {
+    const target = { ...travelIntent.travelTargets[0]!, query: "uoft", resolved: undefined };
+    store.getState().setIntent({ ...parsed.intent, rawPrompt: "near uoft", travelTargets: [target] });
+    let finishLookup: (response: Response) => void = () => {};
+    const fetch = vi.fn((url: string | URL | Request) => String(url).startsWith("/api/geo/resolve")
+      ? new Promise<Response>(resolve => { finishLookup = resolve; })
+      : Promise.resolve(Response.json(searchFixture))) as unknown as typeof globalThis.fetch;
+    const first = runSearch(options(fetch));
+    store.getState().setIntent(parsed.intent);
+    const second = runSearch(options(fetch));
+    finishLookup(Response.json({ status: "resolved", query: "uoft", destination: { id: "campus", label: "St. George", resolved: travelIntent.travelTargets[0]!.resolved } }));
+    await Promise.all([first, second]);
+    expect(store.getState().intent).toEqual(parsed.intent);
+    expect(store.getState().status).toBe("ready");
+    expect(store.getState().destinations).toEqual([]);
+  });
+
+  it("continues searching if an unresolved place lookup fails", async () => {
+    const target = { ...travelIntent.travelTargets[0]!, query: "uoft", resolved: undefined };
+    store.getState().setIntent({ ...parsed.intent, travelTargets: [target] });
+    const { fetch } = fakeFetch({ status: 503, body: { error: { code: "service_unavailable", message: "Unavailable" } } }, { body: searchFixture });
+    await runSearch(options(fetch));
+    expect(store.getState().status).toBe("ready");
+    expect(store.getState().intent?.travelTargets[0]?.resolved).toBeUndefined();
+  });
 
   it("polls a pending search until it completes", async () => {
     const { fetch, calls } = fakeFetch(

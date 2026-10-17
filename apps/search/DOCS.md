@@ -1,5 +1,20 @@
 # Natural-language rental search
 
+## Distance-based travel estimates
+
+An explicit request such as `within 10 minutes of Allan Gardens` creates a hard ten-minute limit. Without a stated mode, bounded proximity requests use walking. The basic parser recognizes arbitrary `minutes to/of/from` destinations; the Gemini guard rejects a softened, widened, omitted or mode-changed limit. Listings exceeding that mode's estimated limit are excluded, not just ranked lower.
+
+Travel time is a planning estimate: `ceil(overheadMinutes + 60 * (straightLineMetres / 1000) * routeFactor / speedKmh)`. Zero distance returns zero minutes. Shared constants in `packages/shared/engine/config.ts` are heuristic assumptions, not calibrated routing or traffic data:
+
+| Mode | Speed (km/h) | Route factor | Overhead (minutes) |
+| --- | --- | --- | --- |
+| Walk | 4.8 | 1.25 | 0 |
+| Bike | 15 | 1.25 | 1 |
+| Drive | 25 | 1.35 | 3 |
+| Transit | 18 | 1.4 | 8 |
+
+`estimateTravelMinutes` and `targetDistanceM` in the shared travel engine supply result cards, all four detail modes, hard time limits, scoring and travel ordering/percentiles. Resolved places use the listing and destination coordinates even without travel rows; amenities use the nearest measured POI distance. Times are labelled estimates and omit live traffic, schedules, weather and closures. The web runtime uses distance queries without attaching an OTP router. Raw distance rows retain `minutes:null` and `method:straight_line`; estimated durations are derived from them, never labelled as routed. Missing destination coordinates/POI data remain explicitly unavailable rather than generating a fabricated time. Carbon calculations still require their original routed-distance evidence.
+
 ## Gemini place normalization (2026-10-17)
 
 `TravelTarget` accepts optional `normalizedQuery` (1–500 trimmed characters) for places with an original `query`. Gemini is instructed to recognize arbitrary named landmarks, businesses, streets and intersections, and may expand abbreviations or correct spelling into that search hint. For example, `query:"ROM"` retains the renter's exact words and source evidence while `normalizedQuery:"Royal Ontario Museum"` supplies the geocoding phrase. Invented queries without original prompt evidence are rejected; model-supplied coordinates are always discarded. This does not expand the basic parser's vocabulary when Gemini is unavailable.

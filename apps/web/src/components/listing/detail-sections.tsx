@@ -356,7 +356,7 @@ export function GettingAround({
   targets: SearchIntent["travelTargets"];
   className?: string;
 }) {
-  const table = travelTable(targets, result.travel);
+  const table = travelTable(targets, result.travel, result.listing.location);
   return (
     <DetailSection id="travel" title={l("sections.travel")} className={className}>
       {table.length === 0 ? (
