@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { travelAdvice } from "@rentthe6ix/shared/engine/travel";
 import { modeIcons } from "@/components/mode-icons";
 import { t, type MessageKey } from "@/lib/format/messages";
 import { formatCad, formatCount } from "@/lib/format/number";
@@ -333,7 +334,10 @@ export function modeTimeText(time: ModeTime): string {
       minutes: formatCount(time.minutes),
     });
   }
-  if (time.kind === "straight_line") return l("travel.straightLine", { km: km(time.distanceM) });
+  if (time.kind === "straight_line") {
+    // Under 1.5 km the two addresses are a walk apart; beyond that the renter needs transport.
+    return l(travelAdvice(time.distanceM) === "walkable" ? "travel.walkable" : "travel.transport", { km: km(time.distanceM) });
+  }
   return l("travel.missing");
 }
 

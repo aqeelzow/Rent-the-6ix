@@ -151,13 +151,26 @@ export function createRouteTimes(router: Router, options: CreateRouteTimesOption
 
       const departure = options.departure ?? { date: torontoDate(new Date(now())), time: COMMUTE_TIME };
       const at = new Date(now()).toISOString();
-      const queued: { index: number; listing: Listing; target: TravelTarget }[] = [];
+      const queued: { index: number; listing: Listing; target: TravelTarget; to: { lat: number; lng: number } | null }[] = [];
       const rows = new Array<TravelTimeRow>(origins.length * routable.length);
       let cursor = 0;
-      for (const listing of origins) for (const target of routable) queued.push({ index: cursor++, listing, target });
+      for (const listing of origins) for (const target of routable) queued.push({ index: cursor++, listing, target, to: target.resolved ?? null });
 
       const deadline = now() + Math.max(0, budgetMs);
       const softDeadline = deadline - RETURN_MARGIN_MS;
+      // Resolve every amenity destination before racing the router. The lookups are indexed and
+      // cached per cell, so this costs milliseconds; doing it first means a listing the router never
+      // reaches still shows its distance to the nearest shop instead of "travel time not available".
+      if (options.destinationFor) {
+        let pending = 0;
+        await Promise.all(Array.from({ length: Math.min(8, queued.length) }, async () => {
+          while (pending < queued.length) {
+            const item = queued[pending++];
+            if (item.to || signal.aborted || now() >= softDeadline) continue;
+            try { item.to = await options.destinationFor!(item.listing, item.target); } catch { item.to = null; }
+          }
+        }));
+      }
       // Coalesce concurrent misses: two ads in one cell must share a single router call, and the
       // cache only holds answers that have already come back.
       const inFlight = new Map<string, Promise<RoutedTrip | null>>();
@@ -166,12 +179,8 @@ export function createRouteTimes(router: Router, options: CreateRouteTimesOption
         while (next < queued.length) {
           const item = queued[next++];
           let trip: RoutedTrip | null = null;
-          // A place's destination is known without waiting, so its distance row survives a spent budget.
-          let to: { lat: number; lng: number } | null = item.target.resolved ?? null;
-          if (!to && options.destinationFor && !signal.aborted && now() < softDeadline) {
-            // Amenity destinations are resolved here, per listing, and stay inside the budget.
-            try { to = await options.destinationFor(item.listing, item.target); } catch { to = null; }
-          }
+          // A destination that is already known keeps its distance row even when the budget is spent.
+          const to = item.to;
           if (to && !signal.aborted && now() < softDeadline) {
             const key = `${mode}|${originCell(item.listing.location)}|${destinationKey(to)}`;
             const hit = cache.get(key, now());

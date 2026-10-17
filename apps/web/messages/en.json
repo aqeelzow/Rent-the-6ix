@@ -258,7 +258,7 @@
         "best_match": "best match",
         "lowest_rent": "lowest rent",
         "best_value": "best value",
-        "shortest_trips": "shortest trips",
+        "shortest_trips": "shortest distance",
         "lowest_true_cost": "lowest true monthly cost",
         "newest": "newest",
         "closest_area": "closest to my area",
@@ -275,7 +275,7 @@
         "bathrooms": "bathrooms",
         "sizeSqft": "size",
         "buildingAge": "building age",
-        "travel": "travel time"
+        "travel": "distance"
       },
       "safetyMax": "Crime at most {rate}× city rate"
     },
@@ -340,7 +340,7 @@
       "whichOne": "Which one do you mean?",
       "notFound": "We couldn't find “{query}”. Try a landmark or a full street address.",
       "lookupFailed": "We couldn't look that place up right now. Try again.",
-      "unresolved": "We don't know exactly where this is yet, so no travel time is worked out for it.",
+      "unresolved": "We don't know exactly where this is yet, so no distance is measured for it.",
       "addAmenity": "Add a nearby amenity",
       "amenityLabel": "Amenity",
       "add": "Add",
@@ -430,8 +430,10 @@
       "drive": "{minutes} min drive to {target} (no traffic)",
       "walk": "{minutes} min walk to {target}",
       "bike": "{minutes} min by bike to {target}",
-      "straightLine": "{km} km to {target} (straight-line, travel time not available)",
-      "missing": "{target}: travel time not available"
+      "straightLine": "{km} km to {target}",
+      "walkable": "{km} km to {target} — walking distance",
+      "transport": "{km} km to {target} — take transit or a car",
+      "missing": "{target}: distance not available"
     },
     "safety": "Police-reported crime: {rate}× the city rate (TPS {years})",
     "safetyNoData": "Police-reported crime: not enough data",
@@ -596,13 +598,15 @@
       }
     },
     "travel": {
-      "none": "Add a place or an amenity in Filters to see travel times from here.",
+      "none": "Add a place or an amenity in Filters to see distances from here.",
       "chosen": "your choice",
       "routed": "{minutes} min",
       "routedDrive": "{minutes} min, no traffic",
       "straightLine": "{km} km straight-line",
+      "walkable": "{km} km — walking distance",
+      "transport": "{km} km — transit or a car",
       "missing": "Not available",
-      "note": "Transit: weekday 8:30 am. Driving: no traffic. Straight-line distance is never shown as minutes."
+      "note": "Distance is measured in a straight line between the two addresses: under 1.5 km we call it walking distance, further and we suggest transit or a car."
     },
     "safety": {
       "rate": "Police-reported major crime here: {rate}× the city rate ({years} average, Toronto Police Service).",
@@ -664,7 +668,7 @@
       "price": "Price check",
       "commute": "To {place}",
       "commuteNone": "No places added",
-      "commuteHint": "Add a place in Filters to see travel times.",
+      "commuteHint": "Add a place in Filters to see distances.",
       "below": "{amount} below",
       "above": "{amount} above",
       "inLine": "In line",

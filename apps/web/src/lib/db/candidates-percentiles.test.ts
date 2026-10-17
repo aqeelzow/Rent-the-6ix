@@ -103,12 +103,17 @@ test('shared deadline and caller abort bound enrichment and uncooperative routin
   const expired = await searchPercentileCandidates({ intent: exact, hideUnconfirmed: false }, deps, { referenceYear: 2026, deadline: Date.now() - 1 });
   assert.equal(expired.status, 'unavailable');
 });
-test('exact travel without a router skips owner reads and retains empty-pool completion', async () => {
+test('exact travel without a router ranks the whole pool by distance and retains empty-pool completion', async () => {
   let calls = 0;
   const dependencies = { listings: sampleListings, enrich: async (...args: Parameters<SearchDependencies['enrich']>) => { calls++; return enrich(...args); } };
   const result = await execute(exact, dependencies);
-  assert.equal(result.status, 'unavailable'); if (result.status === 'unavailable') assert.equal(result.reason, 'routing_incomplete');
-  assert.equal(calls, 0);
+  assert.equal(result.status, 'completed');
+  if (result.status === 'completed') {
+    assert.equal(calls, sampleListings.length);
+    // The 2.7 km listings are outside the 10-minute budget, so the nearest one wins on distance alone.
+    assert.equal(result.results.length, 1); assert.equal(result.results[0].listing.id, sampleListings[5].id);
+    assert.ok(result.results[0].travel.every(row => row.method === 'straight_line' && row.minutes === null));
+  }
   const empty = await execute(exact, { ...dependencies, listings: [] });
   assert.equal(empty.status, 'completed'); if (empty.status === 'completed') { assert.equal(empty.eligibleCount, 0); assert.deepEqual(empty.results, []); }
 });
@@ -119,7 +124,9 @@ test('scalar hard-place hide confirms through full-pool routing before percentil
   assert.equal(result.status, 'completed');
   if (result.status === 'completed') { assert.equal(result.results.length, 8); assert.equal(result.eligibleCount, 8); }
   assert.equal(routed, 8);
+  // A router that never answers leaves the straight-line distances, and 4 of the 8 fixture listings
+  // are inside the 10-minute budget, so the search still answers rather than returning nothing.
   const failed = await execute({ ...travelIntent, numericExtreme: selector }, { listings: sampleListings, enrich, routingBudgetMs: 5, routeTimes: () => new Promise<never>(() => {}) }, true);
   assert.equal(failed.status, 'completed');
-  if (failed.status === 'completed') assert.equal(failed.results.length, 0);
+  if (failed.status === 'completed') assert.equal(failed.results.length, 4);
 });

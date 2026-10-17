@@ -126,6 +126,17 @@ test("routes an amenity to each listing's own nearest shop, then reuses the answ
   assert.ok(second.every((row) => row.method === "otp"));
 });
 
+test("a listing the router never reaches still shows its distance to the nearest shop", async () => {
+  const route = vi.fn(() => new Promise<never>(() => {}));
+  const shop = { lat: 43.6401, lng: -79.4298 };
+  const listing = at(43.6395, -79.431);
+  const rows = await createRouteTimes({ route }, { destinationFor: async () => shop })([listing], [grocery], "walk", 400, signal());
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].method, "straight_line");
+  assert.equal(rows[0].minutes, null);
+  assert.equal(rows[0].distanceM, Math.round(distanceM(listing.location, shop)));
+});
+
 test("shows nothing rather than a distance when an amenity has no nearby shop", async () => {
   const route = vi.fn(async () => ({ minutes: 4, distanceM: 300 }));
   const rows = await createRouteTimes({ route }, { destinationFor: async () => null })([at(43.6395, -79.431)], [grocery], "walk", 3_000, signal());

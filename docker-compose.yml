@@ -1,10 +1,11 @@
 # docker-compose.yml — owner: D (P0.9)
 #
 # The whole production stack on one Vultr instance: Caddy (TLS) → web (Next.js) and
-# worker (ingest + travel precompute), plus OTP once the graph exists.
+# worker (ingest + precompute).
 #
 #   docker compose up -d --build          # web + worker + caddy
-#   docker compose --profile otp up -d    # add the router (needs otp/data/graph.obj)
+#
+# Travel is straight-line distance between the two addresses, so nothing here renders a route.
 #
 # Values come from a manually-created `.env` next to this file (variables are listed in
 # SPEC.md §20). `.env` is git-ignored; `DATABASE_URL` and `GEMINI_API_KEY` only live there.
@@ -20,10 +21,7 @@ services:
         NEXT_PUBLIC_MAPTILER_KEY: ${NEXT_PUBLIC_MAPTILER_KEY:-}
     restart: unless-stopped
     env_file: .env
-    environment:
-      # On-demand travel times (P2.11). The in-network name beats whatever .env says, and an
-      # unreachable router degrades to labelled straight-line distance instead of failing search.
-      OTP_URL: http://otp:8080
+    # No router is wired in: travel is the straight-line distance between the listing and the target.
     # No host ports: Caddy reaches the app by service name on the compose network.
     expose:
       - "3000"
@@ -38,9 +36,6 @@ services:
     # Chromium keeps page state in /dev/shm; Docker's 64 MB default crashes it on big pages.
     shm_size: 1gb
     env_file: .env
-    environment:
-      # In-network name; ignores whatever OTP_URL says in .env.
-      OTP_URL: http://otp:8080
     volumes:
       # The ingest pipeline writes its caches through `new URL('../../.cache/…', import.meta.url)`,
       # so they land next to the source at /app/apps/worker/.cache whatever the cwd is. A named
@@ -68,30 +63,8 @@ services:
       web:
         condition: service_healthy
 
-  # --- OpenTripPlanner (S2) -------------------------------------------------
-  # Hidden behind a profile: `docker compose up -d` never starts it, so a missing or
-  # stale graph cannot break a deploy. Build the graph first (DEPLOY.md §4).
-  otp:
-    profiles: ["otp"]
-    image: ${OTP_IMAGE:-opentripplanner/opentripplanner:2.7.0}
-    restart: unless-stopped
-    environment:
-      # Heap size is a deploy decision, not a code one: locally 6g suits a machine also running
-      # a dev server, while a 4 vCPU / 8 GB instance shares its RAM with web, worker and Caddy.
-      # Set OTP_JAVA_OPTS=-Xmx4g in .env there. A larger -Xmx than the box has free RAM means
-      # the container is OOM-killed while loading a graph that would otherwise fit.
-      JAVA_TOOL_OPTIONS: ${OTP_JAVA_OPTS:--Xmx6g}
-    # The image's entrypoint always passes /var/opentripplanner as the graph directory, so the
-    # inputs and graph.obj live in the one mount (otp/build.sh writes them there). A separate
-    # graphs/ mount would be an empty directory OTP never looks at.
-    # graph.obj is git-ignored, so an instance either builds it (otp/build.sh) or receives it
-    # with `scp otp/data/graph.obj …`. Uploading the built file avoids a 1 GB OSM download.
-    volumes:
-      - ./otp/data:/var/opentripplanner
-    command: ["--load"]
-    expose:
-      - "8080"
-    mem_limit: ${OTP_MEM_LIMIT:-7g}
+  # The router (OpenTripPlanner) is deliberately absent: travel is distance, and the code only
+  # routes when TRAVEL_ROUTING=1 and OTP_URL are both set. otp/ still holds the graph build script.
 
 volumes:
   caddy_data:
