@@ -1,7 +1,8 @@
 "use client";
 
-import { Bike, Car, Footprints, TramFront, Trash2, type LucideIcon } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import { useId, useState } from "react";
+import { modeIcons } from "@/components/mode-icons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -22,13 +23,6 @@ import {
   type Chip,
   type Mode,
 } from "./chips";
-
-const modeIcons: Record<Mode, LucideIcon> = {
-  transit: TramFront,
-  drive: Car,
-  walk: Footprints,
-  bike: Bike,
-};
 
 /** Must-have solid, preference outlined, default dashed (SPEC 6 step 2). */
 function chipStyle(chip: Chip): string {

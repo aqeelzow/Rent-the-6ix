@@ -2,17 +2,18 @@
 
 import { AlertCircle, Info, LoaderCircle } from "lucide-react";
 import Link from "next/link";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { ResultCard } from "@/components/results/result-card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { FilterChips } from "./filter-chips";
 import { FiltersPanel } from "./filters-panel";
 import { SortSelect } from "./sort-select";
 import { t, type MessageKey } from "@/lib/format/messages";
-import { formatCad, formatCount } from "@/lib/format/number";
+import { formatCount } from "@/lib/format/number";
 import { parseAndSearch, runSearch } from "@/lib/store/actions";
 import { appStore, useAppStore } from "@/lib/store/store";
-import type { ApiError, SearchResultItem } from "@/lib/store/types";
+import type { ApiError } from "@/lib/store/types";
 
 const knownErrors = new Set([
   "rate_limited",
@@ -38,6 +39,9 @@ export function SearchView({ prompt }: { prompt: string | null }) {
   const eligibleCount = useAppStore((s) => s.eligibleCount);
   const parser = useAppStore((s) => s.parser);
   const parseNotice = useAppStore((s) => s.parseNotice);
+  const notices = useAppStore((s) => s.notices);
+  // "Seen N days ago" is measured from when this view opened.
+  const [now] = useState(() => Date.now());
 
   useEffect(() => {
     if (!prompt) return;
@@ -149,10 +153,23 @@ export function SearchView({ prompt }: { prompt: string | null }) {
               eligible: formatCount(eligibleCount),
             })}
           </h2>
-          {/* Interim rows; P1.33 replaces them with full result cards. */}
-          <ol className={busy ? "flex flex-col gap-2 opacity-60" : "flex flex-col gap-2"}>
+          {notices.length > 0 && (
+            <ul className="text-muted-foreground text-xs">
+              {notices.map((notice) => (
+                <li key={notice}>{notice}</li>
+              ))}
+            </ul>
+          )}
+          <ol className={`flex flex-col gap-3 ${busy ? "opacity-60" : ""}`}>
             {results.map((result) => (
-              <ResultRow key={result.listing.id} result={result} />
+              <li key={result.listing.id}>
+                <ResultCard
+                  result={result}
+                  targets={intent?.travelTargets ?? []}
+                  safetyOn={intent?.safety.enabled ?? false}
+                  now={now}
+                />
+              </li>
             ))}
           </ol>
         </section>
@@ -161,32 +178,11 @@ export function SearchView({ prompt }: { prompt: string | null }) {
   );
 }
 
-function ResultRow({ result }: { result: SearchResultItem }) {
-  const { listing } = result;
-  const bedrooms =
-    listing.bedrooms === null
-      ? null
-      : listing.bedrooms === 0
-        ? t("search.studio")
-        : t("search.bedrooms", { count: listing.bedrooms });
-  return (
-    <li className="bg-card flex items-center justify-between gap-4 rounded-lg border px-4 py-3">
-      <span className="min-w-0">
-        <span className="block truncate font-medium">{listing.title}</span>
-        {bedrooms && <span className="text-muted-foreground text-sm">{bedrooms}</span>}
-      </span>
-      <span className="figures shrink-0 font-semibold">
-        {t("search.perMonth", { rent: formatCad(listing.monthlyRentCad) })}
-      </span>
-    </li>
-  );
-}
-
 function ResultSkeletons() {
   return (
     <div aria-hidden className="flex flex-col gap-2">
       {[0, 1, 2].map((i) => (
-        <Skeleton key={i} className="h-16 w-full rounded-lg" />
+        <Skeleton key={i} className="h-56 w-full rounded-xl" />
       ))}
     </div>
   );

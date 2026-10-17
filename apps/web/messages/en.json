@@ -81,9 +81,6 @@
     "count": "Showing {shown} of {eligible} matching listings",
     "noResults": "No listings match all of your must-haves. Try turning one into a preference.",
     "retry": "Try again",
-    "perMonth": "{rent}/month",
-    "bedrooms": "{count} bed",
-    "studio": "Studio",
     "errors": {
       "rate_limited": "Too many searches at once. Try again in {seconds} seconds.",
       "service_unavailable": "Search isn't available right now. Try again in a moment.",
@@ -304,5 +301,74 @@
       "removeArea": "Remove {label}",
       "sortBy": "Sort by"
     }
+  },
+  "results": {
+    "perMonth": "/month",
+    "perRoom": "/month per room",
+    "studio": "Studio",
+    "beds": "{n} bed",
+    "baths": "{n} bath",
+    "sqft": "{n} sq ft",
+    "built": "Built {year}",
+    "acCentral": "Central air",
+    "acYes": "AC",
+    "approx": "Approximate location",
+    "price": {
+      "underpriced": "Underpriced",
+      "reasonable": "Reasonably priced",
+      "overpriced": "Overpriced",
+      "unknown": "Not enough data",
+      "below": "{percent}% below similar listings",
+      "above": "{percent}% above similar listings",
+      "inLine": "In line with similar listings",
+      "thin": "Too few similar listings to compare",
+      "note": "Compared with asking rents for {count} similar listings nearby, not signed leases.",
+      "noteThin": "We compare with asking rents for similar listings nearby (not signed leases) and need at least 5 of them to give a label.",
+      "confidence": {
+        "low": "Low confidence",
+        "medium": "Medium confidence",
+        "high": "High confidence"
+      },
+      "more": "About this price check"
+    },
+    "score": "{total} match",
+    "scoreAria": "Match score {total} out of 100. {parts}",
+    "scorePart": "{part} {points}",
+    "parts": {
+      "value": "Value",
+      "price": "Price",
+      "travel": "Travel",
+      "home": "Home",
+      "safety": "Safety"
+    },
+    "travel": {
+      "transit": "{minutes} min by TTC to {target}",
+      "drive": "{minutes} min drive to {target} (no traffic)",
+      "walk": "{minutes} min walk to {target}",
+      "bike": "{minutes} min by bike to {target}",
+      "straightLine": "{km} km to {target} (straight-line, travel time not available)",
+      "missing": "{target}: travel time not available"
+    },
+    "safety": "Police-reported crime: {rate}× the city rate (TPS {years})",
+    "safetyNoData": "Police-reported crime: not enough data",
+    "notConfirmed": "Not confirmed: {items}",
+    "sources": {
+      "kijiji": "Kijiji",
+      "rentals_ca": "Rentals.ca",
+      "zillow": "Zillow",
+      "realtor_ca": "Realtor.ca",
+      "manual": "Hand-checked",
+      "pasted": "Pasted by you"
+    },
+    "seen": "seen {when}",
+    "dataStatus": {
+      "snapshot": "snapshot",
+      "demo": "demo data"
+    },
+    "shortlistAdd": "Add {title} to shortlist",
+    "shortlistRemove": "Remove {title} from shortlist"
+  },
+  "listing": {
+    "title": "Listing"
   }
 }
