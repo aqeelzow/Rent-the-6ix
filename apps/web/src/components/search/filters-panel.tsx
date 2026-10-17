@@ -1,7 +1,6 @@
 "use client";
 
 import { MapPin, SlidersHorizontal, Trash2, X } from "lucide-react";
-import Link from "next/link";
 import { useId, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,6 +14,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
+import { SafetyInfoButton } from "@/components/safety/safety-info";
 import { Switch } from "@/components/ui/switch";
 import { t, type MessageKey } from "@/lib/format/messages";
 import { resolveDestination, runSearch } from "@/lib/store/actions";
@@ -669,10 +669,7 @@ function SafetySection({ draft, edit }: SectionProps) {
           />
         </div>
         <p className="text-muted-foreground text-xs">
-          {p("safetyHelp")}{" "}
-          <Link href="/data#safety" className="text-primary underline underline-offset-2">
-            {p("safetyMore")}
-          </Link>
+          {p("safetyHelp")} <SafetyInfoButton />
         </p>
       </div>
       {enabled && (

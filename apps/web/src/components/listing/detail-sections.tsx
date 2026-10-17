@@ -4,6 +4,7 @@ import { CircleHelp, ExternalLink, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { modeIcons } from "@/components/mode-icons";
+import { SafetyInfoButton } from "@/components/safety/safety-info";
 import { PriceBadge } from "@/components/results/price-badge";
 import { daysSince, priceSummary, yearSpan } from "@/components/results/card-data";
 import { formatDaysAgo } from "@/lib/format/date";
@@ -400,18 +401,20 @@ export function SafetySection({ result }: { result: SearchResultItem }) {
             })
           : l("safety.noData")}
       </p>
-      {safety && safety.caveats.length > 0 && (
-        <details className="text-sm">
-          <summary className="text-primary cursor-pointer font-medium">
-            {l("safety.caveats")}
-          </summary>
-          <ul className="text-muted-foreground mt-2 list-disc pl-5">
-            {safety.caveats.map((caveat) => (
-              <li key={caveat.code}>{caveat.explanation}</li>
+      {safety && Object.values(safety.byType).some((value) => value !== null) && (
+        <div className="flex flex-col gap-1">
+          <h3 className="text-sm font-medium">{l("safety.byType")}</h3>
+          <dl className="figures grid grid-cols-2 gap-x-4 gap-y-1 text-sm sm:grid-cols-3">
+            {Object.entries(safety.byType).map(([type, value]) => (
+              <div key={type} className="flex justify-between gap-2">
+                <dt className="text-muted-foreground">{l(`safety.types.${type}`)}</dt>
+                <dd>{value === null ? "–" : decimal.format(value)}</dd>
+              </div>
             ))}
-          </ul>
-        </details>
+          </dl>
+        </div>
       )}
+      <SafetyInfoButton caveats={safety?.caveats} className="self-start text-sm" />
     </DetailSection>
   );
 }

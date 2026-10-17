@@ -319,7 +319,6 @@
       "safetyToggle": "Consider safety",
       "safetyHelp": "Uses Toronto Police neighbourhood crime rates compared with the city rate. Off unless you turn it on. Rates describe whole neighbourhoods, not a street, a building or the people who live there.",
       "safetyHard": "Only neighbourhoods below the city rate",
-      "safetyMore": "How this works",
       "areaHelp": "Areas come from your request. Picking neighbourhoods on a map comes with the explorer.",
       "noAreas": "All of Toronto.",
       "removeArea": "Remove {label}",
@@ -407,6 +406,16 @@
       "showMap": "Map",
       "showList": "List",
       "closeCard": "Close listing"
+    },
+    "safetyInfo": {
+      "open": "How this works",
+      "title": "How the safety figure works",
+      "what": "Safety is optional and off unless you turn it on. It uses Toronto Police Service neighbourhood crime rates.",
+      "measure": "We add up five major crime types (assault, break and enter, auto theft, robbery, theft over $5,000) per 100,000 residents, averaged over the last three published years, and compare the neighbourhood with the city. \"0.7× the city rate\" means 30% below it.",
+      "ranking": "When it's on, safety is {weight}% of the match score: {full}× the city rate or lower scores 100, {zero}× or higher scores 0, in a straight line between.",
+      "mustHave": "As a must-have, it keeps only neighbourhoods at or below the city rate.",
+      "never": "Every listing in a neighbourhood gets the same figure. Nothing is worked out for a street or a building, and the figure is never a label for a place or the people in it.",
+      "caveatsTitle": "Read before using it"
     }
   },
   "listing": {
@@ -534,7 +543,14 @@
     "safety": {
       "rate": "Police-reported major crime here: {rate}× the city rate ({years} average, Toronto Police Service).",
       "noData": "Police-reported crime rates for this neighbourhood aren't available.",
-      "caveats": "Read before using this"
+      "byType": "By type, per 100,000 residents",
+      "types": {
+        "assault": "Assault",
+        "autotheft": "Auto theft",
+        "breakenter": "Break and enter",
+        "robbery": "Robbery",
+        "theftover": "Theft over $5,000"
+      }
     },
     "building": {
       "none": "No RentSafeTO record is available for this building yet. The City's RentSafeTO program covers apartment buildings with 3 or more storeys and 10 or more units; houses and smaller buildings aren't evaluated."
