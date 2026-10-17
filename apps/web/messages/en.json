@@ -101,7 +101,6 @@
     "editRequest": "Change request",
     "parsing": "Reading your request…",
     "searching": "Finding listings…",
-    "basicSearch": "AI wasn't used for this search",
     "count": "Showing {shown} of {eligible} matching listings",
     "noResults": "No listings match all of your must-haves. Try turning one into a preference.",
     "retry": "Try again",

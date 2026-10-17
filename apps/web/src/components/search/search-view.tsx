@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertCircle, Info, List, LoaderCircle, MapIcon, X } from "lucide-react";
+import { AlertCircle, List, LoaderCircle, MapIcon, X } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
@@ -70,8 +70,6 @@ export function SearchView({ prompt, shared }: { prompt: string | null; shared: 
   const error = useAppStore((s) => s.error);
   const results = useAppStore((s) => s.results);
   const eligibleCount = useAppStore((s) => s.eligibleCount);
-  const parser = useAppStore((s) => s.parser);
-  const parseNotice = useAppStore((s) => s.parseNotice);
   const notices = useAppStore((s) => s.notices);
   const selectedId = useAppStore((s) => s.selectedListingId);
   const setSelected = useAppStore((s) => s.setSelectedListingId);
@@ -216,15 +214,6 @@ export function SearchView({ prompt, shared }: { prompt: string | null; shared: 
                 {t("search.retry")}
               </Button>
             </div>
-          )}
-
-          {parser === "fallback" && parseNotice && status !== "parsing" && (
-            <p className="bg-caveat-info text-caveat-info-foreground flex items-start gap-2 rounded-lg px-3 py-2 text-sm">
-              <Info aria-hidden className="mt-0.5 size-4 shrink-0" />
-              <span>
-                <span className="font-medium">{t("search.basicSearch")}.</span> {parseNotice}
-              </span>
-            </p>
           )}
         </div>
 
