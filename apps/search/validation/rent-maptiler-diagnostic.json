@@ -1,0 +1,42 @@
+{
+  "status": 200,
+  "fuzzyMatch": false,
+  "features": [
+    {
+      "label": "West Island, Ontario, Canada",
+      "types": [
+        "major_landform"
+      ],
+      "relevance": 0.554815
+    },
+    {
+      "label": "Taddle Creek Pond, Ontario, Canada",
+      "types": [
+        "major_landform"
+      ],
+      "relevance": 0.554815,
+      "matchingText": "Wychwood Pond"
+    },
+    {
+      "label": "Whittamore's Farm, Ontario, Canada",
+      "types": [
+        "major_landform"
+      ],
+      "relevance": 0.554815
+    },
+    {
+      "label": "Wychwood Creek, Ontario, Canada",
+      "types": [
+        "major_landform"
+      ],
+      "relevance": 0.554815
+    },
+    {
+      "label": "West Habitat Cove, Ontario, Canada",
+      "types": [
+        "major_landform"
+      ],
+      "relevance": 0.554815
+    }
+  ]
+}

@@ -22,11 +22,12 @@ export async function searchPercentileCandidates(input: SearchRequest, dependenc
     const eligible: Listing[] = [];
     // Routing can change cached hard travel results; defer those gates until every route is known.
     const beforeRouting = { ...intent, travelTargets: intent.travelTargets.filter(target => !routeTargets.includes(target)) };
-    for (const raw of dependencies.listings) {
+    const source = dependencies.loadCandidates ? await dependencies.loadCandidates(request, controller.signal) : dependencies.listings;
+    for (const raw of source) {
       if (controller.signal.aborted) return unavailable('timeout');
       const listing = ListingSchema.parse(raw);
       if (!filterListing(listing, beforeRouting, {}, request.hideUnconfirmed, true).passes) continue;
-      const owner = await dependencies.enrich(listing, intent);
+      const owner = await dependencies.enrich(listing, intent, controller.signal);
       if (controller.signal.aborted) return unavailable('timeout');
       const travel = owner.travel.map(row => TravelTimeRowSchema.parse(row)).filter(row => row.listingId === listing.id);
       for (const target of intent.travelTargets) if (target.resolved) for (const mode of targetModes(target)) {
@@ -74,7 +75,7 @@ export async function searchPercentileCandidates(input: SearchRequest, dependenc
     return SearchResponseSchema.parse({ status: 'completed', results: selected.map(listing => {
       const context = contexts.get(listing.id)!;
       return { listing, valuation: context.valuation, safety: context.safety, travel: context.travel, matchScore: scoreListing(listing, intent, context) };
-    }), eligibleCount: filtered.length, notices: ['Fixture-backed full eligible pool; live owner integrations pending'] });
+    }), eligibleCount: filtered.length, notices: [dependencies.loadCandidates ? 'Unconfirmed fields and unrouted travel times remain unknown' : 'Fixture-backed full eligible pool; live owner integrations pending'] });
   };
   if (!exactTravel) return work();
   if (execution.signal?.aborted || Date.now() >= deadline) return unavailable('timeout');

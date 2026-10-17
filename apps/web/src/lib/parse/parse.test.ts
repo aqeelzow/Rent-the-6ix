@@ -1,6 +1,7 @@
-import test from 'node:test';
+import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { z } from 'zod';
+import { parseInstruction } from './instruction';
 import { SearchIntentSchema } from '../../../../../packages/shared/schemas/index';
 import { GeminiProvider, AIUnavailable, NoneProvider } from '../ai/index';
 import { fallbackParse, ParseService, DestinationResolver, IpLimiter, RateLimitError, MemoryCache } from './index';
@@ -51,12 +52,12 @@ test('known places ambiguity, representative labels and honest unknown business'
 });
 test('Address Points before MapTiler, validated geocoding ambiguity/cache/timeout', async () => {
   let calls = 0;
-  const fetcher: typeof fetch = async () => { calls++; return Response.json({ features: [{ id: 'a', place_name: 'Toronto configured neighbourhood', place_type: ['neighbourhood'], center: [-79.4,43.7] },{ id:'b',place_name:'second',center:[-79.3,43.8] }] }); };
+  const fetcher: typeof fetch = async () => { calls++; return Response.json({ features: [{ id: 'a', place_name: 'Toronto configured neighbourhood', relevance: 1, place_type: ['neighbourhood'], center: [-79.4,43.7] },{ id:'b',place_name:'second',relevance:1,center:[-79.3,43.8] }] }); };
   const resolver = new DestinationResolver({ addressLookup: async query => ({ status:'unavailable',query,reason:'no match' }), maptilerKey:'test',fetch:fetcher });
   assert.equal((await resolver.resolve('unlisted destination')).status, 'ambiguous'); await resolver.resolve('unlisted destination'); assert.equal(calls, 1);
   const resolved = new DestinationResolver({ addressLookup: async query => ({ status:'resolved',query,destination:{ id:'fixture-address',label:'fixture address',resolved:{ lng:-79.4,lat:43.7,source:'address_points' } } }), fetch:fetcher, maptilerKey:'test' });
   assert.equal((await resolved.resolve('123 fixture street')).status, 'resolved'); assert.equal(calls, 1);
-  const invalid = new DestinationResolver({ maptilerKey:'test',fetch:async () => Response.json({ features: [{ id:'a',place_name:'bad',center:[900,0] }] }) }); assert.equal((await invalid.resolve('bad')).status, 'unavailable');
+  const invalid = new DestinationResolver({ maptilerKey:'test',fetch:async () => Response.json({ features: [{ id:'a',place_name:'bad',relevance:1,center:[900,0] }] }) }); assert.equal((await invalid.resolve('bad')).status, 'unavailable');
   const timeout = new DestinationResolver({ timeoutMs:5,addressLookup:async () => new Promise(() => {}) }); assert.equal((await timeout.resolve('hang')).status, 'unavailable');
 });
 const geminiResponse = (value: unknown) => Response.json({ candidates:[{content:{parts:[{text:JSON.stringify(value)}]}}] });
@@ -95,7 +96,7 @@ test('no inverted exclusions or implied room type and unsupported requests remai
 test('schema-valid AI hallucinations do not become constraints or coordinates', async () => {
   const invented = fallbackParse('under $2000 safe area 10 min walk to Union Station'); invented.fieldSources={}; invented.travelTargets[0].resolved={lng:1,lat:1,source:'known_place'};
   const service = new ParseService({provider:{ generateStructured:async <T>() => invented as T, generateText:async () => '' }});
-  const parsed = await service.parse({prompt:'hello'},'ip'); assert.deepEqual(parsed.intent.criteria,{}); assert.equal(parsed.intent.safety.enabled,false); assert.equal(parsed.intent.travelTargets.length,0); assert.ok(parsed.intent.droppedRequests.length);
+  const parsed = await service.parse({prompt:'hello'},'ip'); assert.deepEqual(parsed.intent.criteria,{}); assert.equal(parsed.intent.safety.enabled,false); assert.equal(parsed.intent.travelTargets.length,0); assert.equal(parsed.parser,'fallback'); assert.ok(parsed.notice);
 });
 
 test('root walkthrough refines close groceries to one timed amenity without changing campus modes', () => {
@@ -104,4 +105,56 @@ test('root walkthrough refines close groceries to one timed amenity without chan
   const campus=intent.travelTargets.find(t => t.kind==='place')!; assert.equal(campus.mode,'transit'); assert.equal(campus.alternativeModes,undefined); assert.equal(campus.maxMinutes,25); assert.equal(campus.hard,true);
   const grocery=intent.travelTargets.find(t => t.category==='grocery')!; assert.equal(grocery.kind,'amenity'); assert.equal(grocery.mode,'walk'); assert.equal(grocery.alternativeModes,undefined); assert.equal(grocery.maxMinutes,10); assert.equal(grocery.hard,true);
   assert.equal(intent.criteria.airConditioning?.value,'any'); assert.equal(intent.criteria.buildingAge?.hard,false);
+});
+
+
+test('AI source contract uses target IDs and missing travel evidence falls back without widening', async () => {
+  assert.ok(parseInstruction.includes('travelTargets.<target.id>'));
+  assert.ok(parseInstruction.includes('never an array index'));
+  assert.ok(parseInstruction.includes('within 10 minutes biking'));
+  assert.ok(parseInstruction.includes('only for the criterion they modify'));
+  assert.ok(parseInstruction.includes('verbatim substring'));
+  const prompt = '10 min walk to Union Station';
+  const invalid = fallbackParse(prompt);
+  invalid.fieldSources['travelTargets.0'] = invalid.fieldSources['travelTargets.target-1'];
+  delete invalid.fieldSources['travelTargets.target-1'];
+  const service = new ParseService({ provider: { generateStructured: async <T>() => structuredClone(invalid) as T, generateText: async () => '' } });
+  const result = await service.parse({ prompt }, 'ip');
+  assert.equal(result.parser, 'fallback');
+  assert.equal(result.intent.travelTargets[0].maxMinutes, 10);
+  assert.equal(result.destinations[0].resolution.status, 'resolved');
+  assert.ok(result.notice);
+});
+
+
+test('MapTiler partial or missing relevance cannot become a destination choice', async () => {
+  const partial = { id: 'wrong', place_name: 'Unrelated landform', place_type: ['major_landform'], center: [-79.4,43.7] };
+  const features = [partial, { ...partial, id: 'partial', relevance: 0.554815 }];
+  const resolver = new DestinationResolver({ maptilerKey: 'test', fetch: async () => Response.json({ features }) });
+  assert.equal((await resolver.resolve('an exact business branch')).status, 'unavailable');
+  const mixed = new DestinationResolver({ maptilerKey: 'test', fetch: async () => Response.json({ features: [...features, { ...partial, id: 'full', place_name: 'Matching alternate-language name', relevance: 1 }] }) });
+  const result = await mixed.resolve('an exact business branch');
+  assert.equal(result.status, 'resolved');
+  if (result.status === 'resolved') assert.equal(result.destination.id, 'full');
+});
+
+
+test('known hard travel bounds cannot be softened, omitted or widened by AI', async () => {
+  const prompt = '10 min walk to Union Station';
+  for (const change of ['soften', 'omit', 'widen'] as const) {
+    const intent = fallbackParse(prompt);
+    if (change === 'soften') intent.travelTargets[0].hard = false;
+    if (change === 'omit') intent.travelTargets = [];
+    if (change === 'widen') intent.travelTargets[0].maxMinutes = 20;
+    const service = new ParseService({ provider: { generateStructured: async <T>() => intent as T, generateText: async () => '' } });
+    const result = await service.parse({ prompt }, 'ip');
+    assert.equal(result.parser, 'fallback');
+    assert.equal(result.intent.travelTargets[0].hard, true);
+    assert.equal(result.intent.travelTargets[0].maxMinutes, 10);
+  }
+  const preferred = 'Ideally 10 min walk to Union Station';
+  const service = new ParseService({ provider: { generateStructured: async <T>() => fallbackParse(preferred) as T, generateText: async () => '' } });
+  const result = await service.parse({ prompt: preferred }, 'ip');
+  assert.equal(result.parser, 'gemini');
+  assert.equal(result.intent.travelTargets[0].hard, false);
 });

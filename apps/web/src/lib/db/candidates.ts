@@ -4,10 +4,11 @@ import { filterListing } from '../../../../../packages/shared/engine/filters';
 import { scoreListing, tieBreak, type ScoreContext } from '../../../../../packages/shared/engine/score';
 import { clamp, distanceM, targetModes } from '../../../../../packages/shared/engine/travel';
 export type SearchDependencies = {
-  // Full application listing pool until D supplies authoritative SQL/mappings.
+  // Fixture/detail pool; live search can inject the read-only SQL candidate loader.
   listings: readonly Listing[];
-  // For full-pool hard gates/numeric ordering, this reads cached fixture context only.
-  enrich: (listing: Listing, intent: SearchRequest['intent']) => Promise<ScoreContext>;
+  loadCandidates?: (request: SearchRequest, signal?: AbortSignal) => Promise<readonly Listing[]>;
+  // Full-pool hard gates/numeric ordering also use the owner context.
+  enrich: (listing: Listing, intent: SearchRequest['intent'], signal?: AbortSignal) => Promise<ScoreContext>;
   // Draft adapter contract; not a claim about D's actual exports.
   routeTimes?: (origins: Listing[], targets: TravelTarget[], mode: TravelTimeRow['mode'], budgetMs: number, signal: AbortSignal) => Promise<TravelTimeRow[]>;
   routingBudgetMs?: number;
@@ -32,7 +33,8 @@ export async function searchCandidates(input: SearchRequest, dependencies: Searc
   const request = SearchRequestSchema.parse(input), { intent } = request;
   if (intent.numericExtreme) throw new SearchUnavailable('Percentile selection requires the full-pool percentile pipeline');
   if (intent.sortBy === 'lowest_true_cost') throw new SearchUnavailable('True monthly cost requires D-owned affordability data');
-  const pool = dependencies.listings.map(l => ListingSchema.parse(l)).filter(l => filterListing(l, intent, {}, request.hideUnconfirmed, true).passes);
+  const source = dependencies.loadCandidates ? await dependencies.loadCandidates(request) : dependencies.listings;
+  const pool = source.map(l => ListingSchema.parse(l)).filter(l => filterListing(l, intent, {}, request.hideUnconfirmed, true).passes);
   // Numeric listing sorts operate on the entire cheap-filtered pool before expensive enrichment.
   if (intent.sortBy === 'lowest_rent' || intent.sortBy === 'newest') pool.sort((a, b) => intent.sortBy === 'lowest_rent' ? a.monthlyRentCad - b.monthlyRentCad || tieBreak(a, b) : tieBreak(a, b));
   const contexts = new Map<string, ScoreContext>();
@@ -69,7 +71,7 @@ export async function searchCandidates(input: SearchRequest, dependencies: Searc
     return [SearchResultSchema.parse({ ...result, travel: context.travel, matchScore: scoreListing(result.listing, intent, context) })];
   }).sort((a, b) => compareResults(intent, a, b));
   const eligibleCount = fullContextRequired ? pool.filter(listing => filterListing(listing, intent, contexts.get(listing.id)!, request.hideUnconfirmed).passes).length : pool.length - (candidates.length - results.length);
-  return { results, eligibleCount, notices: ['Fixture-backed application pool; live SQL and owner integrations pending'] };
+  return { results, eligibleCount, notices: [dependencies.loadCandidates ? 'Unconfirmed fields and unrouted travel times remain unknown' : 'Fixture-backed application pool; live SQL and owner integrations pending'] };
 }
 
 // Shared ordinary search/detail routing preserves one deadline and owner-failure fallback.

@@ -1,29 +1,37 @@
 import { z } from 'zod';
-import { ParseRequestSchema, SearchRequestSchema, SearchResponseSchema, SearchIntentSchema, DetailResponseSchema, TravelTimeRowSchema } from '../../../../../packages/shared/schemas/index';
-import { sampleListings, searchFixture, safetySearchFixture, areas, detailFixture } from '../../../../../packages/shared/fixtures/index';
+import { ParseRequestSchema, SearchRequestSchema, SearchResponseSchema, SearchIntentSchema, DetailResponseSchema, TravelTimeRowSchema, ValuationSchema, CaveatSchema } from '../../../../../packages/shared/schemas/index';
+import { sampleListings, fixtureTimestamp, safetySearchFixture, areas, detailFixture } from '../../../../../packages/shared/fixtures/index';
+import { valuate } from '../../../../../packages/shared/engine/valuation';
+import { caveats } from '../../../../../packages/shared/engine/caveats';
 import { scoreListing } from '../../../../../packages/shared/engine/score';
 import { distanceM, targetModes } from '../../../../../packages/shared/engine/travel';
 import { ParseService, DestinationResolver, IpLimiter } from '../parse/index';
 import { providerFromEnv } from '../ai/index';
+import { addressPointsLookup } from '../parse/address-points';
 import { searchCandidates, routeCandidateContexts, SearchUnavailable, type SearchDependencies } from '../db/candidates';
+import { sqlSearchDependencies } from '../db/candidates-context';
 import { searchPercentileCandidates } from '../db/candidates-percentiles';
 import { SearchJobs } from './jobs';
 import { ApiError, jsonRoute } from './json-route';
 export const fixtureDependencies: SearchDependencies = {
   listings: sampleListings,
   enrich: async (listing, intent) => {
-    const result = searchFixture.status === 'completed' ? searchFixture.results.find(r => r.listing.id === listing.id)! : undefined!;
+    const now = new Date(fixtureTimestamp);
+    const comparables = sampleListings.map(candidate => ({ ...candidate, distanceM: distanceM(listing.location, candidate.location), buildingKey: candidate.buildingId ?? candidate.addressPointId }));
+    const valuation = ValuationSchema.parse(valuate(listing, comparables, null, now));
+    // shortcut: synthetic fixtures have no building evaluation or duplicate-text matches; use owner queries for live data.
+    const listingCaveats = caveats(listing, { valuation, building: null, sameTextElsewhere: 0, now }).map(c => CaveatSchema.parse(c));
     const safety = safetySearchFixture.status === 'completed' ? safetySearchFixture.results[0].safety : null;
-    return { valuation: result.valuation, travel: [], safety: intent.safety.enabled && safety && listing.neighbourhoodId ? { ...safety, areaId: listing.neighbourhoodId } : null, safetyScore: 80, caveats: result.matchScore.caveats };
+    return { valuation, travel: [], safety: intent.safety.enabled && safety && listing.neighbourhoodId !== null ? { ...safety, areaId: listing.neighbourhoodId } : null, safetyScore: 80, caveats: listingCaveats };
   },
 };
 type RuntimeOptions = { env?: Record<string, string | undefined>; parser?: ParseService; resolver?: DestinationResolver; dependencies?: SearchDependencies; jobs?: SearchJobs; identity?: (request: Request) => string; limiter?: IpLimiter; startLimiter?: IpLimiter; pollLimiter?: IpLimiter };
 export function createRuntime(options: RuntimeOptions = {}) {
   const env = options.env ?? process.env;
-  const resolver = options.resolver ?? new DestinationResolver({ maptilerKey: env.NEXT_PUBLIC_MAPTILER_KEY });
+  const resolver = options.resolver ?? new DestinationResolver({ maptilerKey: env.NEXT_PUBLIC_MAPTILER_KEY, addressLookup: env.SEARCH_FIXTURES !== '1' && env.DATABASE_URL ? addressPointsLookup() : undefined });
   const parser = options.parser ?? new ParseService({ provider: providerFromEnv(env), resolver });
   const jobs = options.jobs ?? new SearchJobs();
-  const dependencies = options.dependencies ?? (env.SEARCH_FIXTURES === '1' ? fixtureDependencies : undefined);
+  const dependencies = options.dependencies ?? (env.SEARCH_FIXTURES === '1' ? fixtureDependencies : env.DATABASE_URL ? sqlSearchDependencies() : undefined);
   // shortcut: one anonymous quota without trusted server identity, integrate A's trusted proxy adapter before production.
   const identity = options.identity ?? (() => 'anonymous');
   const limiter = options.limiter ?? new IpLimiter(60), startLimiter = options.startLimiter ?? new IpLimiter(10), pollLimiter = options.pollLimiter ?? new IpLimiter(120);
@@ -58,8 +66,9 @@ export function createRuntime(options: RuntimeOptions = {}) {
       let input: unknown; try { input = JSON.parse(encoded); } catch { throw new ApiError(422, 'validation_error', 'Malformed intent JSON'); }
       const intent = SearchIntentSchema.parse(input);
       if (intent.rawPrompt || Object.keys(intent.fieldSources).length || intent.droppedRequests.length) throw new ApiError(422, 'validation_error', 'Detail intent must redact rawPrompt, fieldSources and droppedRequests');
-      const deps = requireDependencies(), listing = deps.listings.find(l => l.id === id);
-      if (!listing) throw new ApiError(404, 'listing_not_found', 'Listing not found');
+      const deps = requireDependencies();
+      const listing = deps.listings.find(l => l.id === id);
+      if (!listing) throw deps.loadCandidates ? new ApiError(503, 'service_unavailable', 'Listing details temporarily unavailable') : new ApiError(404, 'listing_not_found', 'Listing not found');
       const owner = await deps.enrich(listing, intent);
       const travel = owner.travel.map(row => TravelTimeRowSchema.parse(row)).filter(row => row.listingId === id);
       for (const target of intent.travelTargets) if (target.resolved) for (const mode of targetModes(target)) if (!travel.some(row => row.targetId === target.id && row.mode === mode)) travel.push({ listingId: id, targetId: target.id, mode, minutes: null, distanceM: distanceM(listing.location, target.resolved), method: 'straight_line', poiId: null, computedAt: listing.lastSeenAt });

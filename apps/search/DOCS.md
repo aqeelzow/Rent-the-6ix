@@ -1,6 +1,18 @@
 # Natural-language rental search
 
-Known-place seed references: [UofT campuses](https://www.utoronto.ca/university-life/campuses), [York campuses](https://www.yorku.ca/campuses/), [York campus contacts](https://www.yorku.ca/about/contact/) and [Toronto General Hospital](https://www.uhn.ca/OurHospitals/TGH/Pages/default.aspx). Seed coordinates are approximate configured representative points, not verified entrances; broad campus names require a choice. These sources confirm the named destinations, not routing accuracy.
+## Current handoff — upstream 29a7393
+
+Current implementation is in `/tmp/rent-search-upstream`, branch `b/search-owner-integration`, reconciled against upstream main `29a7393`. Original checkout `570300e` remains unchanged outside `apps/search`; canonical app/shared paths are read-only in this session. Current patches target `29a7393`. Patches suffixed `-570300e` and older sections below are historical checkpoints and must not overwrite newer owner contracts.
+
+The reconciliation preserves C’s `effectiveCount`, adjustment and caveat contracts, and A’s nested `listing.id` identity. The earlier duplicate top-level ID shim is obsolete. Actual A actions/store tests now consume B’s runtime for destination choices, selection retention, detail and asynchronous polling without editing A’s files.
+
+SQL search now composes B’s bound candidate loader with C’s actual `listingContext` query/cache/valuation/caveat implementation. `SEARCH_FIXTURES=1` takes precedence and uses eight synthetic listings. Otherwise, configured `DATABASE_URL` enables SQL search; absent/invalid configuration returns sanitized503 without breaking parse or known-place resolution. C outputs validate against current shared schemas. Missing D travel/safety stays unknown/null; no times/rates are fabricated. Live detail returns503 until the owner lookup/detail integration is supplied. Candidate reads and C enrichment each permit one unfinished operation per process, ignoring late results after cancellation; overlapping requests may receive503 until existing queries settle. Owner cancellation/server timeouts are needed for broader concurrency.
+
+Final verification:250 tests(shared48/web134/worker68), workspace typecheck/lint, production build and native standalone fixture HTTP smoke passed. Native invalid-DB smoke confirms search503 while fallback parse/known-place resolution remain available. All servers stopped. SQL/C-context tests use a small simulated tagged database client, actual C functions, five comparables and observations; actual PostgreSQL/PostGIS/data-volume latency remains unverified. Reproduce fixture HTTP checks with `validation/native-http-smoke-upstream.py` against a fixture-enabled standalone server on127.0.0.1:3137.
+
+Provider fixes preserve explicit source phrases and hard time requirements, and reject unrelated partial MapTiler matches. Existing configured-model live checks produced two Gemini interpretations/four deadline fallbacks; successful calls took7–11s, exceeding4s. A process-only fast-model diagnostic found authenticated metadata support but generation returned404 on its first call; no further model trials or canonical configuration changes were made. TD’s exact branch remains unavailable rather than guessed. Sanitized findings/reports are under `validation/`; credentials were checked absent before saving.
+
+Remaining: publish/apply the current patches, supply DB access/data, verify live SQL/C performance, integrate D safety/routing/geographic/cache/detail services, trusted identity, rendered/deployed acceptance, and resolve Gemini latency/TD-match gates. A’s choice/polling actions exist and now pass integration tests; they are no longer described as missing. No push, merge or deployment was performed.
 
 ## Implemented and verified
 

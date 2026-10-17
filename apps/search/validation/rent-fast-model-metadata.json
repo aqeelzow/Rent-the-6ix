@@ -1,0 +1,81 @@
+{
+  "status": 200,
+  "models": [
+    {
+      "name": "models/gemini-flash-lite-latest",
+      "version": "Gemini Flash-Lite Latest",
+      "displayName": "Gemini Flash-Lite Latest",
+      "supportedGenerationMethods": [
+        "generateContent",
+        "countTokens",
+        "createCachedContent",
+        "batchGenerateContent"
+      ]
+    },
+    {
+      "name": "models/gemini-2.5-flash-lite",
+      "version": "001",
+      "displayName": "Gemini 2.5 Flash-Lite",
+      "supportedGenerationMethods": [
+        "generateContent",
+        "countTokens",
+        "createCachedContent",
+        "batchGenerateContent"
+      ]
+    },
+    {
+      "name": "models/gemini-3.1-flash-lite-preview",
+      "version": "3.1-flash-lite-preview-03-2026",
+      "displayName": "Gemini 3.1 Flash Lite Preview",
+      "supportedGenerationMethods": [
+        "generateContent",
+        "countTokens",
+        "createCachedContent",
+        "batchGenerateContent"
+      ]
+    },
+    {
+      "name": "models/gemini-3.1-flash-lite",
+      "version": "3.1-flash-lite-05-2026",
+      "displayName": "Gemini 3.1 Flash Lite",
+      "supportedGenerationMethods": [
+        "generateContent",
+        "countTokens",
+        "createCachedContent",
+        "batchGenerateContent"
+      ]
+    },
+    {
+      "name": "models/gemini-3.1-flash-lite-image",
+      "version": "3.0",
+      "displayName": "Nano Banana 2 Lite",
+      "supportedGenerationMethods": [
+        "generateContent",
+        "countTokens",
+        "batchGenerateContent"
+      ]
+    },
+    {
+      "name": "models/gemini-3.5-flash-lite",
+      "version": "3.5-flash-lite-07-2026",
+      "displayName": "Gemini 3.5 Flash Lite",
+      "supportedGenerationMethods": [
+        "generateContent",
+        "countTokens",
+        "createCachedContent",
+        "batchGenerateContent"
+      ]
+    },
+    {
+      "name": "models/gemini-3.8-flash-lite-tts",
+      "version": "3.8-flash-lite-tts",
+      "displayName": "Gemini 3.8 Flash Lite TTS",
+      "supportedGenerationMethods": [
+        "generateContent",
+        "countTokens",
+        "batchGenerateContent"
+      ]
+    }
+  ],
+  "configuredFastPresent": false
+}

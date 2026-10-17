@@ -1,0 +1,113 @@
+--- a/PERSON_B.md
++++ b/PERSON_B.md
+@@ -6,15 +6,17 @@
+ 
+ ## Current state
+ 
+-- **Current task:** canonical search integration after fixture-backed implementation
+-- **Status:** blocked   <!-- local implementation verified; canonical scaffold and owner services unavailable -->
+-- **Next action:** mount the B-owned sources in A's scaffold, connect the authoritative C/D adapters, then run canonical build/lint and live acceptance. See apps/search/DOCS.md and change-request.md.
+-- **Blockers / needs from others:** A scaffold/package scripts and supported Node/pnpm pairing; C valuation/caveats; D migrations/client/geography/ai_cache/safety/router/detail definitions; trusted proxy identity adapter. No owner implementations have been substituted.
+-- **Last updated:** 2026-10-16
++- **Current task:** current SQL/provider feature finished for user handoff; live owner integration and provider latency remain open.
++- **Status:** in progress (staged in writable validation copy; canonical publication unavailable).
++- **Next action:** publish staged SQL/Address Points/result-identity changes, verify SQL against D’s live DB and connect C/D enrichment in plan order. Publish staged patches when canonical write access is available.
++- **Blockers / needs from others:** C comparable-query/cache adapter; D routing/safety functions, geographic data and live services; A destination-choice/polling/context-detail UI and trusted identity integration. Do not replace owner services with invented definitions.
++- **Last updated:** 2026-10-17
+ 
+ ## Handoff notes
+ 
+-- Search-plan features were implemented sequentially by one subagent per feature, using an eight-listing sample (50 shared synthetic listings also provided). All 44 tests and strict TypeScript over 31 files pass in the temporary validation harness. Native API handlers, scalar/exact travel selection, bounded jobs, privacy/error contracts and synthetic timings are documented in `apps/search/DOCS.md`. Live Gemini/MapTiler/DB/OTP credentials are absent. Canonical Next build/lint and live acceptance remain unverified; overall search integration is not complete.
++Canonical checkout `search-next` at `570300e`; previous `/tmp/rent-search-integration` is gone. Current copy `/tmp/rent-search-current` uses Node24/pnpm10.34.7 and frozen lockfile dependencies. Durable source patch: `apps/search/patches/search-interoperability.patch`; canonical app/shared/root handoff writes are outside this session's permitted paths. No changes are merged or deployed.
++
++Current verified prerequisite work: shared schemas accept actual C valuation evidence/null benchmark/insufficient considered counts and requested torontorentals source; eight-row fixture enrichment invokes C valuation/caveats with fixed fixture time. Static known-place import survives production bundling. Address Points uses D’s actual table/client with exact-address matching and a two-row simulated DB test; request deadlines and one in-flight query guard bound fallback work. Search/detail identity is strictly id===listing.id, verified through A’s unchanged store. B tests consistently use Vitest: 46 shared +51 worker +65 web tests and workspace typechecks/lints pass. Production build and native standalone fixture HTTP checks passed after Address Points/result-identity changes, including pending/polling/incomplete routing/consumed-job behavior; server stopped. Reproducible smoke: apps/search/validation/native-http-smoke.py. Live providers, PostgreSQL/PostGIS, OTP, safety, UI and deployed latency remain unverified. Sparse sample valuations honestly return insufficient_data; no owner algorithm is copied.
+ 
+ > Where an unfinished task stopped, gotchas, things to verify. Replace each session.
+ 
+@@ -30,11 +32,11 @@
+ 
+ ## Requests to others
+ 
+-- **To A:** supply the planned Next/pnpm scaffold and consume current destination-choice/polling/context-detail contracts in apps/search/DOCS.md. No A-owned root manifest/config/UI is modified by search publication.
++- **To A:** scaffold is present; consume destination-choice/polling/context-detail contracts in apps/search/DOCS.md and provide trusted request identity. UI remains A-owned.
+ 
+ - **To A:** mount the explanation slot on the detail page (P2.36) and the briefing on the ward page (P3.21); the chips need `fieldSources` and `droppedRequests`, already in the fixtures.
+-- **To C:** confirm TEAM's pure `valuate(listing, comparables, benchmarks)` / `priceLabel(differencePct, confidence)` exports and the separate cached server lookup. See apps/search/change-request.md CR-4; fixture contexts are used meanwhile.
+-- **To D:** publish `routeTimes(origins, targets, mode, budgetMs)` concrete types, authoritative SQL/client/Address Points/ai_cache/detail definitions and the safety lookup separately from TEAM's pure `safetyFor(rates, cityRates)` / `safetyScore(relativeRate)`. See apps/search/change-request.md CR-3; no owner tables or functions were redefined.
++- **To C:** pure valuate/caveats are present and fixture integration passes; publish the server comparable query/cache adapter. B schema patch preserves your adjustment code/count, nullable benchmark, considered counts and torontorentals source. See apps/search/change-request.md CR-4.
++- **To D:** migrations/client are present; publish routeTimes concrete types, safety lookup/functions, loaded geographic data and live service availability. Address Points consumer can now use your existing table definitions without migration changes. Detail building/area/duplicate lookup contracts and persistent ai_cache integration remain open. See apps/search/change-request.md CR-3.
+ 
+ ---
+ 
+@@ -91,9 +93,9 @@
+ | --- | --- | --- |
+ | Schemas | `packages/shared/schemas/*.ts` (+ tests) | single source of truth for everyone |
+ | Fixtures | `packages/shared/fixtures/*.json` | valid against schemas |
+-| API conventions | `apps/web/src/lib/api/` | used by every route |
++| API conventions | `apps/web/src/lib/api/` | shared error payload type for A; strict search/detail identity |
+ | AI provider | `apps/web/src/lib/ai/` (`provider.ts`, `gemini.ts`, `none.ts`, `cache.ts`) | |
+-| Parse | `src/lib/ai/parse.ts`, `src/lib/parse/fallback.ts`, `src/app/api/search/parse/route.ts` | |
++| Parse | `src/lib/parse/{fallback,resolve,address-points}.ts`, `src/app/api/search/parse/route.ts` | Address Points exact-address consumer staged; live DB unverified |
+ | Scoring | `packages/shared/engine/home-fit.ts`, `travel.ts`, `score.ts` (+ tests) | pure TS |
+ | Search | `src/app/api/listings/search/route.ts`, `src/lib/db/candidates.sql.ts` | two-pass |
+ | Explain / import / briefings | `src/lib/ai/explain.ts`, `import.ts`, `briefing.ts`, `number-check.ts` | |
+@@ -102,3 +104,11 @@
+ 
+ - **Env vars you need:** `AI_PROVIDER`, `GEMINI_API_KEY`, `GEMINI_MODEL`, `GEMINI_MODEL_FAST`, `DATABASE_URL`, `NEXT_PUBLIC_MAPTILER_KEY` (for geocoding fallback).
+ - Don't paste the Gemini key in chat or commits; set it in `.env.local` and on the Vultr instance only.
++
++## P2.20 staged SQL follow-up
++
++B’s read-only candidates-sql consumer targets D’s existing listing columns/client, validates rows and exposes loadCandidates(request,signal?) consumed by ordinary and percentile pipelines before caps. No SQL LIMIT truncates numeric/percentile eligible pools; cheap SQL gates are followed by existing pure verification. D’s nullable civic IDs remain null and unconfirmed in ID area gates; hiding excludes them unless another OR area confirms. Default live search remains unavailable pending owner enrichment; live detail remains separately blocked. No C comparable query or D safety/router implementation is fabricated. At most one candidate read is in flight per process; abort ignores late results and refuses retries until settlement. D must verify actual PostgreSQL/PostGIS execution, indexing/representative data latency and server timeout.
++
++## Live provider handoff
++
++User requested a summary after this feature; no next feature started. Actual configured provider calls revealed and fixed destination evidence/hardness and partial-geocoder problems. Six-prompt live sweep had2 Gemini interpretations and4 deadline fallbacks; final campus check preserved hard bike10min/soft rent3–5k/ambiguity and4 fixture matches but took10.873s. Main model unchanged, fast model not configured; current latency fails target. TD exact match unavailable and unrelated partial results rejected. All6 none/fallback cases yield4/8/6/2/4/1 results. Final65 web tests/typecheck/lint/build and parent native fixture HTTP smoke pass; all servers stopped. Sanitized evidence in apps/search/validation/rent-live-provider-findings.md. Remaining blockers include canonical write access, live DB URL/data, C/D services, A UI/identity integration, fast-model latency configuration and authoritative TD match. Do not claim the plan complete.
+--- a/SPEC.md
++++ b/SPEC.md
+@@ -253,7 +253,7 @@
+   addressText: string | null            // shown only when the source shows it
+   addressPointId: string | null         // City Address Points match
+   buildingId: string | null             // RentSafeTO registered building, if matched
+-  neighbourhoodId: string, wardId: string
++  neighbourhoodId: string | null, wardId: string | null
+   utilitiesIncluded: Tri, parking: Tri, petsAllowed: Tri | 'cats_only' | 'dogs_only',
+   furnished: Tri, laundryInSuite: Tri   // Tri = 'yes' | 'no' | 'unknown'
+   availableFrom: string | null, leaseTerm: string | null
+@@ -301,12 +301,12 @@
+   lowCad?: number, highCad?: number          // interquartile range of adjusted comparable rents
+   differenceCad?: number, differencePct?: number   // positive = listing is below the estimate
+   priceLabel: PriceLabel | 'unknown'         // section 7.2; 'unknown' when data is insufficient
+-  comparableCount: number
++  comparableCount: number                  // considered listings; insufficient pools may fail the same-building cap
+   radiusM: number, windowDays: number
+   confidence: 'low' | 'medium' | 'high'
+   comparables: { listingId, rentCad, adjustedRentCad, distanceM, weight, lastSeenAt }[]
+-  adjustments: { label, amountCad }[]        // e.g. "utilities included: −$150 to compare"
+-  benchmark: { label, valueCad, period, sourceId }   // e.g. StatCan CMA asking rent for this bedroom count
++  adjustments: { code, amountCad, count, label }[]        // e.g. "utilities included: −$150 to compare"
++  benchmark: { label, valueCad, period, sourceId } | null // e.g. StatCan CMA asking rent for this bedroom count
+   method: string
+ }
+ ```
+@@ -687,7 +687,9 @@
+ 
+ Search requests wrap `{ intent: SearchIntent, hideUnconfirmed?: boolean }`. Search responses distinguish `completed` (results/count/notices), `pending` (opaque job token, polling URL, expiry), and explicit `unavailable` outcomes. Jobs are bounded, temporary and in memory: execution at most 120 seconds, retained at most 180 seconds after submission, removed on first terminal poll or expiry. No prompts or job payloads are persisted or logged. Restart loses jobs and polling returns `search_job_expired`. Detail search context excludes original prompt/source phrases. Exact application request/response schemas and examples are maintained in `apps/search/DOCS.md`; database adapters and owner definitions remain separate.
+ 
+-Sample search result item:
++Search/detail result envelopes include a required UUID `id` equal to `listing.id`, plus nested `listing`, `valuation`, `travel`, `safety`, and `matchScore`. Shared schemas export `SearchResultItem`; `apps/web/src/lib/api` exports the error payload type `ApiError` for A’s store.
++
++Illustrative result field projection (the full validated envelope is defined by the shared schemas and `apps/search/DOCS.md`):
+ 
+ ```json
+ {
+@@ -933,3 +935,9 @@
+ - 2026-10-16 P3.31 [C]: `pnpm --filter worker start` runs the worker: an ingest now, then every `INGEST_INTERVAL_HOURS`, never two at once (an overrunning run delays the next). `INGEST_SOURCES` default is the four "go" sources; `INGEST_MAX_PAGES` added to section 20. Until the DB lands, the last run's per-source stats are in `apps/worker/.cache/ingest/last-run.json`.
+ - 2026-10-16 P2.1 [C]: Same-building floor plans count as at most 2 comparables (weights and counts), so one tower can't set the estimate or its confidence; candidates carry a `buildingKey`.
+ - 2026-10-17 [C]: Detail pages (8.4 step 1) are fetched for Kijiji, Zillow and Realtor.ca: only new listings or ones whose rent changed, at most `INGEST_MAX_DETAILS` per source per run. They add the full description and structured amenities (AC incl. central, laundry, parking, pets, lease term). torontorentals building URLs don't expose details, so it has none. Until the DB stores the last fetch, patches are cached in git-ignored `apps/worker/.cache/details/`, descriptions scrubbed (and re-scrubbed on load). Contact fields on those pages (Kijiji `posterInfo`, agent blocks) are never read. Raw `airConditioning` can be `'central'` when a source says so. Scrub: no "Miss"/"Dr" titles ("Don't Miss Out", Drive); a name right before "Leasing manager"/"Superintendent" and after "DM" is removed.
++
++- 2026-10-17 P0.5 [B]: Align valuation wire validation with C’s implemented nullable benchmark, adjustment code/count evidence and insufficient-data considered counts (same-building effective cap); no computed amounts are claimed for insufficient results. Listing source includes C-requested torontorentals.
++
++- 2026-10-17 P2.24 [B]: Preserve A’s existing selection identity contract with required search/detail id equal to listing.id; expose shared result and API error payload types without changing A’s store.
++
++- 2026-10-17 P2.20 [B]: Preserve D’s nullable listing civic IDs in shared validation; unresolved ID area filters pass as not confirmed unless hidden, while a known matching OR area confirms eligibility. No civic IDs are fabricated.

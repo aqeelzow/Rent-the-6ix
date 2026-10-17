@@ -1,4 +1,4 @@
-import { ParseRequestSchema, ParseResponseSchema, SearchIntentSchema, type ParseResponse } from '../../../../../packages/shared/schemas/index';
+import { ParseRequestSchema, ParseResponseSchema, SearchIntentSchema, type ParseResponse, type SearchIntent } from '../../../../../packages/shared/schemas/index';
 import { AIUnavailable, NoneProvider, type AIProvider } from '../ai/index';
 import { cleanAIIntent } from './clean';
 import { fallbackParse, configuredAreas } from './fallback';
@@ -16,10 +16,16 @@ export class ParseService {
     this.options.limiter?.check(trustedIp);
     const key = inputHash(`parse-v1:${(this.options.now?.() ?? new Date()).toISOString().slice(0, 10)}:${prompt}`);
     const cached = this.cache.get(key); if (cached) return cached;
-    let intent; let parser: ParseResponse['parser'] = 'fallback'; let notice: string | undefined;
+    let intent: SearchIntent; let parser: ParseResponse['parser'] = 'fallback'; let notice: string | undefined;
     try {
       intent = SearchIntentSchema.parse(await (this.options.provider ?? new NoneProvider()).generateStructured({ schema: SearchIntentSchema, fast: true, system: parseInstruction + ` Today is ${(this.options.now?.() ?? new Date()).toISOString().slice(0, 10)}. Configured areas: ${JSON.stringify(configuredAreas)}`, prompt }));
-      intent = SearchIntentSchema.parse(cleanAIIntent(intent, prompt)); parser = 'gemini';
+      const targetCount = intent.travelTargets.length;
+      intent = SearchIntentSchema.parse(cleanAIIntent(intent, prompt));
+      // Lost travel constraints would silently widen the search; use the grounded basic interpretation.
+      if (intent.travelTargets.length < targetCount) throw new AIUnavailable('invalid');
+      const requiredTravel = fallbackParse(prompt, this.options.now?.()).travelTargets.filter(t => t.hard && t.maxMinutes !== undefined);
+      if (requiredTravel.some(required => !intent.travelTargets.some(actual => actual.kind === required.kind && (required.kind === 'place' ? actual.query?.toLowerCase() === required.query?.toLowerCase() : actual.category === required.category) && actual.hard && actual.maxMinutes === required.maxMinutes))) throw new AIUnavailable('invalid');
+      parser = 'gemini';
     } catch (error) {
       intent = fallbackParse(prompt, this.options.now?.());
       notice = error instanceof AIUnavailable && error.reason === 'busy' ? 'AI busy, used basic search.' : 'Used basic search; review the interpreted filters.';
