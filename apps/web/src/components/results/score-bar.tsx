@@ -12,8 +12,8 @@ const partColors = {
 } as const;
 
 /**
- * Match score with a bar segmented by part. Segments are score × effective weight, so together
- * they fill exactly `total` percent of the bar; the number and an aria label carry the same
+ * Match score with a vertical bar segmented by part. Segments are score × effective weight, so together
+ * they fill exactly `total` percent of the bar from the bottom; the number and an aria label carry the same
  * information as the colours.
  */
 export function ScoreBar({
@@ -37,17 +37,19 @@ export function ScoreBar({
     <div
       role="img"
       aria-label={t("results.scoreAria", { total: matchScore.total, parts })}
-      className={`flex items-center gap-2 ${className}`}
+      className={`flex items-stretch gap-2 ${className}`}
     >
-      <span className="figures shrink-0 text-sm font-semibold">
-        {t("results.score", { total: matchScore.total })}
+      <span className="flex flex-col items-end justify-end leading-none">
+        <span className="figures text-2xl font-semibold">{matchScore.total}</span>
+        <span className="text-muted-foreground mt-1 text-xs">{t("results.scoreLabel")}</span>
       </span>
-      <span className="bg-muted flex h-2 min-w-16 flex-1 overflow-hidden rounded-full">
+      {/* Fills from the bottom; the first part sits lowest. */}
+      <span className="bg-muted flex h-14 w-2.5 flex-col-reverse overflow-hidden rounded-full">
         {segments.map((segment) => (
           <span
             key={segment.id}
-            className={`${partColors[segment.id]} h-full`}
-            style={{ width: `${segment.points}%` }}
+            className={`${partColors[segment.id]} w-full`}
+            style={{ height: `${segment.points}%` }}
           />
         ))}
       </span>

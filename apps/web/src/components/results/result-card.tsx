@@ -159,7 +159,7 @@ export function ResultCard({
 
       <div className="flex items-start justify-between gap-4">
         <PriceBadge valuation={valuation} />
-        <ScoreBar matchScore={matchScore} className="w-36 pt-0.5" />
+        <ScoreBar matchScore={matchScore} className="shrink-0" />
       </div>
 
       {travel.length > 0 && (

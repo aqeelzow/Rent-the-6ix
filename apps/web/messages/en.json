@@ -494,7 +494,8 @@
       "none": "No limit",
       "city": "city",
       "help": "1.0× is the city rate; lower keeps fewer neighbourhoods. With no limit, safety only changes the ranking."
-    }
+    },
+    "scoreLabel": "match"
   },
   "listing": {
     "title": "Listing",
