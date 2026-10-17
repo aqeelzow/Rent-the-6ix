@@ -4,7 +4,12 @@ import { connection } from "next/server";
 import { WardView } from "@/components/areas/ward-view";
 import { getClient } from "@/lib/db";
 import { loadAreaFacts } from "@/lib/db/area-facts";
+import { crimeTableSource } from "@/lib/db/safety";
+import { loadWardCrime } from "@/lib/db/ward-crime";
 import { t } from "@/lib/format/messages";
+
+/** One crime table for every ward page in this process (cached 6 h; it changes when D reloads). */
+const crimeTable = crimeTableSource();
 
 /** Toronto has 25 city wards; `/areas/ward/10` (and `/areas/ward/010` redirects there). */
 const WARD_COUNT = 25;
@@ -31,8 +36,14 @@ export default async function WardPage({ params }: PageProps<"/areas/ward/[n]">)
   await connection();
   // D's facts give the header and the "at a glance" table.
   const sql = getClient();
-  const facts = sql
-    ? await loadAreaFacts(sql, "ward", String(n).padStart(2, "0")).catch(() => null)
-    : null;
-  return <WardView n={n} facts={facts} />;
+  const wardId = String(n).padStart(2, "0");
+  const [facts, crime] = sql
+    ? await Promise.all([
+        loadAreaFacts(sql, "ward", wardId).catch(() => null),
+        crimeTable()
+          .then((table) => (table ? loadWardCrime(sql, wardId, table) : null))
+          .catch(() => null),
+      ])
+    : [null, null];
+  return <WardView n={n} facts={facts} crime={crime} />;
 }

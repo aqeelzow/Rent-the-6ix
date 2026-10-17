@@ -2,6 +2,7 @@
 import type { ErrorResponse, SearchResult } from "@rentthe6ix/shared/schemas";
 
 export type {
+  AreaChoropleth,
   DestinationResolution,
   DetailResponse,
   Listing,

@@ -9,6 +9,10 @@ import {
   resultsToGeoJSON,
   routesToPlaces,
   scoreBand,
+  CRIME_COLORS,
+  CRIME_STEPS,
+  choroplethToGeoJSON,
+  crimeBand,
 } from "./map-data";
 
 const results = searchFixture.status === "completed" ? searchFixture.results : [];
@@ -145,5 +149,45 @@ describe("listings at the same place", () => {
     expect(allAtSamePlace(results, ["a", "b"])).toBe(true);
     expect(allAtSamePlace(results, ["a", "c"])).toBe(false);
     expect(allAtSamePlace(results, ["a"])).toBe(false);
+  });
+});
+
+describe("crime layer", () => {
+  it("bands relative rates at 0.5, 1, 1.5 and 2 times the city", () => {
+    expect([0.3, 0.5, 0.99, 1, 1.49, 1.5, 2, 3.4].map(crimeBand)).toEqual([0, 1, 1, 2, 2, 3, 4, 4]);
+    expect(CRIME_COLORS).toHaveLength(CRIME_STEPS.length + 1);
+  });
+
+  it("turns the choropleth into GeoJSON, keeping unknown rates as null", () => {
+    const geometry = {
+      type: "MultiPolygon" as const,
+      coordinates: [
+        [
+          [
+            [-79.4, 43.6],
+            [-79.39, 43.6],
+            [-79.4, 43.61],
+            [-79.4, 43.6],
+          ],
+        ],
+      ],
+    };
+    const geo = choroplethToGeoJSON({
+      kind: "neighbourhood",
+      indicator: "crime",
+      unit: "× city rate",
+      period: "2023–2025",
+      cityValue: 1,
+      sourceId: "neighbourhood-crime-rates",
+      caveats: [],
+      features: [
+        { id: "083", name: "Dufferin Grove", value: 1.35, geometry },
+        { id: "999", name: "No data", value: null, geometry },
+      ],
+    });
+    expect(geo.features.map((f) => [f.id, f.properties.value])).toEqual([
+      ["083", 1.35],
+      ["999", null],
+    ]);
   });
 });

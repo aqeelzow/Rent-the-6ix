@@ -1,11 +1,11 @@
-import type { FeatureCollection, Point, Polygon } from "geojson";
+import type { FeatureCollection, MultiPolygon, Point, Polygon } from "geojson";
 import {
   distanceM,
   estimateTravelMinutes,
   targetDistanceM,
   targetModes,
 } from "@rentthe6ix/shared/engine/travel";
-import type { SearchIntent, SearchResultItem } from "@/lib/store/types";
+import type { AreaChoropleth, SearchIntent, SearchResultItem } from "@/lib/store/types";
 
 // GeoJSON for the results map (SPEC 12). Pure, so it's tested without a browser.
 
@@ -206,4 +206,31 @@ export function boundsOf(
     north = Math.max(north, lat + dLat);
   }
   return [west, south, east, north];
+}
+
+// Crime layer (opt-in, SPEC 7.6 as changed 2026-10-17): neighbourhoods shaded by police-reported
+// major crime relative to the city. A neutral sand-to-brown scale, never red/green, so it reads as
+// "lower or higher than the city", not "good or bad"; distinct from the blue score pins.
+export const CRIME_STEPS = [0.5, 1, 1.5, 2] as const;
+export const CRIME_COLORS = ["#f6efe2", "#e3cfab", "#c9a46e", "#a07240", "#6b4723"] as const;
+export const CRIME_NO_DATA = "#d4d4d4";
+
+/** Which of the five bands a relative rate falls in (0 = under 0.5×, 4 = 2× or more). */
+export function crimeBand(value: number): number {
+  return CRIME_STEPS.filter((step) => value >= step).length;
+}
+
+/** The choropleth as GeoJSON for MapLibre; `value` stays null where TPS has no rate. */
+export function choroplethToGeoJSON(
+  layer: AreaChoropleth,
+): FeatureCollection<MultiPolygon, { id: string; name: string; value: number | null }> {
+  return {
+    type: "FeatureCollection",
+    features: layer.features.map((feature) => ({
+      type: "Feature",
+      id: feature.id,
+      properties: { id: feature.id, name: feature.name, value: feature.value },
+      geometry: feature.geometry as MultiPolygon,
+    })),
+  };
 }

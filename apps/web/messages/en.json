@@ -488,7 +488,22 @@
       "unavailable": "The map couldn't load. The list has every result.",
       "placePopup": "Your place",
       "unitsHere": "{count} listings at this spot",
-      "routeEstimate": "Est. {minutes} min by {mode}, {km} km"
+      "routeEstimate": "Est. {minutes} min by {mode}, {km} km",
+      "crime": {
+        "toggle": "Crime rates",
+        "title": "Police-reported major crime, vs the city",
+        "band0": "Under 0.5× the city rate",
+        "band1": "0.5–1×",
+        "band2": "1–1.5×",
+        "band3": "1.5–2×",
+        "band4": "2× or more",
+        "noData": "No data",
+        "hint": "Hover or tap a neighbourhood for its rate.",
+        "hover": "{name}: {rate}× the city rate",
+        "hoverNoData": "{name}: no data",
+        "source": "Toronto Police Service, {years} average, by neighbourhood.",
+        "unavailable": "Crime rates couldn't be loaded. Try again later."
+      }
     },
     "mobile": {
       "showMap": "Map",
@@ -831,6 +846,14 @@
       "parks": "Parks",
       "dev_applications_12m": "Development applications",
       "residential_units_proposed_12m": "Homes proposed in rezoning applications"
+    },
+    "crime": {
+      "title": "Police-reported crime",
+      "intro": "Toronto Police publish crime rates for neighbourhoods, not wards. These neighbourhoods cover this ward. Each rate compares major crimes per resident with the whole city.",
+      "share": "{share}% of this ward",
+      "rate": "{rate}× the city rate",
+      "noData": "Not enough data",
+      "source": "Toronto Police Service, {years} average."
     }
   },
   "paste": {
