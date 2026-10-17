@@ -1,5 +1,7 @@
 import { SearchIntentSchema, type SearchIntent, type TravelTarget, type AreaFilter } from '../../../../../packages/shared/schemas/index';
 
+import { civicAreaMatches, type CivicArea } from './civic-areas';
+
 // shortcut: configured search boxes are approximate, replace with agreed D-owned geographic areas when available.
 export const configuredAreas: Record<string, AreaFilter> = {
   downtown: { kind: 'configured', id: 'search-downtown-v1', label: 'Downtown approximate configured search boundary (not an official boundary)', bounds: [-79.425, 43.635, -79.345, 43.675] },
@@ -8,13 +10,17 @@ export const configuredAreas: Record<string, AreaFilter> = {
 const amount = (n: string) => Number(n.replace(/[$,\s]/g, '').replace(/k$/i, '')) * (/k$/i.test(n) ? 1000 : 1);
 const modes = (s: string): TravelTarget['mode'][] => [...new Set([...s.toLowerCase().matchAll(/\b(transit|ttc|subway|commute|bus|car|drive|driving|walk|walking|bike|biking|cycling)\b/g)].map(m => /car|driv/.test(m[0]) ? 'drive' as const : /walk/.test(m[0]) ? 'walk' as const : /bik|cycl/.test(m[0]) ? 'bike' as const : 'transit' as const))];
 const soft = /\b(prefer|ideally|nice|would like|around|close|about)\b/i;
-export function fallbackParse(rawPrompt: string, now = new Date()): SearchIntent {
+export function fallbackParse(rawPrompt: string, now = new Date(), catalogue: CivicArea[] = []): SearchIntent {
   const intent: SearchIntent = { schemaVersion: 1, rawPrompt, areas: [], criteria: {}, travelTargets: [], safety: { enabled: false, hard: false }, sortBy: 'best_match', fieldSources: {}, droppedRequests: [] };
   const source = (field: string, phrase: string) => { intent.fieldSources[field] = { source: 'ai_prompt', phrase }; };
   const hard = (phrase: string, index = rawPrompt.indexOf(phrase)) => !soft.test(rawPrompt.slice(Math.max(rawPrompt.lastIndexOf('.', index), rawPrompt.lastIndexOf(',', index), rawPrompt.lastIndexOf(';', index)) + 1, index) + phrase);
   const put = <K extends keyof SearchIntent['criteria']>(field: K, value: NonNullable<SearchIntent['criteria'][K]>['value'], phrase: string, isHard = hard(phrase)) => { Object.assign(intent.criteria, { [field]: { value, hard: isHard } }); source(`criteria.${field}`, phrase); };
   const drop = (phrase: string, reason: string) => intent.droppedRequests.push({ phrase, reason });
   for (const [name, area] of Object.entries(configuredAreas)) { const m = rawPrompt.match(new RegExp(`\\b${name}\\b`, 'i')); if (m) { intent.areas.push(area); source('areas', m[0]); } }
+  for (const match of civicAreaMatches(rawPrompt, catalogue)) {
+    if (match.ambiguous) { if (!intent.droppedRequests.some(d => d.phrase === match.phrase)) drop(match.phrase, 'Area name is ambiguous; specify neighbourhood or ward.'); }
+    else if (!intent.areas.some(a => a.kind === match.area.kind && 'id' in a && a.id === ('id' in match.area ? match.area.id : ''))) { intent.areas.push(match.area); source('areas', match.phrase); }
+  }
   const income = rawPrompt.match(/(?:make|earn|income(?: of| is)?)\s+(?:about\s+)?(\$?[\d,]+(?:\.\d+)?k?)/i);
   if (income) { intent.household = { annualIncomeCad: amount(income[1]) }; source('household.annualIncomeCad', income[0]); }
   const people = rawPrompt.match(/\b(\d+)\s+(?:people|persons|of us)\b/i);

@@ -8,6 +8,7 @@ import { distanceM, targetModes } from '../../../../../packages/shared/engine/tr
 import { ParseService, DestinationResolver, IpLimiter } from '../parse/index';
 import { databaseIntentCache } from '../parse/db-cache';
 import { providerFromEnv } from '../ai/index';
+import { civicAreasLookup } from '../parse/civic-areas-db';
 import { addressPointsLookup } from '../parse/address-points';
 import { searchCandidates, routeCandidateContexts, SearchUnavailable, type SearchDependencies } from '../db/candidates';
 import { sqlSearchDependencies } from '../db/candidates-context';
@@ -30,7 +31,7 @@ type RuntimeOptions = { env?: Record<string, string | undefined>; parser?: Parse
 export function createRuntime(options: RuntimeOptions = {}) {
   const env = options.env ?? process.env;
   const resolver = options.resolver ?? new DestinationResolver({ maptilerKey: env.NEXT_PUBLIC_MAPTILER_KEY, addressLookup: env.SEARCH_FIXTURES !== '1' && env.DATABASE_URL ? addressPointsLookup() : undefined });
-  const parser = options.parser ?? new ParseService({ provider: providerFromEnv(env), resolver, cacheNamespace: `${env.AI_PROVIDER}:${env.GEMINI_MODEL_FAST ?? env.GEMINI_MODEL}`, intentCache: env.SEARCH_FIXTURES !== '1' && env.DATABASE_URL && env.AI_PROVIDER === 'gemini' ? databaseIntentCache() : undefined });
+  const parser = options.parser ?? new ParseService({ provider: providerFromEnv(env), resolver, civicAreas: env.SEARCH_FIXTURES !== '1' && env.DATABASE_URL ? civicAreasLookup() : undefined, cacheNamespace: `${env.AI_PROVIDER}:${env.GEMINI_MODEL_FAST ?? env.GEMINI_MODEL}`, intentCache: env.SEARCH_FIXTURES !== '1' && env.DATABASE_URL && env.AI_PROVIDER === 'gemini' ? databaseIntentCache() : undefined });
   const jobs = options.jobs ?? new SearchJobs();
   const dependencies = options.dependencies ?? (env.SEARCH_FIXTURES === '1' ? fixtureDependencies : env.DATABASE_URL ? sqlSearchDependencies() : undefined);
   // shortcut: one anonymous quota without trusted server identity, integrate A's trusted proxy adapter before production.

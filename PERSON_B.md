@@ -58,7 +58,7 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked · `[-]` 
 
 ### S1 → S2 (H3–H12) — Parsing · Core
 - [x] P1.20 `AIProvider` interface, `GeminiProvider` (structured output from zod, 1 retry, 12 s timeout, 429/503 → unavailable), `NoneProvider`
-- [~] P1.21 `/api/search/parse`: criteria with must-have/preference, travel targets with mode and minutes, safety, household, `fieldSources`, `droppedRequests`; validation and clean-up
+- [~] P1.21 `/api/search/parse`: criteria with must-have/preference, travel targets with mode and minutes, safety, household, `fieldSources`, `droppedRequests`; validation and clean-up. Authoritative civic catalogue + known-place labels now supplied; grounded exact neighbourhood/ward parsing and owner ID validation verified against live DB (Annex095, ward01). Live Gemini/deployed acceptance remains open.
 - [x] P1.22 Fallback regex parser (rent, bedrooms, bathrooms, size, unit type, AC, pets, "built after", "X min walk/drive/bike/transit to …", neighbourhood names)
 - [~] P1.23 `known_places.json` (campuses, hospitals, major stations, employment hubs) + `/api/geo/resolve` (known places → Address Points → MapTiler)
 - [~] P1.24 `ai_cache` integration implemented and live-DB verified; parser regressions pass. Production trusted per-IP identity and live Gemini quota acceptance remain open.

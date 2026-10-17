@@ -1,14 +1,15 @@
 import { type SearchIntent } from '../../../../../packages/shared/schemas/index';
+import { civicAreaMatches, type CivicArea } from './civic-areas';
 import { configuredAreas } from './fallback';
-export function cleanAIIntent(intent: SearchIntent, prompt: string): SearchIntent {
+export function cleanAIIntent(intent: SearchIntent, prompt: string, catalogue: CivicArea[] = []): SearchIntent {
   const source = (key: string) => { const evidence = intent.fieldSources[key]; return evidence?.source === 'ai_prompt' && !!evidence.phrase && prompt.toLowerCase().includes(evidence.phrase.toLowerCase()); };
   const drop = (field: string) => intent.droppedRequests.push({ phrase: field, reason: 'AI interpretation lacked explicit source evidence; review this filter.' });
   for (const field of Object.keys(intent.criteria) as (keyof SearchIntent['criteria'])[]) {
     if (!source(`criteria.${field}`)) { delete intent.criteria[field]; drop(field); }
   }
   intent.areas = intent.areas.filter(area => {
-    // Only locally configured definitions can be trusted until D supplies authoritative area IDs.
-    const allowed = Object.values(configuredAreas).some(a => JSON.stringify(a) === JSON.stringify(area));
+    const evidence = intent.fieldSources.areas?.phrase?.toLowerCase() ?? '';
+    const allowed = Object.entries(configuredAreas).some(([name, configured]) => JSON.stringify(configured) === JSON.stringify(area) && new RegExp(`\\b${name}\\b`, 'i').test(evidence)) || civicAreaMatches(prompt, catalogue).some(match => !match.ambiguous && JSON.stringify(match.area) === JSON.stringify(area) && evidence.includes(match.evidence.toLowerCase()));
     if (!source('areas') || !allowed) { drop('areas'); return false; } return true;
   });
   intent.travelTargets = intent.travelTargets.filter(t => {
