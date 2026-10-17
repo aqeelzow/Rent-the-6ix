@@ -801,6 +801,7 @@ INGEST_REQUEST_DELAY_MS=4000
 INGEST_MAX_PAGES=3                 # index pages per source per run (pnpm ingest:once --pages N overrides)
 INGEST_MAX_DETAILS=50              # listing pages per source per run, new or changed listings only (--details N)
 INGEST_MAX_AI=200                  # listings per source per run sent to AI field extraction; cache hits free (--ai N)
+AI_REQUEST_DELAY_MS=4500           # pause between AI extraction calls (free tier ≈ 15 a minute)
 ```
 
 Each developer keeps these in `.env.local` at the repo root; every env file, including `.env.example`, is git-ignored. The app must start and be usable (with fallbacks) when `AI_PROVIDER=none`, without a MapTiler key, and without OTP.
