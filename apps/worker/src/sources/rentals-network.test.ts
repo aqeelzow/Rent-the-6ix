@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { findEmbeddedResults, findResults, parseRentalListings } from "./rentals-network.ts";
+import {
+  findEmbeddedResults,
+  coverPhoto,
+  findResults,
+  parseRentalListings,
+  torontoRentals,
+} from "./rentals-network.ts";
+import { NoResultsError } from "./types.ts";
 
 // Same shape as torontorentals.com's /graphql results (checked 2026-10-16); values are made up.
 const results = {
@@ -18,6 +25,22 @@ const results = {
             address: { street: "1 Example Avenue", postalCode: "M4S 1A1" },
             building: { yearBuilt: 1964 },
             petOptions: ["all"],
+            image: {
+              scales: [
+                {
+                  name: "small",
+                  url: "https://images.rentals.ca/property-pictures/small/toronto-on/1/a.jpg",
+                },
+                {
+                  name: "medium",
+                  url: "https://images.rentals.ca/property-pictures/medium/toronto-on/1/a.jpg",
+                },
+                {
+                  name: "large",
+                  url: "https://images.rentals.ca/property-pictures/large/toronto-on/1/a.jpg",
+                },
+              ],
+            },
             contact: {
               name: "Leasing Agent",
               phoneNumber: "(416) 555-0100",
@@ -104,6 +127,24 @@ describe("rentals.ca embedded results", () => {
               rentalListingLocation: [-79.39, 43.68],
               listingType: "residential:apartment:apartment",
               address: { street: "44 Example Avenue", postalCode: "M4T 1E5" },
+              images: [
+                {
+                  scales: [
+                    {
+                      name: "small",
+                      url: "https://images.rentals.ca/property-pictures/small/toronto-on/1/r.jpg",
+                    },
+                    {
+                      name: "medium",
+                      url: "https://images.rentals.ca/property-pictures/medium/toronto-on/1/r.jpg",
+                    },
+                    {
+                      name: "large",
+                      url: "https://images.rentals.ca/property-pictures/large/toronto-on/1/r.jpg",
+                    },
+                  ],
+                },
+              ],
               contact: { name: "Leasing Office", phone: "416-555-0100" },
               petOptions: ["all"],
               floorPlans: [
@@ -128,5 +169,47 @@ describe("rentals.ca embedded results", () => {
     });
     expect(JSON.stringify(row)).not.toMatch(/555-0100|Leasing Office/);
     expect(findEmbeddedResults("<html></html>")).toBeNull();
+  });
+});
+
+describe("coverPhoto", () => {
+  it("takes the cover's medium size from either site's shape, and only https links", () => {
+    const [tr] = parseRentalListings("torontorentals", "https://www.torontorentals.com", results);
+    expect(tr.imageUrl).toBe(
+      "https://images.rentals.ca/property-pictures/medium/toronto-on/1/a.jpg",
+    );
+    const response = {
+      data: {
+        edges: [
+          {
+            node: {
+              id: "r",
+              path: "p",
+              images: [{ scales: [{ name: "small", url: "https://x/s.jpg" }] }],
+              floorPlans: [{ rent: 2000, beds: 1 }],
+            },
+          },
+        ],
+      },
+    };
+    const html = `<script>App.store.search = { response: ${JSON.stringify(response)} };</script>`;
+    expect(
+      parseRentalListings("rentals_ca", "https://rentals.ca", findEmbeddedResults(html)!)[0]
+        .imageUrl,
+    ).toBe("https://x/s.jpg");
+    expect(
+      coverPhoto({ image: { scales: [{ name: "medium", url: "javascript:alert(1)" }] } }),
+    ).toBeNull();
+    expect(coverPhoto({})).toBeNull();
+  });
+});
+
+describe("fetchIndex", () => {
+  it("throws NoResultsError when a page has no results, so the pipeline can tell the end apart", async () => {
+    const session = {
+      visit: async () => ({ status: 200, url: "", html: "<html></html>", json: [] }),
+      close: async () => {},
+    };
+    await expect(torontoRentals.fetchIndex(session, "409")).rejects.toBeInstanceOf(NoResultsError);
   });
 });

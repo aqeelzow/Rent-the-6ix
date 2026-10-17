@@ -117,7 +117,7 @@ export function parseKijiji(
       lat: coords?.latitude ?? null,
       lng: coords?.longitude ?? null,
       postedAt: entry.activationDate ?? null,
-      imageUrl: httpsUrl(entry.imageUrls?.[0]),
+      imageUrl: kijijiPhoto(httpsUrl(entry.imageUrls?.[0])),
     });
   }
 
@@ -126,6 +126,14 @@ export function parseKijiji(
     Number(m[1]),
   );
   return { listings, lastPage: pages.length ? Math.max(...pages) : null };
+}
+
+/**
+ * Kijiji serves each photo at the width its `rule` names; search pages ask for 200 px. 960 px is
+ * the same photo sharp enough for a detail page (checked 2026-10-17: 200, 640, 960, 1600 all work).
+ */
+export function kijijiPhoto(url: string | null): string | null {
+  return url?.replace(/([?&]rule=kijijica-)\d+(-jpg)/, "$1960$2") ?? null;
 }
 
 const LEASE_TERMS: Record<string, string> = {

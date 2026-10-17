@@ -158,7 +158,8 @@ export function parseRealtor(response: RealtorResponse): RawListing[] {
       lat: r.Property?.Address?.Latitude ? Number(r.Property.Address.Latitude) : null,
       lng: r.Property?.Address?.Longitude ? Number(r.Property.Address.Longitude) : null,
       postedAt: ticksToIso(r.InsertedDateUTC),
-      imageUrl: httpsUrl(cover?.MedResPath ?? cover?.HighResPath ?? cover?.LowResPath),
+      // HighResPath is the largest Realtor.ca publishes (640 px); MedResPath is 256 px.
+      imageUrl: httpsUrl(cover?.HighResPath ?? cover?.MedResPath ?? cover?.LowResPath),
     });
   }
   return listings;

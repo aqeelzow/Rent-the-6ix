@@ -6,12 +6,14 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { openSession, SourceBlockedError } from "../lib/fetch.ts";
 import { sources } from "../sources/index.ts";
-import type {
-  AdapterId,
-  DetailPatch,
-  RawListing,
-  SourceAdapter,
-  SourceId,
+import {
+  NoResultsError,
+  type AdapterId,
+  type DetailPatch,
+  type IndexPage,
+  type RawListing,
+  type SourceAdapter,
+  type SourceId,
 } from "../sources/types.ts";
 import type { Session } from "../lib/fetch.ts";
 import type { Sql } from "postgres";
@@ -149,7 +151,17 @@ export async function runIngest(options: IngestOptions): Promise<IngestResult> {
     try {
       let cursor: string | null = options.cursor ?? null;
       do {
-        const page = await fetchIndexWithRetry(adapter, session, cursor);
+        let page: IndexPage;
+        try {
+          page = await fetchIndexWithRetry(adapter, session, cursor);
+        } catch (error) {
+          // Still empty after the retries, past page 1: the site's "next page" overshot the last
+          // one (torontorentals says there's a page 409 after its last, 408). That's the end.
+          if (!(error instanceof NoResultsError) || run.pages === 0) throw error;
+          run.message = `ended after page ${run.pages}: ${error.message}`;
+          console.log(`${adapter.id}: ${run.message}`);
+          break;
+        }
         for (const raw of page.listings) {
           if (seen.has(raw.sourceListingId)) continue;
           seen.add(raw.sourceListingId);
