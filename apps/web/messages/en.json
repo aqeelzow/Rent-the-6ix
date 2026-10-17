@@ -119,8 +119,6 @@
     "searchingElapsed": "Finding listings… {seconds} s",
     "slowHint": "Searching thousands of listings can take a minute or two.",
     "showMore": "Show {count} more",
-    "droppedOne": "1 request we couldn't use",
-    "droppedMany": "{count} requests we couldn't use",
     "share": {
       "button": "Share search",
       "copied": "Link copied. Anyone with it sees this search with your filters.",

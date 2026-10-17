@@ -873,7 +873,7 @@ The first three hours are spent together on what lets four people work in parall
 
 ## 23. Demo walkthrough (the app must support this smoothly)
 
-1. Landing: type the couple prompt from section 1, plus "with AC, ideally built after 2005, 10 min walk to a supermarket". Chips appear: max $2,800 (must-have), 2 bedrooms (must-have), UofT St. George within 25 min by transit, supermarket within 10 min walk, cats (must-have), AC, built after 2005, good deal, income $95k. Point out one source phrase and the "dropped" notice if any.
+1. Landing: type the couple prompt from section 1, plus "with AC, ideally built after 2005, 10 min walk to a supermarket". Chips appear: max $2,800 (must-have), 2 bedrooms (must-have), UofT St. George within 25 min by transit, supermarket within 10 min walk, cats (must-have), AC, built after 2005, good deal, income $95k. Point out one source phrase.
 2. Flip "cats" from must-have to preference, and change the supermarket target from walk to bike; results update instantly (no new AI call).
 3. Results: list + map; hover cards, show pins; point at a "Reasonably priced · 7% below similar" badge, "14 min TTC · 6 min walk to supermarket", and a "Utilities not stated" caveat; "Also on: Kijiji".
 4. Turn on **Consider safety**: rankings shift a little; the card shows "0.7× city rate (TPS 2023–2025)"; tap to show the caveats.
@@ -1020,3 +1020,4 @@ One line per change to this spec: `YYYY-MM-DD P#.#: what changed and why`. Newes
 - 2026-10-17 P3.10 [D] (drafted by A for D's review): `GET /api/areas?kind=&indicator=` returns one indicator for every neighbourhood or ward with outlines simplified to about 10 m (147 KB for 158 neighbourhoods), cached for an hour. For `crime` the value is the relative rate, and the caveats are included; wards return 404 for crime. `lib/db/ward-crime.ts` lists the neighbourhoods covering a ward (share of the ward's area; slivers under 2% dropped), each with its TPS rate.
 - 2026-10-17 P3.23 [A]: At the user's request, there is an opt-in "Crime rates" toggle on the results map (SPEC 7.6 changed) and a "Police-reported crime" section on ward pages under "This ward at a glance" (SPEC 9.4 exception). Wording stays figures-only ("1.35× the city rate"), never safe/unsafe, and the caveats are always one tap away.
 - 2026-10-17 P3.23 [A]: At the user's request, the crime layer is coloured green (below the city rate) through yellow to red (2× or more), replacing the neutral sand-to-brown scale. The band labels and the hover readout still give the numbers, so colour is never the only cue.
+- 2026-10-17 [C] (for A's review, requested by the team): the search page no longer shows the collapsible "N requests we couldn't use" notice; `droppedRequests` is still parsed and returned, just not displayed.
