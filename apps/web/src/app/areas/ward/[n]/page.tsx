@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { connection } from "next/server";
 import { WardView } from "@/components/areas/ward-view";
+import { getClient } from "@/lib/db";
+import { loadAreaFacts } from "@/lib/db/area-facts";
 import { t } from "@/lib/format/messages";
 
 /** Toronto has 25 city wards; `/areas/ward/10` (and `/areas/ward/010` redirects there). */
@@ -27,5 +29,10 @@ export default async function WardPage({ params }: PageProps<"/areas/ward/[n]">)
   if (param !== String(n)) redirect(`/areas/ward/${n}`);
   // The election box switches to official results after election day, so render per request.
   await connection();
-  return <WardView n={n} />;
+  // D's facts give the header and the "at a glance" table.
+  const sql = getClient();
+  const facts = sql
+    ? await loadAreaFacts(sql, "ward", String(n).padStart(2, "0")).catch(() => null)
+    : null;
+  return <WardView n={n} facts={facts} />;
 }
