@@ -1,7 +1,7 @@
 // Zillow Toronto rentals. Results are embedded in __NEXT_DATA__ under
 // searchPageState.cat1.searchResults.listResults.
-// UNVERIFIED: Zillow answers automated browsers with a PerimeterX captcha (403), so this parser
-// has not been checked against a live page; the adapter stops on its first request (SOURCES.md).
+// Zillow answers plain Playwright with a PerimeterX captcha (403); CloakBrowser gets through and
+// the parser was checked against a live page on 2026-10-16 (SOURCES.md).
 import { emptyRawListing, type RawListing, type SourceAdapter } from "./types.ts";
 
 const ORIGIN = "https://www.zillow.com";

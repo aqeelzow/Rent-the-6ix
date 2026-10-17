@@ -145,8 +145,8 @@ export const torontoRentals = rentalsNetworkAdapter(
   "/toronto",
 );
 
-// Same platform; at the time of writing rentals.ca answers automated browsers with a Cloudflare
-// challenge, so this adapter stops on its first request (see SOURCES.md).
+// Same platform. CloakBrowser gets past rentals.ca's Cloudflare challenge, but no results
+// response is captured there yet, so this adapter fails on its first page (see SOURCES.md).
 export const rentalsCa = rentalsNetworkAdapter(
   "rentals_ca",
   "Rentals.ca",

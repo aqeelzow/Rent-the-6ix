@@ -1,8 +1,7 @@
 // Realtor.ca rentals in Toronto. The map page loads results from
 // api2.realtor.ca/Listing.svc/PropertySearch_Post; we capture that response while the page loads.
-// UNVERIFIED: Realtor.ca answers automated browsers with "Sorry, you have been blocked" (403), so
-// this parser has not been checked against a live response; the adapter stops on its first
-// request (SOURCES.md).
+// Realtor.ca answers plain Playwright with "Sorry, you have been blocked" (403); CloakBrowser gets
+// through and the parser was checked against a live response on 2026-10-16 (SOURCES.md).
 import { emptyRawListing, type RawListing, type SourceAdapter } from "./types.ts";
 
 const ORIGIN = "https://www.realtor.ca";

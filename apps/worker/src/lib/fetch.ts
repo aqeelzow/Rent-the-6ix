@@ -1,7 +1,8 @@
-// Shared fetch layer for every source (SPEC 8.4): one Playwright page per source, a fixed delay
-// between requests, retries on network errors and 5xx, and a hard stop when a site blocks us.
+// Shared fetch layer for every source (SPEC 8.4): one CloakBrowser (stealth Chromium driven through
+// Playwright) page per source, a fixed delay between requests, retries on network errors and 5xx, and a hard stop when a site blocks us.
 // A blocked source is never retried around: the run marks it unhealthy and moves on.
-import { chromium, type Browser, type BrowserContext, type Page } from "playwright";
+import { launch } from "cloakbrowser";
+import type { Browser, BrowserContext, Page, Response } from "playwright-core";
 
 export class SourceBlockedError extends Error {
   readonly url: string;
@@ -48,11 +49,13 @@ export interface SessionOptions {
 export async function openSession(options: SessionOptions = {}): Promise<Session> {
   const userAgent = options.userAgent ?? process.env.USER_AGENT;
   const delayMs = options.delayMs ?? Number(process.env.INGEST_REQUEST_DELAY_MS ?? 4000);
-  const browser: Browser = await chromium.launch({ headless: options.headless ?? true });
-  const context: BrowserContext = await browser.newContext({
-    ...(userAgent ? { userAgent } : {}),
+  // Locale and timezone go through CloakBrowser's binary flags, not context emulation.
+  const browser: Browser = await launch({
+    headless: options.headless ?? true,
     locale: "en-CA",
+    timezone: "America/Toronto",
   });
+  const context: BrowserContext = await browser.newContext(userAgent ? { userAgent } : {});
   // Listing photos are never stored, so don't download them either.
   await context.route("**/*", (route) =>
     ["image", "media", "font"].includes(route.request().resourceType())
@@ -68,7 +71,7 @@ export async function openSession(options: SessionOptions = {}): Promise<Session
     lastVisit = Date.now();
 
     const pending: Promise<unknown>[] = [];
-    const onResponse = (response: import("playwright").Response) => {
+    const onResponse = (response: Response) => {
       const type = response.headers()["content-type"] ?? "";
       if (opts.captureJson?.(response.url()) && type.includes("json")) {
         pending.push(response.json().catch(() => null));
