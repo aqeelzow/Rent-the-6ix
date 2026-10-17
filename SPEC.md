@@ -339,7 +339,7 @@ Numeric sorts order the full eligible pool before the ordinary 500-candidate cap
 4. **Enrich.** For each candidate: valuation and price label (cached), precomputed travel times to each amenity target, straight-line distance to each ad hoc place, building record, area ids, neighbourhood crime rate (only if safety is on).
 5. **Score, pass 1** with the engine (section 7.5), using straight-line distance for ad hoc places.
 6. **Route, pass 2.** For the top 100, get OTP times to each ad hoc place in the requested mode (parallel, 3 s budget, cached), drop any that fail a hard time limit, and score again. Results not routed in time keep their straight-line label.
-7. **Sort** by the chosen mode.
+7. **Sort** by the chosen mode. Best match uses the order in section 7.5: confirmed must-haves, then the score, then the tie-breakers.
 8. **Return** ranked results with full score breakdown, caveats and evidence. Target < 2 s (< 3.5 s when ad hoc places need routing).
 9. **Explain (on demand).** The listing detail page calls `/api/listings/[id]/explain` with only computed facts; Gemini writes 2–4 sentences (section 10.2).
 
@@ -353,7 +353,7 @@ All functions are pure and live in `packages/shared/engine`. Constants live in `
 
 ### 7.1 Hard filters
 
-Applied in SQL, mirrored in `filters.ts` for pasted listings, for every criterion marked `hard`. Rent compares against `monthlyRentCad` (for rooms, per-room rent). Bedroom filters exclude rooms unless the user asks for rooms. Building age compares `yearBuilt`; AC `'any'` accepts `central` or `yes`. A hard `priceFairness` drops listings whose label isn't allowed. Unknown values (including `priceLabel: 'unknown'` and a missing travel time) pass but get a "not confirmed" note, so sparse listings aren't silently hidden; a toggle "Hide listings that don't confirm my must-haves" removes them.
+Applied in SQL, mirrored in `filters.ts` for pasted listings, for every criterion marked `hard`. Rent compares against `monthlyRentCad` (for rooms, per-room rent). Bedroom filters exclude rooms unless the user asks for rooms. Building age compares `yearBuilt`; AC `'any'` accepts `central` or `yes`. A hard `priceFairness` drops listings whose label isn't allowed. Unknown values (including `priceLabel: 'unknown'` and a missing travel time) pass but get a "not confirmed" note, so sparse listings aren't silently hidden; a toggle "Hide listings that don't confirm my must-haves" removes them. On best match, a listing with any "not confirmed" note ranks after every listing that confirms its must-haves (section 7.5).
 
 ### 7.2 Valuation from comparables
 
@@ -413,10 +413,10 @@ Hard criteria first; then for each surviving listing five parts, each 0–100 or
 
 | Part | Default weight | How it's scored |
 | --- | --- | --- |
-| **Value** (price vs market) | 30% | `differencePct` mapped linearly: −20% → 0, 0% → 50, +20% → 100 (clamped). `null` if insufficient data. If the user asks for a good deal or a soft `priceFairness`, weight → 45%. |
+| **Value** (price vs market) | 30% | `differencePct` mapped linearly: −20% → 0, 0% → 50, +20% → 100 (clamped). A listing more than 30% below the estimate scores 50 (and keeps the `rent_far_below` caveat); the part is not dropped, so the other parts cannot scale up to fill it. `null` if insufficient data. If the user asks for a good deal or a soft `priceFairness`, weight → 45%. |
 | **Price** (price range) | 15% | Only when `rent` is a preference: inside the range → 100; above the max, falling linearly to 0 at 15% over; below a stated min → 100. `null` if rent is a must-have or not given (must-haves already excluded the rest). |
 | **Travel** | 30% | Per target: at or under the target time → 100, falling linearly to 0 at 2× the target; averaged across targets. Straight-line fallback uses the distance targets the same way. `null` if no targets. |
-| **Home** (the unit itself) | 25% | Average over the soft criteria the user gave, each scored 0–100 (below); unknown values are left out, not counted as failures. `null` if no soft unit criteria. |
+| **Home** (the unit itself) | 25% | Average over the soft criteria the user gave, each scored 0–100 (below). An unknown value scores 50 ("can't tell"): a confirmed match stays 100 and a confirmed miss stays 0, so unknown is never treated as no and is not dropped from the average. `null` if no soft unit criteria. |
 | **Safety** | 0% (15% when turned on) | Section 7.6. `null` unless the user turns safety on. |
 
 **Home sub-scores** (`home-fit.ts`):
@@ -427,10 +427,12 @@ Hard criteria first; then for each surviving listing five parts, each 0–100 or
 - Air conditioning: central → 100; other AC → 100 for `'any'`, 60 for `'central'`; none → 0.
 - Pets, furnished, parking, laundry, utilities: matches → 100; doesn't → 0.
 - Available by: on or before the date → 100; falling to 0 at 30 days late.
+- Unknown on any of these scores 50 and does not confirm a must-have.
 
 **Rules:**
 - **Renormalize:** effective weight = weight ÷ sum of weights of non-null parts. Total = Σ score × effective weight. Shown in the breakdown so the bars always add up to the total.
-- **Tie-breakers:** newer `lastSeenAt`, then lower rent.
+- **Best match order:** fewer "not confirmed" notes first (a listing that confirms every must-have ranks above one that doesn't, whatever the scores), then higher match score. The price part is unchanged: inside the budget is 100, and a lower rent is not by itself a better match.
+- **Tie-breakers:** higher valuation confidence (insufficient data counts last), then more confirmed listing fields, then newer `lastSeenAt`, then lower rent.
 - Users can change weights with five sliders (P1); the default weights are shown, not hidden.
 
 ### 7.6 Safety preference (opt-in)
@@ -985,3 +987,4 @@ One line per change to this spec: `YYYY-MM-DD P#.#: what changed and why`. Newes
   - `/areas` lists the 25 ward pages until the explorer map (P3.20) exists.
 - 2026-10-17 P3.22 [A]: `/paste` has a "Paste the text" tab (up to 10,000 characters) and a "Paste a link" tab (full http(s) links only; the server still applies the SSRF guard). It says which search the listing will be compared with (in-memory, or this browser's last search) and sends `POST /api/listings/import` with `{ text } | { url }` and the redacted intent. A bare 404/405/501 from an unbuilt route becomes `not_available`, and the page says "Checking pasted listings isn't available yet. Nothing you pasted was stored." The success shape is A's draft, to confirm with B: `{ result: SearchResult }`, shown with the price badge and score bar, with "Save to shortlist" (stored as a pasted entry in this browser). The fallback form for partial extraction waits for B's P3.2. `components/ui/tabs.tsx` now targets Radix's `data-state` / `data-orientation` (it targeted Base UI's `data-active` / `data-horizontal`, so the active tab never showed).
 - 2026-10-17 P1.33 [A]: Result cards and the detail "must-haves we couldn't confirm" list translate engine notes (`airConditioning: not confirmed`) into plain words ("Air conditioning not confirmed"). Travel notes keep the place name ("Travel to UofT St. George not confirmed"). When air conditioning is a criterion and the listing's value is unknown, the card's fact line says "AC not stated"; a listing that doesn't mention AC stays quiet unless the renter asked for it. "No" is still omitted, so it is never shown as unstated.
+- 2026-10-17 P2.23 [A] (drafted for B's review): Unknown soft home criteria score 50 ("can't tell") instead of being left out of the average, so a blank field no longer lets the other parts scale up to 100. A confirmed match stays 100 and a confirmed miss stays 0. A rent more than 30% below its estimate scores 50 on value (the `rent_far_below` caveat stays) rather than dropping the part. Best match ranks listings that confirm every must-have above ones with a "not confirmed" note. Tie-break is valuation confidence, then more confirmed fields, then newer `lastSeenAt`, then lower rent. The price part is unchanged (inside the budget is 100). Rooms still fail a hard bedroom filter unless the renter asked for rooms. B to agree; this changes SPEC 7.5.
