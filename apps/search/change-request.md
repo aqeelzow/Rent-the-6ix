@@ -1,6 +1,84 @@
 # Search integration change requests
 
+## External blocker register — 2026-10-17
+
+Authoritative review: upstream main `1853fdf` (PR15, civic loaders). This register supersedes older missing-database, missing-civic-data and missing-detail-lookup statements below. Scope: outstanding external dependencies for Person B, including P2.24/P2.25 and later B features. A dependency on a later feature is not a blocker for the current static endpoints.
+
+### Current search completion blockers
+
+| ID | Owner | Required work from the owner | Affected B work | Evidence / acceptance to unblock |
+| --- | --- | --- | --- | --- |
+| EXT-1 | **C — valuation** | Optimize the existing `listingContext` path or publish a batch context/valuation function. Preserve comparable eligibility, adjustments, confidence, building caps, caveats and unknown-data semantics; define per-listing failures/cancellation behavior. | P2.24 cold-search latency and full-pool `best_value` / hard price-fairness searches; performance aspect of scalar percentiles. Existing static filters and cached detail already work. | B already pipelines eight calls and caches public context for 60 seconds. Latest native 173-result cold search8.863s versus0.523s warm; SPEC section 19 requires search under 2 seconds. Individual read-only 32-context benchmark is not proof of full-pool performance. Unblock with the owner implementation plus representative cold/full-pool acceptance, not a reduced candidate pool or changed valuation algorithm. Source: `apps/web/src/lib/db/valuation.ts`; evidence: `validation/static-mvp-findings.md`, `validation/rent-c-context-concurrency.json`. |
+| EXT-2 | **D — safety** | Publish the authoritative neighbourhood/city-rate lookup, `safetyFor` integration and `safetyScore`, with selected offence types, population/denominator method, time window, provenance, caveats and missing-data behavior. | P2.24 live safety filtering/ranking; safety enrichment in P2.25 and subsequent explanations. | Crime loader/data and neighbourhood assignments are supplied. D's `PERSON_D.md` marks the data half of P2.13 done, but the safety function/route is unwritten; `packages/shared/engine/safety.ts` is absent. The loader publishes nine offence indicators and identifies five major types; B must not invent a city rate or aggregate. Unblock with owner exports/data that produce validated rate, relativeRate, byType, years, caveats and a score, then live integration tests. |
+
+### Dependencies for full scope, deferred or later features
+
+| ID | Owner | Required work from the owner | Affected B work | Status / acceptance to unblock |
+| --- | --- | --- | --- | --- |
+| EXT-3 | **D — travel** | Publish `routeTimes(origins, targets, mode, budgetMs)` and its cache/origin/target mapping; operate OTP and amenity precomputation for all four modes. Preserve shared deadlines, alternative-mode OR behavior, per-target identity, cancellation and honest straight-line fallback. | Full P2.24 second routing pass, confirmed hard travel filters and shortest-trip sorting; exact travel percentiles; confirmed travel in P2.25. | **Explicitly deferred by the user.** D P1.15/P2.10/P2.11 remain open. POIs/stops being loaded does not supply routed minutes. B orchestration and polling already work; missing-router jobs return `routing_incomplete` without valuation work. Unblock with published services and representative route/cache/budget coverage. This is not a blocker for rent/room/size/type/age/AC filters. |
+| EXT-4 | **D — affordability/benchmarks; C — valuation benchmark consumption** | D publishes the affordability engine and sourced utilities and transport and other applicable cost benchmarks, with sample flags and periods. D supplies StatCan/CMHC benchmark mapping; C supplies/validates valuation benchmark lookup consumption where needed. | Full P2.24/P4.2 `lowest_true_cost`; benchmark comparison in full P2.25 and grounded P3.1/P3.3 content. | D P2.15/P3.12 and C P2.3 remain open. B currently rejects unavailable true-cost sorting and preserves null benchmark values. Unblock with documented units/key mapping, owner exports and loaded reference values. Basic valuation, rent sorting and detail must continue to work without a benchmark. |
+| EXT-5 | **D — derived civic indicators** | Publish the required census/affordability, housing-stock/condition, development and rent-trend indicators or their query contracts, with source, period and missing-data semantics. | Full P3.3 ward/neighbourhood briefings and pre-generation for 25 wards; optional richer civic detail. | Boundaries, buildings and crime indicators are supplied. D P2.14/P3.10/P3.11 remain open; these loaded datasets do not prove all planned derived indicators exist. Unblock with the required source-backed facts. B can implement briefing validation/templates and consume available indicators independently. D's explorer HTTP API is not a prerequisite for B to read already-defined tables. |
+
+### External deployment and UI acceptance dependencies
+
+These require owner coordination or verification; they do not prevent implementing the B endpoint code.
+
+| ID | Owner | Required work from the owner | Affected B work | Current boundary |
+| --- | --- | --- | --- | --- |
+| EXT-6 | **A + deployment owner (D for infra)** | Confirm and configure a trusted request-identity/proxy-header contract, including how spoofed incoming identity headers are handled. | P0.7/P1.24 production per-IP quotas and AI/search abuse limits. | B's validated routes and bounded process-local limiters exist. The default identity remains `anonymous`, so unrelated clients share a quota. B owns wiring/testing the adapter once the trusted deployment contract is established. |
+| EXT-7 | **Deployment owner (A for Vercel; D for server deployment)** | Provide a deployment in which job creation and polling reach the same live process, or agree a revised job-state contract before changing the architecture. Supply the deployed URL/runtime configuration for verification. | Production acceptance of P2.24 asynchronous job polling. | Native single-process polling is verified. Jobs are intentionally temporary/in memory; a restart or another instance returns410. Multi-instance Vercel affinity is not proven. This matters when enabling asynchronous travel searches, which remain deferred; it does not block synchronous static search. |
+| EXT-8 | **Deployment/model-account owner (A/D)** | Provision/confirm usable fast-model credentials, model access and quota in the actual deployment. | Live Gemini acceptance for P1.21/P3.1/P3.4/P5.9. | Existing credentials/main-model config have been exercised; fast-model availability and successful live model latency are not established. B already supplies the provider, model-env selection, three-second fast-request deadline and labelled fallback. This is a live AI acceptance dependency, not a missing-credentials claim or a blocker for deterministic fallback; B owns provider/configuration validation. |
+| EXT-9 | **A — frontend** | Verify real API integration in the rendered/deployed list, map, filters and detail UI; mount explanation/import/briefing views as those B endpoints land, and agree/render any new building/result fields. | End-to-end search/detail acceptance; later P3.1/P3.2/P3.3 product delivery. | Existing A actions/store choice/polling/nested-ID integration already passes. B routes/tests can proceed without waiting for UI mounting. New fields need shared-contract coordination, not invented owner data. |
+
+### Work B can finish without waiting for others
+
+- Wire P2.25 neighbourhood/ward geometry, available indicators and duplicate listings from the existing D-defined tables. Those tables/data are now present; a separate D lookup endpoint is not required.
+- Prepare the building lookup/mapping from the published `buildings` columns. Adding a public building field requires agreement on the shared response shape with its consumers, but missing building data is no longer a blocker.
+- Implement P3.1 fact-grounded explanations, number/safety wording checks and template fallback from the existing computed facts; missing facts remain unavailable.
+- Implement the B-owned import/scoring path and its validation/SSRF guards, and adapt address lookup using D's now-published address normalization/data.
+- Implement the B-owned `ai_cache` adapter using the existing table contract and prompt-free hash keys; the table's existence removes the older missing-schema blocker. B still owns cache/privacy/limiter integration and deployment testing.
+
+### Resolved / not external blockers
+
+Database credentials/connectivity, B canonical source publication, C's single-listing context/valuation/caveat exports, live ID lookup, shared nullable/effective-count/source compatibility, A action/store contracts, geographic/building/POI/stop/crime data and Address Points normalization are supplied. D PR15 publishes `normalizeAddress()` and the civic loaders. Some older change requests below describe these as missing; retain them as history only.
+
+Team ownership: `TEAM.md` section2 and `apps/search/agents.md` reserve C/D algorithms/tables to their owners. B integrates their published contracts. This register records requests only; no teammate was messaged and no other owner's code, schema, data or configuration was changed.
+
+## Historical integration notes
+
+### Historical static MVP live follow-up — 2026-10-17
+
+Database configuration is now supplied and verified. B static SQL filters/percentiles and live ID detail work against the existing owner tables. This supersedes older missing-DB/detail notes below.
+
+C performance request: `listingContext` currently performs comparable/observation/building reads per listing. A cold 183-result confirmed static search took20.1 seconds in the built server; B now pipelines eight owner calls and caches validated context for60 seconds, but full fairness/best-value eligibility may scan16,892 listings and cannot rely on C's5,000-entry valuation cache. Please provide a batch context/valuation API retaining current comparable selection, caveats and confidence semantics. No owner algorithm/schema was copied or modified. B depends on that contract for consistently fast cold/full enriched searches.
+
+D static safety revalidation: current data now has15,510 active nonduplicate listings, all assigned neighbourhoods,158 neighbourhoods and1,422 crime indicators (nine types,2023–2025). The earlier missing-assignment blocker is resolved. Current upstream main147c74b still lacks authoritative city-rate, safety lookup and score adapters; publish those contracts before B enables live rate/ranking confirmation. B does not infer a city rate by averaging neighbourhood rates, and never substitutes fixture rates. Dynamic distance/routing work is explicitly deferred by the user.
+
+### Historical status — upstream 29a7393
+
+Supersedes older dependency notes: C’s comparable query/cache/listingContext and A’s actual search actions/UI/polling are now published. Current B composition consumes C unchanged and tests A actions against B runtime. CR-4’s missing implementation is resolved; live DB/performance acceptance remains open. CR-3 remains open for D routing/safety/geographic/cache/detail services and usable database configuration. Current SQL path returns unknown D values honestly; live detail remains503. Current patches target29a7393, while570300e variants are historical. One unfinished read/enrichment per process bounds background work but may reject overlapping searches; owner cancellation/server timeout support remains requested.
+
+
+### Historical audit — 2026-10-17, checkout `570300e`
+
+This audit supersedes historical “absent from adbeb25” and resume-worktree statements below. D's `db/migrations/001–003` and `apps/web/src/lib/db.ts` now exist. C's pure `valuation.ts` and `caveats.ts` exist, but C's server comparable query, D's `geo/route-times.ts` and `engine/safety.ts` do not. CR-3 and CR-4 are partially supplied, not resolved. The staged result-identity repair now satisfies A’s existing result.id selection contract and exports its expected types; A’s destination-choice/polling UI remains pending. Address Points has an authoritative table definition, but its loader/data and resolver adapter remain unverified. No live connection or credentials were inspected.
+
+C's actual valuation output exposed B schema incompatibilities: nullable benchmark, required adjustment code/count, and considered comparable count for insufficient-data results (including same-building caps). C also explicitly requests `torontorentals` source support in PERSON_C.md. Corrections and integration regressions are staged in `/tmp/rent-search-current`; `patches/search-interoperability.patch` preserves the reviewable diff. Applying the patch to the canonical app/shared files requires a session with write access to those paths. Owner algorithms, database migrations and UI are unchanged.
+
+
 Reviewed 2026-10-17 against fetched main `adbeb25`. CR-1 is resolved in the isolated integration worktree; CR-2 B publication and CR-5 B records are complete, with A/D coordination remaining. CR-3/CR-4 remain open. Historical request descriptions below record the original contracts; status notes are authoritative for current progress. No deployed behavior is claimed.
+
+### Address Points follow-up (staged consumer)
+
+B's parse adapter can read existing `address_points(id,address_full,location)` using D's existing client. It matches full addresses ignoring case/whitespace, validates all returned coordinates/labels/IDs, keeps ambiguities, and binds query input. Fixture mode bypasses DB. D's `address_norm` algorithm is not published; B does not assume one or add a migration. Request to D: publish normalization/loader coverage, provide an indexed exact-match path and a server statement timeout. Current query ignores late results without canceling the shared connection (the installed postgres documentation warns cancellation may affect another query); at most one Address Points read remains in flight per process. Request deadlines stay bounded, but database work itself may outlive a timed-out request. Live PostGIS execution/performance remains unverified.
+
+### Candidate SQL follow-up (staged B consumer)
+
+B’s candidates-sql consumer now targets D’s actual listing columns and can be injected into ordinary/percentile search with owner enrichment. D: verify SQL/PostGIS execution, indexes, loaded data and server statement timeout on representative pools; query keeps the full cheap-eligible pool until application ordering/selection, so data-volume latency remains unproven. Near-area gates intentionally use exact existing pure distance after conservative SQL selection. C/D enrichment and ID-based live detail remain open. A: render absent neighbourhood/ward IDs as unknown; B preserves D’s nulls rather than fabricating geography, and suppresses safety without a neighbourhood ID. No A-owned file, D migration or C/D engine is changed.
+
+### Live provider acceptance follow-up
+
+Gemini/MapTiler keys and main model are configured; no DATABASE_URL or fast-model setting is configured. Live calls authenticate, but four of six Gemini requests exhausted12s and successful calls took7–11s. A/deployment owner: supply and validate an appropriate fast-model configuration without hardcoded model names or relaxed bounds. Existing code falls back honestly and preserves recognized explicit time requirements. D/provider data owner: supply a verified matching TD Bay/Queen address/POI; current MapTiler returns partial unrelated landforms and B correctly rejects them. These are unresolved live acceptance gates, not a request to invent a location or present fallback as Gemini success.
 
 ## CR-1 — Scaffold and canonical implementation access
 
@@ -64,3 +142,7 @@ Reviewed 2026-10-17 against fetched main `adbeb25`. CR-1 is resolved in the isol
 
 
 2026-10-16 — B-owned draft intent extensions for publication: SearchUnitTypeSchema accepts virtual `studio` while Listing UnitType remains unchanged; filters match studio to bedrooms 0 in a known whole-unit type and OR it with room, preserving unknown hard values. AreaFilter accepts `{kind:"configured",id,label,bounds:[west,south,east,north]}` for explicitly approximate configured search boundaries (Downtown/Scarborough); no D area IDs or civic geometry are invented. Owner: B schema publication with A UI/D geographic integration. Current root intent cannot represent room OR studio or configured rectangles. Reason: preserve root demo and local Downtown request. Compatibility: additive search payload variants only; no migration/data changes. Dependent engine/API work must handle these variants, and owner area lookup can replace boxes when authoritative definitions arrive. Root publication completed in the integration branch; A/D consumption remains pending.
+
+## Static MVP update — 2026-10-17
+
+Database configuration is now supplied and parent verified real listings are loaded. B's ID-based live detail lookup is implemented; details no longer require civic adapters to return listing/valuation/score. D-owned civic areas/indicators and live duplicate adapters remain unavailable and return empty arrays. Overlapping candidate/context operations are bounded at eight rather than one; D statement timeout/cancellation remains requested for production. Parent is assessing live SQL/enrichment latency before declaring acceptance.

@@ -277,6 +277,8 @@ export interface ExtractStats {
   stopped?: string;
 }
 
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
 export function aiText(title: string, description: string | null | undefined): string {
   return `${title}\n${description ?? ""}`.trim().slice(0, MAX_TEXT);
 }
@@ -288,9 +290,20 @@ export function aiText(title: string, description: string | null | undefined): s
 export async function extractFields<T extends ExtractTarget>(
   targets: T[],
   textOf: (i: number) => string,
-  options: { extractor: Extractor; cache: AiCache; max: number; today: string },
+  options: {
+    extractor: Extractor;
+    cache: AiCache;
+    max: number;
+    today: string;
+    /** Pause between calls (AI_REQUEST_DELAY_MS); the free tier allows about 15 a minute. */
+    delayMs?: number;
+    /** After a rate limit, wait this long and try the batch once more before stopping. */
+    busyWaitMs?: number;
+  },
 ): Promise<{ targets: T[]; stats: ExtractStats }> {
   const { extractor, cache, max, today } = options;
+  const delayMs = options.delayMs ?? Number(process.env.AI_REQUEST_DELAY_MS ?? 4500);
+  const busyWaitMs = options.busyWaitMs ?? 65_000;
   const out = [...targets];
   const stats: ExtractStats = { candidates: 0, sent: 0, filled: 0, fields: {} };
   const pending: { i: number; hash: string; text: string }[] = [];
@@ -304,8 +317,10 @@ export async function extractFields<T extends ExtractTarget>(
       continue;
     }
   }
+  let retried = false;
   for (let b = 0; b < pending.length; b += BATCH) {
     const batch = pending.slice(b, b + BATCH);
+    if (b > 0) await sleep(delayMs);
     try {
       const answers = await extractor(
         batch.map((p, n) => ({ id: String(n), text: p.text })),
@@ -313,7 +328,15 @@ export async function extractFields<T extends ExtractTarget>(
       );
       batch.forEach((p, n) => (cache[p.hash] = answers[String(n)] ?? {}));
       stats.sent += batch.length;
+      retried = false;
     } catch (error) {
+      // One wait-and-retry per rate limit (a per-minute cap clears); a second in a row stops.
+      if (error instanceof AiBusyError && !retried) {
+        retried = true;
+        await sleep(busyWaitMs);
+        b -= BATCH;
+        continue;
+      }
       stats.stopped = error instanceof Error ? error.message : String(error);
       break;
     }

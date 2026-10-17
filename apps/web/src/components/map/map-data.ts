@@ -16,6 +16,20 @@ export const BAND_COLORS: Record<ScoreBand, string> = {
 };
 export const PLACE_COLOR = "#795bbf";
 
+/**
+ * The City of Toronto with a ~10 km margin, [west, south, east, north]. The map fits to listings
+ * inside it, so one badly geocoded listing can't zoom the map out to another province or state.
+ */
+export const TORONTO_REGION: [number, number, number, number] = [-79.76, 43.49, -78.99, 43.95];
+/** How far the map may be panned: the Greater Toronto Area and a bit more. */
+export const MAP_MAX_BOUNDS: [number, number, number, number] = [-80.6, 43.1, -78.3, 44.4];
+
+const inRegion = ({ lng, lat }: { lng: number; lat: number }) =>
+  lng >= TORONTO_REGION[0] &&
+  lng <= TORONTO_REGION[2] &&
+  lat >= TORONTO_REGION[1] &&
+  lat <= TORONTO_REGION[3];
+
 /** Approximate locations are circles, not pins (SPEC 12: 150–300 m). */
 export const APPROX_RADIUS_M = { street: 150, area: 300 } as const;
 
@@ -102,12 +116,14 @@ export function boundsOf(
   places: { lng: number; lat: number }[],
 ): [number, number, number, number] | null {
   const boxes = [
-    ...results.map(({ listing }) => {
-      const radiusM =
-        listing.locationPrecision === "exact" ? 0 : APPROX_RADIUS_M[listing.locationPrecision];
-      return { ...listing.location, radiusM };
-    }),
-    ...places.map((place) => ({ ...place, radiusM: 0 })),
+    ...results
+      .filter(({ listing }) => inRegion(listing.location))
+      .map(({ listing }) => {
+        const radiusM =
+          listing.locationPrecision === "exact" ? 0 : APPROX_RADIUS_M[listing.locationPrecision];
+        return { ...listing.location, radiusM };
+      }),
+    ...places.filter(inRegion).map((place) => ({ ...place, radiusM: 0 })),
   ];
   if (!boxes.length) return null;
   let [west, south, east, north] = [Infinity, Infinity, -Infinity, -Infinity];

@@ -6,15 +6,18 @@ Task ids match `PROGRESS.md`; task details are in `SPEC.md`.
 
 ## Current state
 
-- **Current task:** canonical search integration after fixture-backed implementation
-- **Status:** blocked   <!-- local implementation verified; canonical scaffold and owner services unavailable -->
-- **Next action:** mount the B-owned sources in A's scaffold, connect the authoritative C/D adapters, then run canonical build/lint and live acceptance. See apps/search/DOCS.md and change-request.md.
-- **Blockers / needs from others:** A scaffold/package scripts and supported Node/pnpm pairing; C valuation/caveats; D migrations/client/geography/ai_cache/safety/router/detail definitions; trusted proxy identity adapter. No owner implementations have been substituted.
-- **Last updated:** 2026-10-16
+- **Current task:** static-search MVP against the supplied PostgreSQL database.
+- **Status:** endpoint feature changes verified (283 tests, lint/typecheck/build and live native smoke); remaining owner integration tracked on `b/search-static-mvp` in `/tmp/rent-search-mvp`, reviewed against upstream `1853fdf`.
+- **Verified:** 20,956 live listings / 16,892 active nonduplicates at inspection; native SQL-backed cheapest/known filters, scalar percentiles, fairness, detail and overlap acceptance.
+- **Remaining:** cold/full enriched performance (latest ordinary8.863s) needs C optimization/bulk context; live static safety needs D city-rate/lookup/score exports. Owner changes remain outside B scope under TEAM.md. Dynamic routing/distance computations are deferred by the user.
+- **Last updated:** 2026-10-17
+
 
 ## Handoff notes
 
-- Search-plan features were implemented sequentially by one subagent per feature, using an eight-listing sample (50 shared synthetic listings also provided). All 44 tests and strict TypeScript over 31 files pass in the temporary validation harness. Native API handlers, scalar/exact travel selection, bounded jobs, privacy/error contracts and synthetic timings are documented in `apps/search/DOCS.md`. Live Gemini/MapTiler/DB/OTP credentials are absent. Canonical Next build/lint and live acceptance remain unverified; overall search integration is not complete.
+Read-only upstream audit found main advanced from570300e to29a7393. Current code has A’s actual actions/store/UI and C’s comparable query/cache/effectiveCount/scam/caveat contracts. Reconciliation preserves all owner code and removes B’s obsolete duplicate top-level result.id shim: A consumes listing.id directly. Actual A actions/store integration tests cover destination choices, selection/detail and polling through B runtime. Reconciled frozen install,245 tests(shared48/web129/worker68), workspace typecheck/lint, production build and native fixture HTTP smoke pass. The original checkout remains unchanged outside apps/search; current source changes are reviewable patches, not pushed/merged.
+
+Live provider evidence remains limited: configured main model parses took7–11s and four of six requests exhausted12s. Source-key, hard-time and partial-geocoder defects were repaired and regression-tested. A temporary FAST diagnostic advertised by authenticated metadata returned generation404 on its first request; five further calls were skipped. No model/source/owner configuration was changed by that diagnostic. TD branch remains unavailable rather than a guessed point; DB/OTP/deployed acceptance are unverified. Eight synthetic listings remain intermediate test data; all50 shared fixtures are preserved.
 
 > Where an unfinished task stopped, gotchas, things to verify. Replace each session.
 
@@ -30,11 +33,17 @@ Task ids match `PROGRESS.md`; task details are in `SPEC.md`.
 
 ## Requests to others
 
-- **To A:** supply the planned Next/pnpm scaffold and consume current destination-choice/polling/context-detail contracts in apps/search/DOCS.md. No A-owned root manifest/config/UI is modified by search publication.
+Current external blocker register: [apps/search/change-request.md](apps/search/change-request.md#external-blocker-register--2026-10-17), reviewed against upstream main1853fdf (civic PR15). Older handoff sections above describe earlier checkpoints.
 
-- **To A:** mount the explanation slot on the detail page (P2.36) and the briefing on the ward page (P3.21); the chips need `fieldSources` and `droppedRequests`, already in the fixtures.
-- **To C:** confirm TEAM's pure `valuate(listing, comparables, benchmarks)` / `priceLabel(differencePct, confidence)` exports and the separate cached server lookup. See apps/search/change-request.md CR-4; fixture contexts are used meanwhile.
-- **To D:** publish `routeTimes(origins, targets, mode, budgetMs)` concrete types, authoritative SQL/client/Address Points/ai_cache/detail definitions and the safety lookup separately from TEAM's pure `safetyFor(rates, cityRates)` / `safetyScore(relativeRate)`. See apps/search/change-request.md CR-3; no owner tables or functions were redefined.
+- **C / EXT-1:** optimize `listingContext` or provide batch valuation/context without changing comparable, confidence or caveat semantics. B eight-call pipeline/cache is implemented; cold/full-pool latency still needs owner work and representative acceptance.
+- **D / EXT-2:** publish authoritative city-rate/safety lookup and score functions. Crime data is loaded; safety computation contracts remain absent.
+- **D / EXT-3 (deferred by user):** OTP, routed-time precompute, `routeTimes` and cache/mapping contracts for full travel filters/sorts/detail.
+- **D + C / EXT-4:** affordability and sourced benchmarks/mapping for true-cost sorting and benchmark display; C consumes valuation benchmark data.
+- **D / EXT-5:** source-backed derived civic indicators/rent trends for full ward briefings. B can consume existing civic/building/duplicate tables now.
+- **A + deployment owner / EXT-6–8:** trusted request identity, a verified process-affinity deployment for in-memory jobs, and usable fast-model access/quota/configuration. These gate production acceptance, not B endpoint implementation or fallback.
+- **A / EXT-9:** rendered/deployed API acceptance and UI mounting/response-contract agreement for subsequent explanation/import/briefing/building features. Existing actions/store integration is verified.
+
+P2.25 static civic/building/duplicate integration, P3.1 explanations, B cache adapter and import/scoring implementation can proceed in B's scope; do not classify them as waiting on missing tables/services.
 
 ---
 
@@ -102,3 +111,7 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked · `[-]` 
 
 - **Env vars you need:** `AI_PROVIDER`, `GEMINI_API_KEY`, `GEMINI_MODEL`, `GEMINI_MODEL_FAST`, `DATABASE_URL`, `NEXT_PUBLIC_MAPTILER_KEY` (for geocoding fallback).
 - Don't paste the Gemini key in chat or commits; set it in `.env.local` and on the Vultr instance only.
+
+## Final C/SQL handoff
+
+C listingContext is composed with B SQL candidate loading in default DATABASE_URL mode, while explicit fixture mode wins. No D times/rates are fabricated; live detail remains503. One unfinished C enrichment blocks overlapping enrichment until actual owner queries settle. Final250 tests(shared48/web134/worker68), workspace typecheck/lint/build, fixture native HTTP and invalid-DB resilience checks pass. All servers stopped. Actual DB/PostGIS/deployed acceptance unverified. No push/merge/deploy; durable patches target29a7393. User requested finish current work and stop before another feature.

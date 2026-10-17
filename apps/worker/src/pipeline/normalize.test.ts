@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { emptyRawListing, type RawListing } from "../sources/types.ts";
-import { isBasementUnit, normalize, postalCode, unitTypeFrom } from "./normalize.ts";
+import { isBasementUnit, isRoomUnit, normalize, postalCode, unitTypeFrom } from "./normalize.ts";
 
 const NOW = new Date("2026-10-16T12:00:00Z");
 
@@ -317,5 +317,51 @@ describe("isBasementUnit", () => {
     const l = norm({ title: "BSMT - 24 FINTONA AVENUE, Toronto", unitType: "House" });
     expect(l.unitType).toBe("basement");
     expect(l.fieldEvidence.unitType).toBe("parsed_from_text");
+  });
+});
+
+describe("isRoomUnit", () => {
+  it("reads room labels and descriptions that rent one bedroom", () => {
+    for (const title of [
+      "1ST BEDROOM - 48 PARKINGTON CRESCENT E, Toronto (Woburn)",
+      "ROOM2 - 10 SPRUCE PINES CRESCENT, Toronto (Victoria Village)",
+      "LOWER ROOM1 - 38 MARCELLINE CRESCENT, Toronto",
+      "2815 (2ND BEDROOM) - 470 FRONT STREET W, Toronto",
+      "BSMT BDRM C - 2 KELLYVALE ROAD, Toronto",
+      "MASTER ROOM - 70 WILLIAM DUNCAN ROAD, Toronto",
+    ]) {
+      expect(isRoomUnit(title), title).toBe(true);
+    }
+    expect(
+      isRoomUnit("2 bed 1 bath Apartment", null, "Private Bedroom for Rent – $1,100/Month"),
+    ).toBe(true);
+    expect(
+      isRoomUnit("1 BR", null, "Basement room with private bath. You will share the kitchen."),
+    ).toBe(true);
+    expect(
+      isRoomUnit("House", null, "3 Bedrooms are available right away in 4 Bedrooms detached house"),
+    ).toBe(true);
+  });
+
+  it("leaves whole units alone", () => {
+    for (const title of [
+      "2 bdrm - Fifty on the Park",
+      "One Bedroom - One Bathroom Condo for Rent",
+      "Two Bedroom Apartment for Rent - 3 Du Maurier Boulevard",
+      "3507 - 89 CHURCH STREET, Toronto",
+    ]) {
+      expect(isRoomUnit(title), title).toBe(false);
+    }
+    expect(isRoomUnit("4 bed house", null, "Each bedroom has its own ensuite.")).toBe(false);
+    expect(isRoomUnit("2 bed condo", null, "The two bedrooms share the bathroom.")).toBe(false);
+  });
+
+  it("makes the listing a room, priced per room", () => {
+    const l = norm({
+      title: "ROOM 5 - 9 SPRUCE PINES CRESCENT, Toronto",
+      unitType: "House",
+      bedrooms: 1,
+    });
+    expect(l).toMatchObject({ unitType: "room", rentIsPerRoom: true });
   });
 });

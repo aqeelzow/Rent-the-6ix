@@ -102,11 +102,12 @@ export function normalize(raw: RawListing, now = new Date()): NormalizedListing 
   // A title that says "room for rent" wins: Kijiji files rooms under the house's own type.
   // Likewise "BSMT - 24 Fintona Ave": Realtor.ca files a basement unit as the whole house.
   const structuredType = unitTypeFrom(raw.unitType);
-  const unitType = isRoomListing(raw.title)
-    ? ((evidence.unitType = "parsed_from_text"), "room" as const)
-    : structuredType !== "condo" && isBasementUnit(raw.title, raw.address)
-      ? ((evidence.unitType = "parsed_from_text"), "basement" as const)
-      : pick("unitType", structuredType, () => unitTypeFrom(raw.title.toLowerCase()));
+  const unitType =
+    isRoomListing(raw.title) || isRoomUnit(raw.title, raw.address, raw.description)
+      ? ((evidence.unitType = "parsed_from_text"), "room" as const)
+      : structuredType !== "condo" && isBasementUnit(raw.title, raw.address)
+        ? ((evidence.unitType = "parsed_from_text"), "basement" as const)
+        : pick("unitType", structuredType, () => unitTypeFrom(raw.title.toLowerCase()));
   if (unitType !== "room" && !raw.rentIsPerRoom && rent < MIN_WHOLE_UNIT_RENT) return null;
   const yearBuilt = pick("yearBuilt", validYear(raw.yearBuilt, now), () =>
     yearBuiltFromText(text, listingYear, now),
@@ -211,6 +212,32 @@ export function isRoomListing(title: string): boolean {
 }
 
 /** Source wording or a title → UnitType. Order matters: "basement apartment" is a basement. */
+// A room by its unit label: "1ST BEDROOM - 48 Parkington", "ROOM2 - 10 Spruce Pines", "LOWER ROOM1 -",
+// "2815 (2ND BEDROOM) - 470 Front St", "BSMT BDRM C -". Not "2 bdrm - Fifty on the Park" or
+// "One Bedroom - One Bathroom Condo" (a count describes the whole unit).
+const ROOM_LABEL =
+  /(?<!\d\s?)(?<!\b(?:one|two|three|four)\s)\b(?:room|rm|bdrm)\s*#?\s*[a-z0-9]{0,2}\s*(?:-|\))|\(\s*(?:\d(?:st|nd|rd|th)|first|second|third)\s*bed(?:room)?\s*\)|\b(?:\d(?:st|nd|rd|th)|first|second|third)\s+bedroom\b[^,-]{0,20}\s-\s/i;
+// The text says only a room is rented: shared kitchen, priced per room, one room available.
+// Not "each bedroom has an ensuite" or "share the bathroom" (both common for whole condos).
+const ROOM_TEXT =
+  /\b(?:shared?|sharing)\s+(?:the\s+)?kitchen\b|\bshare\s+(?:the\s+)?kitchen\b|\bper\s+(?:room|bedroom|person)\b|\b(?:one|a|1)\s+(?:private\s+)?room\s+(?:is\s+)?available\b|\bprivate\s+(?:bed)?room\s+for\s+rent\b|\bbedrooms?\s+(?:are\s+)?available\s+(?:right away\s+)?in\s+(?:a|an|the|\d)/i;
+
+/**
+ * A room filed as a whole unit, priced per room: Realtor.ca's "ROOM2 - …" listings and Kijiji
+ * apartments whose description rents one bedroom. Compared with whole units, these looked 50–70%
+ * below the estimate.
+ */
+export function isRoomUnit(
+  title: string,
+  address: string | null = null,
+  description: string | null = null,
+): boolean {
+  return (
+    ROOM_LABEL.test(`${title}\n${address ?? ""}`) ||
+    ROOM_TEXT.test(`${title}\n${description ?? ""}`)
+  );
+}
+
 /**
  * The unit is a basement: "BSMT - 24 Fintona Ave", "LOWER - 40 Rippleton Rd", "90 Billington
  * (LOWER) Cres", "basement apartment for rent". Not "Main + Basement" (the whole house) or a house

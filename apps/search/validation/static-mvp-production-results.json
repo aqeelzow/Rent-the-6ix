@@ -1,0 +1,155 @@
+{
+  "parser": "fallback",
+  "eligible": 173,
+  "returned": 173,
+  "percentile": 10,
+  "liveDetail": true,
+  "overlappingSearches": true,
+  "staticSizeAgeTypeAc": true,
+  "compoundPromptParsing": true,
+  "hardFairness": true,
+  "asyncJobs": true,
+  "broadMissingRouter": true,
+  "measurements": [
+    {
+      "path": "/api/search/parse",
+      "ms": 407,
+      "status": 200
+    },
+    {
+      "path": "/api/search/parse",
+      "ms": 132,
+      "status": 200
+    },
+    {
+      "path": "/api/search/parse",
+      "ms": 111,
+      "status": 200
+    },
+    {
+      "path": "/api/search/parse",
+      "ms": 99,
+      "status": 200
+    },
+    {
+      "path": "/api/search/parse",
+      "ms": 120,
+      "status": 200
+    },
+    {
+      "path": "/api/search/parse",
+      "ms": 102,
+      "status": 200
+    },
+    {
+      "path": "/api/search/parse",
+      "ms": 97,
+      "status": 200
+    },
+    {
+      "path": "/api/listings/search",
+      "ms": 8863,
+      "status": 200
+    },
+    {
+      "path": "/api/listings/search",
+      "ms": 523,
+      "status": 200
+    },
+    {
+      "path": "/api/listings/search",
+      "ms": 124,
+      "status": 200
+    },
+    {
+      "path": "/api/listings/:id",
+      "ms": 51,
+      "status": 200
+    },
+    {
+      "path": "/api/listings/:id",
+      "ms": 43,
+      "status": 404
+    },
+    {
+      "path": "/api/listings/search",
+      "ms": 5,
+      "status": 422
+    },
+    {
+      "path": "/api/listings/search",
+      "ms": 48,
+      "status": 200
+    },
+    {
+      "path": "/api/listings/search",
+      "ms": 50,
+      "status": 200
+    },
+    {
+      "path": "/api/listings/search",
+      "ms": 132,
+      "status": 200
+    },
+    {
+      "path": "/api/listings/search",
+      "ms": 49,
+      "status": 200
+    },
+    {
+      "path": "/api/listings/search",
+      "ms": 6,
+      "status": 200
+    },
+    {
+      "path": "/api/listings/search/jobs/:token",
+      "ms": 7,
+      "status": 200
+    },
+    {
+      "path": "/api/listings/search/jobs/:token",
+      "ms": 6,
+      "status": 200
+    },
+    {
+      "path": "/api/listings/search/jobs/:token",
+      "ms": 4,
+      "status": 410
+    },
+    {
+      "path": "/api/listings/search",
+      "ms": 7,
+      "status": 200
+    },
+    {
+      "path": "/api/listings/search/jobs/:token",
+      "ms": 4,
+      "status": 200
+    },
+    {
+      "path": "/api/listings/search/jobs/:token",
+      "ms": 66,
+      "status": 200
+    },
+    {
+      "path": "/api/listings/search/jobs/:token",
+      "ms": 50,
+      "status": 200
+    },
+    {
+      "path": "/api/listings/search/jobs/:token",
+      "ms": 100,
+      "status": 200
+    },
+    {
+      "path": "/api/listings/search/jobs/:token",
+      "ms": 942,
+      "status": 200
+    },
+    {
+      "path": "/api/listings/search/jobs/:token",
+      "ms": 3,
+      "status": 410
+    }
+  ]
+}

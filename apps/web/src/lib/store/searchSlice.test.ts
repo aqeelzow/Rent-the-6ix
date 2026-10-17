@@ -67,8 +67,10 @@ describe("search requests", () => {
     const id = store.getState().startSearch();
     expect(store.getState().status).toBe("searching");
 
+    expect(store.getState().busySince).toEqual(expect.any(Number));
     store.getState().receiveResults(id, completed(a, b));
     expect(store.getState().status).toBe("ready");
+    expect(store.getState().busySince).toBeNull();
     expect(ids()).toEqual([a, b]);
     expect(store.getState().eligibleCount).toBe(50);
   });

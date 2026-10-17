@@ -1,8 +1,9 @@
-import { test } from 'node:test';
+import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { baseIntent, sampleListings, valuations, travelIntent, safetySearchFixture } from '../../../../../packages/shared/fixtures/index';
 import { selectPercentile } from '../../../../../packages/shared/engine/score';
-import { SearchResponseSchema, type Listing, type NumericExtreme, type SearchIntent, type TravelTarget, type TravelTimeRow } from '../../../../../packages/shared/schemas/index';
+import { filterListing } from '../../../../../packages/shared/engine/filters';
+import { SearchResponseSchema, type Listing, type NumericExtreme, type SearchIntent } from '../../../../../packages/shared/schemas/index';
 import { searchPercentileCandidates } from './candidates-percentiles';
 import type { SearchDependencies } from './candidates';
 const selector: NumericExtreme = { field: 'rent', direction: 'min', percentage: 5, minimumCount: 10 };
@@ -35,11 +36,27 @@ test('scalar full eligible pool before cap and full hard enriched filters before
   assert.equal(all.results.length, 520); assert.equal(all.results[0].listing.id, pool[519].id);
   const safety = safetySearchFixture.status === 'completed' ? safetySearchFixture.results[0].safety! : null!;
   const gated = await execute({ ...scalar, criteria: { priceFairness: { value: ['underpriced'], hard: true } }, safety: { enabled: true, hard: true }, travelTargets: travelIntent.travelTargets }, {
-    listings: sampleListings, enrich: async (listing) => ({ valuation: { ...(listing.id === sampleListings[0].id ? valuations[2] : valuations[0]), estimatedRentCad: listing.monthlyRentCad / (listing.id === sampleListings[0].id ? 1.15 : .85), differenceCad: listing.monthlyRentCad / (listing.id === sampleListings[0].id ? 1.15 : .85) - listing.monthlyRentCad }, safety: { ...safety, areaId: listing.neighbourhoodId ?? safety.areaId, relativeRate: listing.id === sampleListings[1].id ? 2 : .5 }, travel: (await router([listing], travelIntent.travelTargets, 'walk', 100, new AbortController().signal)).map(row => ({ ...row, minutes: listing.id === sampleListings[2].id ? 30 : 5 })) }),
+    listings: sampleListings, enrich: async (listing) => ({ valuation: { ...(listing.id === sampleListings[0].id ? valuations[2] : valuations[0]), estimatedRentCad: listing.monthlyRentCad / (listing.id === sampleListings[0].id ? 1.15 : .85), differenceCad: listing.monthlyRentCad / (listing.id === sampleListings[0].id ? 1.15 : .85) - listing.monthlyRentCad }, safety: { ...safety, areaId: listing.neighbourhoodId!, relativeRate: listing.id === sampleListings[1].id ? 2 : .5 }, travel: (await router([listing], travelIntent.travelTargets, 'walk', 100, new AbortController().signal)).map(row => ({ ...row, minutes: listing.id === sampleListings[2].id ? 30 : 5 })) }),
   }, true);
   assert.equal(gated.status, 'completed'); if (gated.status !== 'completed') return;
   assert.equal(gated.eligibleCount, 5); assert.equal(gated.results.length, 5);
   SearchResponseSchema.parse(gated);
+});
+test('scalar selection enriches only selected rows while preserving full counts, unknowns and numeric order', async () => {
+  const pool: Listing[] = Array.from({ length: 520 }, (_, i) => ({ ...sampleListings[1], id: `00000000-0000-4000-8000-${String(i + 1).padStart(12, '0')}`, monthlyRentCad: 1500 + Math.floor(i / 3), bedrooms: i % 13 === 0 ? null : 1, sqft: i % 7 === 0 ? null : 500 + i, yearBuilt: i % 11 === 0 ? null : 1960 + i % 60 }));
+  for (const field of ['rent', 'bedrooms', 'bathrooms', 'sizeSqft', 'buildingAge'] as const) for (const hide of [false, true]) {
+    const intent: SearchIntent = { ...scalar, numericExtreme: { ...selector, field, direction: 'max' }, criteria: { bedrooms: { value: { min: 1 }, hard: true }, priceFairness: { value: ['underpriced'], hard: false } }, safety: { enabled: true, hard: false } };
+    const eligible = pool.filter(listing => filterListing(listing, intent, {}, hide, true).passes);
+    const expected = selectPercentile(eligible, intent.numericExtreme!, 2026).map(listing => listing.id);
+    const enriched: string[] = [];
+    const response = await execute(intent, { listings: pool, enrich: async (...args) => { enriched.push(args[0].id); return enrich(...args); } }, hide);
+    assert.equal(response.status, 'completed'); if (response.status !== 'completed') continue;
+    assert.equal(response.eligibleCount, eligible.length);
+    assert.deepEqual(response.results.map(result => result.listing.id), expected);
+    assert.deepEqual(enriched, expected);
+    assert.ok(enriched.length < eligible.length);
+    assert.ok(response.results.every(result => result.valuation.status === valuations[3].status && result.matchScore.parts.length === 5));
+  }
 });
 test('scalar hard unknowns remain noted unless hidden', async () => {
   const intent = { ...scalar, criteria: { bedrooms: { value: { min: 0 }, hard: true } } };
@@ -77,14 +94,23 @@ test('travel full pool exceeds500 and100; no incomplete partial exact selection'
 test('shared deadline and caller abort bound enrichment and uncooperative routing', async () => {
   const budgets: number[] = [];
   const signals: AbortSignal[] = [];
-  const deps = { listings: sampleListings, enrich, routeTimes: async (_l: Listing[], _t: TravelTarget[], _m: TravelTimeRow['mode'], budget: number, signal: AbortSignal) => { budgets.push(budget); signals.push(signal); return new Promise<never>(() => {}); } };
+  const deps: SearchDependencies = { listings: sampleListings, enrich, routeTimes: async (_l, _t, _m, budget, signal) => { budgets.push(budget); signals.push(signal); return new Promise<never>(() => {}); } };
   const result = await searchPercentileCandidates({ intent: exact, hideUnconfirmed: false }, deps, { referenceYear: 2026, deadline: Date.now() + 25 });
   assert.equal(result.status, 'unavailable'); assert.ok(budgets.every(budget => budget <= 25)); assert.ok(signals.every(signal => signal.aborted));
   const controller = new AbortController();
-  const pending = searchPercentileCandidates({ intent: exact, hideUnconfirmed: false }, { listings: sampleListings, enrich: () => new Promise<never>(() => {}) }, { referenceYear: 2026, signal: controller.signal });
+  const pending = searchPercentileCandidates({ intent: exact, hideUnconfirmed: false }, { listings: sampleListings, enrich: () => new Promise<never>(() => {}), routeTimes: router }, { referenceYear: 2026, signal: controller.signal });
   controller.abort(); assert.equal((await pending).status, 'unavailable');
   const expired = await searchPercentileCandidates({ intent: exact, hideUnconfirmed: false }, deps, { referenceYear: 2026, deadline: Date.now() - 1 });
   assert.equal(expired.status, 'unavailable');
+});
+test('exact travel without a router skips owner reads and retains empty-pool completion', async () => {
+  let calls = 0;
+  const dependencies = { listings: sampleListings, enrich: async (...args: Parameters<SearchDependencies['enrich']>) => { calls++; return enrich(...args); } };
+  const result = await execute(exact, dependencies);
+  assert.equal(result.status, 'unavailable'); if (result.status === 'unavailable') assert.equal(result.reason, 'routing_incomplete');
+  assert.equal(calls, 0);
+  const empty = await execute(exact, { ...dependencies, listings: [] });
+  assert.equal(empty.status, 'completed'); if (empty.status === 'completed') { assert.equal(empty.eligibleCount, 0); assert.deepEqual(empty.results, []); }
 });
 
 test('scalar hard-place hide confirms through full-pool routing before percentile selection', async () => {

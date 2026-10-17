@@ -8,6 +8,7 @@ import { VALUATION } from "../../../../../packages/shared/engine/config";
 import { caveats, type Caveat } from "../../../../../packages/shared/engine/caveats";
 import type { Listing } from "../../../../../packages/shared/schemas/index";
 import {
+  sameEraShare,
   valuate,
   type Benchmark,
   type ComparableCandidate,
@@ -128,6 +129,8 @@ export async function selectComparables(
 }
 
 const cache = new Map<string, { at: number; value: Valuation }>();
+/** listingContext's same-era share per cache key, kept with the cached valuation. */
+const eraShares = new Map<string, number | null>();
 
 function cached(key: string, now: Date): Valuation | undefined {
   const hit = cache.get(key);
@@ -135,7 +138,11 @@ function cached(key: string, now: Date): Valuation | undefined {
 }
 
 function remember(key: string, now: Date, value: Valuation) {
-  if (cache.size >= CACHE_MAX) cache.delete(cache.keys().next().value!);
+  if (cache.size >= CACHE_MAX) {
+    const oldest = cache.keys().next().value!;
+    cache.delete(oldest);
+    eraShares.delete(oldest);
+  }
   cache.set(key, { at: now.getTime(), value });
 }
 
@@ -161,6 +168,7 @@ export async function listingValuation(
 /** Test hook. */
 export function clearValuationCache() {
   cache.clear();
+  eraShares.clear();
 }
 
 /**
@@ -184,6 +192,7 @@ export async function listingContext(
     const candidates = pooled ? await candidatesNear(sql, listing, listing.location, now) : [];
     valuation = valuate(listing, candidates, benchmark, now);
     remember(key, now, valuation);
+    eraShares.set(key, sameEraShare(listing, valuation, candidates));
   }
   // The first observation and the scam flag stored at ingest; both absent for pasted listings.
   // to_jsonb keeps this working before migration 005 adds deposit_before_viewing.
@@ -214,6 +223,7 @@ export async function listingContext(
             }
           : null,
         sameTextElsewhere: 0,
+        sameEraShare: eraShares.get(key) ?? null,
         firstSeen:
           stored?.asking_rent_cad && stored.observed_at
             ? { rentCad: stored.asking_rent_cad, at: stored.observed_at.toISOString() }

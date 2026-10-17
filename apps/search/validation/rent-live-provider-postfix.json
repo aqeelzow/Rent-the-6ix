@@ -1,0 +1,1074 @@
+{
+  "timestamp": "2026-10-17T13:04:45.287Z",
+  "fixtureListingCount": 8,
+  "configured": {
+    "geminiKey": true,
+    "geminiModel": true,
+    "geminiFastModel": false,
+    "maptilerKey": true,
+    "database": false
+  },
+  "runs": [
+    {
+      "provider": "gemini",
+      "providerCalls": [
+        {
+          "providerHost": "generativelanguage.googleapis.com",
+          "status": 200
+        },
+        {
+          "providerHost": "generativelanguage.googleapis.com",
+          "transportFailure": true
+        },
+        {
+          "providerHost": "api.maptiler.com",
+          "status": 200
+        },
+        {
+          "providerHost": "generativelanguage.googleapis.com",
+          "status": 200
+        },
+        {
+          "providerHost": "generativelanguage.googleapis.com",
+          "transportFailure": true
+        },
+        {
+          "providerHost": "generativelanguage.googleapis.com",
+          "transportFailure": true
+        },
+        {
+          "providerHost": "generativelanguage.googleapis.com",
+          "transportFailure": true
+        },
+        {
+          "providerHost": "api.maptiler.com",
+          "status": 200
+        }
+      ],
+      "prompts": [
+        {
+          "promptIndex": 1,
+          "parser": "gemini",
+          "parseMs": 11114,
+          "searchMs": 59,
+          "status": "completed",
+          "resultCount": 8,
+          "criteria": {
+            "rent": {
+              "value": {
+                "min": 3000,
+                "max": 5000
+              },
+              "hard": false
+            },
+            "unitTypes": {
+              "value": [
+                "house",
+                "apartment"
+              ],
+              "hard": false
+            }
+          },
+          "fieldSources": {
+            "criteria.unitTypes": {
+              "source": "ai_prompt",
+              "phrase": "houses or apartments"
+            },
+            "criteria.rent": {
+              "source": "ai_prompt",
+              "phrase": "Around 3-5k per"
+            },
+            "travelTargets.target-1": {
+              "source": "ai_prompt",
+              "phrase": "university of toronto"
+            }
+          },
+          "droppedRequests": [],
+          "travelTargets": [
+            {
+              "id": "target-1",
+              "kind": "place",
+              "label": "university of toronto",
+              "query": "university of toronto",
+              "mode": "bike",
+              "maxMinutes": 10,
+              "hard": false
+            }
+          ],
+          "sortBy": "best_match",
+          "destinations": [
+            {
+              "targetId": "target-1",
+              "resolution": {
+                "status": "ambiguous",
+                "query": "university of toronto",
+                "choices": [
+                  {
+                    "id": "uoft-st-george",
+                    "label": "UofT St. George campus representative point",
+                    "resolved": {
+                      "lng": -79.3957,
+                      "lat": 43.6629,
+                      "source": "known_place",
+                      "representativePoint": true,
+                      "label": "UofT St. George campus representative point"
+                    }
+                  },
+                  {
+                    "id": "uoft-scarborough",
+                    "label": "UofT Scarborough campus representative point",
+                    "resolved": {
+                      "lng": -79.1857,
+                      "lat": 43.7847,
+                      "source": "known_place",
+                      "representativePoint": true,
+                      "label": "UofT Scarborough campus representative point"
+                    }
+                  },
+                  {
+                    "id": "uoft-mississauga",
+                    "label": "UofT Mississauga campus representative point",
+                    "resolved": {
+                      "lng": -79.6623,
+                      "lat": 43.5483,
+                      "source": "known_place",
+                      "representativePoint": true,
+                      "label": "UofT Mississauga campus representative point"
+                    }
+                  }
+                ]
+              }
+            }
+          ],
+          "providerCalls": [
+            {
+              "providerHost": "generativelanguage.googleapis.com",
+              "status": 200
+            }
+          ]
+        },
+        {
+          "promptIndex": 2,
+          "parser": "fallback",
+          "notice": "Used basic search; review the interpreted filters.",
+          "parseMs": 12172,
+          "searchMs": 16,
+          "status": "completed",
+          "resultCount": 8,
+          "criteria": {},
+          "fieldSources": {
+            "travelTargets.target-1": {
+              "source": "ai_prompt",
+              "phrase": "TD Canada on bay st and queens st w"
+            }
+          },
+          "droppedRequests": [],
+          "travelTargets": [
+            {
+              "id": "target-1",
+              "kind": "place",
+              "label": "TD Canada on bay st and queens st w",
+              "query": "TD Canada on bay st and queens st w",
+              "mode": "transit",
+              "alternativeModes": [
+                "bike",
+                "walk"
+              ],
+              "maxMinutes": 10,
+              "hard": true
+            }
+          ],
+          "sortBy": "best_match",
+          "destinations": [
+            {
+              "targetId": "target-1",
+              "resolution": {
+                "status": "unavailable",
+                "query": "TD Canada on bay st and queens st w",
+                "reason": "No fully matching destination found. Provide an exact address or pin."
+              }
+            }
+          ],
+          "providerCalls": [
+            {
+              "providerHost": "generativelanguage.googleapis.com",
+              "transportFailure": true
+            },
+            {
+              "providerHost": "api.maptiler.com",
+              "status": 200
+            }
+          ]
+        },
+        {
+          "promptIndex": 3,
+          "parser": "gemini",
+          "parseMs": 7065,
+          "searchMs": 12,
+          "status": "completed",
+          "resultCount": 6,
+          "criteria": {},
+          "fieldSources": {
+            "areas": {
+              "source": "ai_prompt",
+              "phrase": "downtown"
+            },
+            "sortBy": {
+              "source": "ai_prompt",
+              "phrase": "cheapest cost"
+            }
+          },
+          "droppedRequests": [],
+          "travelTargets": [],
+          "sortBy": "lowest_rent",
+          "destinations": [],
+          "providerCalls": [
+            {
+              "providerHost": "generativelanguage.googleapis.com",
+              "status": 200
+            }
+          ]
+        },
+        {
+          "promptIndex": 4,
+          "parser": "fallback",
+          "notice": "Used basic search; review the interpreted filters.",
+          "parseMs": 12012,
+          "searchMs": 12,
+          "status": "completed",
+          "resultCount": 2,
+          "criteria": {
+            "rent": {
+              "value": {
+                "max": 1300
+              },
+              "hard": true
+            },
+            "unitTypes": {
+              "value": [
+                "room",
+                "studio"
+              ],
+              "hard": true
+            },
+            "furnished": {
+              "value": true,
+              "hard": true
+            }
+          },
+          "fieldSources": {
+            "criteria.rent": {
+              "source": "ai_prompt",
+              "phrase": "under $1,300,"
+            },
+            "criteria.unitTypes": {
+              "source": "ai_prompt",
+              "phrase": "Room or studio"
+            },
+            "criteria.furnished": {
+              "source": "ai_prompt",
+              "phrase": "furnished"
+            },
+            "travelTargets.target-1": {
+              "source": "ai_prompt",
+              "phrase": "York University"
+            },
+            "travelTargets.target-2": {
+              "source": "ai_prompt",
+              "phrase": "subway"
+            }
+          },
+          "droppedRequests": [],
+          "travelTargets": [
+            {
+              "id": "target-1",
+              "kind": "place",
+              "label": "York University",
+              "query": "York University",
+              "mode": "transit",
+              "hard": false
+            },
+            {
+              "id": "target-2",
+              "kind": "amenity",
+              "label": "subway",
+              "category": "rapid_transit",
+              "mode": "transit",
+              "hard": false
+            }
+          ],
+          "sortBy": "best_match",
+          "destinations": [
+            {
+              "targetId": "target-1",
+              "resolution": {
+                "status": "ambiguous",
+                "query": "York University",
+                "choices": [
+                  {
+                    "id": "york-keele",
+                    "label": "York University Keele campus representative point",
+                    "resolved": {
+                      "lng": -79.5031,
+                      "lat": 43.7735,
+                      "source": "known_place",
+                      "representativePoint": true,
+                      "label": "York University Keele campus representative point"
+                    }
+                  },
+                  {
+                    "id": "york-glendon",
+                    "label": "York University Glendon campus representative point",
+                    "resolved": {
+                      "lng": -79.3783,
+                      "lat": 43.7278,
+                      "source": "known_place",
+                      "representativePoint": true,
+                      "label": "York University Glendon campus representative point"
+                    }
+                  },
+                  {
+                    "id": "york-markham",
+                    "label": "York University Markham campus representative point",
+                    "resolved": {
+                      "lng": -79.314,
+                      "lat": 43.856,
+                      "source": "known_place",
+                      "representativePoint": true,
+                      "label": "York University Markham campus representative point"
+                    }
+                  }
+                ]
+              }
+            }
+          ],
+          "providerCalls": [
+            {
+              "providerHost": "generativelanguage.googleapis.com",
+              "transportFailure": true
+            }
+          ]
+        },
+        {
+          "promptIndex": 5,
+          "parser": "fallback",
+          "notice": "Used basic search; review the interpreted filters.",
+          "parseMs": 12013,
+          "searchMs": 11,
+          "status": "completed",
+          "resultCount": 4,
+          "criteria": {
+            "rent": {
+              "value": {
+                "max": 2800
+              },
+              "hard": true
+            },
+            "priceFairness": {
+              "value": [
+                "underpriced"
+              ],
+              "hard": false
+            },
+            "bedrooms": {
+              "value": {
+                "min": 2,
+                "max": 2
+              },
+              "hard": true
+            },
+            "petsAllowed": {
+              "value": "cats",
+              "hard": true
+            }
+          },
+          "fieldSources": {
+            "household.annualIncomeCad": {
+              "source": "ai_prompt",
+              "phrase": "make about $95k"
+            },
+            "criteria.rent": {
+              "source": "ai_prompt",
+              "phrase": "under $2,800,"
+            },
+            "criteria.bedrooms": {
+              "source": "ai_prompt",
+              "phrase": "2-bedroom"
+            },
+            "criteria.petsAllowed": {
+              "source": "ai_prompt",
+              "phrase": "cat-friendly"
+            },
+            "criteria.priceFairness": {
+              "source": "ai_prompt",
+              "phrase": "good deal"
+            },
+            "travelTargets.target-1": {
+              "source": "ai_prompt",
+              "phrase": "UofT St. George"
+            },
+            "travelTargets.target-2": {
+              "source": "ai_prompt",
+              "phrase": "groceries"
+            }
+          },
+          "droppedRequests": [],
+          "travelTargets": [
+            {
+              "id": "target-1",
+              "kind": "place",
+              "label": "UofT St. George",
+              "query": "UofT St. George",
+              "resolved": {
+                "lng": -79.3957,
+                "lat": 43.6629,
+                "source": "known_place",
+                "representativePoint": true,
+                "label": "UofT St. George campus representative point"
+              },
+              "mode": "transit",
+              "maxMinutes": 25,
+              "hard": true
+            },
+            {
+              "id": "target-2",
+              "kind": "amenity",
+              "label": "groceries",
+              "category": "grocery",
+              "mode": "walk",
+              "hard": false
+            }
+          ],
+          "sortBy": "best_match",
+          "destinations": [
+            {
+              "targetId": "target-1",
+              "resolution": {
+                "status": "resolved",
+                "query": "UofT St. George",
+                "destination": {
+                  "id": "uoft-st-george",
+                  "label": "UofT St. George campus representative point",
+                  "resolved": {
+                    "lng": -79.3957,
+                    "lat": 43.6629,
+                    "source": "known_place",
+                    "representativePoint": true,
+                    "label": "UofT St. George campus representative point"
+                  }
+                }
+              }
+            }
+          ],
+          "providerCalls": [
+            {
+              "providerHost": "generativelanguage.googleapis.com",
+              "transportFailure": true
+            }
+          ]
+        },
+        {
+          "promptIndex": 6,
+          "parser": "fallback",
+          "notice": "Used basic search; review the interpreted filters.",
+          "parseMs": 12011,
+          "searchMs": 10,
+          "status": "completed",
+          "resultCount": 1,
+          "criteria": {
+            "rent": {
+              "value": {
+                "max": 3200
+              },
+              "hard": true
+            },
+            "bedrooms": {
+              "value": {
+                "min": 3,
+                "max": 3
+              },
+              "hard": true
+            },
+            "parking": {
+              "value": true,
+              "hard": true
+            }
+          },
+          "fieldSources": {
+            "areas": {
+              "source": "ai_prompt",
+              "phrase": "Scarborough"
+            },
+            "criteria.rent": {
+              "source": "ai_prompt",
+              "phrase": "under $3,200,"
+            },
+            "criteria.bedrooms": {
+              "source": "ai_prompt",
+              "phrase": "3 bedrooms"
+            },
+            "criteria.parking": {
+              "source": "ai_prompt",
+              "phrase": "parking"
+            },
+            "travelTargets.target-1": {
+              "source": "ai_prompt",
+              "phrase": "public school"
+            },
+            "travelTargets.target-2": {
+              "source": "ai_prompt",
+              "phrase": "park"
+            }
+          },
+          "droppedRequests": [],
+          "travelTargets": [
+            {
+              "id": "target-1",
+              "kind": "amenity",
+              "label": "public school",
+              "category": "school",
+              "schoolLevel": "any",
+              "mode": "walk",
+              "hard": false
+            },
+            {
+              "id": "target-2",
+              "kind": "amenity",
+              "label": "park",
+              "category": "park",
+              "mode": "walk",
+              "hard": false
+            }
+          ],
+          "sortBy": "best_match",
+          "destinations": [],
+          "providerCalls": [
+            {
+              "providerHost": "generativelanguage.googleapis.com",
+              "transportFailure": true
+            }
+          ]
+        }
+      ],
+      "resolution": [
+        {
+          "query": "UofT St. George",
+          "status": "resolved",
+          "destination": {
+            "id": "uoft-st-george",
+            "label": "UofT St. George campus representative point",
+            "resolved": {
+              "lng": -79.3957,
+              "lat": 43.6629,
+              "source": "known_place",
+              "representativePoint": true,
+              "label": "UofT St. George campus representative point"
+            }
+          },
+          "ms": 5,
+          "providerCalls": []
+        },
+        {
+          "query": "TD Canada on bay st and queens st w",
+          "status": "unavailable",
+          "reason": "No fully matching destination found. Provide an exact address or pin.",
+          "ms": 54,
+          "providerCalls": [
+            {
+              "providerHost": "api.maptiler.com",
+              "status": 200
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "provider": "none",
+      "providerCalls": [
+        {
+          "providerHost": "api.maptiler.com",
+          "status": 200
+        }
+      ],
+      "prompts": [
+        {
+          "promptIndex": 1,
+          "parser": "fallback",
+          "notice": "Used basic search; review the interpreted filters.",
+          "parseMs": 32,
+          "searchMs": 26,
+          "status": "completed",
+          "resultCount": 4,
+          "criteria": {
+            "rent": {
+              "value": {
+                "min": 3000,
+                "max": 5000
+              },
+              "hard": false
+            },
+            "unitTypes": {
+              "value": [
+                "house",
+                "apartment"
+              ],
+              "hard": true
+            }
+          },
+          "fieldSources": {
+            "criteria.rent": {
+              "source": "ai_prompt",
+              "phrase": "3-5k per"
+            },
+            "criteria.unitTypes": {
+              "source": "ai_prompt",
+              "phrase": "houses or apartments"
+            },
+            "travelTargets.target-1": {
+              "source": "ai_prompt",
+              "phrase": "university of toronto"
+            }
+          },
+          "droppedRequests": [],
+          "travelTargets": [
+            {
+              "id": "target-1",
+              "kind": "place",
+              "label": "university of toronto",
+              "query": "university of toronto",
+              "mode": "bike",
+              "maxMinutes": 10,
+              "hard": true
+            }
+          ],
+          "sortBy": "best_match",
+          "destinations": [
+            {
+              "targetId": "target-1",
+              "resolution": {
+                "status": "ambiguous",
+                "query": "university of toronto",
+                "choices": [
+                  {
+                    "id": "uoft-st-george",
+                    "label": "UofT St. George campus representative point",
+                    "resolved": {
+                      "lng": -79.3957,
+                      "lat": 43.6629,
+                      "source": "known_place",
+                      "representativePoint": true,
+                      "label": "UofT St. George campus representative point"
+                    }
+                  },
+                  {
+                    "id": "uoft-scarborough",
+                    "label": "UofT Scarborough campus representative point",
+                    "resolved": {
+                      "lng": -79.1857,
+                      "lat": 43.7847,
+                      "source": "known_place",
+                      "representativePoint": true,
+                      "label": "UofT Scarborough campus representative point"
+                    }
+                  },
+                  {
+                    "id": "uoft-mississauga",
+                    "label": "UofT Mississauga campus representative point",
+                    "resolved": {
+                      "lng": -79.6623,
+                      "lat": 43.5483,
+                      "source": "known_place",
+                      "representativePoint": true,
+                      "label": "UofT Mississauga campus representative point"
+                    }
+                  }
+                ]
+              }
+            }
+          ],
+          "providerCalls": []
+        },
+        {
+          "promptIndex": 2,
+          "parser": "fallback",
+          "notice": "Used basic search; review the interpreted filters.",
+          "parseMs": 122,
+          "searchMs": 14,
+          "status": "completed",
+          "resultCount": 8,
+          "criteria": {},
+          "fieldSources": {
+            "travelTargets.target-1": {
+              "source": "ai_prompt",
+              "phrase": "TD Canada on bay st and queens st w"
+            }
+          },
+          "droppedRequests": [],
+          "travelTargets": [
+            {
+              "id": "target-1",
+              "kind": "place",
+              "label": "TD Canada on bay st and queens st w",
+              "query": "TD Canada on bay st and queens st w",
+              "mode": "transit",
+              "alternativeModes": [
+                "bike",
+                "walk"
+              ],
+              "maxMinutes": 10,
+              "hard": true
+            }
+          ],
+          "sortBy": "best_match",
+          "destinations": [
+            {
+              "targetId": "target-1",
+              "resolution": {
+                "status": "unavailable",
+                "query": "TD Canada on bay st and queens st w",
+                "reason": "No fully matching destination found. Provide an exact address or pin."
+              }
+            }
+          ],
+          "providerCalls": [
+            {
+              "providerHost": "api.maptiler.com",
+              "status": 200
+            }
+          ]
+        },
+        {
+          "promptIndex": 3,
+          "parser": "fallback",
+          "notice": "Used basic search; review the interpreted filters.",
+          "parseMs": 9,
+          "searchMs": 8,
+          "status": "completed",
+          "resultCount": 6,
+          "criteria": {},
+          "fieldSources": {
+            "areas": {
+              "source": "ai_prompt",
+              "phrase": "downtown"
+            },
+            "sortBy": {
+              "source": "ai_prompt",
+              "phrase": "cheapest"
+            }
+          },
+          "droppedRequests": [],
+          "travelTargets": [],
+          "sortBy": "lowest_rent",
+          "destinations": [],
+          "providerCalls": []
+        },
+        {
+          "promptIndex": 4,
+          "parser": "fallback",
+          "notice": "Used basic search; review the interpreted filters.",
+          "parseMs": 8,
+          "searchMs": 7,
+          "status": "completed",
+          "resultCount": 2,
+          "criteria": {
+            "rent": {
+              "value": {
+                "max": 1300
+              },
+              "hard": true
+            },
+            "unitTypes": {
+              "value": [
+                "room",
+                "studio"
+              ],
+              "hard": true
+            },
+            "furnished": {
+              "value": true,
+              "hard": true
+            }
+          },
+          "fieldSources": {
+            "criteria.rent": {
+              "source": "ai_prompt",
+              "phrase": "under $1,300,"
+            },
+            "criteria.unitTypes": {
+              "source": "ai_prompt",
+              "phrase": "Room or studio"
+            },
+            "criteria.furnished": {
+              "source": "ai_prompt",
+              "phrase": "furnished"
+            },
+            "travelTargets.target-1": {
+              "source": "ai_prompt",
+              "phrase": "York University"
+            },
+            "travelTargets.target-2": {
+              "source": "ai_prompt",
+              "phrase": "subway"
+            }
+          },
+          "droppedRequests": [],
+          "travelTargets": [
+            {
+              "id": "target-1",
+              "kind": "place",
+              "label": "York University",
+              "query": "York University",
+              "mode": "transit",
+              "hard": false
+            },
+            {
+              "id": "target-2",
+              "kind": "amenity",
+              "label": "subway",
+              "category": "rapid_transit",
+              "mode": "transit",
+              "hard": false
+            }
+          ],
+          "sortBy": "best_match",
+          "destinations": [
+            {
+              "targetId": "target-1",
+              "resolution": {
+                "status": "ambiguous",
+                "query": "York University",
+                "choices": [
+                  {
+                    "id": "york-keele",
+                    "label": "York University Keele campus representative point",
+                    "resolved": {
+                      "lng": -79.5031,
+                      "lat": 43.7735,
+                      "source": "known_place",
+                      "representativePoint": true,
+                      "label": "York University Keele campus representative point"
+                    }
+                  },
+                  {
+                    "id": "york-glendon",
+                    "label": "York University Glendon campus representative point",
+                    "resolved": {
+                      "lng": -79.3783,
+                      "lat": 43.7278,
+                      "source": "known_place",
+                      "representativePoint": true,
+                      "label": "York University Glendon campus representative point"
+                    }
+                  },
+                  {
+                    "id": "york-markham",
+                    "label": "York University Markham campus representative point",
+                    "resolved": {
+                      "lng": -79.314,
+                      "lat": 43.856,
+                      "source": "known_place",
+                      "representativePoint": true,
+                      "label": "York University Markham campus representative point"
+                    }
+                  }
+                ]
+              }
+            }
+          ],
+          "providerCalls": []
+        },
+        {
+          "promptIndex": 5,
+          "parser": "fallback",
+          "notice": "Used basic search; review the interpreted filters.",
+          "parseMs": 11,
+          "searchMs": 8,
+          "status": "completed",
+          "resultCount": 4,
+          "criteria": {
+            "rent": {
+              "value": {
+                "max": 2800
+              },
+              "hard": true
+            },
+            "priceFairness": {
+              "value": [
+                "underpriced"
+              ],
+              "hard": false
+            },
+            "bedrooms": {
+              "value": {
+                "min": 2,
+                "max": 2
+              },
+              "hard": true
+            },
+            "petsAllowed": {
+              "value": "cats",
+              "hard": true
+            }
+          },
+          "fieldSources": {
+            "household.annualIncomeCad": {
+              "source": "ai_prompt",
+              "phrase": "make about $95k"
+            },
+            "criteria.rent": {
+              "source": "ai_prompt",
+              "phrase": "under $2,800,"
+            },
+            "criteria.bedrooms": {
+              "source": "ai_prompt",
+              "phrase": "2-bedroom"
+            },
+            "criteria.petsAllowed": {
+              "source": "ai_prompt",
+              "phrase": "cat-friendly"
+            },
+            "criteria.priceFairness": {
+              "source": "ai_prompt",
+              "phrase": "good deal"
+            },
+            "travelTargets.target-1": {
+              "source": "ai_prompt",
+              "phrase": "UofT St. George"
+            },
+            "travelTargets.target-2": {
+              "source": "ai_prompt",
+              "phrase": "groceries"
+            }
+          },
+          "droppedRequests": [],
+          "travelTargets": [
+            {
+              "id": "target-1",
+              "kind": "place",
+              "label": "UofT St. George",
+              "query": "UofT St. George",
+              "resolved": {
+                "lng": -79.3957,
+                "lat": 43.6629,
+                "source": "known_place",
+                "representativePoint": true,
+                "label": "UofT St. George campus representative point"
+              },
+              "mode": "transit",
+              "maxMinutes": 25,
+              "hard": true
+            },
+            {
+              "id": "target-2",
+              "kind": "amenity",
+              "label": "groceries",
+              "category": "grocery",
+              "mode": "walk",
+              "hard": false
+            }
+          ],
+          "sortBy": "best_match",
+          "destinations": [
+            {
+              "targetId": "target-1",
+              "resolution": {
+                "status": "resolved",
+                "query": "UofT St. George",
+                "destination": {
+                  "id": "uoft-st-george",
+                  "label": "UofT St. George campus representative point",
+                  "resolved": {
+                    "lng": -79.3957,
+                    "lat": 43.6629,
+                    "source": "known_place",
+                    "representativePoint": true,
+                    "label": "UofT St. George campus representative point"
+                  }
+                }
+              }
+            }
+          ],
+          "providerCalls": []
+        },
+        {
+          "promptIndex": 6,
+          "parser": "fallback",
+          "notice": "Used basic search; review the interpreted filters.",
+          "parseMs": 5,
+          "searchMs": 6,
+          "status": "completed",
+          "resultCount": 1,
+          "criteria": {
+            "rent": {
+              "value": {
+                "max": 3200
+              },
+              "hard": true
+            },
+            "bedrooms": {
+              "value": {
+                "min": 3,
+                "max": 3
+              },
+              "hard": true
+            },
+            "parking": {
+              "value": true,
+              "hard": true
+            }
+          },
+          "fieldSources": {
+            "areas": {
+              "source": "ai_prompt",
+              "phrase": "Scarborough"
+            },
+            "criteria.rent": {
+              "source": "ai_prompt",
+              "phrase": "under $3,200,"
+            },
+            "criteria.bedrooms": {
+              "source": "ai_prompt",
+              "phrase": "3 bedrooms"
+            },
+            "criteria.parking": {
+              "source": "ai_prompt",
+              "phrase": "parking"
+            },
+            "travelTargets.target-1": {
+              "source": "ai_prompt",
+              "phrase": "public school"
+            },
+            "travelTargets.target-2": {
+              "source": "ai_prompt",
+              "phrase": "park"
+            }
+          },
+          "droppedRequests": [],
+          "travelTargets": [
+            {
+              "id": "target-1",
+              "kind": "amenity",
+              "label": "public school",
+              "category": "school",
+              "schoolLevel": "any",
+              "mode": "walk",
+              "hard": false
+            },
+            {
+              "id": "target-2",
+              "kind": "amenity",
+              "label": "park",
+              "category": "park",
+              "mode": "walk",
+              "hard": false
+            }
+          ],
+          "sortBy": "best_match",
+          "destinations": [],
+          "providerCalls": []
+        }
+      ],
+      "resolution": []
+    }
+  ]
+}

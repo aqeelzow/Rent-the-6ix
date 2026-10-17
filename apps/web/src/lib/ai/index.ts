@@ -21,7 +21,7 @@ export class GeminiProvider implements AIProvider {
     const model = opts.fast ? this.config.fastModel || this.config.model : this.config.model;
     if (!this.config.apiKey || !model) throw new AIUnavailable('configuration');
     const controller = new AbortController();
-    const budget = Math.min(12000, Math.max(1, this.config.deadlineMs ?? 12000));
+    const budget = Math.min(opts.fast ? 3000 : 12000, Math.max(1, this.config.deadlineMs ?? 12000));
     let timer: ReturnType<typeof setTimeout>;
     const timeout = new Promise<never>((_, reject) => { timer = setTimeout(() => { controller.abort(); reject(new AIUnavailable('timeout')); }, budget); });
     const request = async () => {

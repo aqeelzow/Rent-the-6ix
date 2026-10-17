@@ -1,8 +1,8 @@
-import { readFileSync } from 'node:fs';
 import { z } from 'zod';
+import knownPlaces from './known_places.json';
 import { DestinationResolutionSchema, DestinationChoiceSchema, type DestinationResolution } from '../../../../../packages/shared/schemas/index';
 import { MemoryCache, inputHash, type Cache } from './cache';
-const places = z.array(z.object({ id: z.string(), label: z.string(), aliases: z.array(z.string()), group: z.string().optional(), lng: z.number(), lat: z.number() })).parse(JSON.parse(readFileSync(new URL('./known_places.json', import.meta.url), 'utf8')));
+const places = z.array(z.object({ id: z.string(), label: z.string(), aliases: z.array(z.string()), group: z.string().optional(), lng: z.number(), lat: z.number() })).parse(knownPlaces);
 export const normalizePlace = (query: string) => query.toLowerCase().replace(/[^a-z0-9 ]/g, '').replace(/\s+/g, ' ').trim();
 const choice = (p: typeof places[number]) => DestinationChoiceSchema.parse({ id: p.id, label: p.label, resolved: { lng: p.lng, lat: p.lat, source: 'known_place', representativePoint: true, label: p.label } });
 export type AddressLookup = (query: string, signal: AbortSignal) => Promise<DestinationResolution | undefined>;
@@ -22,15 +22,17 @@ export class DestinationResolver {
       if (this.config.addressLookup) {
         try { const address = await this.config.addressLookup(query, controller.signal); if (address) { const parsed = DestinationResolutionSchema.parse({ ...address, query }); if (parsed.status !== 'unavailable') return parsed; } } catch { /* unavailable owner lookup falls through to geocoding */ }
       }
+      if (controller.signal.aborted) return unavailable('Destination lookup timed out.');
       if (!this.config.maptilerKey) return unavailable('Address Points unavailable or unmatched; geocoding is not configured. Choose a pin or provide an exact address.');
       try {
         const url = new URL(`https://api.maptiler.com/geocoding/${encodeURIComponent(query)}.json`);
         url.search = new URLSearchParams({ key: this.config.maptilerKey, country: 'ca', bbox: '-79.65,43.58,-79.10,43.87', limit: '5' }).toString();
         const response = await (this.config.fetch ?? fetch)(url, { signal: controller.signal });
         if (!response.ok) return unavailable('Geocoding provider unavailable.');
-        const body = z.object({ features: z.array(z.object({ id: z.string(), place_name: z.string(), place_type: z.array(z.string()).optional(), bbox: z.array(z.number()).optional(), center: z.tuple([z.number().min(-180).max(180), z.number().min(-90).max(90)]) })) }).parse(await response.json());
-        const choices = body.features.map(p => DestinationChoiceSchema.parse({ id: p.id, label: p.place_name, resolved: { lng: p.center[0], lat: p.center[1], source: 'maptiler', ...((p.bbox || p.place_type?.some(t => ['region','place','locality','neighbourhood','poi'].includes(t))) ? { representativePoint: true, label: `${p.place_name} representative point` } : {}) } }));
-        if (!choices.length) return unavailable('No destination found. Provide an exact address or pin.');
+        const body = z.object({ features: z.array(z.object({ id: z.string(), place_name: z.string(), relevance: z.number().min(0).max(1).optional(), place_type: z.array(z.string()).optional(), bbox: z.array(z.number()).optional(), center: z.tuple([z.number().min(-180).max(180), z.number().min(-90).max(90)]) })) }).parse(await response.json());
+        // MapTiler defines relevance 1 as a full query match; partial matches cannot verify a destination.
+        const choices = body.features.filter(p => p.relevance === 1).map(p => DestinationChoiceSchema.parse({ id: p.id, label: p.place_name, resolved: { lng: p.center[0], lat: p.center[1], source: 'maptiler', ...((p.bbox || p.place_type?.some(t => ['region','place','locality','neighbourhood','poi'].includes(t))) ? { representativePoint: true, label: `${p.place_name} representative point` } : {}) } }));
+        if (!choices.length) return unavailable('No fully matching destination found. Provide an exact address or pin.');
         return choices.length === 1 ? { status: 'resolved', query, destination: choices[0] } : { status: 'ambiguous', query, choices };
       } catch { return unavailable('Geocoding failed or returned invalid data.'); }
     };
