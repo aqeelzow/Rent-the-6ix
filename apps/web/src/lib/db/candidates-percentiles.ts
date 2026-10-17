@@ -2,7 +2,7 @@ import { ListingSchema, SearchRequestSchema, SearchResponseSchema, TravelTimeRow
 import { filterListing } from '../../../../../packages/shared/engine/filters';
 import { scoreListing, selectPercentile, type ScoreContext } from '../../../../../packages/shared/engine/score';
 import { distanceM, targetModes } from '../../../../../packages/shared/engine/travel';
-import type { SearchDependencies } from './candidates';
+import { mapCandidatePool, type SearchDependencies } from './candidates';
 import { engineConfig } from '../../../../../packages/shared/engine/config';
 
 export type PercentileExecution = { referenceYear: number; deadline?: number; signal?: AbortSignal };
@@ -19,27 +19,29 @@ export async function searchPercentileCandidates(input: SearchRequest, dependenc
   let onAbort: (() => void) | undefined;
   const work = async (): Promise<SearchResponse> => {
     const contexts = new Map<string, ScoreContext>();
-    const eligible: Listing[] = [];
     // Routing can change cached hard travel results; defer those gates until every route is known.
     const beforeRouting = { ...intent, travelTargets: intent.travelTargets.filter(target => !routeTargets.includes(target)) };
     const source = dependencies.loadCandidates ? await dependencies.loadCandidates(request, controller.signal) : dependencies.listings;
     const selectBeforeEnrichment = !exactTravel && !intent.criteria.priceFairness?.hard && !intent.safety.hard && !intent.travelTargets.some(target => target.hard);
     const cheapPool = source.map(raw => ListingSchema.parse(raw)).filter(listing => filterListing(listing, beforeRouting, {}, request.hideUnconfirmed, true).passes);
+    if (exactTravel && cheapPool.length && !dependencies.routeTimes) return unavailable('routing_incomplete');
     // Scalar values cannot change during enrichment when no hard gate needs owner context.
     const contextPool = selectBeforeEnrichment ? selectPercentile(cheapPool, selector, execution.referenceYear) : cheapPool;
-    for (const listing of contextPool) {
-      if (controller.signal.aborted) return unavailable('timeout');
+    const enriched = await mapCandidatePool(contextPool, async listing => {
+      if (controller.signal.aborted) return null;
       const owner = await dependencies.enrich(listing, intent, controller.signal);
-      if (controller.signal.aborted) return unavailable('timeout');
+      if (controller.signal.aborted) return null;
       const travel = owner.travel.map(row => TravelTimeRowSchema.parse(row)).filter(row => row.listingId === listing.id);
       for (const target of intent.travelTargets) if (target.resolved) for (const mode of targetModes(target)) {
         if (!travel.some(row => row.targetId === target.id && row.mode === mode)) travel.push({ listingId: listing.id, targetId: target.id, mode, minutes: null, distanceM: distanceM(listing.location, target.resolved), method: 'straight_line', computedAt: listing.lastSeenAt, poiId: null });
       }
       const context = { ...owner, travel, safety: intent.safety.enabled ? owner.safety : null };
-      if (!filterListing(listing, beforeRouting, context, request.hideUnconfirmed).passes) continue;
+      if (!filterListing(listing, beforeRouting, context, request.hideUnconfirmed).passes) return null;
       contexts.set(listing.id, context);
-      eligible.push(listing);
-    }
+      return listing;
+    });
+    if (controller.signal.aborted) return unavailable('timeout');
+    const eligible = enriched.filter((listing): listing is Listing => listing !== null);
     if (routeTargets.length && eligible.length && (dependencies.routeTimes || exactTravel)) {
       if (!dependencies.routeTimes) return unavailable('routing_incomplete');
       const routingDeadline = exactTravel ? deadline : Date.now() + Math.min(engineConfig.routingBudgetMs, Math.max(0, dependencies.routingBudgetMs ?? engineConfig.routingBudgetMs));

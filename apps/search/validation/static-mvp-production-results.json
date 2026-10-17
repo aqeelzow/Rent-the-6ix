@@ -1,7 +1,7 @@
 {
   "parser": "fallback",
-  "eligible": 183,
-  "returned": 183,
+  "eligible": 173,
+  "returned": 173,
   "percentile": 10,
   "liveDetail": true,
   "overlappingSearches": true,
@@ -9,86 +9,72 @@
   "compoundPromptParsing": true,
   "hardFairness": true,
   "asyncJobs": true,
+  "broadMissingRouter": true,
   "measurements": [
     {
       "path": "/api/search/parse",
-      "ms": 3397,
+      "ms": 407,
       "status": 200
     },
     {
       "path": "/api/search/parse",
-      "ms": 3074,
+      "ms": 132,
       "status": 200
     },
     {
       "path": "/api/search/parse",
-      "ms": 3063,
+      "ms": 111,
       "status": 200
     },
     {
       "path": "/api/search/parse",
-      "ms": 3031,
+      "ms": 99,
       "status": 200
     },
     {
       "path": "/api/search/parse",
-      "ms": 3012,
+      "ms": 120,
       "status": 200
     },
     {
       "path": "/api/search/parse",
-      "ms": 3008,
+      "ms": 102,
       "status": 200
     },
     {
       "path": "/api/search/parse",
-      "ms": 130,
+      "ms": 97,
       "status": 200
     },
     {
       "path": "/api/listings/search",
-      "ms": 10778,
+      "ms": 8863,
       "status": 200
     },
     {
       "path": "/api/listings/search",
-      "ms": 695,
+      "ms": 523,
       "status": 200
     },
     {
       "path": "/api/listings/search",
-      "ms": 154,
+      "ms": 124,
       "status": 200
     },
     {
       "path": "/api/listings/:id",
-      "ms": 56,
+      "ms": 51,
       "status": 200
     },
     {
       "path": "/api/listings/:id",
-      "ms": 45,
+      "ms": 43,
       "status": 404
     },
     {
       "path": "/api/listings/search",
-      "ms": 6,
+      "ms": 5,
       "status": 422
-    },
-    {
-      "path": "/api/listings/search",
-      "ms": 65,
-      "status": 200
-    },
-    {
-      "path": "/api/listings/search",
-      "ms": 70,
-      "status": 200
-    },
-    {
-      "path": "/api/listings/search",
-      "ms": 144,
-      "status": 200
     },
     {
       "path": "/api/listings/search",
@@ -97,12 +83,27 @@
     },
     {
       "path": "/api/listings/search",
-      "ms": 9,
+      "ms": 50,
+      "status": 200
+    },
+    {
+      "path": "/api/listings/search",
+      "ms": 132,
+      "status": 200
+    },
+    {
+      "path": "/api/listings/search",
+      "ms": 49,
+      "status": 200
+    },
+    {
+      "path": "/api/listings/search",
+      "ms": 6,
       "status": 200
     },
     {
       "path": "/api/listings/search/jobs/:token",
-      "ms": 8,
+      "ms": 7,
       "status": 200
     },
     {
@@ -113,6 +114,41 @@
     {
       "path": "/api/listings/search/jobs/:token",
       "ms": 4,
+      "status": 410
+    },
+    {
+      "path": "/api/listings/search",
+      "ms": 7,
+      "status": 200
+    },
+    {
+      "path": "/api/listings/search/jobs/:token",
+      "ms": 4,
+      "status": 200
+    },
+    {
+      "path": "/api/listings/search/jobs/:token",
+      "ms": 66,
+      "status": 200
+    },
+    {
+      "path": "/api/listings/search/jobs/:token",
+      "ms": 50,
+      "status": 200
+    },
+    {
+      "path": "/api/listings/search/jobs/:token",
+      "ms": 100,
+      "status": 200
+    },
+    {
+      "path": "/api/listings/search/jobs/:token",
+      "ms": 942,
+      "status": 200
+    },
+    {
+      "path": "/api/listings/search/jobs/:token",
+      "ms": 3,
       "status": 410
     }
   ]

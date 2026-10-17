@@ -2,10 +2,25 @@ import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { baseIntent, sampleListings, valuations, travelIntent } from '../../../../../packages/shared/fixtures/index';
 import type { Listing, TravelTimeRow } from '../../../../../packages/shared/schemas/index';
-import { searchCandidates, SearchUnavailable, type SearchDependencies } from './candidates';
+import { mapCandidatePool, searchCandidates, SearchUnavailable, type SearchDependencies } from './candidates';
 const enrich: SearchDependencies['enrich'] = async () => ({ valuation: valuations[3], travel: [], safety: null });
 const pool: Listing[] = Array.from({ length: 520 }, (_, i) => ({ ...sampleListings[1], id: `00000000-0000-4000-8000-${String(i + 1).padStart(12, '0')}`, monthlyRentCad: 1000 + 520 - i }));
 const request = { intent: { ...baseIntent, sortBy: 'lowest_rent' as const }, hideUnconfirmed: false };
+test('context workers preserve input order, cap concurrency and stop dispatch after failure', async () => {
+  let active = 0, peak = 0;
+  const selected = pool.slice(0, 24);
+  const ids = await mapCandidatePool(selected, async listing => {
+    active++; peak = Math.max(peak, active);
+    await new Promise(resolve => setTimeout(resolve, listing === selected[0] ? 10 : 1));
+    active--;
+    return listing.id;
+  });
+  assert.equal(peak, 8); assert.equal(active, 0);
+  assert.deepEqual(ids, selected.map(listing => listing.id));
+  let calls = 0;
+  await assert.rejects(mapCandidatePool(selected, async () => { if (++calls === 1) throw new Error('owner failed'); await Promise.resolve(); }), /owner failed/);
+  assert.equal(calls, 8);
+});
 test('full pool numeric order precedes cap; cheap filters precede enrichment', async () => {
   let calls = 0;
   const result = await searchCandidates(request, { listings: pool, enrich: async (...args) => { calls++; return enrich(...args); } });
@@ -60,7 +75,7 @@ test('hide removes unknown cheap home fields before cap and counts full eligible
   assert.ok(result.results.every(r => r.listing.bedrooms === 2));
 });
 
-test('enrichment overlaps two reads and preserves input order for tied listings', async () => {
+test('enrichment overlaps owner reads and preserves input order for tied listings', async () => {
   let active = 0, peak = 0;
   const listings = pool.slice(0, 6).map(listing => ({ ...listing, monthlyRentCad: 2000 }));
   const result = await searchCandidates(request, { listings, enrich: async (...args) => {
@@ -69,6 +84,6 @@ test('enrichment overlaps two reads and preserves input order for tied listings'
     active--;
     return enrich(...args);
   } });
-  assert.equal(peak, 2);
+  assert.equal(peak, 6);
   assert.deepEqual(result.results.map(row => row.listing.id), listings.map(listing => listing.id));
 });

@@ -15,7 +15,8 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "db:migrate": "node db/migrate.mjs",
-    "ingest:once": "pnpm --filter worker ingest:once"
+    "ingest:once": "pnpm --filter worker ingest:once",
+    "data:civic": "pnpm --filter worker data:civic"
   },
   "dependencies": {
     "postgres": "^3.4.5"
