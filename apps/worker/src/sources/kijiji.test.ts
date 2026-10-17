@@ -58,7 +58,8 @@ describe("parseKijiji", () => {
       petsAllowed: true,
       parking: null,
       laundryInSuite: true,
-      utilitiesIncluded: false,
+      // Heat and water included, hydro not.
+      utilitiesIncluded: "partial",
       availableFrom: "2026-11-01",
       postalCode: "M5V 1A1",
       lat: 43.64,

@@ -73,7 +73,7 @@ export const ListingSchema = z.strictObject({
   // Null until the listing is geocoded against D's boundaries (P1.10). Area filters and safety
   // need a match, so they simply do not apply to a listing that has no area yet.
   neighbourhoodId: text.nullable(), wardId: text.nullable(),
-  utilitiesIncluded: tri, parking: tri, petsAllowed: z.enum(['yes', 'no', 'unknown', 'cats_only', 'dogs_only']), furnished: tri, laundryInSuite: tri,
+  utilitiesIncluded: z.enum(['yes', 'partial', 'no', 'unknown']), parking: tri, petsAllowed: z.enum(['yes', 'no', 'unknown', 'cats_only', 'dogs_only']), furnished: tri, laundryInSuite: tri,
   availableFrom: date.nullable(), leaseTerm: text.nullable(), imageUrl: url.nullable(), firstSeenAt: timestamp, lastSeenAt: timestamp, updatedAt: timestamp,
   status: z.enum(['active', 'stale', 'removed']), duplicateOf: z.uuid().nullable(), dataStatus: z.enum(['live', 'snapshot', 'demo']),
   fieldEvidence: z.record(text, z.enum(['structured', 'parsed_from_text', 'ai_extracted'])),

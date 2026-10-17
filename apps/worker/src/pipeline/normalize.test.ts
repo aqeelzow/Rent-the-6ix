@@ -226,6 +226,15 @@ describe("normalize: text rules fill the gaps", () => {
       laundryInSuite: "no",
     });
     expect(norm({ title: "Furnished or Unfurnished 1-bedroom" }).furnished).toBe("unknown");
+    for (const description of [
+      "Tenant pays 40% of utilities.",
+      "Utilities split equally between tenants.",
+      "Heat and water included, hydro extra.",
+      "$1,800 + hydro",
+    ]) {
+      expect(norm({ description }).utilitiesIncluded).toBe("partial");
+    }
+    expect(norm({ description: "Tenant pays all utilities." }).utilitiesIncluded).toBe("no");
     expect(norm({ description: "Cats only please" }).petsAllowed).toBe("cats_only");
   });
 

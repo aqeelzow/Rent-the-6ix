@@ -143,10 +143,13 @@ function flag(value: string | undefined): TriState {
   return v === "1" ? true : v === "0" ? false : null;
 }
 
-/** Heat, water and hydro all included → true; any one explicitly excluded → false. */
-function allIncluded(attrs: Map<string, string>): TriState {
+/**
+ * Heat, water and hydro all included → true; some included and some not → "partial"; one
+ * excluded and none known included → false.
+ */
+function allIncluded(attrs: Map<string, string>): TriState | "partial" {
   const parts = ["heat", "water", "hydro"].map((k) => flag(attrs.get(k)));
-  if (parts.includes(false)) return false;
+  if (parts.includes(false)) return parts.includes(true) ? "partial" : false;
   return parts.every((p) => p === true) ? true : null;
 }
 

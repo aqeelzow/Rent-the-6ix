@@ -13,13 +13,15 @@
     "load:cache": "node --env-file-if-exists=../../.env.local src/load-cache.ts",
     "dedupe:listings": "node --env-file-if-exists=../../.env.local src/dedupe.ts",
     "load:manual": "node --env-file-if-exists=../../.env.local src/load-manual.ts",
-    "manual:candidates": "node --env-file-if-exists=../../.env.local src/manual-candidates.ts"
+    "manual:candidates": "node --env-file-if-exists=../../.env.local src/manual-candidates.ts",
+    "ai:backfill": "node --env-file-if-exists=../../.env.local src/ai-backfill.ts"
   },
   "dependencies": {
     "@rentthe6ix/shared": "workspace:*",
     "cloakbrowser": "^0.6.3",
     "playwright-core": "^1.64.1",
-    "postgres": "^3.4.9"
+    "postgres": "^3.4.9",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.5",

@@ -1,5 +1,5 @@
-// One listing collection run: `pnpm ingest:once [--sources kijiji,torontorentals] [--pages 5] [--details 50] [--cursor 55]`.
-// Defaults come from INGEST_SOURCES, INGEST_MAX_PAGES and INGEST_MAX_DETAILS (src/pipeline/run-ingest.ts).
+// One listing collection run: `pnpm ingest:once [--sources kijiji,torontorentals] [--pages 5] [--details 50] [--cursor 55] [--ai 200]`.
+// Defaults come from INGEST_SOURCES, INGEST_MAX_PAGES, INGEST_MAX_DETAILS and INGEST_MAX_AI (src/pipeline/run-ingest.ts).
 import { parseArgs } from "node:util";
 import { ingestOptionsFromEnv, runIngest } from "./pipeline/run-ingest.ts";
 
@@ -9,6 +9,7 @@ const { values } = parseArgs({
     pages: { type: "string" },
     details: { type: "string" },
     cursor: { type: "string" },
+    ai: { type: "string" },
   },
 });
 

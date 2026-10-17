@@ -13,6 +13,7 @@ import {
   type ComparableCandidate,
   type Tri,
   type UnitType,
+  type Utilities,
   type Valuation,
   type ValuationSubject,
 } from "../../../../../packages/shared/engine/valuation";
@@ -29,7 +30,7 @@ interface ListingFields {
   bedrooms: number | null;
   bathrooms: number | null;
   sqft: number | null;
-  utilities_included: Tri;
+  utilities_included: Utilities;
   parking: Tri;
   furnished: Tri;
   laundry_in_suite: Tri;

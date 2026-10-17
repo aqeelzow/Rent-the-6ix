@@ -58,6 +58,49 @@ function optionalColumns(sql: Sql) {
   return columns;
 }
 
+/**
+ * Fields AI extraction fills (column, fieldEvidence key, its "unknown"). A later run whose rules
+ * don't find the value keeps the stored AI value instead of resetting it to unknown.
+ */
+const AI_KEPT = [
+  ["air_conditioning", "airConditioning", "'unknown'"],
+  ["utilities_included", "utilitiesIncluded", "'unknown'"],
+  ["parking", "parking", "'unknown'"],
+  ["pets_allowed", "petsAllowed", "'unknown'"],
+  ["furnished", "furnished", "'unknown'"],
+  ["laundry_in_suite", "laundryInSuite", "'unknown'"],
+  ["sqft", "sqft", null],
+  ["available_from", "availableFrom", null],
+  ["lease_term", "leaseTerm", null],
+] as const;
+
+function keepAi([column, key, unknown]: (typeof AI_KEPT)[number]): string {
+  const missing = unknown ? `excluded.${column} = ${unknown}` : `excluded.${column} IS NULL`;
+  return `${column} = CASE WHEN ${missing} AND listings.field_evidence ->> '${key}' = 'ai_extracted'
+            THEN listings.${column} ELSE excluded.${column} END`;
+}
+// Fixed identifiers only, so plain SQL text is safe.
+const SET_AI_KEPT = AI_KEPT.map(keepAi).join(",\n          ");
+
+const partialOk = new WeakMap<Sql, Promise<boolean>>();
+
+/**
+ * Whether listings.utilities_included accepts 'partial' (migration 007). Until it does, a
+ * 'partial' value is stored as 'unknown' rather than failing the whole batch.
+ */
+export function utilitiesPartialAllowed(sql: Sql): Promise<boolean> {
+  let ok = partialOk.get(sql);
+  if (!ok) {
+    ok = sql<{ ok: boolean }[]>`
+      SELECT coalesce(bool_or(pg_get_constraintdef(oid) LIKE '%partial%'), true) AS ok
+      FROM pg_constraint
+      WHERE conrelid = 'listings'::regclass
+        AND pg_get_constraintdef(oid) LIKE '%utilities_included%'`.then(([r]) => r.ok);
+    partialOk.set(sql, ok);
+  }
+  return ok;
+}
+
 const COLUMNS = [
   "source",
   "source_listing_id",
@@ -136,11 +179,18 @@ export async function upsertListings(
   listings: NormalizedListing[],
   observedAt: string,
 ): Promise<UpsertResult> {
-  const rows = listings.map((l) => toRow(l, observedAt)).filter((r) => r !== null);
+  const partial = await utilitiesPartialAllowed(sql);
+  const rows = listings
+    .map((l) => toRow(l, observedAt))
+    .filter((r) => r !== null)
+    .map((r) =>
+      !partial && r.utilities_included === "partial" ? { ...r, utilities_included: "unknown" } : r,
+    );
   const optional = await optionalColumns(sql);
   const columns = [...COLUMNS, ...optional];
   // Fixed identifiers from OPTIONAL_COLUMNS, so plain SQL text is safe (and empty when absent).
   const setOptional = sql.unsafe(optional.map((c) => `, ${c} = excluded.${c}`).join(""));
+  const setAiKept = sql.unsafe(SET_AI_KEPT);
   for (let i = 0; i < rows.length; i += BATCH) {
     const batch = rows.slice(i, i + BATCH);
     await sql.begin(async (tx) => {
@@ -155,29 +205,28 @@ export async function upsertListings(
           bedrooms = excluded.bedrooms,
           bathrooms = excluded.bathrooms,
           unit_type = excluded.unit_type,
-          sqft = excluded.sqft,
           year_built = CASE WHEN listings.year_built_source = 'rentsafeto'
+              OR (excluded.year_built IS NULL AND listings.year_built_source = 'ai_extracted')
             THEN listings.year_built ELSE excluded.year_built END,
           year_built_source = CASE WHEN listings.year_built_source = 'rentsafeto'
+              OR (excluded.year_built IS NULL AND listings.year_built_source = 'ai_extracted')
             THEN listings.year_built_source ELSE excluded.year_built_source END,
-          air_conditioning = excluded.air_conditioning,
+          ${setAiKept},
           location = CASE WHEN listings.address_point_id IS NULL
             THEN excluded.location ELSE listings.location END,
           location_precision = CASE WHEN listings.address_point_id IS NULL
             THEN excluded.location_precision ELSE listings.location_precision END,
           address_text = excluded.address_text,
-          utilities_included = excluded.utilities_included,
-          parking = excluded.parking,
-          laundry_in_suite = excluded.laundry_in_suite,
-          furnished = excluded.furnished,
-          pets_allowed = excluded.pets_allowed,
-          available_from = excluded.available_from,
-          lease_term = excluded.lease_term,
           first_seen_at = LEAST(listings.first_seen_at, excluded.first_seen_at),
           last_seen_at = GREATEST(listings.last_seen_at, excluded.last_seen_at),
           status = 'active',
           updated_at = now(),
-          field_evidence = excluded.field_evidence ${setOptional}
+          -- New evidence, plus the stored AI evidence for fields the new row doesn't have.
+          field_evidence = (
+            SELECT coalesce(jsonb_object_agg(e.key, e.value), '{}'::jsonb)
+            FROM jsonb_each(listings.field_evidence) e
+            WHERE e.value = '"ai_extracted"'::jsonb AND NOT excluded.field_evidence ? e.key
+          ) || excluded.field_evidence ${setOptional}
         RETURNING id, source, monthly_rent_cad`;
       const observations = written.map((w) => ({
         listing_id: w.id,

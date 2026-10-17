@@ -31,7 +31,8 @@ export function homeCriteria(listing: Listing, intent: SearchIntent): { name: st
   if (c.petsAllowed) add('petsAllowed', c.petsAllowed.hard, listing.petsAllowed === 'unknown' ? null : listing.petsAllowed === 'yes' || c.petsAllowed.value === 'any' && listing.petsAllowed !== 'no' || listing.petsAllowed === `${c.petsAllowed.value}_only` ? 100 : 0);
   for (const name of ['furnished', 'parking', 'laundryInSuite', 'utilitiesIncluded'] as const) {
     const pref = c[name];
-    if (pref) add(name, pref.hard, listing[name] === 'unknown' ? null : (listing[name] === 'yes') === pref.value ? 100 : 0);
+    // Partly included utilities half-match either way, and never pass a must-have.
+    if (pref) add(name, pref.hard, listing[name] === 'unknown' ? null : listing[name] === 'partial' ? 50 : (listing[name] === 'yes') === pref.value ? 100 : 0);
   }
   if (c.availableBy) add('availableBy', c.availableBy.hard, listing.availableFrom === null ? null : clamp(100 * (1 - Math.max(0, Date.parse(listing.availableFrom) - Date.parse(c.availableBy.value)) / (engineConfig.availabilityOverrunDays * 86400000))));
   if (c.leaseTerm) add('leaseTerm', c.leaseTerm.hard, listing.leaseTerm === null ? null : listing.leaseTerm === c.leaseTerm.value ? 100 : 0);
