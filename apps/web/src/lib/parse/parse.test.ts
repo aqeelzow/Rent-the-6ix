@@ -1,9 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { z } from 'zod';
-import { SearchIntentSchema } from '../../../../../packages/shared/schemas/index.js';
-import { GeminiProvider, AIUnavailable, NoneProvider } from '../ai/index.js';
-import { fallbackParse, ParseService, DestinationResolver, IpLimiter, RateLimitError, MemoryCache } from './index.js';
+import { SearchIntentSchema } from '../../../../../packages/shared/schemas/index';
+import { GeminiProvider, AIUnavailable, NoneProvider } from '../ai/index';
+import { fallbackParse, ParseService, DestinationResolver, IpLimiter, RateLimitError, MemoryCache } from './index';
 
 const local = [
   "I'm looking for houses or apartments around the university of toronto. Should be within 10 minutes biking distance. Around 3-5k per",

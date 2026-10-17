@@ -1,13 +1,13 @@
-import { ParseRequestSchema, ParseResponseSchema, SearchIntentSchema, type ParseResponse } from '../../../../../packages/shared/schemas/index.js';
-import { AIUnavailable, NoneProvider, type AIProvider } from '../ai/index.js';
-import { cleanAIIntent } from './clean.js';
-import { fallbackParse, configuredAreas } from './fallback.js';
-import { parseInstruction } from './instruction.js';
-import { DestinationResolver } from './resolve.js';
-import { MemoryCache, IpLimiter, inputHash, type Cache } from './cache.js';
-export { fallbackParse, configuredAreas } from './fallback.js';
-export { DestinationResolver } from './resolve.js';
-export { IpLimiter, RateLimitError, MemoryCache } from './cache.js';
+import { ParseRequestSchema, ParseResponseSchema, SearchIntentSchema, type ParseResponse } from '../../../../../packages/shared/schemas/index';
+import { AIUnavailable, NoneProvider, type AIProvider } from '../ai/index';
+import { cleanAIIntent } from './clean';
+import { fallbackParse, configuredAreas } from './fallback';
+import { parseInstruction } from './instruction';
+import { DestinationResolver } from './resolve';
+import { MemoryCache, IpLimiter, inputHash, type Cache } from './cache';
+export { fallbackParse, configuredAreas } from './fallback';
+export { DestinationResolver } from './resolve';
+export { IpLimiter, RateLimitError, MemoryCache } from './cache';
 export class ParseService {
   private cache: Cache<ParseResponse>;
   constructor(private options: { provider?: AIProvider; resolver?: DestinationResolver; cache?: Cache<ParseResponse>; limiter?: IpLimiter; now?: () => Date } = {}) { this.cache = options.cache ?? new MemoryCache<ParseResponse>(); }

@@ -1,5 +1,5 @@
-import { type SearchIntent } from '../../../../../packages/shared/schemas/index.js';
-import { configuredAreas } from './fallback.js';
+import { type SearchIntent } from '../../../../../packages/shared/schemas/index';
+import { configuredAreas } from './fallback';
 export function cleanAIIntent(intent: SearchIntent, prompt: string): SearchIntent {
   const source = (key: string) => { const evidence = intent.fieldSources[key]; return evidence?.source === 'ai_prompt' && !!evidence.phrase && prompt.toLowerCase().includes(evidence.phrase.toLowerCase()); };
   const drop = (field: string) => intent.droppedRequests.push({ phrase: field, reason: 'AI interpretation lacked explicit source evidence; review this filter.' });

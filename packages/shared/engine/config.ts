@@ -10,6 +10,7 @@ export const engineConfig = {
     civic: { walk: 15, bike: 10, transit: 20, drive: 10 },
     place: { walk: 20, bike: 20, transit: 30, drive: 25 },
   },
+} as const;
 // Engine constants (SPEC 7). Every tunable value here is listed on the /data methodology page.
 // Each owner keeps their own section; edit others' sections only by agreement.
 

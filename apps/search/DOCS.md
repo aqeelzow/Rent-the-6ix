@@ -141,6 +141,10 @@ B source is in canonical `apps/web/src/lib/{ai,parse,db,api}`, five `apps/web/sr
 
 SearchResult and DetailResponse include top-level `id` equal to `listing.id`; Zod rejects a mismatch. `SearchResultItem` aliases the complete validated SearchResult type for A's store/list/map selection contract. `apps/web/src/lib/api/index.ts` exports `ApiError` as the error payload type `{code,message,issues?,retryAfterSeconds?}` plus `jsonRoute`; the internal HTTP exception class is distinct. A's existing placeholder store types were preserved. Root SPEC/PERSON_B changes preserve fetched A/C edits. No C/D algorithms, migrations or live adapters were implemented.
 
+## Vercel build correction — search branch
+
+The Vercel build at `93ef406` failed before bundling because `engineConfig` lacked its closing object delimiter, Next/Turbopack could not resolve `.js` suffixed TypeScript imports in the parse modules, and web source imported Zod without declaring it as a direct web dependency. The fix closes the config object, uses extensionless TS imports in those modules, and adds `zod` to `apps/web/package.json` and the pnpm lockfile. `pnpm --filter web typecheck` passes. A local production build reached unrelated sandbox restrictions (Turbopack helper port); Vercel production build remains the deployment verification.
+
 Production integration note (2026-10-17): B local TypeScript imports use extensionless paths as required by the scaffold’s Turbopack resolution. Known places are a static JSON import validated by Zod, avoiding runtime filesystem asset lookup. Canonical web typecheck/Next route typegen, lint and44 web tests pass under Node24;13 shared tests/typecheck also passed. Production build and native Next HTTP smoke also pass. Use Node24 on PATH when invoking pnpm scripts; invoking only pnpm’s parent process with Node24 can leave child test processes on the system Node version.
 
 ## Final API verification and pause — 2026-10-17
