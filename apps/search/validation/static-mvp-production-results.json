@@ -1,0 +1,67 @@
+{
+  "parser": "fallback",
+  "eligible": 183,
+  "returned": 183,
+  "percentile": 10,
+  "liveDetail": true,
+  "overlappingSearches": true,
+  "staticSizeAgeTypeAc": true,
+  "hardFairness": true,
+  "measurements": [
+    {
+      "path": "/api/search/parse",
+      "ms": 3074,
+      "status": 200
+    },
+    {
+      "path": "/api/listings/search",
+      "ms": 3859,
+      "status": 200
+    },
+    {
+      "path": "/api/listings/search",
+      "ms": 801,
+      "status": 200
+    },
+    {
+      "path": "/api/listings/search",
+      "ms": 149,
+      "status": 200
+    },
+    {
+      "path": "/api/listings/:id",
+      "ms": 47,
+      "status": 200
+    },
+    {
+      "path": "/api/listings/:id",
+      "ms": 45,
+      "status": 404
+    },
+    {
+      "path": "/api/listings/search",
+      "ms": 5,
+      "status": 422
+    },
+    {
+      "path": "/api/listings/search",
+      "ms": 48,
+      "status": 200
+    },
+    {
+      "path": "/api/listings/search",
+      "ms": 49,
+      "status": 200
+    },
+    {
+      "path": "/api/listings/search",
+      "ms": 227,
+      "status": 200
+    },
+    {
+      "path": "/api/listings/search",
+      "ms": 45,
+      "status": 200
+    }
+  ]
+}

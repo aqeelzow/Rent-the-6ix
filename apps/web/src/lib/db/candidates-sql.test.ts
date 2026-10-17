@@ -2,7 +2,7 @@ import { test, vi } from 'vitest';
 import assert from 'node:assert/strict';
 import { baseIntent, sampleListings, valuations, travelIntent } from '../../../../../packages/shared/fixtures/index';
 import type { Listing, SearchRequest } from '../../../../../packages/shared/schemas/index';
-import { candidateQuery, listingFromRow, sqlCandidateLoader } from './candidates-sql';
+import { candidateQuery, listingFromRow, sqlCandidateLoader, sqlListingLoader } from './candidates-sql';
 import { SearchUnavailable } from './candidates';
 import { createRuntime } from '../api/runtime';
 import { getClient } from '../db';
@@ -74,10 +74,45 @@ test('missing DB, invalid rows, aborted reads and exact job cancellation fail ho
   const load = sqlCandidateLoader(() => ({ unsafe: () => new Promise<unknown[]>(resolve => { finish = resolve; }) }));
   const pending = load(input, controller.signal); controller.abort(); await assert.rejects(pending, SearchUnavailable);
   let retried = 0; const retry = sqlCandidateLoader(() => ({ unsafe: async () => { retried++; return []; } }));
-  await assert.rejects(retry(input), SearchUnavailable); assert.equal(retried, 0);
-  finish([]); await new Promise(resolve => setTimeout(resolve, 0));
   assert.deepEqual(await retry(input), []); assert.equal(retried, 1);
+  finish([]); await new Promise(resolve => setTimeout(resolve, 0));
+  assert.deepEqual(await retry(input), []); assert.equal(retried, 2);
   const api = createRuntime({ env: {}, dependencies: { listings: [], loadCandidates: load, enrich } });
   const response = await api.search(http({ ...input, intent: { ...travelIntent, numericExtreme: { field: 'travel', direction: 'min', percentage: 5, minimumCount: 10, targetId: travelIntent.travelTargets[0].id } } }), undefined);
   assert.equal(response.status, 200); assert.equal((await response.json()).status, 'pending'); api.jobs.dispose(); finish([]);
+});
+
+test('SQL detail binds UUID lookup, distinguishes absence and sanitizes failed reads', async () => {
+  const sql = { unsafe: vi.fn(async (...args: [string, (string | number | boolean)[]]) => { assert.equal(args.length, 2); return [rowFor(sampleListings[0])]; }) };
+  const lookup = sqlListingLoader(() => sql);
+  assert.equal((await lookup(sampleListings[0].id))?.id, sampleListings[0].id);
+  assert.match(sql.unsafe.mock.calls[0][0], /WHERE id = \$1$/);
+  assert.deepEqual(sql.unsafe.mock.calls[0][1], [sampleListings[0].id]);
+  await assert.rejects(lookup('invalid'));
+  assert.equal(await sqlListingLoader(() => ({ unsafe: async () => [] }))(sampleListings[0].id), null);
+  await assert.rejects(sqlListingLoader(() => null)(sampleListings[0].id), SearchUnavailable);
+  await assert.rejects(sqlListingLoader(() => ({ unsafe: async () => { throw new Error('private'); } }))(sampleListings[0].id), SearchUnavailable);
+});
+
+test('unfinished candidate reads are bounded without rejecting ordinary overlapping requests', async () => {
+  let finish: (rows: unknown[]) => void = () => {};
+  const rows = new Promise<unknown[]>(resolve => { finish = resolve; });
+  const load = sqlCandidateLoader(() => ({ unsafe: () => rows }));
+  const pending = Array.from({ length: 8 }, () => load(input));
+  await assert.rejects(load(input), SearchUnavailable);
+  finish([]);
+  assert.deepEqual(await Promise.all(pending), Array.from({ length: 8 }, () => []));
+  assert.deepEqual(await load(input), []);
+});
+
+test('live detail reports missing UUID as 404 and database failures as private 503', async () => {
+  for (const [loadListing, status] of [
+    [sqlListingLoader(() => ({ unsafe: async () => [] })), 404],
+    [sqlListingLoader(() => ({ unsafe: async () => { throw new Error('private detail database'); } })), 503],
+  ] as const) {
+    const api = createRuntime({ env: {}, dependencies: { listings: [], loadListing, enrich } });
+    const response = await api.detail(new Request('http://localhost/api/listings/x?intent=' + encodeURIComponent(JSON.stringify(baseIntent))), { params: Promise.resolve({ id: sampleListings[0].id }) });
+    assert.equal(response.status, status);
+    assert.doesNotMatch(JSON.stringify(await response.json()), /private detail database/);
+  }
 });

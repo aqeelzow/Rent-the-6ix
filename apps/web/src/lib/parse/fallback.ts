@@ -28,7 +28,11 @@ export function fallbackParse(rawPrompt: string, now = new Date()): SearchIntent
     if (min <= b) put('rent', { min, max: b }, rentRange[0]); else drop(rentRange[0], 'Rent bounds are reversed; clarify the range.');
   } else {
     const rent = rawPrompt.match(new RegExp(`(under|below|less than|no more than|at most|max(?:imum)?(?: rent)?|over|above|at least|min(?:imum)?(?: rent)?)\\s+(${money})`, 'i'));
-    if (rent && !/^\s*(?:sqft|sq\.?\s*ft|square feet|bedrooms?|beds?|bathrooms?|baths?|rooms?|years?|min(?:ute)?s?)\b/i.test(rawPrompt.slice(rent.index! + rent[0].length)) && (/[$k]/i.test(rent[2]) || /rent|budget|price|per month/i.test(rawPrompt.slice(Math.max(0, rent.index! - 20), rent.index! + rent[0].length + 20)))) put('rent', /over|above|at least|^min/i.test(rent[1]) ? { min: amount(rent[2]) } : { max: amount(rent[2]) }, rent[0]);
+    if (rent && !/^\s*(?:sqft|sq\.?\s*ft|square feet|bedrooms?|beds?|bathrooms?|baths?|rooms?|years?|min(?:ute)?s?)\b/i.test(rawPrompt.slice(rent.index! + rent[0].length)) && (/[$k]/i.test(rent[2]) || amount(rent[2]) >= 100 || /rent|budget|price|per month/i.test(rawPrompt.slice(Math.max(0, rent.index! - 20), rent.index! + rent[0].length + 20)))) put('rent', /over|above|at least|^min/i.test(rent[1]) ? { min: amount(rent[2]) } : { max: amount(rent[2]) }, rent[0]);
+  }
+  if (!intent.criteria.rent) {
+    const budget = rawPrompt.match(new RegExp(`\\b(?:budget|maximum rent|max rent)(?:\\s+(?:of|is))?\\s*:?\\s*(${money})`, 'i'));
+    if (budget) put('rent', { max: amount(budget[1]) }, budget[0]);
   }
   for (const [field, noun] of [['bedrooms', 'bedrooms?|beds?|rooms?'], ['bathrooms', 'bathrooms?|baths?'], ['sizeSqft', 'sq\\.?\\s*ft|square feet|sqft']] as const) {
     const m = rawPrompt.match(new RegExp(`(?:(at least|minimum|min|over|at most|maximum|max|under)\\s+)?(\\d+(?:\\.\\d+)?)(?:\\s*(-|–|to)\\s*(\\d+(?:\\.\\d+)?))?\\s*[-+]?\\s*(?:${noun})\\b`, 'i'));

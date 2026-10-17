@@ -6,11 +6,12 @@ Task ids match `PROGRESS.md`; task details are in `SPEC.md`.
 
 ## Current state
 
-- **Current task:** current C/SQL integration finished for user-requested wrap-up.
-- **Status:** paused at user request; current B changes are validated in /tmp/rent-search-upstream on b/search-owner-integration.
-- **Next action:** consume C’s now-published listingContext through SQL search dependencies, then verify database/routing/deployed acceptance when owner services/configuration are supplied.
-- **Blockers / needs from others:** no DATABASE_URL in this session; D’s concrete safety/router/geographic/cache/detail services; validated fast-model availability and parse latency; authoritative TD branch match; applying/publishing B patches outside the original read-only app/shared paths.
+- **Current task:** static-search MVP against the supplied PostgreSQL database.
+- **Status:** active on `b/search-static-mvp` in `/tmp/rent-search-mvp`, based on canonical `f055a38`.
+- **Verified:** 20,956 live listings / 16,892 active nonduplicates at inspection; native SQL-backed cheapest/known filters, scalar percentiles, fairness, detail and overlap acceptance.
+- **Remaining:** broad enriched-scan performance, live D safety/civic adapters and deployment acceptance. Dynamic routing/distance computations are deferred by the user.
 - **Last updated:** 2026-10-17
+
 
 ## Handoff notes
 

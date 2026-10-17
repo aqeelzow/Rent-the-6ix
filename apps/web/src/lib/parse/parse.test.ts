@@ -1,4 +1,4 @@
-import { test } from 'vitest';
+import { test, vi } from 'vitest';
 import assert from 'node:assert/strict';
 import { z } from 'zod';
 import { parseInstruction } from './instruction';
@@ -72,6 +72,30 @@ test('Gemini busy never retries, timeout bounds full retry and text uses main mo
   let calls = 0; const provider = new GeminiProvider({ apiKey:'test',model:'test',deadlineMs:15,fetch:async () => { calls++; if (calls === 1) return geminiResponse({invalid:true}); return new Promise(() => {}); } });
   await assert.rejects(provider.generateStructured({system:'test',prompt:'test',schema:z.object({ok:z.boolean()})}), (e: unknown) => e instanceof AIUnavailable && e.reason === 'timeout'); assert.equal(calls,2);
   const text = new GeminiProvider({ apiKey:'test',model:'main',fastModel:'fast',fetch:async url => { assert.match(String(url), /main/); return Response.json({candidates:[{content:{parts:[{text:'hello'}]}}]}); } }); assert.equal(await text.generateText({system:'test',prompt:'test'}),'hello');
+});
+test('Gemini fast requests cap the shared retry deadline at three seconds and respect shorter budgets', async () => {
+  vi.useFakeTimers();
+  try {
+    for (const [fast, deadlineMs, budget] of [[true, undefined, 3000], [true, 12000, 3000], [true, 500, 500], [false, undefined, 12000], [false, 1500, 1500]] as const) {
+      let calls = 0;
+      let signal: AbortSignal | undefined;
+      const provider = new GeminiProvider({ apiKey: 'test', model: 'configured', deadlineMs, fetch: async (_url, opts) => {
+        calls++;
+        signal = opts?.signal as AbortSignal;
+        if (calls === 1) { await new Promise(resolve => setTimeout(resolve, 100)); return geminiResponse({ invalid: true }); }
+        return new Promise(() => {});
+      } });
+      const rejected = assert.rejects(provider.generateStructured({ system: 'test', prompt: 'test', schema: z.object({ ok: z.boolean() }), fast }), (error: unknown) => error instanceof AIUnavailable && error.reason === 'timeout');
+      await vi.advanceTimersByTimeAsync(100);
+      assert.equal(calls, 2);
+      await vi.advanceTimersByTimeAsync(budget - 101);
+      assert.equal(signal?.aborted, false);
+      await vi.advanceTimersByTimeAsync(1);
+      await rejected;
+      assert.equal(signal?.aborted, true);
+      assert.equal(calls, 2);
+    }
+  } finally { vi.useRealTimers(); }
 });
 test('hash cache is bounded/expiring/copy isolated and per-IP limits cannot evict around quota', () => {
   let time = 1000; const cache = new MemoryCache<{value:number}>(1,100,() => time); cache.set('a',{value:1}); const a = cache.get('a')!; a.value=9; assert.equal(cache.get('a')?.value,1); cache.set('b',{value:2}); assert.equal(cache.get('a'),undefined); time+=101; assert.equal(cache.get('b'),undefined);
@@ -157,4 +181,11 @@ test('known hard travel bounds cannot be softened, omitted or widened by AI', as
   const result = await service.parse({ prompt: preferred }, 'ip');
   assert.equal(result.parser, 'gemini');
   assert.equal(result.intent.travelTargets[0].hard, false);
+});
+
+test('plain monthly budgets parse without currency signs and do not consume home or travel bounds', () => {
+  assert.deepEqual(fallbackParse('2 bedrooms under 2500').criteria.rent, { value: { max: 2500 }, hard: true });
+  assert.deepEqual(fallbackParse('budget of 2000, 1 bedroom').criteria.rent?.value, { max: 2000 });
+  assert.deepEqual(fallbackParse('maximum rent: 1800').criteria.rent?.value, { max: 1800 });
+  for (const prompt of ['under 800 sqft', 'at least 2 bedrooms', 'under 10 minutes walk to Union Station', 'built after 2000']) assert.equal(fallbackParse(prompt).criteria.rent, undefined);
 });
