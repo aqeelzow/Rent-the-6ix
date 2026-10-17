@@ -165,3 +165,15 @@ export type NumericExtreme = z.infer<typeof NumericExtremeSchema>;
 export type ParseRequest = z.infer<typeof ParseRequestSchema>;
 export type ParseResponse = z.infer<typeof ParseResponseSchema>;
 export type ErrorResponse = z.infer<typeof ErrorResponseSchema>;
+// D's nearby response (P2.16; drafted by A for D's and B's review). Straight-line distances only,
+// never minutes (SPEC 7.4); `locationPrecision` says how approximate the listing's own point is.
+export const PoiCategorySchema = z.enum(['grocery', 'school', 'university', 'library', 'park', 'community_centre', 'pharmacy', 'clinic']);
+export const NearbyPlaceSchema = z.strictObject({ id: text, name: text, category: PoiCategorySchema, subcategory: text.nullable(), distanceM: nonnegative, location: CoordinateSchema });
+export const NearbyStopSchema = z.strictObject({ id: text, name: text, isRapid: z.boolean(), routeTypes: z.array(text), distanceM: nonnegative, location: CoordinateSchema });
+export const NearbyResponseSchema = z.strictObject({
+  listingId: z.uuid(), locationPrecision: z.enum(['exact', 'street', 'area']), method: z.literal('straight_line'),
+  categories: z.array(z.strictObject({ category: PoiCategorySchema, places: z.array(NearbyPlaceSchema) })),
+  stops: z.array(NearbyStopSchema), nearestRapid: NearbyStopSchema.nullable(),
+});
+export type PoiCategory = z.infer<typeof PoiCategorySchema>;
+export type NearbyResponse = z.infer<typeof NearbyResponseSchema>;
