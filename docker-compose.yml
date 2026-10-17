@@ -76,16 +76,22 @@ services:
     image: ${OTP_IMAGE:-opentripplanner/opentripplanner:2.7.0}
     restart: unless-stopped
     environment:
-      JAVA_TOOL_OPTIONS: -Xmx6g
+      # Heap size is a deploy decision, not a code one: locally 6g suits a machine also running
+      # a dev server, while a 4 vCPU / 8 GB instance shares its RAM with web, worker and Caddy.
+      # Set OTP_JAVA_OPTS=-Xmx4g in .env there. A larger -Xmx than the box has free RAM means
+      # the container is OOM-killed while loading a graph that would otherwise fit.
+      JAVA_TOOL_OPTIONS: ${OTP_JAVA_OPTS:--Xmx6g}
     # The image's entrypoint always passes /var/opentripplanner as the graph directory, so the
     # inputs and graph.obj live in the one mount (otp/build.sh writes them there). A separate
     # graphs/ mount would be an empty directory OTP never looks at.
+    # graph.obj is git-ignored, so an instance either builds it (otp/build.sh) or receives it
+    # with `scp otp/data/graph.obj …`. Uploading the built file avoids a 1 GB OSM download.
     volumes:
       - ./otp/data:/var/opentripplanner
     command: ["--load"]
     expose:
       - "8080"
-    mem_limit: 7g
+    mem_limit: ${OTP_MEM_LIMIT:-7g}
 
 volumes:
   caddy_data:
