@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildingSimilarity,
   inPool,
+  sameEraShare,
   priceLabel,
   valuate,
   weightedQuantile,
@@ -156,6 +157,25 @@ describe("adjustments", () => {
       "This listing includes more utilities than 3 comparables: +$75 to compare",
       "2 comparables included more utilities than this listing: −$75 to compare",
     ]);
+  });
+});
+
+describe("sameEraShare", () => {
+  it("is the weight share from comparables known to be of a similar age", () => {
+    const valuation = {
+      comparables: [
+        { listingId: "a", weight: 3 },
+        { listingId: "b", weight: 1 },
+        { listingId: "c", weight: 1 },
+      ],
+    } as never;
+    const cands = [
+      { id: "a", yearBuilt: 1970 },
+      { id: "b", yearBuilt: 2019 },
+      { id: "c", yearBuilt: null },
+    ];
+    expect(sameEraShare({ yearBuilt: 2022 }, valuation, cands)).toBeCloseTo(0.2);
+    expect(sameEraShare({ yearBuilt: null }, valuation, cands)).toBeNull();
   });
 });
 

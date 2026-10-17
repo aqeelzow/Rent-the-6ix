@@ -73,4 +73,10 @@ export const CAVEATS = {
   rentSafeToLowScore: 66,
   /** price_dropped: the asking rent is at least this much below the first one seen. */
   priceDropMinCad: 25,
+  /**
+   * newer_building: built within this many years, and less than newerBuildingSameEraShare of the
+   * comparables' weight is from buildings known to be of a similar age.
+   */
+  newerBuildingYears: 10,
+  newerBuildingSameEraShare: 0.3,
 } as const;

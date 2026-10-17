@@ -292,6 +292,28 @@ function weightOf(subject: ValuationSubject, c: ComparableCandidate, now: Date):
 }
 
 /**
+ * Share of the comparables' weight from buildings known to be within sameEraYears of the subject's
+ * (for the newer_building caveat); null when the subject's year or the valuation is unknown.
+ */
+export function sameEraShare(
+  subject: Pick<ValuationSubject, "yearBuilt">,
+  valuation: Pick<Valuation, "comparables">,
+  candidates: Pick<ComparableCandidate, "id" | "yearBuilt">[],
+): number | null {
+  if (subject.yearBuilt == null || !valuation.comparables.length) return null;
+  const year = new Map(candidates.map((c) => [c.id, c.yearBuilt ?? null]));
+  let total = 0;
+  let same = 0;
+  for (const c of valuation.comparables) {
+    total += c.weight;
+    const y = year.get(c.listingId);
+    if (y != null && Math.abs(y - subject.yearBuilt) <= C.buildingSimilarity.sameEraYears)
+      same += c.weight;
+  }
+  return total > 0 ? same / total : null;
+}
+
+/**
  * Same kind of building counts more: a basement is a weak comparable for an above-ground unit
  * (and the reverse), and a 2022 tower for a 1965 one. Unknown type or age on either side → 1.
  */
