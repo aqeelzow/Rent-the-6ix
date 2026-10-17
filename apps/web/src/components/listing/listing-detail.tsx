@@ -145,8 +145,8 @@ export function ListingDetail({ id }: { id: string }) {
 }
 
 /**
- * The listing photo filling the screen under the site header. It stays pinned while the details
- * scroll up over it, easing in and darkening as they do (like the landing). Hot-linked from the
+ * The listing photo filling the screen, edge to edge, under the site header. It stays pinned
+ * while the details scroll up over it, easing in and darkening as they do (like the landing). Hot-linked from the
  * source only when its terms allow (SPEC 8.4); never re-hosted.
  */
 function PhotoHero({
@@ -186,39 +186,30 @@ function PhotoHero({
   return (
     <div
       ref={stage}
-      className="bg-hero sticky top-14 flex h-[calc(100svh-3.5rem)] flex-col overflow-hidden [--p:0]"
+      className="bg-hero sticky top-14 h-[calc(100svh-3.5rem)] overflow-hidden [--p:0]"
     >
-      {/* Sources give small thumbnails, so a blurred copy fills the screen behind the photo
-          and the photo itself is shown at a size it can carry. */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={src}
         alt=""
-        aria-hidden
         referrerPolicy="no-referrer"
-        className="absolute inset-0 size-full scale-125 object-cover opacity-70 blur-2xl"
+        onError={onError}
+        className="absolute inset-0 size-full object-cover will-change-transform"
+        style={{ transform: "scale(calc(1.02 + var(--p) * 0.1))" }}
       />
-      <div className="relative px-4 pt-4 lg:px-8">
-        <div className="bg-background/90 w-fit rounded-full px-3 py-1.5 shadow-sm backdrop-blur">
+      {/* Darkens as the details come up, so the photo recedes behind them. */}
+      <div
+        aria-hidden
+        className="bg-hero pointer-events-none absolute inset-0"
+        style={{ opacity: "calc(var(--p) * 0.6)" }}
+      />
+      <div className="absolute top-4 left-4 lg:left-8">
+        <div className="bg-background/90 rounded-full px-3 py-1.5 shadow-sm backdrop-blur">
           {back}
         </div>
       </div>
-      {/* The photo takes whatever height the title block leaves, on any screen. */}
       <div
-        className="relative flex min-h-0 flex-1 items-center justify-center px-4 py-4 will-change-transform"
-        style={{ transform: "scale(calc(1 + var(--p) * 0.08))" }}
-      >
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={src}
-          alt=""
-          referrerPolicy="no-referrer"
-          onError={onError}
-          className="h-full max-h-full w-auto max-w-full rounded-2xl object-contain shadow-2xl"
-        />
-      </div>
-      <div
-        className="relative bg-gradient-to-t from-black/85 via-black/60 to-transparent pt-10 pb-8"
+        className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/65 to-transparent pt-40 pb-8"
         style={{ transform: "translateY(calc(var(--p) * -3rem))", opacity: "calc(1 - var(--p))" }}
       >
         <div className="mx-auto w-full max-w-[96rem] px-4 lg:px-8">{header}</div>
@@ -230,12 +221,6 @@ function PhotoHero({
           <ChevronDown aria-hidden className="size-5 motion-safe:animate-bounce" />
         </a>
       </div>
-      {/* Darkens as the details come up, so the photo recedes behind them. */}
-      <div
-        aria-hidden
-        className="bg-hero pointer-events-none absolute inset-0"
-        style={{ opacity: "calc(var(--p) * 0.6)" }}
-      />
     </div>
   );
 }
