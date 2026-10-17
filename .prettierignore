@@ -1,0 +1,10 @@
+# Team docs are hand-formatted
+*.md
+pnpm-lock.yaml
+node_modules/
+.next/
+coverage/
+next-env.d.ts
+# Saved source pages and snapshots
+apps/worker/fixtures/
+db/snapshots/

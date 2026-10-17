@@ -11,9 +11,12 @@
     "start": "pnpm --filter web start",
     "typecheck": "pnpm -r --if-present typecheck",
     "lint": "pnpm -r --if-present lint",
-    "test": "pnpm -r --if-present test"
+    "test": "pnpm -r --if-present test",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
   "devDependencies": {
+    "prettier": "^3.9.10",
     "typescript": "^5.9.3"
   }
 }

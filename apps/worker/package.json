@@ -4,13 +4,19 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "typecheck": "tsc -p tsconfig.json"
+    "typecheck": "tsc -p tsconfig.json",
+    "lint": "eslint .",
+    "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
     "@rentthe6ix/shared": "workspace:*"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.5",
     "@types/node": "^24.19.2",
-    "typescript": "^5.9.3"
+    "eslint": "^9.39.5",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.71.2",
+    "vitest": "^5.0.5"
   }
 }
