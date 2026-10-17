@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { FilterChips } from "./filter-chips";
 import { t, type MessageKey } from "@/lib/format/messages";
 import { formatCad, formatCount } from "@/lib/format/number";
 import { parseAndSearch, runSearch } from "@/lib/store/actions";
@@ -78,6 +79,8 @@ export function SearchView({ prompt }: { prompt: string | null }) {
         <p className="mt-1">{prompt}</p>
       </section>
 
+      {intent && intent.rawPrompt === prompt && <FilterChips intent={intent} />}
+
       <div aria-live="polite" className="flex flex-col gap-4">
         {busy && (
           <p className="text-muted-foreground flex items-center gap-2 text-sm">
@@ -101,7 +104,7 @@ export function SearchView({ prompt }: { prompt: string | null }) {
           </div>
         )}
 
-        {parser === "fallback" && parseNotice && !busy && (
+        {parser === "fallback" && parseNotice && status !== "parsing" && (
           <p className="bg-caveat-info text-caveat-info-foreground flex items-start gap-2 rounded-lg px-3 py-2 text-sm">
             <Info aria-hidden className="mt-0.5 size-4 shrink-0" />
             <span>
@@ -110,7 +113,7 @@ export function SearchView({ prompt }: { prompt: string | null }) {
           </p>
         )}
 
-        {intent && intent.droppedRequests.length > 0 && !busy && (
+        {intent && intent.droppedRequests.length > 0 && status !== "parsing" && (
           <div className="rounded-lg border border-dashed px-3 py-2 text-sm">
             <p className="font-medium">{t("search.droppedTitle")}</p>
             <ul className="text-muted-foreground mt-1 list-disc pl-5">

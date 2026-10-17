@@ -6,12 +6,12 @@ Task ids match `PROGRESS.md`; task details are in `SPEC.md`.
 
 ## Current state
 
-- **Current task:** P1.31 filter chips (next)
+- **Current task:** P1.32 filters panel
 - **Status:** in progress
-- **Branch:** `a/P1.30-landing-parse` (P1.30 done, not merged yet)
-- **Next action:** P1.31 chips from `intent.criteria`, `travelTargets`, `fieldSources` and `droppedRequests` in `src/components/search/`, mounted in `search-view.tsx` where the interim notices are. Editing a chip calls `updateIntent()` then `runSearch()` and never re-parses.
-- **Blockers / needs from others:** none for P1.31–P1.35. Run the dev server with `SEARCH_FIXTURES=1`, otherwise B's search route returns 503.
-- **Last updated:** 2026-10-17 (P1.30 done: landing prompt → `/search?q=` → B's parse → search, with polling, error and retry states; checked at 375 px)
+- **Branch:** `a/P1.30-landing-parse` (P1.30 + P1.31 done, not merged yet)
+- **Next action:** P1.32 filters panel (SPEC 11.2): a sheet on mobile, a side panel on desktop. Reuse the edit helpers in `src/components/search/chips.ts`; every change calls `updateIntent()` then `runSearch()`. Add the "Hide listings that don't confirm my must-haves" toggle (`setHideUnconfirmed`).
+- **Blockers / needs from others:** none. Run the dev server with `SEARCH_FIXTURES=1`.
+- **Last updated:** 2026-10-17 (P1.31 done: editable chips; must-have/preference/default styles, source phrase, switch, travel modes and minutes, remove; edits re-search without parsing)
 
 ## Handoff notes
 
@@ -69,8 +69,8 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked · `[-]` 
 
 ### S1 → S2 (H3–H12) — Search UI on fixtures · Core
 - [x] P1.30 Landing: prompt box, 3 example chips (student, couple, family), "Explore neighbourhoods", "Paste a listing"; calls B's `/api/search/parse` (fixture until live)
-- [ ] P1.31 Filter chips: must-have/preference/default styles, source phrase, must-have ⇄ preference switch, remove, "dropped requests" notice
-- [ ] P1.32 Filters panel (SPEC 11.2): Price (range, price vs market), Home (rooms, size, unit type, building age, AC, pets, furnished, parking, laundry, utilities, availability, lease), Getting around (add place or amenity, mode, minutes), Safety (switch + explanation), Area; each with must-have/preference
+- [x] P1.31 Filter chips: must-have/preference/default styles, source phrase, must-have ⇄ preference switch, remove, "dropped requests" notice
+- [~] P1.32 Filters panel (SPEC 11.2): Price (range, price vs market), Home (rooms, size, unit type, building age, AC, pets, furnished, parking, laundry, utilities, availability, lease), Getting around (add place or amenity, mode, minutes), Safety (switch + explanation), Area; each with must-have/preference
 - [ ] P1.33 Results cards (SPEC 11.2): price badge, segmented score bar, travel targets with mode icon, size/year/AC, top caveat, source + freshness, "Also on", shortlist button
 - [ ] P1.34 Results map (MapLibre): clustered pins coloured by score band, approximate circles, place pins, synced hover/select with the list
 - [ ] P1.35 Mobile: list with sticky Map toggle, bottom sheet on pin tap, filters as a sheet
@@ -123,7 +123,7 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked · `[-]` 
 | Landing | `src/app/page.tsx`, `src/components/search/prompt-box.tsx` | next/form GET to `/search?q=`; Enter submits, Shift+Enter adds a line |
 | Search flow | `src/app/search/page.tsx`, `src/components/search/search-view.tsx`, `src/lib/store/actions.ts` (+ test) | parse → search → poll; states: parsing, searching, error + retry, ready; interim result rows until P1.33 |
 | Number formats | `src/lib/format/number.ts` (+ test) | `formatCad`, `formatCount` (en-CA) |
-| Chips & filters | `src/components/search/filter-chips.tsx`, `filters-panel.tsx` | no Gemini call on edit |
+| Chips & filters | `src/components/search/chips.ts` (+ test), `filter-chips.tsx`, `filters-panel.tsx` | `buildChips(intent)`, `setChipHard`, `removeChip`, `setTargetModes`, `setTargetMinutes`; edits keep the intent valid under B's schema and never call the parser |
 | Results | `src/app/search/page.tsx`, `src/components/results/*`, `src/components/map/results-map.tsx` | |
 | Listing detail | `src/app/listing/[id]/page.tsx`, `src/components/listing/*` | |
 | Explorer | `src/app/areas/*`, `src/components/areas/*` | |
