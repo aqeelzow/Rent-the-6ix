@@ -12,15 +12,14 @@ export function scoreListing(listing: Listing, intent: SearchIntent, context: Sc
   const rent = intent.criteria.rent;
   const max = rent?.value.max;
   const scores = {
-    // Far below the estimate (rent_far_below) is a reason to check the listing, not a deal: no value score.
-    value: context.valuation.status === 'ok' && context.valuation.differencePct !== undefined && context.valuation.differencePct <= CAVEATS.farBelowPct ? clamp(50 + context.valuation.differencePct * 2.5) : null,
+    value: valueScore(context.valuation),
     price: rent && !rent.hard ? max === undefined || listing.monthlyRentCad <= max ? 100 : clamp(100 * (1 - (listing.monthlyRentCad - max) / (max * engineConfig.priceOverrun))) : null,
     travel: travelScore(intent.travelTargets, context.travel), home: homeFit(listing, intent),
     safety: intent.safety.enabled && context.safety?.relativeRate != null ? context.safetyScore ?? null : null,
   };
   const sum = (Object.keys(scores) as (keyof typeof scores)[]).reduce((n, key) => n + (scores[key] === null ? 0 : weights[key]), 0);
   const evidence: Record<keyof typeof scores, string[]> = {
-    value: [`Comparable asking rents: ${Math.abs(context.valuation.differencePct ?? 0)}% ${(context.valuation.differencePct ?? 0) < 0 ? 'above' : 'below'} estimate; ${context.valuation.comparableCount} comparables; ${context.valuation.confidence} confidence`],
+    value: [`Comparable asking rents: ${Math.abs(context.valuation.differencePct ?? 0)}% ${(context.valuation.differencePct ?? 0) < 0 ? 'above' : 'below'} estimate; ${context.valuation.comparableCount} comparables; ${context.valuation.confidence} confidence${(context.valuation.differencePct ?? 0) > CAVEATS.farBelowPct ? `; more than ${CAVEATS.farBelowPct}% below is scored neutral (check the listing)` : ''}`],
     price: [`Rent CAD/month ${listing.monthlyRentCad}; preferred range ${rent?.value.min ?? 'unbounded'}–${rent?.value.max ?? 'unbounded'}`],
     home: homeCriteria(listing, intent).filter(c => !c.hard && c.score !== null).map(c => `${c.name}: listing ${JSON.stringify(c.name === 'buildingAge' ? listing.yearBuilt : c.name === 'sizeSqft' ? listing.sqft : c.name === 'availableBy' ? listing.availableFrom : c.name === 'unitTypes' ? { unitType: listing.unitType, bedrooms: listing.bedrooms, rentIsPerRoom: listing.rentIsPerRoom } : listing[c.name as keyof Listing])}; preferred ${JSON.stringify(intent.criteria[c.name as keyof SearchIntent['criteria']]?.value)}; score ${c.score}`),
     travel: intent.travelTargets.flatMap(t => context.travel.filter(r => r.targetId === t.id && targetModes(t).includes(r.mode)).map(r => `${t.label}: ${r.mode === 'drive' ? 'driving, no traffic' : r.mode}; ${r.method === 'otp' ? `${r.minutes} minutes (OTP)` : `${Math.round(r.distanceM)} m straight-line distance, travel time not available`}; target ${t.maxMinutes ?? defaultMinutes(t, r.mode)} minutes`)),
@@ -28,6 +27,15 @@ export function scoreListing(listing: Listing, intent: SearchIntent, context: Sc
   };
   const parts = (Object.keys(scores) as (keyof typeof scores)[]).map(id => ({ id, score: scores[id], weight: weights[id], effectiveWeight: scores[id] === null || !sum ? 0 : weights[id] / sum, evidence: scores[id] === null ? [] : evidence[id] }));
   return { total: Math.round(parts.reduce((n, part) => n + (part.score ?? 0) * part.effectiveWeight, 0)), parts, hardFilterNotes: filterListing(listing, intent, context).notes, caveats: [...context.caveats ?? [], ...intent.safety.enabled ? context.safety?.caveats ?? [] : []] };
+}
+/**
+ * Value part (SPEC 7.5): −20% → 0, 0% → 50, +20% → 100; null without a valuation. Far below the
+ * estimate (rent_far_below) is a reason to check the listing, not a deal, so it scores a neutral 50:
+ * null would let renormalization hand it full marks from the other parts.
+ */
+export function valueScore(valuation: Valuation): number | null {
+  if (valuation.status !== 'ok' || valuation.differencePct === undefined) return null;
+  return valuation.differencePct > CAVEATS.farBelowPct ? 50 : clamp(50 + valuation.differencePct * 2.5);
 }
 export function tieBreak(a: Listing, b: Listing) { return Date.parse(b.lastSeenAt) - Date.parse(a.lastSeenAt) || a.monthlyRentCad - b.monthlyRentCad; }
 export function selectPercentile(listings: readonly Listing[], selector: NumericExtreme, referenceYear: number, travelMinutes: (listing: Listing) => number | null = () => null): Listing[] {

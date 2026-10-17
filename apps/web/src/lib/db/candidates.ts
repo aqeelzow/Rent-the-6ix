@@ -1,8 +1,8 @@
 import { ListingSchema, SearchRequestSchema, SearchResultSchema, TravelTimeRowSchema, type Listing, type SearchRequest, type SearchResult, type TravelTarget, type TravelTimeRow } from '../../../../../packages/shared/schemas/index';
 import { engineConfig } from '../../../../../packages/shared/engine/config';
 import { filterListing } from '../../../../../packages/shared/engine/filters';
-import { scoreListing, tieBreak, type ScoreContext } from '../../../../../packages/shared/engine/score';
-import { clamp, distanceM, targetModes } from '../../../../../packages/shared/engine/travel';
+import { scoreListing, tieBreak, valueScore, type ScoreContext } from '../../../../../packages/shared/engine/score';
+import { distanceM, targetModes } from '../../../../../packages/shared/engine/travel';
 export type SearchDependencies = {
   // Fixture/detail pool; live search can inject the read-only SQL candidate loader.
   listings: readonly Listing[];
@@ -69,7 +69,7 @@ export async function searchCandidates(input: SearchRequest, dependencies: Searc
   if (intent.sortBy === 'best_value' || intent.sortBy === 'shortest_trips') {
     const key = (listing: Listing) => {
       const context = contexts.get(listing.id)!;
-      return intent.sortBy === 'best_value' ? context.valuation.status === 'ok' ? clamp(50 + context.valuation.differencePct! * 2.5) : -Infinity : -tripMinutes(intent, context.travel);
+      return intent.sortBy === 'best_value' ? valueScore(context.valuation) ?? -Infinity : -tripMinutes(intent, context.travel);
     };
     eligible.sort((a, b) => (key(b) - key(a) || tieBreak(a, b)));
   }
