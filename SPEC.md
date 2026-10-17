@@ -165,7 +165,7 @@ SearchIntent {
     bedrooms?: Pref<{ min?: number, max?: number }>           // studio = 0
     bathrooms?: Pref<{ min?: number, max?: number }>
     sizeSqft?: Pref<{ min?: number, max?: number }>
-    unitTypes?: Pref<UnitType[]>
+    unitTypes?: Pref<(UnitType | 'studio')[]>  // studio is a search-only whole-unit choice, bedrooms 0
     buildingAge?: Pref<{ builtAfter?: number, builtBefore?: number }>   // years; "new build" = built in the last 10 years
     airConditioning?: Pref<'any' | 'central'>                 // 'any' accepts central, wall, window or portable units
     petsAllowed?: Pref<'cats' | 'dogs' | 'any'>
@@ -181,6 +181,9 @@ SearchIntent {
   household?: { annualIncomeCad?: number, people?: number }
   weights?: { value: number, price: number, travel: number, home: number, safety: number }
   sortBy: 'best_match' | 'lowest_rent' | 'best_value' | 'shortest_trips' | 'lowest_true_cost' | 'newest'
+  numericExtreme?: { field: 'rent' | 'bedrooms' | 'bathrooms' | 'sizeSqft' | 'buildingAge' | 'travel',
+    direction: 'min' | 'max', percentage: number, minimumCount?: number, targetId?: string }
+  // One selector only; percentage (0,100], minimumCount defaults 10; travel requires targetId.
   fieldSources: Record<string, { source: 'ai_prompt' | 'user' | 'default', phrase?: string }>
   droppedRequests: { phrase: string, reason: string }[]   // things we can't search on, shown to the user
 }
@@ -196,7 +199,8 @@ TravelTarget {
   category?: 'grocery' | 'school' | 'university' | 'library' | 'park' | 'community_centre'
            | 'pharmacy' | 'clinic' | 'rapid_transit'
   schoolLevel?: 'elementary' | 'secondary' | 'any'
-  mode: 'transit' | 'drive' | 'walk' | 'bike'
+  mode: 'transit' | 'drive' | 'walk' | 'bike'  // required primary mode, backward compatible
+  alternativeModes?: ('transit' | 'drive' | 'walk' | 'bike')[] // additional distinct modes; OR within target
   maxMinutes?: number                 // if not stated, the default for the category and mode (section 7.4)
   hard: boolean                       // "must be within" vs "ideally"
 }
@@ -323,6 +327,10 @@ Caveat { severity: 'info' | 'warning' | 'high', code: string, title: string, exp
 
 ## 6. Search & ranking pipeline
 
+**Agreed search extensions (2026-10-16 [B]).** Unstated criteria impose no constraints; household size does not imply bedrooms; money is CAD/month and numeric rooms mean bedrooms unless shared accommodation is explicit. A search-only `studio` choice matches a known whole-unit type with bedrooms 0; room OR studio does not add a conjunctive bedroom filter. Broad places use labelled representative points; ambiguous campuses/branches require structured choices. Missing routing stays a labelled straight-line distance with an unconfirmed time requirement; hide-unconfirmed removes it. Alternative-mode scoring uses the best available normalized score per destination.
+
+Numeric sorts order the full eligible pool before the ordinary 500-candidate cap. Explicit percentiles apply all hard requirements first, then select known values using `min(N, max(minimumCount, ceil(N * percentage / 100)))`, with minimumCount 10 by default and existing cutoff tie-breakers. Building-age percentiles compare age in years, not build year. Multiple percentile fields require clarification. Scalar percentiles precede the cap. Exact travel percentiles route the full eligible pool and all requested modes, use the shortest requested time per destination, run asynchronously for at most two minutes, and return explicit unavailability if routing is incomplete; no exact partial result is returned. Ordinary search keeps its existing cap/routing budget.
+
 1. **Parse.** `/api/search/parse` sends the prompt to Gemini with the `SearchIntent` schema (section 10.1). The server validates with zod, drops invalid values, resolves travel-target places (section 7.4), and fills `fieldSources`. Fallback: keyword/regex parser.
 2. **Edit.** The UI shows every criterion as a chip: hard ones solid, preferences outlined, defaults dashed. Users can edit, remove, toggle hard ↔ preference, or add a chip. Re-running search never re-calls Gemini unless the prompt text changes.
 3. **Candidate query (SQL).** Active, non-duplicate listings matching hard criteria with known values, plus listings whose value for a hard field is unknown (marked "not confirmed"); area filters via `ST_Within`; hard amenity targets via the precomputed `travel_times`; hard safety via the neighbourhood's rate. Limit 500 candidates.
@@ -376,7 +384,7 @@ Applied in SQL, mirrored in `filters.ts` for pasted listings, for every criterio
 
 ### 7.4 Travel time to places and amenities
 
-Users can ask for time to **places** (job, campus, a relative's home) and to **amenities** (the nearest supermarket, school, library, park, pharmacy, clinic, rapid transit station…) by **public transit, car, walking or bike**, one mode per target ("15 min walk to a supermarket and 30 min by transit to work").
+Users can ask for time to **places** (job, campus, a relative's home) and to **amenities** (the nearest supermarket, school, library, park, pharmacy, clinic, rapid transit station…) by **public transit, car, walking or bike**, a primary mode plus optional alternative modes per target ("15 min walk or bike to a supermarket and 30 min by transit to work"). Alternatives use OR; separate destinations must each satisfy their own requirement.
 
 - **Places** resolve in order: a small `known_places.json` (campuses, hospitals, major stations and employment hubs, with coordinates), City Address Points, then MapTiler geocoding. The resolved point and source show on the chip; users can drag the pin to correct it.
 - **Router:** OpenTripPlanner 2 on Vultr (section 3). Modes and labels:
@@ -662,6 +670,7 @@ All bodies validated with zod; errors as `{ error: { code, message, issues?, ret
 | --- | --- | --- |
 | `POST` | `/api/search/parse` | text → `SearchIntent` |
 | `POST` | `/api/listings/search` | `SearchIntent` → ranked results with `MatchScore` |
+| `GET` | `/api/listings/search/jobs/[token]` | poll an exact travel percentile job; expired/consumed/restarted jobs return 410 |
 | `GET` | `/api/listings/[id]` | detail, building, area ids, duplicates |
 | `GET` | `/api/listings/[id]/valuation` | `Valuation` with comparables |
 | `GET` | `/api/listings/[id]/nearby?categories=` | nearest POIs and stops |
@@ -675,6 +684,8 @@ All bodies validated with zod; errors as `{ error: { code, message, issues?, ret
 | `GET` | `/api/areas/[kind]/[id]/briefing` | AI briefing (cached) |
 | `GET` | `/api/geo/resolve?q=` | destination resolution |
 | `GET` | `/api/health` | DB, AI, OTP, last ingest |
+
+Search requests wrap `{ intent: SearchIntent, hideUnconfirmed?: boolean }`. Search responses distinguish `completed` (results/count/notices), `pending` (opaque job token, polling URL, expiry), and explicit `unavailable` outcomes. Jobs are bounded, temporary and in memory: execution at most 120 seconds, retained at most 180 seconds after submission, removed on first terminal poll or expiry. No prompts or job payloads are persisted or logged. Restart loses jobs and polling returns `search_job_expired`. Detail search context excludes original prompt/source phrases. Exact application request/response schemas and examples are maintained in `apps/search/DOCS.md`; database adapters and owner definitions remain separate.
 
 Sample search result item:
 
@@ -904,6 +915,8 @@ One line per change to this spec: `YYYY-MM-DD P#.#: what changed and why`. Newes
 - 2026-10-15 (pre-build): Product renamed from RentRadar to RentThe6ix.
 - 2026-10-15 (pre-build): Every criterion can be a must-have or a preference (`Pref<T>`). New criteria: size, building age, air conditioning, price range as a preference, price vs market (underpriced / reasonably priced / overpriced labels with confidence-dependent bands), travel time to places and amenities by transit, car, walk and bike, and an opt-in safety preference from TPS neighbourhood crime rates. Match score is now five parts (value, price, travel, home, safety). OTP moves from P1 to P0 (owned by D), with amenity times precomputed into `travel_times`; Vultr instance sized to 8 GB. Sync points S1–S5 added; per-person files `PERSON_A.md`–`PERSON_D.md`.
 - 2026-10-15 (pre-build): Team docs added: `TEAM.md` (ownership, contracts, git workflow, sync points), `CLAUDE.md` (session rules), `PROGRESS.md` (master task list generated from the four person files), plus starter `README.md`, `DEPLOY.md`, `DEVPOST.md`, `.env.example`, `.gitignore` and `apps/worker/SOURCES.md`.
+- 2026-10-16 [B]: Published the user-agreed alternative-mode, destination-choice, unknown-travel and full-pool percentile semantics from apps/search/plan.md; exact travel uses bounded temporary polling jobs.
+- 2026-10-16 [B]: Added search-only studio selection and explicit fixture-backed search API contracts; configured Downtown/Scarborough rectangles are labelled approximate search definitions, not official civic boundaries. Owner SQL/geographic/valuation/safety/router integration remains pending.
 - 2026-10-16 P0.1 [A]: Scaffold on Next.js 16.4 (App Router, Turbopack, React Compiler), Node 24, pnpm 12. Cache Components is **off**, so pages and GET route handlers render per request and DB-backed routes are never prerendered at build. `packages/shared` is plain TypeScript with no build step (Next uses `transpilePackages`), imported as `@rentthe6ix/shared/schemas`, `@rentthe6ix/shared/engine/<file>`, `@rentthe6ix/shared/fixtures`. `next build` emits `output: "standalone"` for the Docker image.
 - 2026-10-16 P0.10 [A]: UI strings use a small typed `t()` over `messages/en.json` instead of next-intl (simpler, no provider or middleware). "Paste a listing" gets its own route, `/paste`. One `.env.local` at the repo root serves web (loaded by `next.config.ts`), worker and scripts. Unbuilt pages (`/search`, `/areas`, `/paste`, `/data`, `/status`) render a placeholder so early deploys have no dead links.
 - 2026-10-16 P0.13 [A]: Store contract: `useAppStore(selector)` from `apps/web/src/lib/store/store.ts` (one browser store; slices combined there). Search runs as `startSearch()` → `receiveResults(id, results)` / `receiveError(id, error)`, and responses to older requests are dropped. Shortlist entries are `{ kind: "listing", id, addedAt }` or `{ kind: "pasted", id, listing, addedAt }`. Selection contract: `hoveredListingId` / `selectedListingId`, both cleared when that listing leaves the results.
