@@ -6,7 +6,7 @@ Checked 2026-10-16 with `pnpm ingest:once --sources kijiji,torontorentals,rental
 
 | Source | id | Status | How | Notes |
 | --- | --- | --- | --- | --- |
-| Kijiji (Toronto long-term rentals) | `kijiji` | **go** | search pages; `__NEXT_DATA__` Apollo state | 45/page, ~174 pages. Rent, beds, baths, address, coordinates 100%; size ~31%, AC ~39%, year built 0%. Description is the truncated search snippet. |
+| Kijiji (Toronto long-term rentals + Room Rentals & Roommates) | `kijiji` | **go** | search pages; `__NEXT_DATA__` Apollo state; Apartments & Condos (c37), then Room Rentals (c36, ~52 pages, `StandardListing` entries: rooms, no attributes) | 45/page, ~174 pages. Rent, beds, baths, address, coordinates 100%; size ~31%, AC ~39%, year built 0%. Description is the truncated search snippet. |
 | torontorentals.com | `torontorentals` | **go** | search pages; `/graphql` results captured while the page loads | Rentals.ca network (same data as rentals.ca). ~4,000 buildings / ~7,000 floor plans, 10 buildings per page; one row per floor plan. Size ~99%, year built ~78%, no description, no AC. Building contact is never read. |
 | Rentals.ca | `rentals_ca` | **no-go (parser)** | same adapter as torontorentals | No longer blocked with CloakBrowser, but no `/graphql` results response is captured ("no results response"). Adapter needs a fresh look. Its listings are covered by `torontorentals`. |
 | Zillow (Toronto rentals) | `zillow` | **go** | search pages; `__NEXT_DATA__` | Plain Playwright got HTTP 403 PerimeterX captcha; CloakBrowser gets through. 64 on page 1. Rent, beds, address, postal code 100%, coordinates ~94%; baths and size ~25%; no unit type or posted date. Postal codes come without the space (`M4M2Z8`). |

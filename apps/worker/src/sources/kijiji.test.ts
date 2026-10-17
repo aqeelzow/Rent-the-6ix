@@ -79,6 +79,34 @@ describe("parseKijiji", () => {
     );
   });
 
+  it("reads Room Rentals entries (StandardListing, no attributes) as rooms", () => {
+    const room = {
+      __typename: "StandardListing",
+      id: "200",
+      title: "Furnished room near York U",
+      url: "https://www.kijiji.ca/v-room-rental-roommate/city-of-toronto/x/200",
+      price: { __typename: "StandardAmountPrice", amount: 95000 },
+      location: { address: "Toronto, ON", coordinates: { latitude: 43.77, longitude: -79.5 } },
+    };
+    const html = page(
+      [room],
+      `<a href="/b-room-rental-roommate/city-of-toronto/page-52/c36l1700273"></a>`,
+    );
+    const { listings, lastPage } = parseKijiji(html, "rooms");
+    expect(listings[0]).toMatchObject({
+      unitType: "room",
+      rentIsPerRoom: true,
+      monthlyRentCad: 950,
+    });
+    expect(lastPage).toBe(52);
+    const basement = { ...room, id: "201", title: "Triple Mint High Park Basement for Rent $1850" };
+    const [whole] = parseKijiji(page([basement]), "rooms").listings;
+    expect(whole).toMatchObject({ unitType: null, rentIsPerRoom: false });
+    expect(kijijiPageUrl(3, "rooms")).toBe(
+      "https://www.kijiji.ca/b-room-rental-roommate/city-of-toronto/page-3/c36l1700273",
+    );
+  });
+
   it("fails loudly when the page layout changes", () => {
     expect(() => parseKijiji("<html></html>")).toThrow(/__NEXT_DATA__/);
   });

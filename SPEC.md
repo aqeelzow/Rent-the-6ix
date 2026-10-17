@@ -515,7 +515,7 @@ Sources the team wants, one adapter each in `apps/worker/src/sources`, each expo
 
 | Source | Approach | Notes |
 | --- | --- | --- |
-| **Kijiji** (Toronto long-term rentals) | search pages; results embedded as JSON (`__NEXT_DATA__`) | go |
+| **Kijiji** (Toronto long-term rentals and Room Rentals & Roommates) | search pages; results embedded as JSON (`__NEXT_DATA__`) | go |
 | **TorontoRentals.com** (Rentals.ca network) | search pages; results from the page's /graphql call | go |
 | **Rentals.ca** | same platform as TorontoRentals.com | no-go: not blocked with CloakBrowser, but no results response captured |
 | **Zillow** (Toronto rentals) | search pages (`__NEXT_DATA__`) | go (with CloakBrowser) |
@@ -944,3 +944,4 @@ One line per change to this spec: `YYYY-MM-DD P#.#: what changed and why`. Newes
 - 2026-10-17 P3.32 [C]: `deposit_before_viewing` is read from the full description at ingest and stored on the listing (`deposit_before_viewing`, migration 005), because the 280-char excerpt usually cuts it off; `caveats()` uses the stored flag and still checks the excerpt.
 - 2026-10-17 P3.31 [C]: Each worker run writes one `ingest_runs` row per source (status, pages, listings, dropped, details, stored, message; migration 006) for `/status` and unhealthy-source errors.
 - 2026-10-17 P3.32 [C]: `duplicate_text_elsewhere` stays off: even a narrow rule (identical excerpt, same bedrooms, > 200 m apart, ≥ 30% cheaper) matched 1 of 16k collected listings, a property manager's promo on two of its own buildings.
+- 2026-10-17 [C]: The Kijiji source also collects the Room Rentals & Roommates category (rooms, priced per room), which the student demo prompt needs; before this only 9 rooms were within 8 km of York University.
