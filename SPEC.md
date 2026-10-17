@@ -413,7 +413,7 @@ Hard criteria first; then for each surviving listing five parts, each 0–100 or
 
 | Part | Default weight | How it's scored |
 | --- | --- | --- |
-| **Value** (price vs market) | 30% | `differencePct` mapped linearly: −20% → 0, 0% → 50, +20% → 100 (clamped). `null` if insufficient data. If the user asks for a good deal or a soft `priceFairness`, weight → 45%. |
+| **Value** (price vs market) | 30% | `differencePct` mapped linearly: −20% → 0, 0% → 50, +20% → 100 (clamped). `null` if insufficient data or listed rent is more than `CAVEATS.farBelowPct` (30%) below the estimate (a verification caveat, not a maximum value score). If the user asks for a good deal or a soft `priceFairness`, weight → 45%. |
 | **Price** (price range) | 15% | Only when `rent` is a preference: inside the range → 100; above the max, falling linearly to 0 at 15% over; below a stated min → 100. `null` if rent is a must-have or not given (must-haves already excluded the rest). |
 | **Travel** | 30% | Per target: at or under the target time → 100, falling linearly to 0 at 2× the target; averaged across targets. Straight-line fallback uses the distance targets the same way. `null` if no targets. |
 | **Home** (the unit itself) | 25% | Average over the soft criteria the user gave, each scored 0–100 (below); unknown values are left out, not counted as failures. `null` if no soft unit criteria. |
@@ -430,7 +430,7 @@ Hard criteria first; then for each surviving listing five parts, each 0–100 or
 
 **Rules:**
 - **Renormalize:** effective weight = weight ÷ sum of weights of non-null parts. Total = Σ score × effective weight. Shown in the breakdown so the bars always add up to the total.
-- **Tie-breakers:** newer `lastSeenAt`, then lower rent.
+- **Best-match order:** confirmed hard bedrooms first, then fewer unconfirmed hard requirements, then listings without a far-below-estimate verification flag, then the unrounded weighted score. Ties use more measured part weight, then valuation confidence and effective comparable count when both value parts contribute, then newer `lastSeenAt`, then lower rent. Hard-field confirmation is applied across the cheap eligible pool before the 500-candidate cap. Numeric sorts and percentile cutoff ties retain newer `lastSeenAt`, then lower rent; best-value uses the same guarded value part as the displayed score. Displayed totals stay rounded and parts still renormalize.
 - Users can change weights with five sliders (P1); the default weights are shown, not hidden.
 
 ### 7.6 Safety preference (opt-in)
@@ -960,3 +960,5 @@ One line per change to this spec: `YYYY-MM-DD P#.#: what changed and why`. Newes
 
 - 2026-10-17 P2.20/P2.24 [B]: Staged read-only SQL candidate loading before enrichment/caps, preserving nullable area IDs as unconfirmed unless another OR area matches; latest C effectiveCount/adjustments and A nested listing.id contracts remain authoritative. Actual A choice/polling/store integration is fixture-verified; live owner acceptance remains open.
 - 2026-10-17 P1.21/P1.23 [B]: Explicit target-ID source/query instructions and deterministic known hard-time checks prevent silent broadening; Address Points consumes D’s existing table/client, and partial MapTiler matches stay unavailable. Current provider/configuration latency and TD-match gates are not claimed passed.
+
+- 2026-10-17 P2.24 [B]: Addressed SPEC16 ranking feedback: retain C’s published >30%-below-estimate null-value guard, order best-match by hard confirmation and rent verification before score, use precise scores and measured evidence for saturated ties, and apply hard-field confirmation before the candidate cap. Existing room/per-room exclusion is unchanged and live-verified. Numeric sort/percentile definitions remain unchanged.

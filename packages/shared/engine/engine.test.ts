@@ -85,3 +85,13 @@ test('missing civic IDs stay unconfirmed through geographic OR and hide gates', 
   assert.deepEqual(filterListing(sparse, withNear, {}, true), { passes: true, notes: [] });
   assert.deepEqual(filterListing(sparse, baseIntent, {}, true), { passes: true, notes: [] });
 });
+
+test('C rent verification threshold omits value without dropping the caveat or breaking totals', () => {
+  for (const differencePct of [20, 30, 30.01, 55]) {
+    const caveat = { code: 'rent_far_below', severity: 'warning' as const, title: 'Check the asking rent', explanation: 'More than 30% below comparable asking rents.' };
+    const score = scoreListing(listing, intent({ furnished: { value: true, hard: false } }), { ...context, valuation: { ...valuations[0], differencePct }, caveats: [caveat] });
+    assert.equal(score.parts.find(p => p.id === 'value')!.score, differencePct <= 30 ? 100 : null);
+    assert.deepEqual(score.caveats, [caveat]);
+    assert.equal(score.total, Math.round(score.parts.reduce((sum, p) => sum + (p.score ?? 0) * p.effectiveWeight, 0)));
+  }
+});

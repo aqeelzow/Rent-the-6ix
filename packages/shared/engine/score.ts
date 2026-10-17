@@ -1,5 +1,5 @@
 import type { Listing, SearchIntent, Valuation, TravelTimeRow, Safety, MatchScore, Caveat, NumericExtreme } from '../schemas/index';
-import { engineConfig } from './config';
+import { CAVEATS, engineConfig } from './config';
 import { filterListing } from './filters';
 import { homeFit, homeCriteria } from './home-fit';
 import { clamp, travelScore, targetModes, defaultMinutes } from './travel';
@@ -12,7 +12,8 @@ export function scoreListing(listing: Listing, intent: SearchIntent, context: Sc
   const rent = intent.criteria.rent;
   const max = rent?.value.max;
   const scores = {
-    value: context.valuation.status === 'ok' && context.valuation.differencePct !== undefined ? clamp(50 + context.valuation.differencePct * 2.5) : null,
+    // C's rent_far_below guard: an unusually low asking rent needs verification, not a maximum value score.
+    value: context.valuation.status === 'ok' && context.valuation.differencePct !== undefined && context.valuation.differencePct <= CAVEATS.farBelowPct ? clamp(50 + context.valuation.differencePct * 2.5) : null,
     price: rent && !rent.hard ? max === undefined || listing.monthlyRentCad <= max ? 100 : clamp(100 * (1 - (listing.monthlyRentCad - max) / (max * engineConfig.priceOverrun))) : null,
     travel: travelScore(intent.travelTargets, context.travel), home: homeFit(listing, intent),
     safety: intent.safety.enabled && context.safety?.relativeRate != null ? context.safetyScore ?? null : null,

@@ -1,8 +1,8 @@
 import { ListingSchema, SearchRequestSchema, SearchResultSchema, TravelTimeRowSchema, type Listing, type SearchRequest, type SearchResult, type TravelTarget, type TravelTimeRow } from '../../../../../packages/shared/schemas/index';
-import { engineConfig } from '../../../../../packages/shared/engine/config';
+import { CAVEATS, engineConfig } from '../../../../../packages/shared/engine/config';
 import { filterListing } from '../../../../../packages/shared/engine/filters';
 import { scoreListing, tieBreak, type ScoreContext } from '../../../../../packages/shared/engine/score';
-import { clamp, distanceM, targetModes } from '../../../../../packages/shared/engine/travel';
+import { distanceM, targetModes } from '../../../../../packages/shared/engine/travel';
 export type SearchDependencies = {
   // Fixture/detail pool; live search can inject the read-only SQL candidate loader.
   listings: readonly Listing[];
@@ -39,8 +39,16 @@ export function tripMinutes(intent: SearchRequest['intent'], travel: TravelTimeR
   }
   return sum / intent.travelTargets.length;
 }
+const unknownBedrooms = (intent: SearchRequest['intent'], listing: Listing) => intent.criteria.bedrooms?.hard && listing.bedrooms === null ? 1 : 0;
+const weightedScore = (result: SearchResult) => result.matchScore.parts.reduce((sum, part) => sum + (part.score ?? 0) * part.effectiveWeight, 0);
+const evidenceWeight = (result: SearchResult) => result.matchScore.parts.reduce((sum, part) => sum + (part.score === null ? 0 : part.weight), 0);
+const needsRentVerification = (result: SearchResult) => result.valuation.status === 'ok' && result.valuation.differencePct! > CAVEATS.farBelowPct ? 1 : 0;
+// Renormalized 100s can hide missing facts or rent-verification caveats; best match prioritizes that evidence.
 export function compareResults(intent: SearchRequest['intent'], a: SearchResult, b: SearchResult): number {
-  const primary = intent.sortBy === 'lowest_rent' ? a.listing.monthlyRentCad - b.listing.monthlyRentCad : intent.sortBy === 'newest' ? Date.parse(b.listing.lastSeenAt) - Date.parse(a.listing.lastSeenAt) : intent.sortBy === 'best_value' ? part(b, 'value') - part(a, 'value') : intent.sortBy === 'shortest_trips' ? tripMinutes(intent, a.travel) - tripMinutes(intent, b.travel) : b.matchScore.total - a.matchScore.total;
+  const primary = intent.sortBy === 'lowest_rent' ? a.listing.monthlyRentCad - b.listing.monthlyRentCad : intent.sortBy === 'newest' ? Date.parse(b.listing.lastSeenAt) - Date.parse(a.listing.lastSeenAt) : intent.sortBy === 'best_value' ? part(b, 'value') - part(a, 'value') : intent.sortBy === 'shortest_trips' ? tripMinutes(intent, a.travel) - tripMinutes(intent, b.travel) :
+    unknownBedrooms(intent, a.listing) - unknownBedrooms(intent, b.listing) || a.matchScore.hardFilterNotes.length - b.matchScore.hardFilterNotes.length || needsRentVerification(a) - needsRentVerification(b) || weightedScore(b) - weightedScore(a) || evidenceWeight(b) - evidenceWeight(a) ||
+    (a.matchScore.parts.some(p => p.id === 'value' && p.effectiveWeight > 0) && b.matchScore.parts.some(p => p.id === 'value' && p.effectiveWeight > 0) ?
+      ['low', 'medium', 'high'].indexOf(b.valuation.confidence) - ['low', 'medium', 'high'].indexOf(a.valuation.confidence) || b.valuation.effectiveCount - a.valuation.effectiveCount : 0);
   return (Number.isNaN(primary) ? 0 : primary) || tieBreak(a.listing, b.listing);
 }
 export async function searchCandidates(input: SearchRequest, dependencies: SearchDependencies) {
@@ -51,6 +59,8 @@ export async function searchCandidates(input: SearchRequest, dependencies: Searc
   const pool = source.map(l => ListingSchema.parse(l)).filter(l => filterListing(l, intent, {}, request.hideUnconfirmed, true).passes);
   // Numeric listing sorts operate on the entire cheap-filtered pool before expensive enrichment.
   if (intent.sortBy === 'lowest_rent' || intent.sortBy === 'newest') pool.sort((a, b) => intent.sortBy === 'lowest_rent' ? a.monthlyRentCad - b.monthlyRentCad || tieBreak(a, b) : tieBreak(a, b));
+  // Hard-field confirmation is cheap and must precede the cap, even if unknown listings arrived first.
+  if (intent.sortBy === 'best_match') pool.sort((a, b) => unknownBedrooms(intent, a) - unknownBedrooms(intent, b) || filterListing(a, intent, {}, false, true).notes.length - filterListing(b, intent, {}, false, true).notes.length || tieBreak(a, b));
   const contexts = new Map<string, ScoreContext>();
   // Fairness/safety hard filters must be known before taking the numeric candidate cap.
   const fullContextRequired = intent.sortBy === 'best_value' || intent.sortBy === 'shortest_trips' || intent.criteria.priceFairness?.hard || intent.safety.hard || intent.travelTargets.some(t => t.hard);
@@ -66,17 +76,10 @@ export async function searchCandidates(input: SearchRequest, dependencies: Searc
       return filterListing(listing, intent, context).passes ? listing : null;
   });
   const eligible = enriched.filter((listing): listing is Listing => listing !== null);
-  if (intent.sortBy === 'best_value' || intent.sortBy === 'shortest_trips') {
-    const key = (listing: Listing) => {
-      const context = contexts.get(listing.id)!;
-      return intent.sortBy === 'best_value' ? context.valuation.status === 'ok' ? clamp(50 + context.valuation.differencePct! * 2.5) : -Infinity : -tripMinutes(intent, context.travel);
-    };
-    eligible.sort((a, b) => (key(b) - key(a) || tieBreak(a, b)));
-  }
-  const candidates = eligible.slice(0, engineConfig.candidateLimit).map(listing => {
+  const candidates = eligible.map(listing => {
     const context = contexts.get(listing.id)!;
     return SearchResultSchema.parse({ listing, valuation: context.valuation, safety: context.safety, travel: context.travel, matchScore: scoreListing(listing, intent, context) });
-  }).sort((a, b) => compareResults(intent, a, b));
+  }).sort((a, b) => compareResults(intent, a, b)).slice(0, engineConfig.candidateLimit);
   const targets = intent.travelTargets.filter(t => t.kind === 'place');
   await routeCandidateContexts(dependencies, candidates.slice(0, engineConfig.routingLimit).map(r => r.listing), targets, contexts);
   const results = candidates.flatMap(result => {
