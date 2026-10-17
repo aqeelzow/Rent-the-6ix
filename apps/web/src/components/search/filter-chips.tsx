@@ -1,6 +1,6 @@
 "use client";
 
-import { Trash2 } from "lucide-react";
+import { ChevronRight, Trash2 } from "lucide-react";
 import { useId, useState } from "react";
 import { modeIcons } from "@/components/mode-icons";
 import { Button } from "@/components/ui/button";
@@ -24,6 +24,9 @@ import {
   type Mode,
 } from "./chips";
 
+/** How many chip labels the collapsed summary shows before "+N more". */
+const SUMMARY_CHIPS = 3;
+
 /** Must-have solid, preference outlined, default dashed (SPEC 6 step 2). */
 function chipStyle(chip: Chip): string {
   if (chip.source === "default")
@@ -45,20 +48,34 @@ export function FilterChips({ intent }: { intent: SearchIntent }) {
     void runSearch();
   };
 
+  const preview = chips.slice(0, SUMMARY_CHIPS).map((chip) => chip.label);
+  const more = chips.length - preview.length;
+
+  // Collapsed by default: a one-line summary; the editable chips open on tap.
   return (
-    <section aria-labelledby="filters-label" className="flex flex-col gap-2">
-      <h2 id="filters-label" className="sr-only">
-        {t("filters.label")}
-      </h2>
-      <ul className="flex flex-wrap gap-2">
+    <details aria-labelledby="filters-label" className="group flex flex-col gap-2">
+      <summary className="hover:bg-accent focus-visible:ring-ring/50 -mx-2 flex cursor-pointer list-none items-center gap-1.5 rounded-md px-2 py-1 text-sm outline-none focus-visible:ring-3 [&::-webkit-details-marker]:hidden">
+        <ChevronRight
+          aria-hidden
+          className="size-4 shrink-0 transition-transform group-open:rotate-90"
+        />
+        <span id="filters-label" className="shrink-0 font-medium">
+          {t("filters.summaryLabel")}
+        </span>
+        <span className="text-muted-foreground truncate">
+          {preview.join(" · ")}
+          {more > 0 && ` · ${t("filters.summaryMore", { count: more })}`}
+        </span>
+      </summary>
+      <ul className="mt-2 flex flex-wrap gap-2">
         {chips.map((chip) => (
           <li key={chip.key} className="max-w-full">
             <ChipButton chip={chip} intent={intent} onEdit={edit} />
           </li>
         ))}
       </ul>
-      <p className="text-muted-foreground text-xs">{t("filters.legend")}</p>
-    </section>
+      <p className="text-muted-foreground mt-2 text-xs">{t("filters.legend")}</p>
+    </details>
   );
 }
 

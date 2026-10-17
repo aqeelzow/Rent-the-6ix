@@ -1,11 +1,12 @@
 import {
   DestinationResolutionSchema,
+  DetailResponseSchema,
   ErrorResponseSchema,
   ParseResponseSchema,
   SearchResponseSchema,
 } from "@rentthe6ix/shared/schemas";
 import { appStore, type createAppStore } from "./store";
-import type { ApiError, DestinationResolution } from "./types";
+import type { ApiError, DestinationResolution, DetailResponse, SearchIntent } from "./types";
 
 // Browser-side calls to B's routes (SPEC 13). Responses are validated with B's schemas before they
 // reach the store; a response that doesn't match is treated as an error, never shown half-parsed.
@@ -33,7 +34,7 @@ type Result = { ok: true; json: unknown } | { ok: false; error: ApiError };
 async function request(
   fetchFn: typeof fetch,
   url: string,
-  init: { method: "GET" | "POST"; body?: unknown },
+  init: { method: "GET" | "POST"; body?: unknown; signal?: AbortSignal },
 ): Promise<Result> {
   let response: Response;
   try {
@@ -41,6 +42,7 @@ async function request(
       method: init.method,
       headers: init.body === undefined ? undefined : { "Content-Type": "application/json" },
       body: init.body === undefined ? undefined : JSON.stringify(init.body),
+      signal: init.signal,
     });
   } catch {
     return {
@@ -90,6 +92,9 @@ export async function parseAndSearch(prompt: string, options: ActionOptions = {}
   await runSearch(options);
 }
 
+// The search in flight; a newer search cancels it so slow live searches don't pile up.
+let inFlight: AbortController | null = null;
+
 /** Searches with the current intent, without calling the parser (chip and filter edits). */
 export async function runSearch(options: ActionOptions = {}): Promise<void> {
   const store = options.store ?? appStore;
@@ -102,10 +107,15 @@ export async function runSearch(options: ActionOptions = {}): Promise<void> {
   if (!intent) return;
   const requestId = store.getState().startSearch();
   const isCurrent = () => store.getState().searchRequestId === requestId;
+  inFlight?.abort();
+  const controller = new AbortController();
+  inFlight = controller;
+  const { signal } = controller;
 
   let response = await request(fetchFn, "/api/listings/search", {
     method: "POST",
     body: { intent, hideUnconfirmed },
+    signal,
   });
 
   for (;;) {
@@ -132,7 +142,7 @@ export async function runSearch(options: ActionOptions = {}): Promise<void> {
     }
     await sleep(pollIntervalMs);
     if (!isCurrent()) return;
-    response = await request(fetchFn, result.pollUrl, { method: "GET" });
+    response = await request(fetchFn, result.pollUrl, { method: "GET", signal });
   }
 }
 
@@ -149,4 +159,42 @@ export async function resolveDestination(
   if (!response.ok) return response;
   const parsed = DestinationResolutionSchema.safeParse(response.json);
   return parsed.success ? { ok: true, resolution: parsed.data } : { ok: false, error: unexpected };
+}
+
+/** An empty search, for opening a listing without one (a shared link). */
+export const EMPTY_INTENT: SearchIntent = {
+  schemaVersion: 1,
+  rawPrompt: "",
+  areas: [],
+  criteria: {},
+  travelTargets: [],
+  safety: { enabled: false, hard: false },
+  sortBy: "best_match",
+  fieldSources: {},
+  droppedRequests: [],
+};
+
+/**
+ * The intent sent with a detail request. B's route scores the listing against it but must not
+ * receive the renter's own words, so the prompt, phrases and dropped requests are removed.
+ */
+export function redactIntent(intent: SearchIntent): SearchIntent {
+  return { ...intent, rawPrompt: "", fieldSources: {}, droppedRequests: [] };
+}
+
+/** Loads one listing with B's detail route: valuation, travel, areas, indicators, duplicates. */
+export async function fetchListingDetail(
+  id: string,
+  intent: SearchIntent | null,
+  options: Pick<ActionOptions, "fetch"> & { signal?: AbortSignal } = {},
+): Promise<{ ok: true; detail: DetailResponse } | { ok: false; error: ApiError }> {
+  const query = encodeURIComponent(JSON.stringify(redactIntent(intent ?? EMPTY_INTENT)));
+  const response = await request(
+    options.fetch ?? fetch,
+    `/api/listings/${encodeURIComponent(id)}?intent=${query}`,
+    { method: "GET", signal: options.signal },
+  );
+  if (!response.ok) return response;
+  const parsed = DetailResponseSchema.safeParse(response.json);
+  return parsed.success ? { ok: true, detail: parsed.data } : { ok: false, error: unexpected };
 }

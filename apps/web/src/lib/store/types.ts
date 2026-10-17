@@ -3,6 +3,7 @@ import type { ErrorResponse, SearchResult } from "@rentthe6ix/shared/schemas";
 
 export type {
   DestinationResolution,
+  DetailResponse,
   Listing,
   ParseResponse,
   SearchIntent,
