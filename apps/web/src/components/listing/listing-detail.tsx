@@ -196,7 +196,9 @@ function Header({
                     className="text-hero-foreground underline underline-offset-2"
                   >
                     {t(`results.sources.${duplicate.source}` as MessageKey)}
-                  </a>
+                  </a>{" "}
+                  {/* The same unit at that site's price; we show the cheapest copy (dedupe.ts). */}
+                  <span className="figures">{formatCad(duplicate.monthlyRentCad)}</span>
                 </span>
               ))}
             </li>

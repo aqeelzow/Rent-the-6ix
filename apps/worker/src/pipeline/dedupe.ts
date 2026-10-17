@@ -1,7 +1,8 @@
 // Dedupe (SPEC 8.4 step 5): the same unit listed on several sites. Two listings match when they
 // are on different sources, have the same bedrooms, and either sit within 50 m with rents within
 // 3%, or their title + excerpt are ≥ 0.6 trigram-similar (pg_trgm's measure, so SQL agrees).
-// The oldest listing in a group is canonical; the others get `duplicateOf`.
+// Groups are built from the oldest listing out; the cheapest copy in a group is then the one shown
+// (canonical) and the others get `duplicateOf`, unless it is far below the other copies (`shownCopy`).
 // Same-source pairs never match: torontorentals lists each floor plan of a building separately at
 // the same point, and property managers reuse one description across their buildings. Two different
 // street addresses never match either: downtown, two $2,000 1-beds 40 m apart are two units.
@@ -27,6 +28,11 @@ export const DEDUPE = {
   minTextSimilarity: 0.6,
   /** Shorter text than this (title + excerpt) is too generic for the text rule ("1 bed at X"). */
   minTextLength: 40,
+  /**
+   * A copy more than this far below the next-cheapest copy isn't the one shown: a scam often reuses
+   * a real listing's text at a lower rent, and showing it would hide the real one.
+   */
+  maxBelowNextCopy: 0.15,
 } as const;
 
 export function isDuplicate(a: DedupeListing, b: DedupeListing): boolean {
@@ -46,17 +52,41 @@ export function isDuplicate(a: DedupeListing, b: DedupeListing): boolean {
   return similarity(ta, tb) >= DEDUPE.minTextSimilarity;
 }
 
-/** id → canonical id for every listing that duplicates an older one. */
+/**
+ * The copy a group shows: the cheapest, skipping any copy more than `maxBelowNextCopy` below the
+ * next-cheapest one; ties go to the oldest. A group whose copies are all far apart shows its dearest.
+ */
+export function shownCopy(group: DedupeListing[]): DedupeListing {
+  const byRent = [...group].sort(
+    (a, b) =>
+      a.monthlyRentCad - b.monthlyRentCad ||
+      a.firstSeenAt.localeCompare(b.firstSeenAt) ||
+      a.id.localeCompare(b.id),
+  );
+  for (let i = 0; i < byRent.length - 1; i++) {
+    if (byRent[i].monthlyRentCad >= byRent[i + 1].monthlyRentCad * (1 - DEDUPE.maxBelowNextCopy))
+      return byRent[i];
+  }
+  return byRent[byRent.length - 1];
+}
+
+/** id → the shown copy's id for every listing that is another copy of the same unit. */
 export function findDuplicates(listings: DedupeListing[]): Map<string, string> {
   const ordered = [...listings].sort(
     (a, b) => a.firstSeenAt.localeCompare(b.firstSeenAt) || a.id.localeCompare(b.id),
   );
-  const canonical: DedupeListing[] = [];
-  const duplicateOf = new Map<string, string>();
+  // Grouped against each group's oldest listing, as before, so groups don't drift.
+  const groups: DedupeListing[][] = [];
   for (const listing of ordered) {
-    const match = canonical.find((c) => isDuplicate(c, listing));
-    if (match) duplicateOf.set(listing.id, match.id);
-    else canonical.push(listing);
+    const group = groups.find((g) => isDuplicate(g[0], listing));
+    if (group) group.push(listing);
+    else groups.push([listing]);
+  }
+  const duplicateOf = new Map<string, string>();
+  for (const group of groups) {
+    if (group.length < 2) continue;
+    const shown = shownCopy(group);
+    for (const copy of group) if (copy.id !== shown.id) duplicateOf.set(copy.id, shown.id);
   }
   return duplicateOf;
 }
