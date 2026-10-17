@@ -1,17 +1,16 @@
-// Placeholder shapes until B's zod schemas merge (P0.5, `packages/shared/schemas`).
-// The store only relies on `id` and `rawPrompt`, so the swap is one line:
-//   export type { SearchIntent, SearchResultItem, Listing } from "@rentthe6ix/shared/schemas";
-// and `ApiError` from B's `apps/web/src/lib/api` (TEAM.md section 3.9).
+// Shapes come from B's zod schemas (TEAM.md section 3.1).
+import type { ErrorResponse, SearchResult } from "@rentthe6ix/shared/schemas";
 
-export type SearchIntent = { rawPrompt: string } & Record<string, unknown>;
+export type {
+  DestinationResolution,
+  Listing,
+  ParseResponse,
+  SearchIntent,
+  SearchResponse,
+} from "@rentthe6ix/shared/schemas";
 
-export type SearchResultItem = { id: string } & Record<string, unknown>;
+/** One ranked listing in the results list; its id is `listing.id`. */
+export type SearchResultItem = SearchResult;
 
-export type Listing = { id: string } & Record<string, unknown>;
-
-export type ApiError = {
-  code: string;
-  message: string;
-  issues?: unknown[];
-  retryAfterSeconds?: number;
-};
+/** The `error` payload of every API error response (TEAM.md section 3.9). */
+export type ApiError = ErrorResponse["error"];

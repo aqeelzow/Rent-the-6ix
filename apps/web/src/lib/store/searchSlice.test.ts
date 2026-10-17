@@ -1,9 +1,19 @@
+import { baseIntent, listings, searchFixture } from "@rentthe6ix/shared/fixtures";
 import { beforeEach, describe, expect, it } from "vitest";
 import { selectIsShortlisted } from "./searchSlice";
 import { createAppStore } from "./store";
 
-const intent = { rawPrompt: "2 bed near UofT under $2,800", criteria: {} };
-const result = (id: string) => ({ id, monthlyRentCad: 2650 });
+const intent = { ...baseIntent, rawPrompt: "2 bed near UofT under $2,800" };
+const fixtureResults = searchFixture.status === "completed" ? searchFixture.results : [];
+const [a, b, c] = fixtureResults.map((r) => r.listing.id);
+/** A completed search response holding the fixture results with these listing ids. */
+const completed = (...ids: (string | undefined)[]) => ({
+  status: "completed" as const,
+  results: fixtureResults.filter((r) => ids.includes(r.listing.id)),
+  eligibleCount: 50,
+  notices: [],
+});
+const ids = () => store.getState().results.map((r) => r.listing.id);
 
 let store: ReturnType<typeof createAppStore>;
 
@@ -29,6 +39,27 @@ describe("intent", () => {
     store.getState().updateIntent((current) => ({ ...current, sortBy: "lowest_rent" }));
     expect(store.getState().intent).toEqual({ ...intent, sortBy: "lowest_rent" });
   });
+
+  it("stores a parsed prompt, unless a newer request has started", () => {
+    const parsed = {
+      intent,
+      destinations: [],
+      parser: "fallback" as const,
+      notice: "Used basic search.",
+    };
+    const old = store.getState().startParse("first");
+    expect(store.getState().status).toBe("parsing");
+    expect(store.getState().parsingPrompt).toBe("first");
+    store.getState().startParse("second");
+    expect(store.getState().receiveParse(old, parsed)).toBe(false);
+    expect(store.getState().intent).toBeNull();
+
+    expect(store.getState().receiveParse(store.getState().searchRequestId, parsed)).toBe(true);
+    expect(store.getState().intent).toEqual(intent);
+    expect(store.getState().parser).toBe("fallback");
+    expect(store.getState().parseNotice).toBe("Used basic search.");
+    expect(store.getState().parsingPrompt).toBeNull();
+  });
 });
 
 describe("search requests", () => {
@@ -36,26 +67,27 @@ describe("search requests", () => {
     const id = store.getState().startSearch();
     expect(store.getState().status).toBe("searching");
 
-    store.getState().receiveResults(id, [result("a"), result("b")]);
+    store.getState().receiveResults(id, completed(a, b));
     expect(store.getState().status).toBe("ready");
-    expect(store.getState().results.map((r) => r.id)).toEqual(["a", "b"]);
+    expect(ids()).toEqual([a, b]);
+    expect(store.getState().eligibleCount).toBe(50);
   });
 
   it("drops responses from older requests", () => {
     const first = store.getState().startSearch();
     const second = store.getState().startSearch();
 
-    store.getState().receiveResults(second, [result("new")]);
-    store.getState().receiveResults(first, [result("old")]);
+    store.getState().receiveResults(second, completed(a));
+    store.getState().receiveResults(first, completed(b));
     store.getState().receiveError(first, { code: "timeout", message: "late" });
 
-    expect(store.getState().results.map((r) => r.id)).toEqual(["new"]);
+    expect(ids()).toEqual([a]);
     expect(store.getState().status).toBe("ready");
     expect(store.getState().error).toBeNull();
   });
 
   it("keeps previous results when a search fails", () => {
-    store.getState().receiveResults(store.getState().startSearch(), [result("a")]);
+    store.getState().receiveResults(store.getState().startSearch(), completed(a));
     const id = store.getState().startSearch();
     store
       .getState()
@@ -63,7 +95,7 @@ describe("search requests", () => {
 
     expect(store.getState().status).toBe("error");
     expect(store.getState().error?.retryAfterSeconds).toBe(5);
-    expect(store.getState().results.map((r) => r.id)).toEqual(["a"]);
+    expect(ids()).toEqual([a]);
   });
 });
 
@@ -80,13 +112,13 @@ describe("selection contract", () => {
   });
 
   it("clears a selection that drops out of new results and keeps one that stays", () => {
-    store.getState().receiveResults(store.getState().startSearch(), [result("a"), result("b")]);
-    store.getState().setHoveredListingId("a");
-    store.getState().setSelectedListingId("b");
+    store.getState().receiveResults(store.getState().startSearch(), completed(a, b));
+    store.getState().setHoveredListingId(a!);
+    store.getState().setSelectedListingId(b!);
 
-    store.getState().receiveResults(store.getState().startSearch(), [result("b"), result("c")]);
+    store.getState().receiveResults(store.getState().startSearch(), completed(b, c));
     expect(store.getState().hoveredListingId).toBeNull();
-    expect(store.getState().selectedListingId).toBe("b");
+    expect(store.getState().selectedListingId).toBe(b);
   });
 });
 
@@ -101,8 +133,9 @@ describe("shortlist", () => {
   });
 
   it("keeps pasted listings whole and replaces a re-pasted one", () => {
-    store.getState().addPastedListing({ id: "p1", monthlyRentCad: 1900 });
-    store.getState().addPastedListing({ id: "p1", monthlyRentCad: 1850 });
+    const pasted = { ...listings[0]!, source: "pasted" as const };
+    store.getState().addPastedListing({ ...pasted, monthlyRentCad: 1900 });
+    store.getState().addPastedListing({ ...pasted, monthlyRentCad: 1850 });
 
     const { shortlist } = store.getState();
     expect(shortlist).toHaveLength(1);

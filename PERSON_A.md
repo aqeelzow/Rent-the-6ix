@@ -6,16 +6,29 @@ Task ids match `PROGRESS.md`; task details are in `SPEC.md`.
 
 ## Current state
 
-- **Current task:** none in progress (S1 items done)
-- **Status:** at sync point
-- **Branch:** P0.1–P0.13 merged to `main` (2026-10-16)
-- **Next action:** once B's schemas and fixtures (P0.5–P0.6) are on `main`: swap `src/lib/store/types.ts` to re-export B's types, then P1.30 (landing calls `/api/search/parse`).
-- **Blockers / needs from others:** P1.30+ need B's schemas and fixtures (P0.5–P0.6).
-- **Last updated:** 2026-10-16
+- **Current task:** none in progress (all of A's S1→S2 tasks are done: P1.30–P1.35)
+- **Status:** at sync point (S2)
+- **Branch:** `a/P1.30-landing-parse`, 8 commits (P1.30–P1.35), all of A's checks green; **not pushed or merged yet**
+- **Next action:** merge the branch to `main`. Next block (S2→S3): P2.35 live search once B's search route reads the DB (it answers 503 without `SEARCH_FIXTURES=1`), then P2.30 listing detail against B's `/api/listings/[id]?intent=…`.
+- **Blockers / needs from others:** live results need B's DB-backed search (P2.20/P2.24). Neighbourhood names and "Also on" need fields in B's `SearchResult` (see Requests).
+- **Last updated:** 2026-10-17 (P1.35 done: phones get a sticky Map/List toggle, a full-screen map with a bottom card for the tapped pin, and a sticky Filters/Sort bar; only the visible map mounts)
 
 ## Handoff notes
 
 > Where an unfinished task stopped, gotchas, things to verify. Replace each session.
+
+**Session 2026-10-17 (P1.34 map):**
+- **MapLibre 6 is ESM-only and loads its worker by URL.** `scripts/copy-maplibre-worker.mjs` copies the worker and shared chunk into `public/maplibre/` before `next dev` and `next build` (git-ignored). `ResultsMap` calls `setWorkerUrl("/maplibre/maplibre-gl-worker.mjs")`. A `vercel build` from the repo root ships `static/maplibre/`.
+- **Load MapLibre inside an effect** (`import("maplibre-gl")`); it touches `window`. **Size the container, don't position it**: `.maplibregl-map` forces `position: relative`, which collapsed an `absolute inset-0` container to nothing.
+- MapLibre can't parse `oklch()`; band colours are hex in `map-data.ts` (shades of the accent).
+- In development the map is on `window.__resultsMap` for browser tests (pin positions via `project()`).
+
+**Session 2026-10-17 (P1.30):**
+- **Search flow:** the landing `PromptBox` (next/form) GETs `/search?q=…`. `SearchView` calls `parseAndSearch(prompt)` from `src/lib/store/actions.ts` unless the store already holds that prompt's intent, so back/forward keeps edits. `runSearch()` re-searches with the current intent (for chip and filter edits) and polls B's `pending` jobs until done or expired. Responses are validated with B's zod schemas, and contract drift shows as an `unexpected_response` error.
+- **Dev double effects:** React runs effects twice in development; `parseAndSearch` skips a prompt that's already being read (`parsingPrompt`). Stale responses are dropped by request id.
+- **Format only your own files:** run `pnpm exec prettier --write <your paths>`. B's code isn't Prettier-formatted, and `pnpm format` rewrites it.
+- **`pnpm test` and `pnpm lint` are green on `main`.** Running `vitest run` without `--passWithNoTests` still shows B's `node:test` files and D's `server-only.test.ts` as "No test suite found"; the repo script hides that (see Requests). `pnpm format:check` fails on about 31 of B's, C's and D's files, not ours.
+- B's `SearchResult` has no top-level `id`; use `result.listing.id`.
 
 **Session 2026-10-16 (P0 foundation):**
 - **Next.js 16.4 differs from older versions.** Read `apps/web/AGENTS.md` and `node_modules/next/dist/docs/` before using Next APIs. `params`/`searchParams` are Promises; use the global `PageProps<"/route">` / `LayoutProps<"/">` types. Cache Components is off (SPEC change log P0.1).
@@ -43,6 +56,9 @@ Task ids match `PROGRESS.md`; task details are in `SPEC.md`.
 - **To B:** fixtures by S1 that include sizes, years built, AC, all five score parts (some `null`), price labels of each kind, travel times with both `otp` and `straight_line` methods, and one listing with safety on.
 - **To D:** the `/status` and `/data` content as data (JSON from routes); I build the pages.
 - **To D:** `DEPLOY.md` step 2 still says `cp .env.example .env`, but `.env.example` is no longer in the repo; point it at SPEC 20 instead. Vercel builds from the repo root via the root `vercel.json` (see Handoff notes).
+- **To B:** (1) `apps/web/src/lib/{api,parse,db}/*.test.ts` use `node:test`. They run inside Vitest but only pass because of `--passWithNoTests`, so a failing assertion there can't fail `pnpm test`. Switch the import to `import { test } from "vitest"`; `node:assert` still works. (2) ~~lint `any`s~~ fixed on `main`. (3) B's files aren't Prettier-formatted, so `pnpm format:check` fails; run `pnpm exec prettier --write` on your paths. (4) In-memory search jobs need one server process; on Vercel, polls may land on another instance and get 410. (5) The parse `notice` is hard-coded English on the server; move it to `en.json` (`errors` namespace) if you want it translatable.
+- **To B (from P1.33):** (6) The fallback parser turns "within 25 minutes by transit to UofT St. George" into two targets, "UofT St. George" and "UofT St" (it splits on the period). (7) `matchScore.hardFilterNotes` use internal names ("unitTypes: not confirmed"); please send plain words ("Type of place: not confirmed") or a field code I can translate. (8) Search results carry no neighbourhood name and no duplicates, so cards can't show the neighbourhood or "Also on: Kijiji" yet. Add `neighbourhoodName` and `alsoOn: source[]` to `SearchResult`, or tell me where to get them.
+- **To D:** `apps/web/src/lib/server-only.test.ts` is a stub, but its `.test.ts` name makes Vitest collect it as an empty test file (hidden by `--passWithNoTests`). Rename it, e.g. `server-only.stub.ts`, and update the alias in `vitest.config.ts`. The `/status` page you built is in A's area; fine to keep, just tell me before changing its layout.
 - **To C:** one or two real listings with full fields early (any source) so the detail page can be checked against reality, not just fixtures.
 
 ---
@@ -59,12 +75,12 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked · `[-]` 
 - [x] P0.13 `searchSlice.ts` (intent, results, shortlist) + selection contract (`hoveredListingId`, `selectedListingId`) — merge early
 
 ### S1 → S2 (H3–H12) — Search UI on fixtures · Core
-- [ ] P1.30 Landing: prompt box, 3 example chips (student, couple, family), "Explore neighbourhoods", "Paste a listing"; calls B's `/api/search/parse` (fixture until live)
-- [ ] P1.31 Filter chips: must-have/preference/default styles, source phrase, must-have ⇄ preference switch, remove, "dropped requests" notice
-- [ ] P1.32 Filters panel (SPEC 11.2): Price (range, price vs market), Home (rooms, size, unit type, building age, AC, pets, furnished, parking, laundry, utilities, availability, lease), Getting around (add place or amenity, mode, minutes), Safety (switch + explanation), Area; each with must-have/preference
-- [ ] P1.33 Results cards (SPEC 11.2): price badge, segmented score bar, travel targets with mode icon, size/year/AC, top caveat, source + freshness, "Also on", shortlist button
-- [ ] P1.34 Results map (MapLibre): clustered pins coloured by score band, approximate circles, place pins, synced hover/select with the list
-- [ ] P1.35 Mobile: list with sticky Map toggle, bottom sheet on pin tap, filters as a sheet
+- [x] P1.30 Landing: prompt box, 3 example chips (student, couple, family), "Explore neighbourhoods", "Paste a listing"; calls B's `/api/search/parse` (fixture until live)
+- [x] P1.31 Filter chips: must-have/preference/default styles, source phrase, must-have ⇄ preference switch, remove, "dropped requests" notice
+- [x] P1.32 Filters panel (SPEC 11.2): Price (range, price vs market), Home (rooms, size, unit type, building age, AC, pets, furnished, parking, laundry, utilities, availability, lease), Getting around (add place or amenity, mode, minutes), Safety (switch + explanation), Area; each with must-have/preference
+- [x] P1.33 Results cards (SPEC 11.2): price badge, segmented score bar, travel targets with mode icon, size/year/AC, top caveat, source + freshness, "Also on", shortlist button
+- [x] P1.34 Results map (MapLibre): clustered pins coloured by score band, approximate circles, place pins, synced hover/select with the list
+- [x] P1.35 Mobile: list with sticky Map toggle, bottom sheet on pin tap, filters as a sheet
 
 ### S2 → S3 (H10–H18) — Live search & detail · Core
 - [ ] P2.35 Wire results to B's live `/api/listings/search`; loading, empty and error states
@@ -108,12 +124,14 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked · `[-]` 
 | Feature | Key files | Notes |
 | --- | --- | --- |
 | Layout shell, tokens | `apps/web/src/app/layout.tsx`, `src/app/globals.css`, `src/components/ui/*` | shadcn (Radix base, nova preset); tokens `price-*`, `caveat-*`, `score-*`; `figures` utility for numbers; light only |
-| Store | `apps/web/src/lib/store/searchSlice.ts` (+ test), `store.ts`, `types.ts` | intent, results (stale responses dropped), shortlist, selection; `types.ts` = placeholders until B's schemas |
+| Store | `apps/web/src/lib/store/searchSlice.ts` (+ test), `store.ts`, `types.ts` | intent, parse info, results, eligibleCount, notices, hideUnconfirmed, shortlist, selection; types re-exported from B's schemas |
 | Layout shell | `src/components/layout/*` (header, mobile menu, footer, page placeholder) | nav links in `nav-links.ts` |
 | Strings | `apps/web/messages/en.json`, `src/lib/format/messages.ts` (+ test) | typed `t("ns.key", params?)` |
-| Landing | `src/app/page.tsx`, `src/components/search/prompt-box.tsx` | P0.10: static GET form to `/search?q=`; P1.30 wires parse |
-| Chips & filters | `src/components/search/filter-chips.tsx`, `filters-panel.tsx` | no Gemini call on edit |
-| Results | `src/app/search/page.tsx`, `src/components/results/*`, `src/components/map/results-map.tsx` | |
+| Landing | `src/app/page.tsx`, `src/components/search/prompt-box.tsx` | next/form GET to `/search?q=`; Enter submits, Shift+Enter adds a line |
+| Search flow | `src/app/search/page.tsx`, `src/components/search/search-view.tsx`, `src/lib/store/actions.ts` (+ test) | parse → search → poll; states: parsing, searching, error + retry, ready; interim result rows until P1.33 |
+| Number formats | `src/lib/format/number.ts` (+ test) | `formatCad`, `formatCount` (en-CA) |
+| Chips & filters | `src/components/search/chips.ts` (+ test), `filter-chips.tsx`, `filters.ts` (+ test), `filter-fields.tsx`, `filters-panel.tsx`, `sort-select.tsx` | `buildChips(intent)`, `setChipHard`, `removeChip`, `setTargetModes`, `setTargetMinutes`; edits keep the intent valid under B's schema and never call the parser |
+| Results | `src/app/search/page.tsx`, `src/components/search/search-view.tsx` (layout, mobile toggle, bottom card), `src/components/results/` (`card-data.ts` + test, `result-card.tsx`, `price-badge.tsx`, `score-bar.tsx`), `src/components/mode-icons.ts`, `src/components/use-media-query.ts`, `src/components/map/` (`map-data.ts` + test, `results-map.tsx`), `apps/web/scripts/copy-maplibre-worker.mjs` | card helpers enforce honest labels; the card is a stretched link to `/listing/[id]` (placeholder until P2.30) |
 | Listing detail | `src/app/listing/[id]/page.tsx`, `src/components/listing/*` | |
 | Explorer | `src/app/areas/*`, `src/components/areas/*` | |
 | Paste a listing | `src/components/listing/paste-listing.tsx` | |
