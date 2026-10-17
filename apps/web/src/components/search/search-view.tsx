@@ -2,7 +2,7 @@
 
 import { AlertCircle, ChevronRight, Info, List, LoaderCircle, MapIcon, X } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ResultsMap } from "@/components/map/results-map";
 import { ResultCard } from "@/components/results/result-card";
@@ -15,8 +15,9 @@ import { SortSelect } from "./sort-select";
 import { t, type MessageKey } from "@/lib/format/messages";
 import { formatCount } from "@/lib/format/number";
 import { parseAndSearch, restoreSearch, runSearch } from "@/lib/store/actions";
-import { LAST_SEARCH_KEY, parseLastSearch, readLastSearch } from "@/lib/store/persist";
+import { readLastSearch } from "@/lib/store/persist";
 import { decodeSharedSearch } from "@/lib/store/share";
+import { useLastSearch } from "@/lib/store/use-last-search";
 import { appStore, useAppStore } from "@/lib/store/store";
 import type { ApiError, SearchIntent, SearchResultItem } from "@/lib/store/types";
 
@@ -36,23 +37,9 @@ const knownErrors = new Set([
   "search_job_expired",
 ]);
 
-// The last search's stored text; a string, so `useSyncExternalStore` sees no change between reads.
-function subscribeToStorage(onChange: () => void) {
-  window.addEventListener("storage", onChange);
-  return () => window.removeEventListener("storage", onChange);
-}
-function storedLastSearch(): string | null {
-  try {
-    return window.localStorage.getItem(LAST_SEARCH_KEY);
-  } catch {
-    return null;
-  }
-}
-
 /** "Continue your last search" on `/search` without a prompt, when this browser has one. */
 function LastSearchLink() {
-  const raw = useSyncExternalStore(subscribeToStorage, storedLastSearch, () => null);
-  const last = useMemo(() => parseLastSearch(raw), [raw]);
+  const last = useLastSearch();
   if (!last) return null;
   return (
     <Button asChild variant="outline">

@@ -640,5 +640,31 @@
       "results": "Official results from the City of Toronto",
       "note": "From the City of Toronto’s election pages. RentThe6ix doesn’t summarize, compare or rank candidates or platforms."
     }
+  },
+  "paste": {
+    "intro": "Found a place in a Facebook group, on Craigslist or on a building’s own site? Paste the ad or its link and we’ll check it the way we check our own listings: the rent against similar homes nearby, and how it fits your search.",
+    "tabText": "Paste the text",
+    "tabLink": "Paste a link",
+    "textLabel": "Listing text",
+    "textPlaceholder": "Paste the whole ad: rent, bedrooms, address and anything else it says.",
+    "textCount": "{n} of {max} characters",
+    "linkLabel": "Link to a public listing page",
+    "linkHelp": "Public pages only. We fetch the page once and don’t keep it.",
+    "linkInvalid": "Enter a full link starting with http:// or https://.",
+    "againstSearch": "It will be compared with your search: “{prompt}”.",
+    "noSearch": "You haven’t searched yet, so it won’t be compared with a search.",
+    "submit": "Check this listing",
+    "checking": "Checking…",
+    "privacy": "Pasted listings are never stored on our server. If you save one, it stays in this browser’s shortlist.",
+    "unavailableTitle": "Checking pasted listings isn’t available yet",
+    "unavailable": "This part of RentThe6ix is still being built. Nothing you pasted was stored.",
+    "save": "Save to shortlist",
+    "saved": "Saved to your shortlist",
+    "errors": {
+      "rate_limited": "Too many checks at once. Try again in {seconds} seconds.",
+      "service_unavailable": "Checking is busy right now. Try again in a minute.",
+      "network_error": "We couldn’t reach RentThe6ix. Check your connection and try again.",
+      "default": "Something went wrong checking this listing. Try again, or paste the text instead of a link."
+    }
   }
 }
