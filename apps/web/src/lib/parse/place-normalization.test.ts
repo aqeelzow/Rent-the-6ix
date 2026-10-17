@@ -59,7 +59,8 @@ test('Gemini normalization reaches geocoding while original evidence survives an
 });
 
 test('normalized names retain campus ambiguity and cannot override known original places', async () => {
-  const resolver = new DestinationResolver();
+  // The picker mode, because a bare university resolves to its main campus by default (parse.test.ts).
+  const resolver = new DestinationResolver({ preferPrimaryCampus: false });
   for (const [original, hint] of [['University of Toronto', 'UofT St. George'], ['the university', 'University of Toronto']]) {
     const result = await resolver.resolve(original, hint);
     assert.equal(result.status, 'ambiguous');

@@ -258,7 +258,7 @@
         "best_match": "best match",
         "lowest_rent": "lowest rent",
         "best_value": "best value",
-        "shortest_trips": "shortest trips",
+        "shortest_trips": "shortest distance",
         "lowest_true_cost": "lowest true monthly cost",
         "newest": "newest",
         "closest_area": "closest to my area",
@@ -275,7 +275,7 @@
         "bathrooms": "bathrooms",
         "sizeSqft": "size",
         "buildingAge": "building age",
-        "travel": "travel time"
+        "travel": "distance"
       },
       "safetyMax": "Crime at most {rate}× city rate"
     },
@@ -340,7 +340,7 @@
       "whichOne": "Which one do you mean?",
       "notFound": "We couldn't find “{query}”. Try a landmark or a full street address.",
       "lookupFailed": "We couldn't look that place up right now. Try again.",
-      "unresolved": "We don't know exactly where this is yet, so no travel time is worked out for it.",
+      "unresolved": "We don't know exactly where this is yet, so no distance is measured for it.",
       "addAmenity": "Add a nearby amenity",
       "amenityLabel": "Amenity",
       "add": "Add",
@@ -430,19 +430,20 @@
       "drive": "{minutes} min drive to {target} (no traffic)",
       "walk": "{minutes} min walk to {target}",
       "bike": "{minutes} min by bike to {target}",
-      "straightLine": "{km} km to {target} (straight-line, travel time not available)",
-      "missing": "{target}: travel time not available"
+      "straightLine": "{km} km to {target}",
+      "walkable": "{km} km to {target} — walking distance",
+      "transport": "{km} km to {target} — take transit or a car",
+      "missing": "{target}: distance not available"
     },
     "safety": "Police-reported crime: {rate}× the city rate (TPS {years})",
     "safetyNoData": "Police-reported crime: not enough data",
     "notConfirmed": "Not confirmed: {items}",
     "sources": {
       "kijiji": "Kijiji",
-      "torontorentals": "TorontoRentals.com",
+      "torontorentals": "TorontoRentals",
       "rentals_ca": "Rentals.ca",
       "zillow": "Zillow",
       "realtor_ca": "Realtor.ca",
-      "torontorentals": "TorontoRentals",
       "manual": "Hand-checked",
       "pasted": "Pasted by you"
     },
@@ -596,13 +597,15 @@
       }
     },
     "travel": {
-      "none": "Add a place or an amenity in Filters to see travel times from here.",
+      "none": "Add a place or an amenity in Filters to see distances from here.",
       "chosen": "your choice",
       "routed": "{minutes} min",
       "routedDrive": "{minutes} min, no traffic",
       "straightLine": "{km} km straight-line",
+      "walkable": "{km} km — walking distance",
+      "transport": "{km} km — transit or a car",
       "missing": "Not available",
-      "note": "Transit: weekday 8:30 am. Driving: no traffic. Straight-line distance is never shown as minutes."
+      "note": "Distance is measured in a straight line between the two addresses: under 1.5 km we call it walking distance, further and we suggest transit or a car."
     },
     "safety": {
       "rate": "Police-reported major crime here: {rate}× the city rate ({years} average, Toronto Police Service).",
@@ -664,7 +667,7 @@
       "price": "Price check",
       "commute": "To {place}",
       "commuteNone": "No places added",
-      "commuteHint": "Add a place in Filters to see travel times.",
+      "commuteHint": "Add a place in Filters to see distances.",
       "below": "{amount} below",
       "above": "{amount} above",
       "inLine": "In line",
@@ -702,14 +705,13 @@
   "areas": {
     "mapPending": "The neighbourhood map is still being built. It will show one indicator at a time for the 158 neighbourhoods or 25 wards, with its source.",
     "wardsTitle": "Ward pages",
-    "wardsIntro": "Each of Toronto’s 25 city wards has a page with official election information. Housing briefings are on the way.",
+    "wardsIntro": "Each of Toronto’s 25 city wards has a page with its housing figures and official election information.",
     "ward": {
       "title": "Ward {n}",
       "intro": "One of Toronto’s 25 city wards. Figures describe the whole ward, not a street, a building or the people who live there.",
-      "briefingTitle": "Housing in your ward",
-      "briefingPending": "This briefing isn’t ready yet. It will be three short paragraphs on rents and affordability, housing stock and conditions, and growth and development, written only from the figures below. Every number in it is checked against those figures.",
-      "figuresTitle": "The figures behind it",
-      "figuresPending": "Ward figures aren’t loaded yet. Each one will show this ward, the city, the period it covers and its source."
+      "figuresTitle": "This ward at a glance",
+      "figuresPending": "Ward figures aren’t loaded yet. Each one will show this ward, the city, the period it covers and its source.",
+      "titleNamed": "Ward {n}: {name}"
     },
     "election": {
       "title": "Municipal election: {date}",
@@ -722,6 +724,37 @@
       "resultsTitle": "Municipal election results",
       "results": "Official results from the City of Toronto",
       "note": "From the City of Toronto’s election pages. RentThe6ix doesn’t summarize, compare or rank candidates or platforms."
+    },
+    "facts": {
+      "thisArea": "This ward",
+      "city": "Toronto",
+      "perMonth": "{amount} a month",
+      "outOf100": "{score} / 100",
+      "perKm2": "{n} per km²",
+      "notAvailable": "Not available",
+      "notEnoughData": "Not enough data",
+      "noCity": "No city-wide figure",
+      "listings": "from {n} listings",
+      "source": "Source: {source}",
+      "listingsNote": "Asking rents come from listings RentThe6ix collected. They are not official statistics."
+    },
+    "indicators": {
+      "median_asking_rent_0br": "Typical asking rent, studio",
+      "median_asking_rent_1br": "Typical asking rent, 1 bedroom",
+      "median_asking_rent_2br": "Typical asking rent, 2 bedrooms",
+      "median_asking_rent_3br": "Typical asking rent, 3 bedrooms",
+      "listing_count_30d": "Listings collected",
+      "renter_households_pct": "Households that rent",
+      "renters_shelter_cost_30pct": "Renters spending 30% or more of income on shelter",
+      "median_household_income": "Median household income (2020)",
+      "rentsafeto_buildings": "Apartment buildings in RentSafeTO",
+      "rentsafeto_avg_score": "Average RentSafeTO evaluation score",
+      "transit_stops_per_km2": "TTC stops per km²",
+      "rapid_transit_within_800m_pct": "Area within 800 m of a subway or rail stop",
+      "libraries": "Public libraries",
+      "parks": "Parks",
+      "dev_applications_12m": "Development applications",
+      "residential_units_proposed_12m": "Homes proposed in rezoning applications"
     }
   },
   "paste": {

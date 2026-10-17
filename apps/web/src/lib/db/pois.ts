@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { getClient } from "../db";
-import type { TravelTarget } from "../../../../../packages/shared/schemas/index";
+import { distanceM, targetModes } from "../../../../../packages/shared/engine/travel";
+import { TravelTimeRowSchema, type Listing, type TravelTarget, type TravelTimeRow } from "../../../../../packages/shared/schemas/index";
 
 /**
  * Nearest real amenity for a listing — owner D, the missing half of amenity travel targets.
@@ -40,7 +41,101 @@ export const rapidTransitStatement = `
   LIMIT 1
 `;
 
-type Client = { unsafe: (statement: string, parameters: (string | number)[]) => PromiseLike<unknown> };
+/** Bound value or array of bound values, as the driver takes them. */
+export type SqlParameter = string | number | number[];
+type Client = { unsafe: (statement: string, parameters: SqlParameter[]) => PromiseLike<unknown> };
+
+/**
+ * Nearest POI for many origins in one query, per category.
+ *
+ * One lookup per (listing, category) is what the connection pool cannot afford: the client holds
+ * two connections and each round trip is tens of milliseconds, so 300 lookups measured ~4 s — the
+ * entire routing budget. A lateral join returns the same answers for every origin at once, which is
+ * why missing amenity distances are filled after routing instead of before it.
+ */
+export const poiBatchStatement = `
+  SELECT o.idx::int AS idx, ST_Y(p.location::geometry) AS lat, ST_X(p.location::geometry) AS lng
+  FROM unnest($1::float8[], $2::float8[]) WITH ORDINALITY AS o(lng, lat, idx)
+  CROSS JOIN LATERAL (
+    SELECT location FROM pois
+    WHERE category = $3
+    ORDER BY location <-> ST_SetSRID(ST_MakePoint(o.lng, o.lat), 4326)::geography
+    LIMIT 1
+  ) p
+`;
+export const rapidTransitBatchStatement = `
+  SELECT o.idx::int AS idx, ST_Y(p.location::geometry) AS lat, ST_X(p.location::geometry) AS lng
+  FROM unnest($1::float8[], $2::float8[]) WITH ORDINALITY AS o(lng, lat, idx)
+  CROSS JOIN LATERAL (
+    SELECT location FROM transit_stops
+    WHERE is_rapid
+    ORDER BY location <-> ST_SetSRID(ST_MakePoint(o.lng, o.lat), 4326)::geography
+    LIMIT 1
+  ) p
+`;
+
+const batchRowSchema = z.object({ idx: z.number(), lat: z.number().min(-90).max(90), lng: z.number().min(-180).max(180) });
+
+/**
+ * `amenityDistances(listings, targets)` — the labelled distance from every listing to its nearest
+ * POI of each amenity category, as `straight_line` rows.
+ *
+ * The router answers for the candidates it can reach inside the budget; this fills the rest so a
+ * card never reads "travel time not available" while showing a place's distance on the same line.
+ * Rows never claim minutes, and a listing with no POI nearby gets no row at all.
+ */
+export type AmenityDistances = (
+  listings: readonly Listing[],
+  targets: readonly TravelTarget[],
+) => Promise<TravelTimeRow[]>;
+
+export function amenityDistances(client: () => Client | null = getClient, now: () => Date = () => new Date()): AmenityDistances {
+  return async (listings, targets) => {
+    try {
+      const amenities = targets.filter((target) => target.kind === "amenity" && target.category);
+      if (!listings.length || !amenities.length) return [];
+      const sql = client();
+      if (!sql) return [];
+      const computedAt = now().toISOString();
+      const lngs = listings.map((listing) => listing.location.lng);
+      const lats = listings.map((listing) => listing.location.lat);
+      const byCategory = new Map<AmenityCategory, TravelTarget[]>();
+      for (const target of amenities) byCategory.set(target.category!, [...(byCategory.get(target.category!) ?? []), target]);
+
+      const groups = await Promise.all([...byCategory].map(async ([category, categoryTargets]) => {
+        const rows = isPoiCategory(category)
+          ? await sql.unsafe(poiBatchStatement, [lngs, lats, category])
+          : await sql.unsafe(rapidTransitBatchStatement, [lngs, lats]);
+        const spots = new Map<number, Spot>();
+        for (const row of z.array(batchRowSchema).parse(rows)) spots.set(row.idx, { lat: row.lat, lng: row.lng });
+        return { categoryTargets, spots };
+      }));
+
+      const output: TravelTimeRow[] = [];
+      for (const { categoryTargets, spots } of groups) {
+        listings.forEach((listing, index) => {
+          const spot = spots.get(index + 1);
+          if (!spot) return;
+          for (const target of categoryTargets) for (const mode of targetModes(target)) {
+            output.push(TravelTimeRowSchema.parse({
+              listingId: listing.id,
+              targetId: target.id,
+              mode,
+              distanceM: Math.round(distanceM(listing.location, spot)),
+              minutes: null,
+              poiId: null,
+              computedAt,
+              method: "straight_line",
+            }));
+          }
+        });
+      }
+      return output;
+    } catch {
+      return [];
+    }
+  };
+}
 
 /** Same 100 m rounding as the route cache: ads in one building must share one lookup. */
 const cell = (spot: Spot) =>

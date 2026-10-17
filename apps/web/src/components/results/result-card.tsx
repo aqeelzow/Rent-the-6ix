@@ -2,6 +2,7 @@
 
 import { Bookmark, Building2, CircleHelp, ShieldQuestion } from "lucide-react";
 import Link from "next/link";
+import { travelAdvice } from "@rentthe6ix/shared/engine/travel";
 import { modeIcons } from "@/components/mode-icons";
 import { formatDaysAgo } from "@/lib/format/date";
 import { t, type MessageKey } from "@/lib/format/messages";
@@ -42,7 +43,8 @@ function travelText(summary: TravelSummary): string {
     });
   }
   if (summary.kind === "straight_line") {
-    return r("travel.straightLine", {
+    // The distance itself decides the wording: a walk from here, or a trip that needs transport.
+    return r(travelAdvice(summary.distanceM) === "walkable" ? "travel.walkable" : "travel.transport", {
       km: decimal.format(summary.distanceM / 1000),
       target: summary.target,
     });
