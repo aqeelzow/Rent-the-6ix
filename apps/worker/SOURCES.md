@@ -4,6 +4,8 @@ All adapters use [CloakBrowser](https://github.com/CloakHQ/cloakbrowser) (stealt
 
 Checked 2026-10-16 with `pnpm ingest:once --sources kijiji,torontorentals,rentals_ca,zillow,realtor_ca --pages 2` (plain Playwright); rentals_ca, zillow and realtor_ca rechecked with CloakBrowser, `--pages 1`.
 
+**Thumbnails (`imageUrl`, SPEC 8.5):** the team checked the four sites' terms on 2026-10-17 and they allow linking. The worker stores only the cover photo's https link and the card hot-links it (`referrerPolicy="no-referrer"`); images are never downloaded, stored or proxied, and the browser still blocks image loads while scraping. Fields: Kijiji `imageUrls[0]`, Zillow `imgSrc`, Realtor.ca `Property.Photo[0].MedResPath` (agent photos under `Individual` are never read). TorontoRentals / Rentals.ca: not read yet (the photo field isn't known; the building contact block and its photos stay unread). Field names are from the site formats as known, **not yet confirmed on a live page**: if one is wrong, `imageUrl` just stays null and the card shows its placeholder.
+
 | Source | id | Status | How | Notes |
 | --- | --- | --- | --- | --- |
 | Kijiji (Toronto long-term rentals + Room Rentals & Roommates) | `kijiji` | **go** | search pages; `__NEXT_DATA__` Apollo state; Apartments & Condos (c37), then Room Rentals (c36, ~52 pages, `StandardListing` entries: rooms, no attributes) | 45/page, ~174 pages. Rent, beds, baths, address, coordinates 100%; size ~31%, AC ~39%, year built 0%. Description is the truncated search snippet. |

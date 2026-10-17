@@ -45,6 +45,21 @@ export interface RawListing {
   lat: number | null;
   lng: number | null;
   postedAt: string | null;
+  /**
+   * The source's own thumbnail URL, hot-linked by the web app; the image itself is never fetched
+   * or stored (SPEC 8.5). Only for sources whose terms allow linking (SOURCES.md).
+   */
+  imageUrl: string | null;
+}
+
+/** An https URL as given, else null: a thumbnail link must never be a data: or javascript: URL. */
+export function httpsUrl(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  try {
+    return new URL(value).protocol === "https:" ? value : null;
+  } catch {
+    return null;
+  }
 }
 
 export interface IndexPage {
@@ -96,4 +111,5 @@ export const emptyRawListing = {
   lat: null,
   lng: null,
   postedAt: null,
+  imageUrl: null,
 } satisfies Partial<RawListing>;
