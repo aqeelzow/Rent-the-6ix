@@ -4,6 +4,7 @@ import { DetailResponseSchema } from '@rentthe6ix/shared/schemas';
 import { parseAndSearch, resolveDestination, runSearch } from '../store/actions';
 import { createAppStore } from '../store/store';
 import { createRuntime, fixtureDependencies } from './runtime';
+import { DestinationResolver } from '../parse';
 
 function bridge(api: ReturnType<typeof createRuntime>) {
   const paths: string[] = [];
@@ -21,7 +22,8 @@ function bridge(api: ReturnType<typeof createRuntime>) {
 }
 
 test('actual A actions consume B responses and retain nested listing selection and destination choices', async () => {
-  const api = createRuntime({ env: { SEARCH_FIXTURES: '1', AI_PROVIDER: 'none' } });
+  // This test covers the campus-choice flow, so it opts out of the default "main campus" answer.
+  const api = createRuntime({ env: { SEARCH_FIXTURES: '1', AI_PROVIDER: 'none' }, resolver: new DestinationResolver({ preferPrimaryCampus: false }) });
   const store = createAppStore();
   const transport = bridge(api);
   try {

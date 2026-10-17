@@ -93,7 +93,8 @@ export async function searchCandidates(input: SearchRequest, dependencies: Searc
     const context = contexts.get(listing.id)!;
     return SearchResultSchema.parse({ listing, valuation: context.valuation, safety: context.safety, travel: context.travel, matchScore: scoreListing(listing, intent, context) });
   }).sort((a, b) => compareResults(intent, a, b)).slice(0, engineConfig.candidateLimit);
-  const targets = intent.travelTargets.filter(t => t.kind === 'place');
+  // Amenities are routable too: `routeTimes` resolves each listing's nearest POI of that category.
+  const targets = intent.travelTargets.filter(t => t.kind === 'place' || t.kind === 'amenity');
   await routeCandidateContexts(dependencies, candidates.slice(0, engineConfig.routingLimit).map(r => r.listing), targets, contexts);
   const results = candidates.flatMap(result => {
     const context = contexts.get(result.listing.id)!;
