@@ -28,7 +28,9 @@ import {
 import { modeIcons } from "@/components/mode-icons";
 import { modeTimeText, RangeBar, ScoreGauge } from "./detail-charts";
 import { scoreBreakdown, travelTable } from "./detail-data";
+import { NearbySection, NearbyTile } from "./nearby-section";
 import { useListingDetail } from "./use-listing-detail";
+import { useNearby, type NearbyState } from "./use-nearby";
 
 const l = (key: string, params?: Record<string, string | number>) =>
   t(`listing.${key}` as MessageKey, params);
@@ -38,6 +40,8 @@ const decimal = new Intl.NumberFormat("en-CA", { maximumFractionDigits: 1 });
 export function ListingDetail({ id }: { id: string }) {
   const intent = useAppStore((s) => s.intent);
   const { data, extras, loading, error, retry } = useListingDetail(id);
+  // Read once for both the summary tile and the Nearby section.
+  const nearby = useNearby(id);
   // "Seen N days ago" is measured from when the page opened.
   const [now] = useState(() => Date.now());
   // A photo the source no longer serves falls back to the plain header.
@@ -93,11 +97,12 @@ export function ListingDetail({ id }: { id: string }) {
 
   const body = (
     <>
-      <StatTiles result={data} intent={intent} />
+      <StatTiles result={data} intent={intent} nearby={nearby} />
       <ThingsToCheck result={data} />
       <div className="grid items-start gap-5 lg:grid-cols-12">
         <div className="flex min-w-0 flex-col gap-5 lg:col-span-8">
           <RentCheck result={data} now={now} />
+          <NearbySection state={nearby} />
           <AreaCard extras={extras} />
         </div>
         <div className="flex min-w-0 flex-col gap-5 lg:col-span-4">
@@ -425,8 +430,16 @@ function ScoreTile({
   );
 }
 
-/** The three numbers a renter looks for first: match score, price position, the main trip. */
-function StatTiles({ result, intent }: { result: SearchResultItem; intent: SearchIntent | null }) {
+/** What a renter looks for first: match score, price position, the main trip, what's nearby. */
+function StatTiles({
+  result,
+  intent,
+  nearby,
+}: {
+  result: SearchResultItem;
+  intent: SearchIntent | null;
+  nearby: NearbyState;
+}) {
   const targets = intent?.travelTargets ?? [];
   const { total, parts } = scoreBreakdown(result.matchScore);
   const { valuation, listing } = result;
@@ -437,7 +450,7 @@ function StatTiles({ result, intent }: { result: SearchResultItem; intent: Searc
   const TripIcon = trip ? modeIcons[trip.mode] : null;
 
   return (
-    <div className="grid gap-4 md:grid-cols-3">
+    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
       <ScoreTile result={result} intent={intent}>
         <span className="self-start font-medium">{l("stats.score")}</span>
         <ScoreGauge total={total} parts={parts} />
@@ -514,6 +527,8 @@ function StatTiles({ result, intent }: { result: SearchResultItem; intent: Searc
           <p className="text-muted-foreground text-sm">{l("stats.commuteHint")}</p>
         </section>
       )}
+
+      <NearbyTile state={nearby} />
     </div>
   );
 }

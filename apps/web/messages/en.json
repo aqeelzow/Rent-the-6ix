@@ -488,7 +488,22 @@
       "unavailable": "The map couldn't load. The list has every result.",
       "placePopup": "Your place",
       "unitsHere": "{count} listings at this spot",
-      "routeEstimate": "Est. {minutes} min by {mode}, {km} km"
+      "routeEstimate": "Est. {minutes} min by {mode}, {km} km",
+      "crime": {
+        "toggle": "Crime rates",
+        "title": "Police-reported major crime, vs the city",
+        "band0": "Under 0.5× the city rate",
+        "band1": "0.5–1×",
+        "band2": "1–1.5×",
+        "band3": "1.5–2×",
+        "band4": "2× or more",
+        "noData": "No data",
+        "hint": "Hover or tap a neighbourhood for its rate.",
+        "hover": "{name}: {rate}× the city rate",
+        "hoverNoData": "{name}: no data",
+        "source": "Toronto Police Service, {years} average, by neighbourhood.",
+        "unavailable": "Crime rates couldn't be loaded. Try again later."
+      }
     },
     "mobile": {
       "showMap": "Map",
@@ -551,7 +566,8 @@
       "check": "Things to check",
       "homeFacts": "Home",
       "amenities": "Amenities",
-      "terms": "Other info"
+      "terms": "Other info",
+      "nearby": "Nearby"
     },
     "why": {
       "part": "Scored {score}/100, weighted {weight}%",
@@ -723,7 +739,41 @@
       "title": "{count} sections not available yet",
       "aria": "Not available yet"
     },
-    "toDetails": "See the details"
+    "toDetails": "See the details",
+    "nearby": {
+      "categories": {
+        "grocery": "Groceries",
+        "pharmacy": "Pharmacies",
+        "park": "Parks",
+        "school": "Schools",
+        "library": "Libraries",
+        "clinic": "Clinics and doctors",
+        "community_centre": "Community centres",
+        "university": "Colleges and universities",
+        "stop": "More TTC stops"
+      },
+      "school": {
+        "elementary": "elementary",
+        "secondary": "secondary"
+      },
+      "note": "Straight-line distances, not walking or transit routes. Travel times are under Getting around.",
+      "approximate": "This listing's exact address isn't public, so distances are approximate.",
+      "unavailable": "Nearby places aren't available right now.",
+      "nearest": {
+        "grocery": "Grocery",
+        "pharmacy": "Pharmacy",
+        "park": "Park",
+        "school": "School",
+        "library": "Library",
+        "clinic": "Clinic or doctor",
+        "community_centre": "Community centre",
+        "university": "College",
+        "stop": "TTC stop",
+        "rapid": "Subway or rail"
+      },
+      "more": "Show more nearby",
+      "tileNote": "Straight-line distance from the listing."
+    }
   },
   "shortlist": {
     "title": "Your shortlist",
@@ -796,6 +846,14 @@
       "parks": "Parks",
       "dev_applications_12m": "Development applications",
       "residential_units_proposed_12m": "Homes proposed in rezoning applications"
+    },
+    "crime": {
+      "title": "Police-reported crime",
+      "intro": "Toronto Police publish crime rates for neighbourhoods, not wards. These neighbourhoods cover this ward. Each rate compares major crimes per resident with the whole city.",
+      "share": "{share}% of this ward",
+      "rate": "{rate}× the city rate",
+      "noData": "Not enough data",
+      "source": "Toronto Police Service, {years} average."
     }
   },
   "paste": {

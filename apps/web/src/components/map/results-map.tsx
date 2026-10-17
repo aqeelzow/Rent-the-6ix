@@ -10,14 +10,21 @@ import type {
   Marker,
   Popup,
 } from "maplibre-gl";
+import { Layers, LoaderCircle } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useTheme } from "@/lib/theme/theme";
-import type { SearchResultItem } from "@/lib/store/types";
+import type { AreaChoropleth, SearchResultItem } from "@/lib/store/types";
 import { t, type MessageKey } from "@/lib/format/messages";
 import { formatCad } from "@/lib/format/number";
+import { SafetyInfoButton } from "@/components/safety/safety-info";
+import { fetchChoropleth } from "@/lib/store/actions";
 import { appStore, useAppStore } from "@/lib/store/store";
 import {
   BAND_COLORS,
+  CRIME_COLORS,
+  CRIME_NO_DATA,
+  CRIME_STEPS,
+  choroplethToGeoJSON,
   MAP_MAX_BOUNDS,
   PLACE_COLOR,
   boundsOf,
@@ -53,9 +60,34 @@ const bandColor: ExpressionSpecification = [
   BAND_COLORS.low,
 ];
 
+const crimeColor: ExpressionSpecification = [
+  "case",
+  ["==", ["typeof", ["get", "value"]], "number"],
+  [
+    "step",
+    ["get", "value"],
+    CRIME_COLORS[0],
+    CRIME_STEPS[0],
+    CRIME_COLORS[1],
+    CRIME_STEPS[1],
+    CRIME_COLORS[2],
+    CRIME_STEPS[2],
+    CRIME_COLORS[3],
+    CRIME_STEPS[3],
+    CRIME_COLORS[4],
+  ],
+  CRIME_NO_DATA,
+];
+
+type CrimeState =
+  { status: "idle" | "loading" | "error" } | { status: "ok"; layer: AreaChoropleth };
+type CrimeHover = { name: string; value: number | null } | null;
+
 /**
  * Results map (SPEC 12): clustered pins, listing uncertainty circles and
  * place pins. Hover and select are shared with the list through the store.
+ * An opt-in "Crime rates" layer shades neighbourhoods by police-reported
+ * crime relative to the city, with its caveats beside it (SPEC 7.6).
  */
 /** The highlighted listing's ring: a warm orange no score band or place pin uses. */
 const ACTIVE_COLOR = "#e8590c";
@@ -87,6 +119,22 @@ export function ResultsMap({ className = "" }: { className?: string }) {
   const targets = useAppStore((s) => s.intent?.travelTargets);
   const hovered = useAppStore((s) => s.hoveredListingId);
   const selected = useAppStore((s) => s.selectedListingId);
+  // Off on every visit; loaded the first time the renter turns it on.
+  const [crimeOn, setCrimeOn] = useState(false);
+  const [crime, setCrime] = useState<CrimeState>({ status: "idle" });
+  const [crimeHover, setCrimeHover] = useState<CrimeHover>(null);
+
+  const toggleCrime = () => {
+    const next = !crimeOn;
+    setCrimeOn(next);
+    if (!next) setCrimeHover(null);
+    if (next && (crime.status === "idle" || crime.status === "error")) {
+      setCrime({ status: "loading" });
+      void fetchChoropleth("neighbourhood", "crime").then((result) =>
+        setCrime(result.ok ? { status: "ok", layer: result.layer } : { status: "error" }),
+      );
+    }
+  };
 
   const theme = useTheme();
 
@@ -314,6 +362,20 @@ export function ResultsMap({ className = "" }: { className?: string }) {
     homeView.current = null;
   }, [results]);
 
+  // The crime layer: added once its data arrives, then shown or hidden with the toggle.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!ready || !map) return;
+    if (crime.status === "ok" && !map.getSource("crime")) {
+      addCrimeLayer(map, choroplethToGeoJSON(crime.layer), setCrimeHover);
+    }
+    if (map.getLayer("crime-fill")) {
+      const visibility = crimeOn ? "visible" : "none";
+      map.setLayoutProperty("crime-fill", "visibility", visibility);
+      map.setLayoutProperty("crime-line", "visibility", visibility);
+    }
+  }, [ready, crimeOn, crime]);
+
   // Hover and selection from the list highlight the matching pin or circle.
   useEffect(() => {
     const map = mapRef.current;
@@ -363,8 +425,107 @@ export function ResultsMap({ className = "" }: { className?: string }) {
           {t("results.map.unavailable")}
         </p>
       ) : (
-        <Legend />
+        <>
+          <div className="absolute top-2 left-2 flex max-w-[15rem] flex-col items-start gap-2">
+            <button
+              type="button"
+              aria-pressed={crimeOn}
+              onClick={toggleCrime}
+              className={`focus-visible:ring-ring/50 flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs font-medium shadow-sm outline-none focus-visible:ring-3 ${crimeOn ? "bg-primary text-primary-foreground border-primary" : "bg-card/95 hover:bg-accent"}`}
+            >
+              {crime.status === "loading" ? (
+                <LoaderCircle aria-hidden className="size-3.5 animate-spin" />
+              ) : (
+                <Layers aria-hidden className="size-3.5" />
+              )}
+              {t("results.map.crime.toggle")}
+            </button>
+            {crimeOn && <CrimeLegend state={crime} hover={crimeHover} />}
+          </div>
+          <Legend />
+        </>
       )}
+    </div>
+  );
+}
+
+function addCrimeLayer(
+  map: MapLibreMap,
+  data: FeatureCollection,
+  onHover: (hover: CrimeHover) => void,
+) {
+  map.addSource("crime", { type: "geojson", data });
+  // Beneath the listing circles and pins, so listings stay on top.
+  map.addLayer(
+    {
+      id: "crime-fill",
+      type: "fill",
+      source: "crime",
+      layout: { visibility: "none" },
+      paint: { "fill-color": crimeColor, "fill-opacity": 0.5 },
+    },
+    "approx-fill",
+  );
+  map.addLayer(
+    {
+      id: "crime-line",
+      type: "line",
+      source: "crime",
+      layout: { visibility: "none" },
+      paint: { "line-color": "#6b7280", "line-width": 0.6, "line-opacity": 0.6 },
+    },
+    "approx-fill",
+  );
+  const show = (event: { features?: { properties?: Record<string, unknown> }[] }) => {
+    const properties = event.features?.[0]?.properties;
+    if (!properties) return;
+    const value = properties.value;
+    onHover({ name: String(properties.name), value: typeof value === "number" ? value : null });
+  };
+  map.on("mousemove", "crime-fill", show);
+  map.on("click", "crime-fill", show);
+  map.on("mouseleave", "crime-fill", () => onHover(null));
+}
+
+const rate = new Intl.NumberFormat("en-CA", { maximumFractionDigits: 2 });
+
+/** The crime layer's key: five bands relative to the city, the area under the cursor, the caveats. */
+function CrimeLegend({ state, hover }: { state: CrimeState; hover: CrimeHover }) {
+  const c = (key: string, params?: Record<string, string | number>) =>
+    t(`results.map.crime.${key}` as MessageKey, params);
+  if (state.status === "error") {
+    return <p className="bg-card/95 rounded-lg border p-2 text-xs shadow-sm">{c("unavailable")}</p>;
+  }
+  if (state.status !== "ok") return null;
+  const labels = ["band0", "band1", "band2", "band3", "band4"];
+  return (
+    <div className="bg-card/95 flex flex-col gap-1 rounded-lg border p-2 text-xs shadow-sm">
+      <p className="font-medium">{c("title")}</p>
+      {CRIME_COLORS.map((color, index) => (
+        <p key={color} className="flex items-center gap-1.5">
+          <span aria-hidden className="size-3 rounded-sm border" style={{ background: color }} />
+          {c(labels[index]!)}
+        </p>
+      ))}
+      <p className="flex items-center gap-1.5">
+        <span
+          aria-hidden
+          className="size-3 rounded-sm border"
+          style={{ background: CRIME_NO_DATA }}
+        />
+        {c("noData")}
+      </p>
+      <p role="status" className="figures min-h-4 font-medium">
+        {hover
+          ? hover.value === null
+            ? c("hoverNoData", { name: hover.name })
+            : c("hover", { name: hover.name, rate: rate.format(hover.value) })
+          : c("hint")}
+      </p>
+      <p className="text-muted-foreground">
+        {c("source", { years: state.layer.period ?? "" })}{" "}
+        <SafetyInfoButton caveats={state.layer.caveats} />
+      </p>
     </div>
   );
 }
