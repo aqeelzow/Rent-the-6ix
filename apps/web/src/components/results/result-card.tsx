@@ -24,7 +24,6 @@ import {
   acFact,
   daysSince,
   plainHardFilterNote,
-  priceSummary,
   topCaveat,
   travelSummaries,
   yearSpan,
@@ -99,14 +98,6 @@ function homeFacts(listing: SearchResultItem["listing"], acInSearch: boolean): H
   return facts;
 }
 
-/** The card's panel takes the price label's tint, like a coloured tag for the whole listing. */
-const panelTint = {
-  underpriced: "bg-price-underpriced text-price-underpriced-foreground",
-  reasonable: "bg-price-reasonable text-price-reasonable-foreground",
-  overpriced: "bg-price-overpriced text-price-overpriced-foreground",
-  unknown: "bg-muted text-foreground",
-} as const;
-
 export function ResultCard({
   result,
   targets,
@@ -137,8 +128,6 @@ export function ResultCard({
   const facts = homeFacts(listing, acInSearch);
   const unconfirmed = matchScore.hardFilterNotes.map(plainHardFilterNote);
 
-  const label = priceSummary(valuation).label;
-
   return (
     <article
       id={`listing-${id}`}
@@ -148,10 +137,11 @@ export function ResultCard({
       onBlur={() => setHovered(null)}
       className={`bg-card relative flex flex-col rounded-3xl border p-1.5 shadow-sm transition-shadow hover:shadow-md ${highlighted ? "ring-primary/60 ring-2" : ""}`}
     >
-      <div className={`flex flex-col gap-4 rounded-[1.25rem] p-5 ${panelTint[label]}`}>
+      {/* One calm tint for every card; the price pill carries the label's colour. */}
+      <div className="bg-accent text-accent-foreground flex flex-col gap-4 rounded-[1.25rem] p-5">
         <div className="flex gap-4">
           <div className="flex min-w-0 flex-1 flex-col items-start gap-2.5">
-            <PriceBadge valuation={valuation} tinted />
+            <PriceBadge valuation={valuation} inline />
             <h3 className="line-clamp-2 text-lg leading-snug font-semibold text-balance">
               {/* Stretched link: the whole card opens the listing; buttons sit above it. */}
               <Link
