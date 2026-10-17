@@ -517,7 +517,7 @@ Sources the team wants, one adapter each in `apps/worker/src/sources`, each expo
 | --- | --- | --- |
 | **Kijiji** (Toronto long-term rentals and Room Rentals & Roommates) | search pages; results embedded as JSON (`__NEXT_DATA__`) | go |
 | **TorontoRentals.com** (Rentals.ca network) | search pages; results from the page's /graphql call | go |
-| **Rentals.ca** | same platform as TorontoRentals.com | no-go: not blocked with CloakBrowser, but no results response captured |
+| **Rentals.ca** | same platform as TorontoRentals.com; results embedded in the page | go (with CloakBrowser) |
 | **Zillow** (Toronto rentals) | search pages (`__NEXT_DATA__`) | go (with CloakBrowser) |
 | **Realtor.ca** (rentals) | map page search response | go (with CloakBrowser) |
 | **Facebook Marketplace / groups** | not collected (needs a login; Meta's terms prohibit automated collection) | covered by **Paste a listing** (section 10.3): the user pastes text or a link they're looking at, it's parsed and scored in their browser only |
@@ -945,3 +945,4 @@ One line per change to this spec: `YYYY-MM-DD P#.#: what changed and why`. Newes
 - 2026-10-17 P3.31 [C]: Each worker run writes one `ingest_runs` row per source (status, pages, listings, dropped, details, stored, message; migration 006) for `/status` and unhealthy-source errors.
 - 2026-10-17 P3.32 [C]: `duplicate_text_elsewhere` stays off: even a narrow rule (identical excerpt, same bedrooms, > 200 m apart, ≥ 30% cheaper) matched 1 of 16k collected listings, a property manager's promo on two of its own buildings.
 - 2026-10-17 [C]: The Kijiji source also collects the Room Rentals & Roommates category (rooms, priced per room), which the student demo prompt needs; before this only 9 rooms were within 8 km of York University.
+- 2026-10-17 P4.11 [C]: Rentals.ca is go: it embeds the network's search results in the page (`App.store.search`) instead of calling /graphql, so the shared rentals-network adapter reads that when no /graphql response arrives. About 60% of its floor plans duplicate torontorentals.

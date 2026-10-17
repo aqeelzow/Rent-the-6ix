@@ -1,5 +1,7 @@
 // torontorentals.com and rentals.ca run on the same platform (Rentals.ca network). The search
-// page loads its results from /graphql; we capture that response while the page loads.
+// page loads its results from /graphql, which we capture while the page loads; rentals.ca instead
+// embeds the same results in the page (`App.store.search = { response: … }`) with a few fields
+// renamed, which `findEmbeddedResults` maps to the same shape.
 // One building has several floor plans; each floor plan becomes one RawListing.
 // The building's contact (name, phone, email) and photos are never read.
 import {
@@ -56,6 +58,89 @@ export function findResults(bodies: unknown[]): RentalListingsPage | null {
     if (edges?.length && edges.some((e) => e.node?.floorPlans)) return body as RentalListingsPage;
   }
   return null;
+}
+
+/** rentals.ca's embedded node: the /graphql node with a few fields renamed. */
+interface EmbeddedNode {
+  id: string;
+  path: string;
+  rentalListingName?: string | null;
+  rentalListingLocation?: number[] | null;
+  listingType?: string | null;
+  modified?: string | null;
+  address?: { street?: string | null; postalCode?: string | null } | null;
+  building?: { yearBuilt?: number | null } | null;
+  petOptions?: string[] | null;
+  floorPlans?:
+    | {
+        beds?: number | null;
+        baths?: number | null;
+        rent?: number | null;
+        sqft?: number | null;
+        den?: boolean | null;
+        parkingSpots?: number | null;
+      }[]
+    | null;
+}
+
+/** The JSON object literal that follows `marker` in a script, or null. */
+function objectAfter(html: string, marker: string): unknown {
+  const at = html.indexOf(marker);
+  if (at < 0) return null;
+  const start = html.indexOf("{", at + marker.length);
+  let depth = 0;
+  let inString = false;
+  for (let i = start; i < html.length; i++) {
+    const ch = html[i];
+    if (inString) {
+      if (ch === "\\") i++;
+      else if (ch === '"') inString = false;
+    } else if (ch === '"') inString = true;
+    else if (ch === "{") depth++;
+    else if (ch === "}" && --depth === 0) return JSON.parse(html.slice(start, i + 1));
+  }
+  return null;
+}
+
+/** rentals.ca: results embedded in the search page, mapped to the /graphql shape. */
+export function findEmbeddedResults(html: string): RentalListingsPage | null {
+  const store = html.indexOf("App.store.search");
+  if (store < 0) return null;
+  const response = objectAfter(html.slice(store), "response:") as {
+    data?: { edges?: { node: EmbeddedNode }[]; pageInfo?: { hasNextPage?: boolean } };
+  } | null;
+  const edges = response?.data?.edges;
+  if (!edges?.length) return null;
+  return {
+    data: {
+      rentalListings: {
+        pageInfo: response?.data?.pageInfo ?? null,
+        edges: edges.map(({ node: n }) => ({
+          node: {
+            id: n.id,
+            path: n.path,
+            name: n.rentalListingName ?? null,
+            // "residential:apartment:apartment" → "apartment"
+            type: n.listingType?.split(":").pop() ?? null,
+            location: n.rentalListingLocation ?? null,
+            modified: n.modified ?? null,
+            address: { street: n.address?.street, postalCode: n.address?.postalCode },
+            building: { yearBuilt: n.building?.yearBuilt ?? null },
+            petOptions: n.petOptions ?? null,
+            floorPlans: (n.floorPlans ?? []).map((f) => ({
+              // A den shows as half a bedroom, as on torontorentals ("1.5" = 1 + den).
+              beds: f.beds === null || f.beds === undefined ? null : f.beds + (f.den ? 0.5 : 0),
+              baths: f.baths,
+              rent: f.rent,
+              size: f.sqft,
+              parkingSpots: f.parkingSpots,
+              externalId: null,
+            })),
+          },
+        })),
+      },
+    },
+  };
 }
 
 export function parseRentalListings(
@@ -125,11 +210,11 @@ function rentalsNetworkAdapter(
     async fetchIndex(session, cursor) {
       const page = cursor ? Number(cursor) : 1;
       const url = `${origin}${searchPath}${page > 1 ? `?p=${page}` : ""}`;
-      const { json } = await session.visit(url, {
+      const { json, html } = await session.visit(url, {
         captureJson: (u) => u.startsWith(`${origin}/graphql`),
         settleMs: 3000,
       });
-      const results = findResults(json);
+      const results = findResults(json) ?? findEmbeddedResults(html);
       if (!results) throw new Error(`${id}: no results response on ${url} (page layout changed?)`);
       const listings = parseRentalListings(id, origin, results);
       const hasNext = results.data?.rentalListings?.pageInfo?.hasNextPage ?? false;
@@ -145,8 +230,7 @@ export const torontoRentals = rentalsNetworkAdapter(
   "/toronto",
 );
 
-// Same platform. CloakBrowser gets past rentals.ca's Cloudflare challenge, but no results
-// response is captured there yet, so this adapter fails on its first page (see SOURCES.md).
+// Same platform; rentals.ca embeds its results in the page instead of calling /graphql.
 export const rentalsCa = rentalsNetworkAdapter(
   "rentals_ca",
   "Rentals.ca",

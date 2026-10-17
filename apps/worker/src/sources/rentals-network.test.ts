@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { findResults, parseRentalListings } from "./rentals-network.ts";
+import { findEmbeddedResults, findResults, parseRentalListings } from "./rentals-network.ts";
 
 // Same shape as torontorentals.com's /graphql results (checked 2026-10-16); values are made up.
 const results = {
@@ -87,5 +87,46 @@ describe("rentals network", () => {
       availableFrom: "2026-11-05",
     });
     expect(JSON.stringify(rows)).not.toMatch(/555-0100|leasing@example\.com|Leasing Agent/);
+  });
+});
+
+describe("rentals.ca embedded results", () => {
+  it("maps App.store.search to the /graphql shape; a den is half a bedroom", () => {
+    const response = {
+      data: {
+        pageInfo: { hasNextPage: true },
+        edges: [
+          {
+            node: {
+              id: "r1",
+              path: "toronto/44-example-avenue",
+              rentalListingName: "Example Place",
+              rentalListingLocation: [-79.39, 43.68],
+              listingType: "residential:apartment:apartment",
+              address: { street: "44 Example Avenue", postalCode: "M4T 1E5" },
+              contact: { name: "Leasing Office", phone: "416-555-0100" },
+              petOptions: ["all"],
+              floorPlans: [
+                { beds: 1, baths: 1, rent: 2275, sqft: 600, den: true, parkingSpots: 0 },
+              ],
+            },
+          },
+        ],
+      },
+    };
+    const html = `<script>AppStartup.push(function() { App.store.search = { response: ${JSON.stringify(response)}, other: 1 }; });</script>`;
+    const page = findEmbeddedResults(html)!;
+    const [row] = parseRentalListings("rentals_ca", "https://rentals.ca", page);
+    expect(row).toMatchObject({
+      sourceUrl: "https://rentals.ca/toronto/44-example-avenue",
+      title: "1 bed + den at Example Place",
+      bedrooms: 1,
+      den: true,
+      unitType: "apartment",
+      sqft: 600,
+      lat: 43.68,
+    });
+    expect(JSON.stringify(row)).not.toMatch(/555-0100|Leasing Office/);
+    expect(findEmbeddedResults("<html></html>")).toBeNull();
   });
 });
