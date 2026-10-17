@@ -64,9 +64,7 @@ export async function cityDataset(slug: string): Promise<CkanDataset> {
  */
 export async function cityDatastoreId(slug: string, name: string): Promise<string> {
   const dataset = await cityDataset(slug);
-  const resource = dataset.resources.find(
-    (r) => r.name.toLowerCase() === name.toLowerCase(),
-  );
+  const resource = dataset.resources.find((r) => r.name.toLowerCase() === name.toLowerCase());
   if (!resource?.datastoreActive) {
     throw new Error(`dataset "${slug}" resource "${name}" is not served by the datastore`);
   }

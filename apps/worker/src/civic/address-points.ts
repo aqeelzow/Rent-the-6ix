@@ -88,7 +88,8 @@ export async function loadAddressPoints(sql: Sql): Promise<AddressPointLoad> {
   while (offset < total) {
     const url = `${CKAN}?resource_id=${resourceId}&limit=${PAGE_SIZE}&offset=${offset}&sort=_id`;
     const page = await fetchJson<DatastorePage>(url);
-    if (!page.success || !page.result) throw new Error(`datastore_search failed at offset ${offset}`);
+    if (!page.success || !page.result)
+      throw new Error(`datastore_search failed at offset ${offset}`);
     total = page.result.total;
     const records = page.result.records ?? [];
     if (records.length === 0) break;
@@ -109,10 +110,13 @@ export async function loadAddressPoints(sql: Sql): Promise<AddressPointLoad> {
     }
     offset += records.length;
     if (offset % (PAGE_SIZE * 10) === 0 || offset >= total) {
-      console.log(`  addresses: ${offset.toLocaleString("en-CA")} / ${total.toLocaleString("en-CA")}`);
+      console.log(
+        `  addresses: ${offset.toLocaleString("en-CA")} / ${total.toLocaleString("en-CA")}`,
+      );
     }
   }
-  if (skipped > 0) console.warn(`  addresses: ${skipped} records skipped (no id, address or point)`);
+  if (skipped > 0)
+    console.warn(`  addresses: ${skipped} records skipped (no id, address or point)`);
 
   // The City's WARD codes are validated against the boundary table rather than trusted blindly.
   await sql`

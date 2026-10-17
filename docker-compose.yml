@@ -4,7 +4,7 @@
 # worker (ingest + travel precompute), plus OTP once the graph exists.
 #
 #   docker compose up -d --build          # web + worker + caddy
-#   docker compose --profile otp up -d    # add the router (needs otp/graphs/)
+#   docker compose --profile otp up -d    # add the router (needs otp/data/graph.obj)
 #
 # Values come from a manually-created `.env` next to this file (variables are listed in
 # SPEC.md §20). `.env` is git-ignored; `DATABASE_URL` and `GEMINI_API_KEY` only live there.
@@ -35,6 +35,13 @@ services:
     environment:
       # In-network name; ignores whatever OTP_URL says in .env.
       OTP_URL: http://otp:8080
+    volumes:
+      # The ingest pipeline writes its caches through `new URL('../../.cache/…', import.meta.url)`,
+      # so they land next to the source at /app/apps/worker/.cache whatever the cwd is. A named
+      # volume keeps them across `--build` and `up` re-creates: losing the detail cache re-fetches
+      # thousands of listing pages (and risks a block), and the Gemini cache costs real money.
+      # `docker compose down -v` still deletes it — that is the only command that should.
+      - worker-cache:/app/apps/worker/.cache
 
   caddy:
     image: caddy:2-alpine
@@ -64,9 +71,12 @@ services:
     restart: unless-stopped
     environment:
       JAVA_TOOL_OPTIONS: -Xmx6g
+    # The image's entrypoint always passes /var/opentripplanner as the graph directory, so the
+    # inputs and graph.obj live in the one mount (otp/build.sh writes them there). A separate
+    # graphs/ mount would be an empty directory OTP never looks at.
     volumes:
       - ./otp/data:/var/opentripplanner
-      - ./otp/graphs:/var/opentripplanner/graphs
+    command: ["--load"]
     expose:
       - "8080"
     mem_limit: 7g
@@ -74,3 +84,4 @@ services:
 volumes:
   caddy_data:
   caddy_config:
+  worker-cache:

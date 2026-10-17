@@ -1,8 +1,7 @@
 // Plain HTTP for the civic loaders. Unlike src/lib/fetch.ts (a stealth browser for listing sites),
 // the City's CKAN and the TPS catalogue are open APIs: fetch() with retries is enough, and it
 // keeps the loaders runnable in CI and on a small box.
-const USER_AGENT =
-  "RentThe6ix-civic-loader/0.1 (+https://github.com/aqeelzow/Rent-the-6ix)";
+const USER_AGENT = "RentThe6ix-civic-loader/0.1 (+https://github.com/aqeelzow/Rent-the-6ix)";
 const RETRY_STATUSES = new Set([408, 429, 500, 502, 503, 504]);
 const TIMEOUT_MS = 180_000;
 // CKAN raises transient 502s; a full `data:civic all` run must not die on one, so keep retrying

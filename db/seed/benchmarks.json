@@ -1,0 +1,139 @@
+{
+  "_comment": "Reference figures the valuation and affordability checks compare against (P2.15). Every row is an official published number, not an estimate: `sample` stays false unless a value was interpolated or derived. Source URLs are the stable StatCan/CMHC/TTC pages, never the CSV we happened to download. Reload with `pnpm --filter worker load:benchmarks`.",
+  "retrievedAt": "2026-10-17",
+  "sources": [
+    {
+      "id": "statcan-46100092",
+      "title": "Asking rent and paid rent prices, by rental unit type and number of bedrooms, experimental estimates",
+      "url": "https://www150.statcan.gc.ca/t1/tbl1/en/tv.action?pid=4610009201",
+      "licence": "Statistics Canada Open Licence",
+      "period": "2026 Q2",
+      "note": "Table 46-10-0092-01, downloaded as 46100092-eng.zip. Toronto, Census metropolitan area (CMA), DGUID 2021S0503535. Asking rent = advertised rent on vacant units; paid rent = rent existing tenants pay. Experimental estimates, subject to revision."
+    },
+    {
+      "id": "ttc-fares",
+      "title": "TTC fares and passes",
+      "url": "https://www.ttc.ca/Fares-and-passes",
+      "licence": "City of Toronto — TTC fare schedule (public information)",
+      "period": "2026-09",
+      "note": "Adult PRESTO fare $3.30. Monthly fare capping started 2026-09-01 and replaced the Adult Monthly Pass, which TTC discontinued 2026-08-31; the cap is 47 eligible fares per calendar month."
+    }
+  ],
+  "rows": [
+    {
+      "id": "statcan-46100092-2026q2-apt-0br-asking",
+      "kind": "rent",
+      "key": { "geo": "Toronto CMA", "dwelling": "Apartment", "bedrooms": 0, "basis": "asking" },
+      "valueCad": 1750,
+      "unit": "CAD/month",
+      "period": "2026 Q2",
+      "sourceId": "statcan-46100092",
+      "sample": false
+    },
+    {
+      "id": "statcan-46100092-2026q2-apt-1br-asking",
+      "kind": "rent",
+      "key": { "geo": "Toronto CMA", "dwelling": "Apartment", "bedrooms": 1, "basis": "asking" },
+      "valueCad": 2090,
+      "unit": "CAD/month",
+      "period": "2026 Q2",
+      "sourceId": "statcan-46100092",
+      "sample": false
+    },
+    {
+      "id": "statcan-46100092-2026q2-apt-2br-asking",
+      "kind": "rent",
+      "key": { "geo": "Toronto CMA", "dwelling": "Apartment", "bedrooms": 2, "basis": "asking" },
+      "valueCad": 2650,
+      "unit": "CAD/month",
+      "period": "2026 Q2",
+      "sourceId": "statcan-46100092",
+      "sample": false
+    },
+    {
+      "id": "statcan-46100092-2026q2-apt-3br-asking",
+      "kind": "rent",
+      "key": { "geo": "Toronto CMA", "dwelling": "Apartment", "bedrooms": 3, "bedroomsPlus": true, "basis": "asking" },
+      "valueCad": 3270,
+      "unit": "CAD/month",
+      "period": "2026 Q2",
+      "sourceId": "statcan-46100092",
+      "sample": false
+    },
+    {
+      "id": "statcan-46100092-2026q2-house-2br-asking",
+      "kind": "rent",
+      "key": { "geo": "Toronto CMA", "dwelling": "House", "bedrooms": 2, "basis": "asking" },
+      "valueCad": 2710,
+      "unit": "CAD/month",
+      "period": "2026 Q2",
+      "sourceId": "statcan-46100092",
+      "sample": false
+    },
+    {
+      "id": "statcan-46100092-2026q2-house-3br-asking",
+      "kind": "rent",
+      "key": { "geo": "Toronto CMA", "dwelling": "House", "bedrooms": 3, "bedroomsPlus": true, "basis": "asking" },
+      "valueCad": 3630,
+      "unit": "CAD/month",
+      "period": "2026 Q2",
+      "sourceId": "statcan-46100092",
+      "sample": false
+    },
+    {
+      "id": "statcan-46100092-2026q2-room-asking",
+      "kind": "rent",
+      "key": { "geo": "Toronto CMA", "dwelling": "Room", "basis": "asking" },
+      "valueCad": 840,
+      "unit": "CAD/month",
+      "period": "2026 Q2",
+      "sourceId": "statcan-46100092",
+      "sample": false
+    },
+    {
+      "id": "statcan-46100092-2026q2-apt-1br-paid",
+      "kind": "rent",
+      "key": { "geo": "Toronto CMA", "dwelling": "Apartment", "bedrooms": 1, "basis": "paid" },
+      "valueCad": 1840,
+      "unit": "CAD/month",
+      "period": "2026 Q2",
+      "sourceId": "statcan-46100092",
+      "sample": false
+    },
+    {
+      "id": "statcan-46100092-2026q2-apt-2br-paid",
+      "kind": "rent",
+      "key": { "geo": "Toronto CMA", "dwelling": "Apartment", "bedrooms": 2, "basis": "paid" },
+      "valueCad": 2160,
+      "unit": "CAD/month",
+      "period": "2026 Q2",
+      "sourceId": "statcan-46100092",
+      "sample": false
+    },
+    {
+      "id": "ttc-adult-single-fare",
+      "kind": "transit",
+      "key": { "product": "single fare", "rider": "adult", "payment": "PRESTO" },
+      "valueCad": 3.3,
+      "unit": "CAD/ride",
+      "period": "2026-09",
+      "sourceId": "ttc-fares",
+      "sample": false
+    },
+    {
+      "id": "ttc-adult-monthly-cap",
+      "kind": "transit",
+      "key": {
+        "product": "monthly cost of unlimited riding",
+        "rider": "adult",
+        "payment": "PRESTO or card",
+        "derivation": "47 eligible fares × $3.30; TTC does not publish a monthly pass price any more"
+      },
+      "valueCad": 155.1,
+      "unit": "CAD/month",
+      "period": "2026-09",
+      "sourceId": "ttc-fares",
+      "sample": true
+    }
+  ]
+}
