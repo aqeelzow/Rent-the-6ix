@@ -5,6 +5,8 @@
 import "server-only";
 import type { Sql } from "postgres";
 import { VALUATION } from "../../../../../packages/shared/engine/config";
+import { caveats, type Caveat } from "../../../../../packages/shared/engine/caveats";
+import type { Listing } from "../../../../../packages/shared/schemas/index";
 import {
   valuate,
   type Benchmark,
@@ -72,39 +74,67 @@ const FIELDS = (t: string) => `
   coalesce(${t}.parking, 'unknown') AS parking, coalesce(${t}.furnished, 'unknown') AS furnished,
   coalesce(${t}.laundry_in_suite, 'unknown') AS laundry_in_suite`;
 
-/** The listing and its candidate comparables, or null when the listing doesn't exist. */
+/** Candidate comparables around a point for a subject that may not be stored (pasted listings). */
+export async function candidatesNear(
+  sql: Sql,
+  subject: ValuationSubject,
+  at: { lng: number; lat: number },
+  now: Date,
+): Promise<ComparableCandidate[]> {
+  const widest = VALUATION.radiiM[VALUATION.radiiM.length - 1];
+  const point = sql`ST_SetSRID(ST_MakePoint(${at.lng}, ${at.lat}), 4326)::geography`;
+  // Same building: RentSafeTO building, else Address Point, else the exact same point (~10 m),
+  // which is how one building's floor plans arrive before geocoding.
+  const rows = await sql<CandidateRow[]>`
+    SELECT ${sql.unsafe(FIELDS("c"))},
+      ST_Distance(c.location, ${point}) AS distance_m,
+      c.last_seen_at, c.duplicate_of,
+      coalesce(c.building_id, c.address_point_id,
+        'pt:' || ST_AsText(ST_SnapToGrid(c.location::geometry, 0.0001))) AS building_key
+    FROM listings c
+    WHERE ST_DWithin(c.location, ${point}, ${widest})
+      AND c.id <> ${subject.id}
+      AND c.duplicate_of IS NULL
+      AND c.status IN ('active', 'stale')
+      AND c.last_seen_at >= ${now} - make_interval(days => ${VALUATION.windowDays})
+      AND ${
+        subject.unitType === "room"
+          ? sql`c.unit_type = 'room'`
+          : sql`c.bedrooms = ${subject.bedrooms} AND c.unit_type IS DISTINCT FROM 'room'`
+      }
+    ORDER BY c.location <-> ${point}
+    LIMIT ${CANDIDATE_LIMIT}`;
+  return rows.map(candidateOf);
+}
+
+/** A stored listing and its candidate comparables, or null when the listing doesn't exist. */
 export async function selectComparables(
   sql: Sql,
   listingId: string,
   now: Date,
 ): Promise<{ subject: ValuationSubject; candidates: ComparableCandidate[] } | null> {
-  const [subject] = await sql<ListingFields[]>`
-    SELECT ${sql.unsafe(FIELDS("s"))} FROM listings s WHERE s.id = ${listingId}`;
-  if (!subject) return null;
-  const widest = VALUATION.radiiM[VALUATION.radiiM.length - 1];
-  // Same building: RentSafeTO building, else Address Point, else the exact same point (~10 m),
-  // which is how one building's floor plans arrive before geocoding.
-  const rows = await sql<CandidateRow[]>`
-    SELECT ${sql.unsafe(FIELDS("c"))},
-      ST_Distance(c.location, s.location) AS distance_m,
-      c.last_seen_at, c.duplicate_of,
-      coalesce(c.building_id, c.address_point_id,
-        'pt:' || ST_AsText(ST_SnapToGrid(c.location::geometry, 0.0001))) AS building_key
-    FROM listings s
-    JOIN listings c ON ST_DWithin(c.location, s.location, ${widest})
-    WHERE s.id = ${listingId}
-      AND c.id <> s.id
-      AND c.duplicate_of IS NULL
-      AND c.status IN ('active', 'stale')
-      AND c.last_seen_at >= ${now} - make_interval(days => ${VALUATION.windowDays})
-      AND CASE WHEN s.unit_type = 'room' THEN c.unit_type = 'room'
-               ELSE c.bedrooms = s.bedrooms AND c.unit_type IS DISTINCT FROM 'room' END
-    ORDER BY c.location <-> s.location
-    LIMIT ${CANDIDATE_LIMIT}`;
-  return { subject: subjectOf(subject), candidates: rows.map(candidateOf) };
+  const [row] = await sql<(ListingFields & { lng: number; lat: number })[]>`
+    SELECT ${sql.unsafe(FIELDS("s"))},
+      ST_X(s.location::geometry) AS lng, ST_Y(s.location::geometry) AS lat
+    FROM listings s WHERE s.id = ${listingId}`;
+  if (!row) return null;
+  const subject = subjectOf(row);
+  // A whole unit with unknown bedrooms has no pool; skip the query, the engine says so.
+  if (subject.unitType !== "room" && subject.bedrooms === null) return { subject, candidates: [] };
+  return { subject, candidates: await candidatesNear(sql, subject, row, now) };
 }
 
 const cache = new Map<string, { at: number; value: Valuation }>();
+
+function cached(key: string, now: Date): Valuation | undefined {
+  const hit = cache.get(key);
+  return hit && now.getTime() - hit.at < CACHE_MS ? hit.value : undefined;
+}
+
+function remember(key: string, now: Date, value: Valuation) {
+  if (cache.size >= CACHE_MAX) cache.delete(cache.keys().next().value!);
+  cache.set(key, { at: now.getTime(), value });
+}
 
 /**
  * Valuation for a stored listing, cached 6 h. `benchmark` is null until D's benchmarks table is
@@ -116,13 +146,12 @@ export async function listingValuation(
   now = new Date(),
   benchmark: Benchmark | null = null,
 ): Promise<Valuation | null> {
-  const hit = cache.get(listingId);
-  if (hit && now.getTime() - hit.at < CACHE_MS) return hit.value;
+  const hit = cached(listingId, now);
+  if (hit) return hit;
   const found = await selectComparables(sql, listingId, now);
   if (!found) return null;
   const value = valuate(found.subject, found.candidates, benchmark, now);
-  if (cache.size >= CACHE_MAX) cache.delete(cache.keys().next().value!);
-  cache.set(listingId, { at: now.getTime(), value });
+  remember(listingId, now, value);
   return value;
 }
 
@@ -132,9 +161,43 @@ export function clearValuationCache() {
 }
 
 /**
- * The engine's valuation in the API shape (`ValuationSchema`): adjustments carry only label and
- * amount; the label already says how many comparables were adjusted.
+ * Owner C's part of search's `ScoreContext` (packages/shared/engine/score.ts): the valuation and
+ * the caveats for any listing, stored or pasted (SPEC 10.3: pasted listings are valued against our
+ * comparables). Travel and safety come from D.
+ * `sameTextElsewhere` is 0 for now: in TigerData nearly every repeated description is a property
+ * manager's template across its own units, so the SPEC 7.7 rule would mostly flag real listings.
  */
-export function toApiValuation(v: Valuation) {
-  return { ...v, adjustments: v.adjustments.map(({ label, amountCad }) => ({ label, amountCad })) };
+export async function listingContext(
+  sql: Sql,
+  listing: Listing,
+  now = new Date(),
+  benchmark: Benchmark | null = null,
+): Promise<{ valuation: Valuation; caveats: Caveat[] }> {
+  // Keyed by rent too: a pasted listing may reuse an id with a different price.
+  const key = `${listing.id}:${listing.monthlyRentCad}`;
+  let valuation = cached(key, now);
+  if (!valuation) {
+    const pooled = listing.unitType === "room" || listing.bedrooms !== null;
+    const candidates = pooled ? await candidatesNear(sql, listing, listing.location, now) : [];
+    valuation = valuate(listing, candidates, benchmark, now);
+    remember(key, now, valuation);
+  }
+  const [building] = listing.buildingId
+    ? await sql<{ latest_score: string | null; score_date: Date | null }[]>`
+        SELECT latest_score, score_date FROM buildings WHERE id = ${listing.buildingId}`
+    : [];
+  return {
+    valuation,
+    caveats: caveats(listing, {
+      valuation,
+      building: building
+        ? {
+            latestScore: building.latest_score === null ? null : Number(building.latest_score),
+            scoreDate: building.score_date?.toISOString().slice(0, 10) ?? null,
+          }
+        : null,
+      sameTextElsewhere: 0,
+      now,
+    }),
+  };
 }

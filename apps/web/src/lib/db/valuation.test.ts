@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { sampleListings } from "../../../../../packages/shared/fixtures/index";
 import { ValuationSchema } from "../../../../../packages/shared/schemas/index";
-import { clearValuationCache, listingValuation, toApiValuation } from "./valuation";
+import { clearValuationCache, listingContext, listingValuation } from "./valuation";
 
 const NOW = new Date("2026-10-17T12:00:00Z");
 const id = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
@@ -14,7 +15,14 @@ const fields = {
   furnished: "unknown",
   laundry_in_suite: "unknown",
 };
-const subject = { id: id(1), monthly_rent_cad: 2000, ...fields, utilities_included: "yes" };
+const subject = {
+  id: id(1),
+  monthly_rent_cad: 2000,
+  ...fields,
+  utilities_included: "yes",
+  lng: -79.4,
+  lat: 43.65,
+};
 const candidate = (n: number, rent: number, extra: object = {}) => ({
   id: id(n),
   monthly_rent_cad: rent,
@@ -26,25 +34,32 @@ const candidate = (n: number, rent: number, extra: object = {}) => ({
   building_key: `pt:${n}`,
   ...extra,
 });
+const five = () => [2400, 2450, 2500, 2550, 2600].map((r, i) => candidate(i + 2, r));
 
-/** A fake `postgres` client: each tagged-template call returns the next queued result. */
+type FakeSql = Parameters<typeof listingValuation>[0];
+
+/**
+ * A fake `postgres` client: each SELECT returns the next queued result; inline fragments
+ * (sql`ST_MakePoint(…)`) are just values.
+ */
 function fakeSql(...results: object[][]) {
-  const sql = vi.fn(async () => results.shift() ?? []) as unknown as Parameters<
-    typeof listingValuation
-  >[0];
-  (sql as unknown as { unsafe: (s: string) => string }).unsafe = (s: string) => s;
-  return sql;
+  const sql = vi.fn((strings: TemplateStringsArray) =>
+    strings.join("?").includes("SELECT")
+      ? Promise.resolve(results.shift() ?? [])
+      : { fragment: strings.join("?") },
+  );
+  Object.assign(sql, { unsafe: (s: string) => s });
+  return sql as unknown as FakeSql & typeof sql;
 }
+
+const selects = (sql: ReturnType<typeof fakeSql>) =>
+  sql.mock.calls.filter(([s]) => s.join("").includes("SELECT")).length;
 
 afterEach(() => clearValuationCache());
 
 describe("listingValuation", () => {
   it("values a stored listing from its SQL candidates", async () => {
-    const sql = fakeSql(
-      [subject],
-      [2400, 2450, 2500, 2550, 2600].map((r, i) => candidate(i + 2, r)),
-    );
-    const v = await listingValuation(sql, id(1), NOW);
+    const v = await listingValuation(fakeSql([subject], five()), id(1), NOW);
     expect(v).toMatchObject({ status: "ok", comparableCount: 5, radiusM: 1000 });
     // Utilities included here, not in the comparables: +$150 each to compare.
     expect(v!.estimatedRentCad).toBe(2650);
@@ -55,33 +70,64 @@ describe("listingValuation", () => {
     expect(await listingValuation(fakeSql([]), id(9), NOW)).toBeNull();
     const sql = fakeSql([subject], [candidate(2, 2400)]);
     await listingValuation(sql, id(1), NOW);
+    const before = selects(sql);
     await listingValuation(sql, id(1), new Date(NOW.getTime() + 3_600_000));
-    expect(sql).toHaveBeenCalledTimes(2);
+    expect(selects(sql)).toBe(before);
   });
 
-  it("API shape passes ValuationSchema once a benchmark exists", async () => {
-    const sql = fakeSql(
-      [subject],
-      [2400, 2450, 2500, 2550, 2600].map((r, i) => candidate(i + 2, r)),
-    );
+  it("output passes the shared ValuationSchema, with or without a benchmark", async () => {
     const benchmark = {
       label: "Toronto CMA asking rent, 1 bedroom",
       valueCad: 2500,
       period: "2026 Q2",
       sourceId: "statcan",
     };
-    const v = await listingValuation(sql, id(1), NOW, benchmark);
-    expect(() => ValuationSchema.parse(toApiValuation(v!))).not.toThrow();
+    const withBenchmark = await listingValuation(fakeSql([subject], five()), id(1), NOW, benchmark);
+    expect(() => ValuationSchema.parse(withBenchmark)).not.toThrow();
+    clearValuationCache();
+    const without = await listingValuation(fakeSql([subject], five()), id(1), NOW);
+    expect(() => ValuationSchema.parse(without)).not.toThrow();
   });
 
   it("insufficient data still lists what it found", async () => {
-    const sql = fakeSql([subject], [candidate(2, 2400), candidate(3, 2500)]);
-    const v = await listingValuation(sql, id(1), NOW);
+    const v = await listingValuation(
+      fakeSql([subject], [candidate(2, 2400), candidate(3, 2500)]),
+      id(1),
+      NOW,
+    );
     expect(v).toMatchObject({
       status: "insufficient_data",
       priceLabel: "unknown",
       comparableCount: 2,
     });
     expect(v!.comparables).toHaveLength(2);
+  });
+});
+
+describe("listingContext", () => {
+  const listing = {
+    ...sampleListings[0],
+    id: id(50),
+    bedrooms: 1,
+    unitType: "apartment" as const,
+    buildingId: null,
+  };
+
+  it("values any listing, stored or pasted, and adds its caveats", async () => {
+    const sql = fakeSql([candidate(2, 2400), candidate(3, 2500)]);
+    const { valuation, caveats } = await listingContext(sql, listing, NOW);
+    expect(valuation).toMatchObject({ status: "insufficient_data", comparableCount: 2 });
+    expect(caveats.map((c) => c.code)).toContain("insufficient_comparables");
+  });
+
+  it("reads the RentSafeTO building for the low-score caveat", async () => {
+    const sql = fakeSql(five(), [
+      { latest_score: "58.0", score_date: new Date("2025-03-01T00:00:00Z") },
+    ]);
+    const { caveats } = await listingContext(sql, { ...listing, buildingId: "RSN-1" }, NOW);
+    const low = caveats.find((c) => c.code === "rentsafeto_low");
+    expect(low?.explanation).toContain(
+      "58% in its latest City of Toronto RentSafeTO evaluation (2025-03-01)",
+    );
   });
 });
