@@ -1,4 +1,4 @@
-import test from 'node:test';
+import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { AreaSchema, DetailResponseSchema, DestinationResolutionSchema, ListingSchema, MatchScoreSchema, NumericExtremeSchema, ParseRequestSchema, SearchIntentSchema, SearchRequestSchema, SearchResponseSchema, SearchResultSchema, TravelTimeRowSchema, ValuationSchema } from './index';
 import { areas, baseIntent, detailFixture, listings, sampleListings, safetySearchFixture, searchFixture, travelIntent, valuations } from '../fixtures/index';

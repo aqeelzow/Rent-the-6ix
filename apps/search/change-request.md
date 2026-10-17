@@ -1,6 +1,30 @@
 # Search integration change requests
 
+## Latest status — upstream 29a7393
+
+Supersedes older dependency notes: C’s comparable query/cache/listingContext and A’s actual search actions/UI/polling are now published. Current B composition consumes C unchanged and tests A actions against B runtime. CR-4’s missing implementation is resolved; live DB/performance acceptance remains open. CR-3 remains open for D routing/safety/geographic/cache/detail services and usable database configuration. Current SQL path returns unknown D values honestly; live detail remains503. Current patches target29a7393, while570300e variants are historical. One unfinished read/enrichment per process bounds background work but may reject overlapping searches; owner cancellation/server timeout support remains requested.
+
+
+## Current audit — 2026-10-17, checkout `570300e`
+
+This audit supersedes historical “absent from adbeb25” and resume-worktree statements below. D's `db/migrations/001–003` and `apps/web/src/lib/db.ts` now exist. C's pure `valuation.ts` and `caveats.ts` exist, but C's server comparable query, D's `geo/route-times.ts` and `engine/safety.ts` do not. CR-3 and CR-4 are partially supplied, not resolved. The staged result-identity repair now satisfies A’s existing result.id selection contract and exports its expected types; A’s destination-choice/polling UI remains pending. Address Points has an authoritative table definition, but its loader/data and resolver adapter remain unverified. No live connection or credentials were inspected.
+
+C's actual valuation output exposed B schema incompatibilities: nullable benchmark, required adjustment code/count, and considered comparable count for insufficient-data results (including same-building caps). C also explicitly requests `torontorentals` source support in PERSON_C.md. Corrections and integration regressions are staged in `/tmp/rent-search-current`; `patches/search-interoperability.patch` preserves the reviewable diff. Applying the patch to the canonical app/shared files requires a session with write access to those paths. Owner algorithms, database migrations and UI are unchanged.
+
+
 Reviewed 2026-10-17 against fetched main `adbeb25`. CR-1 is resolved in the isolated integration worktree; CR-2 B publication and CR-5 B records are complete, with A/D coordination remaining. CR-3/CR-4 remain open. Historical request descriptions below record the original contracts; status notes are authoritative for current progress. No deployed behavior is claimed.
+
+### Address Points follow-up (staged consumer)
+
+B's parse adapter can read existing `address_points(id,address_full,location)` using D's existing client. It matches full addresses ignoring case/whitespace, validates all returned coordinates/labels/IDs, keeps ambiguities, and binds query input. Fixture mode bypasses DB. D's `address_norm` algorithm is not published; B does not assume one or add a migration. Request to D: publish normalization/loader coverage, provide an indexed exact-match path and a server statement timeout. Current query ignores late results without canceling the shared connection (the installed postgres documentation warns cancellation may affect another query); at most one Address Points read remains in flight per process. Request deadlines stay bounded, but database work itself may outlive a timed-out request. Live PostGIS execution/performance remains unverified.
+
+### Candidate SQL follow-up (staged B consumer)
+
+B’s candidates-sql consumer now targets D’s actual listing columns and can be injected into ordinary/percentile search with owner enrichment. D: verify SQL/PostGIS execution, indexes, loaded data and server statement timeout on representative pools; query keeps the full cheap-eligible pool until application ordering/selection, so data-volume latency remains unproven. Near-area gates intentionally use exact existing pure distance after conservative SQL selection. C/D enrichment and ID-based live detail remain open. A: render absent neighbourhood/ward IDs as unknown; B preserves D’s nulls rather than fabricating geography, and suppresses safety without a neighbourhood ID. No A-owned file, D migration or C/D engine is changed.
+
+### Live provider acceptance follow-up
+
+Gemini/MapTiler keys and main model are configured; no DATABASE_URL or fast-model setting is configured. Live calls authenticate, but four of six Gemini requests exhausted12s and successful calls took7–11s. A/deployment owner: supply and validate an appropriate fast-model configuration without hardcoded model names or relaxed bounds. Existing code falls back honestly and preserves recognized explicit time requirements. D/provider data owner: supply a verified matching TD Bay/Queen address/POI; current MapTiler returns partial unrelated landforms and B correctly rejects them. These are unresolved live acceptance gates, not a request to invent a location or present fallback as Gemini success.
 
 ## CR-1 — Scaffold and canonical implementation access
 

@@ -1,0 +1,58 @@
+--- a/SPEC.md
++++ b/SPEC.md
+@@ -953,3 +953,6 @@
+ - 2026-10-17 P1.33 [A]: Result cards. A straight-line travel row reads "1.6 km to X (straight-line, travel time not available)", never minutes. A routed drive says "(no traffic)" and transit says "by TTC". The price badge shows the % from `valuation.differencePct` and, on tap, the comparable count and confidence, with "not signed leases". The score bar segments are `score × effectiveWeight`; null parts are hidden. The neighbourhood name and "Also on" wait for fields in B's `SearchResult`.
+ - 2026-10-17 P1.34 [A]: Results map. MapLibre 6 with the OpenFreeMap "positron" basemap (MapTiler streets-v2 when `NEXT_PUBLIC_MAPTILER_KEY` is set). Pins are coloured by score band (75+ / 50–74 / under 50) in shades of the accent, with a text legend. Approximate locations are circles: street 150 m, area 300 m. Place targets with coordinates get purple pins. On desktop the list takes 45% and a sticky map 55%. The MapLibre worker is served from `/maplibre/`, copied from node_modules at dev and build time.
+ - 2026-10-17 P1.35 [A]: On phones (under 1024 px) `/search` shows the list with a "Map" button that sticks to the bottom of the screen and rests after the last card. "Map" opens a full-screen map with "List" at the top. Tapping a pin opens that listing's card at the bottom; the map stays usable, so it's not a modal. The Filters/Sort bar sticks under the header. Only the visible map instance mounts.
++
++- 2026-10-17 P2.20/P2.24 [B]: Staged read-only SQL candidate loading before enrichment/caps, preserving nullable area IDs as unconfirmed unless another OR area matches; latest C effectiveCount/adjustments and A nested listing.id contracts remain authoritative. Actual A choice/polling/store integration is fixture-verified; live owner acceptance remains open.
++- 2026-10-17 P1.21/P1.23 [B]: Explicit target-ID source/query instructions and deterministic known hard-time checks prevent silent broadening; Address Points consumes D’s existing table/client, and partial MapTiler matches stay unavailable. Current provider/configuration latency and TD-match gates are not claimed passed.
+--- a/PERSON_B.md
++++ b/PERSON_B.md
+@@ -6,15 +6,17 @@
+ 
+ ## Current state
+ 
+-- **Current task:** canonical search integration after fixture-backed implementation
+-- **Status:** blocked   <!-- local implementation verified; canonical scaffold and owner services unavailable -->
+-- **Next action:** mount the B-owned sources in A's scaffold, connect the authoritative C/D adapters, then run canonical build/lint and live acceptance. See apps/search/DOCS.md and change-request.md.
+-- **Blockers / needs from others:** A scaffold/package scripts and supported Node/pnpm pairing; C valuation/caveats; D migrations/client/geography/ai_cache/safety/router/detail definitions; trusted proxy identity adapter. No owner implementations have been substituted.
+-- **Last updated:** 2026-10-16
++- **Current task:** current C/SQL integration finished for user-requested wrap-up.
++- **Status:** paused at user request; current B changes are validated in /tmp/rent-search-upstream on b/search-owner-integration.
++- **Next action:** consume C’s now-published listingContext through SQL search dependencies, then verify database/routing/deployed acceptance when owner services/configuration are supplied.
++- **Blockers / needs from others:** no DATABASE_URL in this session; D’s concrete safety/router/geographic/cache/detail services; validated fast-model availability and parse latency; authoritative TD branch match; applying/publishing B patches outside the original read-only app/shared paths.
++- **Last updated:** 2026-10-17
+ 
+ ## Handoff notes
+ 
+-- Search-plan features were implemented sequentially by one subagent per feature, using an eight-listing sample (50 shared synthetic listings also provided). All 44 tests and strict TypeScript over 31 files pass in the temporary validation harness. Native API handlers, scalar/exact travel selection, bounded jobs, privacy/error contracts and synthetic timings are documented in `apps/search/DOCS.md`. Live Gemini/MapTiler/DB/OTP credentials are absent. Canonical Next build/lint and live acceptance remain unverified; overall search integration is not complete.
++Read-only upstream audit found main advanced from570300e to29a7393. Current code has A’s actual actions/store/UI and C’s comparable query/cache/effectiveCount/scam/caveat contracts. Reconciliation preserves all owner code and removes B’s obsolete duplicate top-level result.id shim: A consumes listing.id directly. Actual A actions/store integration tests cover destination choices, selection/detail and polling through B runtime. Reconciled frozen install,245 tests(shared48/web129/worker68), workspace typecheck/lint, production build and native fixture HTTP smoke pass. The original checkout remains unchanged outside apps/search; current source changes are reviewable patches, not pushed/merged.
++
++Live provider evidence remains limited: configured main model parses took7–11s and four of six requests exhausted12s. Source-key, hard-time and partial-geocoder defects were repaired and regression-tested. A temporary FAST diagnostic advertised by authenticated metadata returned generation404 on its first request; five further calls were skipped. No model/source/owner configuration was changed by that diagnostic. TD branch remains unavailable rather than a guessed point; DB/OTP/deployed acceptance are unverified. Eight synthetic listings remain intermediate test data; all50 shared fixtures are preserved.
+ 
+ > Where an unfinished task stopped, gotchas, things to verify. Replace each session.
+ 
+@@ -30,11 +32,11 @@
+ 
+ ## Requests to others
+ 
+-- **To A:** supply the planned Next/pnpm scaffold and consume current destination-choice/polling/context-detail contracts in apps/search/DOCS.md. No A-owned root manifest/config/UI is modified by search publication.
++- **To A:** actual actions/store now pass B-runtime choice/polling/nested-ID integration tests. Complete rendered/deployed acceptance and provide trusted request identity and validated fast-model runtime configuration.
+ 
+ - **To A:** mount the explanation slot on the detail page (P2.36) and the briefing on the ward page (P3.21); the chips need `fieldSources` and `droppedRequests`, already in the fixtures.
+-- **To C:** confirm TEAM's pure `valuate(listing, comparables, benchmarks)` / `priceLabel(differencePct, confidence)` exports and the separate cached server lookup. See apps/search/change-request.md CR-4; fixture contexts are used meanwhile.
+-- **To D:** publish `routeTimes(origins, targets, mode, budgetMs)` concrete types, authoritative SQL/client/Address Points/ai_cache/detail definitions and the safety lookup separately from TEAM's pure `safetyFor(rates, cityRates)` / `safetyScore(relativeRate)`. See apps/search/change-request.md CR-3; no owner tables or functions were redefined.
++- **To C:** listingContext/query/cache and effectiveCount contracts are now published; B is consuming them without replacing owner logic. Real DB population/performance acceptance remains open.
++- **To D:** client/migrations exist; provide DATABASE_URL/access, loaded geographic/cache/detail services, concrete routeTimes and safety lookup/functions. Current B consumer uses existing columns and leaves missing times/rates unconfirmed. No owner tables/functions are redefined.
+ 
+ ---
+ 
+@@ -102,3 +104,7 @@
+ 
+ - **Env vars you need:** `AI_PROVIDER`, `GEMINI_API_KEY`, `GEMINI_MODEL`, `GEMINI_MODEL_FAST`, `DATABASE_URL`, `NEXT_PUBLIC_MAPTILER_KEY` (for geocoding fallback).
+ - Don't paste the Gemini key in chat or commits; set it in `.env.local` and on the Vultr instance only.
++
++## Final C/SQL handoff
++
++C listingContext is composed with B SQL candidate loading in default DATABASE_URL mode, while explicit fixture mode wins. No D times/rates are fabricated; live detail remains503. One unfinished C enrichment blocks overlapping enrichment until actual owner queries settle. Final250 tests(shared48/web134/worker68), workspace typecheck/lint/build, fixture native HTTP and invalid-DB resilience checks pass. All servers stopped. Actual DB/PostGIS/deployed acceptance unverified. No push/merge/deploy; durable patches target29a7393. User requested finish current work and stop before another feature.

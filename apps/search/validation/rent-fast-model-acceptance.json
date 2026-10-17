@@ -1,0 +1,225 @@
+{
+  "scope": "Alternative configuration diagnostic only; not deployment acceptance",
+  "temporaryFastModel": "gemini-2.5-flash-lite",
+  "latencyGateMs": 4000,
+  "timestamp": "2026-10-17T13:11:25.317Z",
+  "fixtureListingCount": 8,
+  "configured": {
+    "geminiKey": true,
+    "geminiModel": true,
+    "geminiFastModel": true,
+    "maptilerKey": true,
+    "database": false
+  },
+  "runs": [
+    {
+      "provider": "gemini",
+      "providerCalls": [
+        {
+          "providerHost": "generativelanguage.googleapis.com",
+          "status": 404
+        },
+        {
+          "providerHost": "api.maptiler.com",
+          "status": 200
+        }
+      ],
+      "prompts": [
+        {
+          "promptIndex": 1,
+          "parser": "fallback",
+          "notice": "Used basic search; review the interpreted filters.",
+          "parseMs": 196,
+          "searchMs": 37,
+          "status": "completed",
+          "resultCount": 4,
+          "criteria": {
+            "rent": {
+              "value": {
+                "min": 3000,
+                "max": 5000
+              },
+              "hard": false
+            },
+            "unitTypes": {
+              "value": [
+                "house",
+                "apartment"
+              ],
+              "hard": true
+            }
+          },
+          "fieldSources": {
+            "criteria.rent": {
+              "source": "ai_prompt",
+              "phrase": "3-5k per"
+            },
+            "criteria.unitTypes": {
+              "source": "ai_prompt",
+              "phrase": "houses or apartments"
+            },
+            "travelTargets.target-1": {
+              "source": "ai_prompt",
+              "phrase": "university of toronto"
+            }
+          },
+          "droppedRequests": [],
+          "travelTargets": [
+            {
+              "id": "target-1",
+              "kind": "place",
+              "label": "university of toronto",
+              "query": "university of toronto",
+              "mode": "bike",
+              "maxMinutes": 10,
+              "hard": true
+            }
+          ],
+          "sortBy": "best_match",
+          "resultListings": [
+            {
+              "id": "00000000-0000-4000-8000-000000000001",
+              "bedrooms": null,
+              "monthlyRentCad": 1200,
+              "furnished": "unknown",
+              "parking": "unknown",
+              "location": {
+                "lng": -79.43,
+                "lat": 43.65
+              }
+            },
+            {
+              "id": "00000000-0000-4000-8000-000000000004",
+              "bedrooms": 3,
+              "monthlyRentCad": 1425,
+              "furnished": "no",
+              "parking": "yes",
+              "location": {
+                "lng": -79.25,
+                "lat": 43.75
+              }
+            },
+            {
+              "id": "00000000-0000-4000-8000-000000000007",
+              "bedrooms": 2,
+              "monthlyRentCad": 1650,
+              "furnished": "no",
+              "parking": "no",
+              "location": {
+                "lng": -79.394,
+                "lat": 43.65
+              }
+            },
+            {
+              "id": "00000000-0000-4000-8000-000000000008",
+              "bedrooms": null,
+              "monthlyRentCad": 1725,
+              "furnished": "unknown",
+              "parking": "unknown",
+              "location": {
+                "lng": -79.388,
+                "lat": 43.65
+              }
+            }
+          ],
+          "destinations": [
+            {
+              "targetId": "target-1",
+              "resolution": {
+                "status": "ambiguous",
+                "query": "university of toronto",
+                "choices": [
+                  {
+                    "id": "uoft-st-george",
+                    "label": "UofT St. George campus representative point",
+                    "resolved": {
+                      "lng": -79.3957,
+                      "lat": 43.6629,
+                      "source": "known_place",
+                      "representativePoint": true,
+                      "label": "UofT St. George campus representative point"
+                    }
+                  },
+                  {
+                    "id": "uoft-scarborough",
+                    "label": "UofT Scarborough campus representative point",
+                    "resolved": {
+                      "lng": -79.1857,
+                      "lat": 43.7847,
+                      "source": "known_place",
+                      "representativePoint": true,
+                      "label": "UofT Scarborough campus representative point"
+                    }
+                  },
+                  {
+                    "id": "uoft-mississauga",
+                    "label": "UofT Mississauga campus representative point",
+                    "resolved": {
+                      "lng": -79.6623,
+                      "lat": 43.5483,
+                      "source": "known_place",
+                      "representativePoint": true,
+                      "label": "UofT Mississauga campus representative point"
+                    }
+                  }
+                ]
+              }
+            }
+          ],
+          "providerCalls": [
+            {
+              "providerHost": "generativelanguage.googleapis.com",
+              "status": 404
+            }
+          ]
+        }
+      ],
+      "resolution": [
+        {
+          "query": "UofT St. George",
+          "status": "resolved",
+          "destination": {
+            "id": "uoft-st-george",
+            "label": "UofT St. George campus representative point",
+            "resolved": {
+              "lng": -79.3957,
+              "lat": 43.6629,
+              "source": "known_place",
+              "representativePoint": true,
+              "label": "UofT St. George campus representative point"
+            }
+          },
+          "ms": 16,
+          "providerCalls": []
+        },
+        {
+          "query": "TD Canada on bay st and queens st w",
+          "status": "unavailable",
+          "reason": "No fully matching destination found. Provide an exact address or pin.",
+          "ms": 151,
+          "providerCalls": [
+            {
+              "providerHost": "api.maptiler.com",
+              "status": 200
+            }
+          ]
+        }
+      ],
+      "stopped": "Definitive provider HTTP failure; no additional paid generation requested."
+    }
+  ],
+  "assessment": {
+    "configuredFastOriginallyPresent": false,
+    "modelMetadataHttpStatus": 200,
+    "modelAvailableForGeneration": false,
+    "actualGeminiInterpretations": 0,
+    "expectedPromptCount": 6,
+    "attemptedPromptCount": 1,
+    "notAttemptedPromptCount": 5,
+    "semanticAcceptance": "not established: fallback only",
+    "coldGeminiLatencyGate": "not established: HTTP404 and fallback cannot pass",
+    "paidGenerationCalls": 1,
+    "serverExitCode": 143,
+    "sourceOrOwnerConfigurationChanged": false
+  }
+}
