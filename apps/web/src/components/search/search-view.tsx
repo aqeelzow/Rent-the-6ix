@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertCircle, Info, List, LoaderCircle, MapIcon, X } from "lucide-react";
+import { AlertCircle, ChevronRight, Info, List, LoaderCircle, MapIcon, X } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -170,16 +170,28 @@ export function SearchView({ prompt }: { prompt: string | null }) {
           )}
 
           {intent && intent.droppedRequests.length > 0 && status !== "parsing" && (
-            <div className="rounded-lg border border-dashed px-3 py-2 text-sm">
-              <p className="font-medium">{t("search.droppedTitle")}</p>
-              <ul className="text-muted-foreground mt-1 list-disc pl-5">
+            // Collapsed by default; the details open on tap.
+            <details className="group rounded-lg border border-dashed px-3 py-2 text-sm">
+              <summary className="flex cursor-pointer list-none items-center gap-1.5 font-medium [&::-webkit-details-marker]:hidden">
+                <ChevronRight
+                  aria-hidden
+                  className="size-4 shrink-0 transition-transform group-open:rotate-90"
+                />
+                {t(
+                  intent.droppedRequests.length === 1 ? "search.droppedOne" : "search.droppedMany",
+                  {
+                    count: formatCount(intent.droppedRequests.length),
+                  },
+                )}
+              </summary>
+              <ul className="text-muted-foreground mt-2 list-disc pl-5">
                 {intent.droppedRequests.map((dropped) => (
                   <li key={dropped.phrase}>
                     “{dropped.phrase}”: {dropped.reason}
                   </li>
                 ))}
               </ul>
-            </div>
+            </details>
           )}
         </div>
 

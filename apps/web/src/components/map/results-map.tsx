@@ -13,6 +13,7 @@ import { t, type MessageKey } from "@/lib/format/messages";
 import { appStore, useAppStore } from "@/lib/store/store";
 import {
   BAND_COLORS,
+  MAP_MAX_BOUNDS,
   PLACE_COLOR,
   boundsOf,
   placePins,
@@ -65,6 +66,7 @@ export function ResultsMap({ className = "" }: { className?: string }) {
           style: STYLE_URL,
           center: TORONTO,
           zoom: 10.5,
+          maxBounds: MAP_MAX_BOUNDS,
           attributionControl: { compact: true },
         });
         map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
@@ -262,7 +264,8 @@ function bindEvents(map: MapLibreMap) {
 function Legend() {
   const bands: ScoreBand[] = ["high", "mid", "low"];
   return (
-    <div className="bg-card/95 absolute bottom-8 right-2 flex flex-col gap-1 rounded-lg border p-2 text-xs shadow-sm">
+    // Bottom-left above the scale bar; the attribution box opens at bottom-right.
+    <div className="bg-card/95 absolute bottom-9 left-2 flex flex-col gap-1 rounded-lg border p-2 text-xs shadow-sm">
       <p className="font-medium">{t("results.map.legendTitle")}</p>
       {bands.map((band) => (
         <p key={band} className="flex items-center gap-1.5">

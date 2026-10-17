@@ -77,7 +77,6 @@
     "parsing": "Reading your request…",
     "searching": "Finding listings…",
     "basicSearch": "AI wasn't used for this search",
-    "droppedTitle": "We can't search on these yet",
     "count": "Showing {shown} of {eligible} matching listings",
     "noResults": "No listings match all of your must-haves. Try turning one into a preference.",
     "retry": "Try again",
@@ -94,7 +93,9 @@
     },
     "searchingElapsed": "Finding listings… {seconds} s",
     "slowHint": "Searching thousands of listings can take a minute or two.",
-    "showMore": "Show {count} more"
+    "showMore": "Show {count} more",
+    "droppedOne": "1 request we couldn't use",
+    "droppedMany": "{count} requests we couldn't use"
   },
   "status": {
     "title": "System status",
@@ -303,7 +304,9 @@
       "noAreas": "All of Toronto.",
       "removeArea": "Remove {label}",
       "sortBy": "Sort by"
-    }
+    },
+    "summaryLabel": "Your filters:",
+    "summaryMore": "+{count} more"
   },
   "results": {
     "perMonth": "/month",
