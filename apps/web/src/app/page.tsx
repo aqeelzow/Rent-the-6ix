@@ -17,7 +17,11 @@ function searchHref(prompt: string) {
   return `/search?q=${encodeURIComponent(prompt)}`;
 }
 
-export default function Home() {
+export default async function Home({ searchParams }: PageProps<"/">) {
+  // "Change request" on /search comes back to #start with the prompt, so it can be edited.
+  const { q } = await searchParams;
+  const prompt = typeof q === "string" ? q.slice(0, 4000) : "";
+
   return (
     <div className="landing">
       <ScrollScenes />
@@ -39,7 +43,7 @@ export default function Home() {
               <p className="text-lg text-pretty text-[var(--ink-soft)]">{t("landing.subtitle")}</p>
             </div>
 
-            <PromptBox />
+            <PromptBox defaultPrompt={prompt} />
 
             <div className="flex flex-col gap-2">
               <p className="text-sm font-medium text-[var(--ink-soft)]">
