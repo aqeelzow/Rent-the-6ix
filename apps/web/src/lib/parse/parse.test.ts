@@ -97,7 +97,25 @@ test('known places ambiguity, representative labels and honest unknown business'
   const broad = await resolver.resolve('University of Toronto'); assert.equal(broad.status, 'ambiguous');
   const york = await resolver.resolve('York University'); assert.equal(york.status, 'ambiguous'); if (york.status === 'ambiguous') assert.equal(york.choices.length, 3);
   const specific = await resolver.resolve('UofT St. George'); assert.equal(specific.status, 'resolved'); if (specific.status === 'resolved') assert.equal(specific.destination.resolved.representativePoint, true);
-  assert.equal((await resolver.resolve('TD Canada on bay st and queens st w')).status, 'unavailable');
+  for (const query of ['TD', 'TD Canada', 'TD at Bay and King', 'TD at Queen Street West']) assert.equal((await resolver.resolve(query)).status, 'unavailable');
+});
+test('verified TD Bay and Queen aliases resolve without guessing other branches', async () => {
+  const resolver = new DestinationResolver();
+  for (const query of ['TD Canada on bay st and queens st w.', 'TD at Bay St. and Queen St. W.', 'TD on Bay Street and Queen Street W', 'TD Canada at Bay Street and Queens St W']) {
+    const resolved = await resolver.resolve(query);
+    assert.equal(resolved.status, 'resolved');
+    if (resolved.status === 'resolved') {
+      assert.equal(resolved.destination.id, 'td-bay-queen');
+      assert.equal(resolved.destination.resolved.source, 'known_place');
+      assert.equal(resolved.destination.resolved.representativePoint, true);
+      assert.match(resolved.destination.label, /394 Bay St/);
+    }
+  }
+  const result = await new ParseService({ provider: new NoneProvider(), resolver }).parse({ prompt: local[1] }, 'trusted-ip');
+  assert.equal(result.intent.travelTargets.length, 1);
+  assert.equal(result.destinations[0].resolution.status, 'resolved');
+  assert.deepEqual(new Set([result.intent.travelTargets[0].mode, ...result.intent.travelTargets[0].alternativeModes!]), new Set(['transit', 'bike', 'walk']));
+  assert.equal(result.intent.travelTargets[0].maxMinutes, 10);
 });
 test('Address Points before MapTiler, validated geocoding ambiguity/cache/timeout', async () => {
   let calls = 0;

@@ -55,3 +55,23 @@ test.skipIf(process.env.RUN_LIVE_MAPTILER !== '1')('live MapTiler fallback retur
   assert.ok(choices.length > 0);
   assert.ok(choices.every(choice => choice.resolved.source === 'maptiler'));
 }, 10000);
+
+// Branch identity is verified from official TD and Payments Canada sources in DOCS.md.
+test.skipIf(process.env.RUN_LIVE_ADDRESS_POINTS !== '1')('verified TD Bay and Queen point matches the live civic address', async () => {
+  if (!process.env.DATABASE_URL) process.loadEnvFile('.env.local');
+  assert.ok(process.env.DATABASE_URL, 'DATABASE_URL required');
+  const sql = postgres(process.env.DATABASE_URL, { max: 1, connect_timeout: 5, onnotice: () => {} });
+  try {
+    const rows = await sql.unsafe(addressPointsStatement, ['394 BAY ST']);
+    assert.equal(rows.length, 1);
+    assert.equal(rows[0].id, '8067834');
+    const resolved = await new DestinationResolver().resolve('TD Canada on bay st and queens st w.');
+    assert.equal(resolved.status, 'resolved');
+    if (resolved.status === 'resolved') {
+      assert.equal(resolved.destination.id, 'td-bay-queen');
+      assert.equal(resolved.destination.resolved.lng, Number(rows[0].lng));
+      assert.equal(resolved.destination.resolved.lat, Number(rows[0].lat));
+      assert.equal(resolved.destination.resolved.representativePoint, true);
+    }
+  } finally { await sql.end({ timeout: 2 }); }
+}, 15000);
