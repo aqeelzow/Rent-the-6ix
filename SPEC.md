@@ -784,7 +784,7 @@ INGEST_INTERVAL_HOURS=6
 INGEST_REQUEST_DELAY_MS=4000
 ```
 
-Provide `.env.example`. The app must start and be usable (with fallbacks) when `AI_PROVIDER=none`, without a MapTiler key, and without OTP.
+Each developer keeps these in `.env.local` at the repo root; every env file, including `.env.example`, is git-ignored. The app must start and be usable (with fallbacks) when `AI_PROVIDER=none`, without a MapTiler key, and without OTP.
 
 ---
 
@@ -904,3 +904,5 @@ One line per change to this spec: `YYYY-MM-DD P#.#: what changed and why`. Newes
 - 2026-10-16 P0.13 [A]: Store contract: `useAppStore(selector)` from `apps/web/src/lib/store/store.ts` (one browser store; slices combined there). Search runs as `startSearch()` → `receiveResults(id, results)` / `receiveError(id, error)`, and responses to older requests are dropped. Shortlist entries are `{ kind: "listing", id, addedAt }` or `{ kind: "pasted", id, listing, addedAt }`. Selection contract: `hoveredListingId` / `selectedListingId`, both cleared when that listing leaves the results.
 - 2026-10-16 P0.12 [C]: Removed source-access rules (robots.txt, rate limits, user agent, login and bot-block drops, Facebook exclusion); privacy rules (no photos, scrubbed contact details) kept.
 - 2026-10-16 P0.11 [C]: Adapters are `{ id, displayName, fetchIndex(session, cursor) → { listings: RawListing[], nextCursor } }` (index pages carry full rows on the working sources, so no `fetchDetail`/`parse(html)` step; parsing is a pure function per adapter). All fetching is plain Playwright; a 401/403/429 or bot-check page marks the source unhealthy for the run. New source `torontorentals` (torontorentals.com, Rentals.ca network); rentals.ca, Zillow and Realtor.ca are blocked, Facebook not collected (see `apps/worker/SOURCES.md`).
+- 2026-10-16 P0.1 [A]: pnpm pinned to 10.34.7 (`packageManager`). Vercel's pnpm 9/10 can't read pnpm 12's lockfile, and newer pnpm switches to the pinned version automatically. The team's Vercel project builds from Root Directory `apps/web`, and `apps/web/vercel.json` pins the Next.js preset. `.env.example` is git-ignored and removed from the repo at the team's request; SPEC 20 is the variable list.
+- 2026-10-16 P0.1 [A]: The Vercel project builds from the repo root. The root `vercel.json` sets `framework: nextjs`, `buildCommand: pnpm --filter web build` and `outputDirectory: apps/web/.next`, and `next` is a root devDependency so Vercel's Next.js builder detects it. The output matches a Root Directory `apps/web` build (`apps/web/vercel.json`), which also works. Root `engines.node` is `24.x`.
