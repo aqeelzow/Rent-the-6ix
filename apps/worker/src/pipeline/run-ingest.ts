@@ -34,6 +34,8 @@ export interface IngestOptions {
   maxPages: number;
   /** Detail pages per source per run; each costs one request (INGEST_REQUEST_DELAY_MS). */
   maxDetails: number;
+  /** Resume a single-source run from this index cursor (e.g. "55"); first page if absent. */
+  cursor?: string;
 }
 
 export interface IngestResult {
@@ -49,7 +51,7 @@ const DEFAULT_SOURCES = "kijiji,torontorentals,zillow,realtor_ca";
  * `manual` is loaded separately.
  */
 export function ingestOptionsFromEnv(
-  overrides: { sources?: string; pages?: string; details?: string } = {},
+  overrides: { sources?: string; pages?: string; details?: string; cursor?: string } = {},
 ): IngestOptions {
   const list = overrides.sources ?? process.env.INGEST_SOURCES ?? DEFAULT_SOURCES;
   return {
@@ -59,6 +61,7 @@ export function ingestOptionsFromEnv(
       .filter((s) => s && s !== "manual"),
     maxPages: Number(overrides.pages ?? process.env.INGEST_MAX_PAGES ?? 3),
     maxDetails: Number(overrides.details ?? process.env.INGEST_MAX_DETAILS ?? 50),
+    cursor: overrides.cursor,
   };
 }
 
@@ -99,9 +102,9 @@ export async function runIngest(options: IngestOptions): Promise<IngestResult> {
     );
     const session = await openSession();
     try {
-      let cursor: string | null = null;
+      let cursor: string | null = options.cursor ?? null;
       do {
-        const page = await adapter.fetchIndex(session, cursor);
+        const page = await fetchIndexWithRetry(adapter, session, cursor);
         for (const raw of page.listings) {
           if (seen.has(raw.sourceListingId)) continue;
           seen.add(raw.sourceListingId);
@@ -134,6 +137,29 @@ export async function runIngest(options: IngestOptions): Promise<IngestResult> {
   const result = { finishedAt: new Date().toISOString(), runs };
   await writeFile(new URL("last-run.json", outDir), JSON.stringify(result, null, 2));
   return result;
+}
+
+const INDEX_ATTEMPTS = 3;
+
+/**
+ * A page whose results arrive late ("no results response") is tried again before the source is
+ * given up; a block never is.
+ */
+async function fetchIndexWithRetry(
+  adapter: SourceAdapter,
+  session: Session,
+  cursor: string | null,
+) {
+  for (let attempt = 1; ; attempt++) {
+    try {
+      return await adapter.fetchIndex(session, cursor);
+    } catch (error) {
+      if (error instanceof SourceBlockedError || attempt >= INDEX_ATTEMPTS) throw error;
+      console.error(
+        `${adapter.id}: retrying index page (${attempt}/${INDEX_ATTEMPTS - 1}): ${String(error)}`,
+      );
+    }
+  }
 }
 
 /** Rewrite the source's file every this many index pages. */
