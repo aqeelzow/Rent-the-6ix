@@ -68,16 +68,16 @@ export function SortSelect() {
           }));
           void runSearch();
         }}
-        className="border-input bg-card focus-visible:ring-ring/50 h-9 rounded-lg border px-2.5 text-sm outline-none focus-visible:ring-3"
+        className="border-input bg-card focus-visible:ring-ring/50 h-9 rounded-full border pr-8 pl-3.5 text-sm font-medium outline-none focus-visible:ring-3"
       >
         {sorts.map((sort) => (
           <option key={sort} value={sort}>
-            {t(`filters.chips.sorts.${sort}` as MessageKey)}
+            {t(`filters.sortOptions.${sort}` as MessageKey)}
           </option>
         ))}
         {locals.map((local) => (
           <option key={local} value={local}>
-            {t(`filters.chips.sorts.${local === "carbon" ? "lowest_carbon" : "closest_area"}`)}
+            {t(`filters.sortOptions.${local === "carbon" ? "lowest_carbon" : "closest_area"}`)}
           </option>
         ))}
       </select>

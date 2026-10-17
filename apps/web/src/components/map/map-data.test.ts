@@ -1,6 +1,15 @@
 import { searchFixture, travelIntent } from "@rentthe6ix/shared/fixtures";
 import { describe, expect, it } from "vitest";
-import { boundsOf, circlePolygon, placePins, resultsToGeoJSON, scoreBand } from "./map-data";
+import {
+  boundsOf,
+  allAtSamePlace,
+  circlePolygon,
+  listingsAtSamePlace,
+  placePins,
+  resultsToGeoJSON,
+  routesToPlaces,
+  scoreBand,
+} from "./map-data";
 
 const results = searchFixture.status === "completed" ? searchFixture.results : [];
 
@@ -83,5 +92,58 @@ describe("places and bounds", () => {
     const [west, , east] = boundsOf([approx], [])!;
     expect(approx.listing.location.lng - west).toBeGreaterThan(0.003);
     expect(east - approx.listing.location.lng).toBeGreaterThan(0.003);
+  });
+});
+
+describe("routesToPlaces", () => {
+  const listing = {
+    id: "00000000-0000-4000-8000-000000000001",
+    location: { lng: -79.4, lat: 43.66 },
+  };
+  const target = {
+    id: "uoft",
+    kind: "place",
+    label: "UofT",
+    mode: "transit",
+    alternativeModes: ["walk"],
+    resolved: { lng: -79.395, lat: 43.663 },
+  };
+  const result = { listing, travel: [] } as unknown as Parameters<typeof routesToPlaces>[0];
+
+  it("gives the distance and the fastest estimated time over the renter's modes", () => {
+    const targets = [target] as unknown as Parameters<typeof routesToPlaces>[1];
+    const route = routesToPlaces(result, targets)[0]!;
+    expect(route.distanceM).toBeGreaterThan(400);
+    expect(["transit", "walk"]).toContain(route.mode);
+    expect(route.minutes).toBeGreaterThan(0);
+  });
+
+  it("skips amenities and places without coordinates", () => {
+    const others = [
+      { ...target, id: "a", kind: "amenity" },
+      { ...target, id: "b", resolved: undefined },
+    ] as unknown as Parameters<typeof routesToPlaces>[1];
+    expect(routesToPlaces(result, others)).toEqual([]);
+  });
+});
+
+describe("listings at the same place", () => {
+  const at = (id: string, lng: number, lat: number) =>
+    ({ listing: { id, location: { lng, lat } } }) as unknown as Parameters<
+      typeof listingsAtSamePlace
+    >[0][number];
+  // a and b are ~11 m apart (one building); c is ~1 km away.
+  const results = [at("a", -79.4, 43.66), at("b", -79.4, 43.6601), at("c", -79.4, 43.67)];
+
+  it("finds the other units in the same building, in result order", () => {
+    expect(listingsAtSamePlace(results, "b").map((r) => r.listing.id)).toEqual(["a", "b"]);
+    expect(listingsAtSamePlace(results, "c").map((r) => r.listing.id)).toEqual(["c"]);
+    expect(listingsAtSamePlace(results, "missing")).toEqual([]);
+  });
+
+  it("tells when a group can't be split by zooming", () => {
+    expect(allAtSamePlace(results, ["a", "b"])).toBe(true);
+    expect(allAtSamePlace(results, ["a", "c"])).toBe(false);
+    expect(allAtSamePlace(results, ["a"])).toBe(false);
   });
 });

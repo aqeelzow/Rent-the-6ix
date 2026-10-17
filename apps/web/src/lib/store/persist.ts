@@ -23,6 +23,8 @@ const SavedListingSchema = z.object({
   bathrooms: z.number().nonnegative().nullable(),
   sqft: z.number().positive().nullable(),
   source: ListingSchema.shape.source,
+  // Added later: shortlists saved before it have no image and still load.
+  imageUrl: ListingSchema.shape.imageUrl.optional(),
 });
 
 const ShortlistEntrySchema = z.discriminatedUnion("kind", [

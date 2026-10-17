@@ -25,7 +25,10 @@ export type ResultOrder = "server" | "carbon" | "distance";
 export type SavedListing = Pick<
   Listing,
   "title" | "monthlyRentCad" | "rentIsPerRoom" | "bedrooms" | "bathrooms" | "sqft" | "source"
->;
+> & {
+  /** The source's thumbnail link, so the shortlist can show it; absent on older saves. */
+  imageUrl?: Listing["imageUrl"];
+};
 
 /** Shortlisted listings live only in the browser (SPEC 15); pasted ones keep the whole listing. */
 export type ShortlistEntry =
@@ -33,8 +36,9 @@ export type ShortlistEntry =
   | { kind: "pasted"; id: string; listing: Listing; addedAt: string };
 
 export function savedListing(listing: Listing): SavedListing {
-  const { title, monthlyRentCad, rentIsPerRoom, bedrooms, bathrooms, sqft, source } = listing;
-  return { title, monthlyRentCad, rentIsPerRoom, bedrooms, bathrooms, sqft, source };
+  const { title, monthlyRentCad, rentIsPerRoom, bedrooms, bathrooms, sqft, source, imageUrl } =
+    listing;
+  return { title, monthlyRentCad, rentIsPerRoom, bedrooms, bathrooms, sqft, source, imageUrl };
 }
 
 export interface SearchSlice {
@@ -73,6 +77,8 @@ export interface SearchSlice {
    */
   hoveredListingId: string | null;
   selectedListingId: string | null;
+  /** Where the selection came from: a map pin scrolls the list to its card; a card doesn't. */
+  selectedFrom: "map" | "list" | null;
 
   setIntent: (intent: SearchIntent | null) => void;
   /** For chip and filter edits. Callers re-run search afterwards; editing never calls Gemini. */
@@ -93,10 +99,12 @@ export interface SearchSlice {
   toggleShortlist: (listing: Listing) => void;
   addPastedListing: (listing: Listing) => void;
   removeFromShortlist: (id: string) => void;
+  /** Fills in the photo link of a listing saved before shortlists kept it (null: none). */
+  setSavedImage: (id: string, imageUrl: string | null) => void;
   clearShortlist: () => void;
 
   setHoveredListingId: (id: string | null) => void;
-  setSelectedListingId: (id: string | null) => void;
+  setSelectedListingId: (id: string | null, from?: "map" | "list") => void;
 }
 
 export const createSearchSlice: StateCreator<SearchSlice, [], [], SearchSlice> = (set, get) => ({
@@ -118,6 +126,7 @@ export const createSearchSlice: StateCreator<SearchSlice, [], [], SearchSlice> =
   shortlistLoaded: false,
   hoveredListingId: null,
   selectedListingId: null,
+  selectedFrom: null,
 
   setIntent: (intent) => set({ intent }),
 
@@ -224,10 +233,20 @@ export const createSearchSlice: StateCreator<SearchSlice, [], [], SearchSlice> =
   removeFromShortlist: (id) =>
     set({ shortlist: get().shortlist.filter((entry) => entry.id !== id) }),
 
+  setSavedImage: (id, imageUrl) =>
+    set({
+      shortlist: get().shortlist.map((entry) =>
+        entry.kind === "listing" && entry.id === id
+          ? { ...entry, saved: { ...entry.saved, imageUrl } }
+          : entry,
+      ),
+    }),
+
   clearShortlist: () => set({ shortlist: [] }),
 
   setHoveredListingId: (id) => set({ hoveredListingId: id }),
-  setSelectedListingId: (id) => set({ selectedListingId: id }),
+  setSelectedListingId: (id, from = "map") =>
+    set({ selectedListingId: id, selectedFrom: id === null ? null : from }),
 });
 
 export const selectIsShortlisted = (id: string) => (state: SearchSlice) =>

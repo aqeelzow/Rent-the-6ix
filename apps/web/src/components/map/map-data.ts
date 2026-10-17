@@ -1,4 +1,10 @@
 import type { FeatureCollection, Point, Polygon } from "geojson";
+import {
+  distanceM,
+  estimateTravelMinutes,
+  targetDistanceM,
+  targetModes,
+} from "@rentthe6ix/shared/engine/travel";
 import type { SearchIntent, SearchResultItem } from "@/lib/store/types";
 
 // GeoJSON for the results map (SPEC 12). Pure, so it's tested without a browser.
@@ -105,6 +111,70 @@ export function placePins(targets: SearchIntent["travelTargets"]) {
       ? [{ id: target.id, label: target.label, lng: target.resolved.lng, lat: target.resolved.lat }]
       : [],
   );
+}
+
+/** Listings this close together are treated as one building (units in the same block). */
+export const SAME_PLACE_M = 30;
+
+/** Every result at the same place as the given listing (itself included), in result order. */
+export function listingsAtSamePlace(results: SearchResultItem[], id: string): SearchResultItem[] {
+  const origin = results.find((result) => result.listing.id === id);
+  if (!origin) return [];
+  return results.filter(
+    (result) => distanceM(origin.listing.location, result.listing.location) <= SAME_PLACE_M,
+  );
+}
+
+/** True when every one of these listings sits at the same place (so zooming can't split them). */
+export function allAtSamePlace(results: SearchResultItem[], ids: string[]): boolean {
+  const here = new Set(ids);
+  const located = results.filter((result) => here.has(result.listing.id));
+  const first = located[0];
+  return (
+    located.length > 1 &&
+    located.every(
+      (result) => distanceM(first!.listing.location, result.listing.location) <= SAME_PLACE_M,
+    )
+  );
+}
+
+/**
+ * From the selected listing to each place the renter named: the distance between them and the
+ * fastest estimated time over the renter's modes, from the same engine estimate used for
+ * filtering and scoring.
+ */
+export type RouteToPlace = {
+  id: string;
+  label: string;
+  from: [number, number];
+  to: [number, number];
+  mode: SearchIntent["travelTargets"][number]["mode"];
+  minutes: number;
+  distanceM: number;
+};
+
+export function routesToPlaces(
+  result: SearchResultItem,
+  targets: SearchIntent["travelTargets"],
+): RouteToPlace[] {
+  const { location } = result.listing;
+  return targets.flatMap((target): RouteToPlace[] => {
+    if (target.kind !== "place" || !target.resolved) return [];
+    const metres = targetDistanceM(target, result.travel, location) ?? 0;
+    const fastest = targetModes(target)
+      .map((mode) => ({ mode, minutes: estimateTravelMinutes(metres, mode) }))
+      .sort((a, b) => a.minutes - b.minutes)[0]!;
+    return [
+      {
+        id: target.id,
+        label: target.label,
+        from: [location.lng, location.lat],
+        to: [target.resolved.lng, target.resolved.lat],
+        ...fastest,
+        distanceM: metres,
+      },
+    ];
+  });
 }
 
 /**

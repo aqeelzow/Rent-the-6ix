@@ -47,7 +47,7 @@ function PastedResult({ result }: { result: SearchResultItem }) {
       </div>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <PriceBadge valuation={valuation} />
-        <ScoreBar matchScore={matchScore} className="w-36 pt-0.5" />
+        <ScoreBar matchScore={matchScore} className="shrink-0" />
       </div>
       <Button
         variant={saved ? "secondary" : "default"}

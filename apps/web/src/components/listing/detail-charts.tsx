@@ -1,11 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { modeIcons } from "@/components/mode-icons";
 import { t, type MessageKey } from "@/lib/format/messages";
 import { formatCad, formatCount } from "@/lib/format/number";
 import type { SearchResultItem } from "@/lib/store/types";
-import type { ModeTime, TargetTravel } from "./detail-data";
+import type { ModeTime } from "./detail-data";
 
 // Charts for the listing dashboard. Plain SVG and HTML; every value they draw is also written
 // out (direct labels, the comparables table), so nothing is read from colour or shape alone.
@@ -314,13 +313,13 @@ export function RangeBar({ low, high, rent }: { low: number; high: number; rent:
   const span = max - min || 1;
   const at = (v: number) => `${((v - min) / span) * 100}%`;
   return (
-    <div aria-hidden className="relative mt-1 h-2.5 rounded-full bg-black/10">
+    <div aria-hidden className="bg-foreground/10 relative mt-1 h-2.5 rounded-full">
       <span
         className="bg-foreground/35 absolute inset-y-0 rounded-full"
         style={{ left: at(low), width: `${((high - low) / span) * 100}%` }}
       />
       <span
-        className="bg-foreground absolute top-1/2 size-4 -translate-x-1/2 -translate-y-1/2 rounded-full ring-2 ring-white"
+        className="bg-foreground absolute top-1/2 size-4 -translate-x-1/2 -translate-y-1/2 ring-card rounded-full ring-2"
         style={{ left: at(rent) }}
       />
     </div>
@@ -334,56 +333,4 @@ export function modeTimeText(time: ModeTime): string {
     });
   }
   return l("travel.missing");
-}
-
-/**
- * Estimated travel time to each place by mode, as bars on one shared minutes scale.
- */
-export function TravelBars({ table }: { table: TargetTravel[] }) {
-  const longest = Math.max(
-    ...table.flatMap((target) =>
-      target.modes.map((time) => (time.kind === "estimated" ? time.minutes : 0)),
-    ),
-    10,
-  );
-  return (
-    <div className="flex flex-col gap-5">
-      {table.map((target) => (
-        <div key={target.id} className="flex flex-col gap-2">
-          <h3 className="font-medium">{target.label}</h3>
-          <ul className="flex flex-col gap-1.5">
-            {target.modes.map((time) => {
-              const Icon = modeIcons[time.mode];
-              const chosen = target.chosen.includes(time.mode);
-              return (
-                <li
-                  key={time.mode}
-                  className="grid grid-cols-[6.5rem_1fr] items-center gap-3 text-sm"
-                >
-                  <span className={`flex items-center gap-2 ${chosen ? "font-semibold" : ""}`}>
-                    <Icon aria-hidden className="text-muted-foreground size-4 shrink-0" />
-                    <span className="capitalize">
-                      {t(`filters.modes.${time.mode}` as MessageKey)}
-                    </span>
-                  </span>
-                  {time.kind === "estimated" ? (
-                    <span className="flex items-center gap-2">
-                      <span
-                        aria-hidden
-                        className={`h-3 rounded-r ${chosen ? "bg-primary" : "bg-primary/45"}`}
-                        style={{ width: `${(time.minutes / longest) * 75}%` }}
-                      />
-                      <span className="figures shrink-0 font-medium">{modeTimeText(time)}</span>
-                    </span>
-                  ) : (
-                    <span className="text-muted-foreground">{modeTimeText(time)}</span>
-                  )}
-                </li>
-              );
-            })}
-          </ul>
-        </div>
-      ))}
-    </div>
-  );
 }

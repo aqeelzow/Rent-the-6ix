@@ -5,6 +5,7 @@ import { SiteHeader } from "@/components/layout/site-header";
 import { StorePersistence } from "@/components/shortlist/store-persistence";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { t } from "@/lib/format/messages";
+import { themeScript } from "@/lib/theme/theme-script";
 import "./globals.css";
 
 const publicSans = Public_Sans({
@@ -36,7 +37,12 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html
       lang="en-CA"
       className={`${publicSans.variable} ${bigShoulders.variable} h-full antialiased`}
+      // The theme script sets the class and colour-scheme before React hydrates.
+      suppressHydrationWarning
     >
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+      </head>
       <body className="flex min-h-full flex-col">
         <TooltipProvider>
           <StorePersistence />
