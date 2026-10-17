@@ -6,11 +6,11 @@ Task ids match `PROGRESS.md`; task details are in `SPEC.md`.
 
 ## Current state
 
-- **Current task:** P0.9 Vultr instance + placeholder deploy
-- **Status:** blocked   <!-- not started | in progress | blocked | at sync point -->
-- **Next action:** P0.9 — the whole stack is written and tested locally; what is left is the instance itself (create it, clone, `.env`, `docker compose up -d --build`, record the URL). P0.4 is done.
-- **Blockers / needs from others:** a Vultr instance (account access) — nothing else. Also: this folder still has **no `.git`** (it inherits the `LeetCode-Problems` origin), so nothing can be committed or pushed yet.
-- **Last updated:** 2026-10-17 (P0.8 verified live; P0.9 stack built and tested locally)
+- **Current task:** migrations 005–007 (review + apply), then P1.16 `sources` + `pnpm data:civic`
+- **Status:** in progress   <!-- not started | in progress | blocked | at sync point -->
+- **Next action:** bring this branch up to `origin/main` (local `devansh` is 46 commits behind `b166ea8`), review C's `005_listing_details.sql`, `006_ingest_runs.sql` and `007_utilities_partial.sql` (all authored for D's review), then run `pnpm db:migrate` — TigerData still records only 001–003.
+- **Blockers / needs from others:** P0.9 is blocked only on a Vultr instance (account access) — the stack files themselves are done. Every other task is unblocked: the repo has its own `.git` now (branch `devansh`, remote `aqeelzow/Rent-the-6ix`).
+- **Last updated:** 2026-10-17 (task-list audit vs repo + TigerData: only P0.4/P0.8 done, P0.9 files done but no instance)
 
 ## Handoff notes
 
@@ -23,6 +23,7 @@ Task ids match `PROGRESS.md`; task details are in `SPEC.md`.
 - **Deployment stack is written and locally proven (P0.9).** `docker compose up -d --build` on this Windows machine brought up `web` (healthy), `worker` (exits 0 until C's loop lands — hence `restart: on-failure`) and `caddy` serving HTTPS with the security headers; `http://` → 308. Both image targets build; Next's standalone bundle lands at `apps/web/server.js`. What remains is the instance: create it, `git clone` into `/srv/rentthe6ix`, write `.env` (needs `SITE_HOST`, now in `.env.example`), run the same command, then `DEPLOY_HOST=… SITE_HOST=… ./deploy.sh` for every update afterwards. `deploy.sh` has only been syntax-checked, not run.
 - **`docker compose` needs `.env` to exist** next to the compose file, and `SITE_HOST` has no default — both fail loudly on purpose. The OTP service sits behind the `otp` profile so a missing or stale graph can never break a deploy; `deploy.sh` rebuilds only `web worker`.
 - **Dataset links verified (P0.4).** `docs/datasets.md` has the exact resource URLs, formats and licences. Three corrections matter for the loaders: TPS crime rates are at `data.tps.ca` now (wide format: 158 neighbourhood rows × 222 columns, `*_RATE_2014…2025`), the RentSafeTO evaluation dataset is **not** retired, and the 2021 Neighbourhood Profiles are **XLSX only** (transposed sheet). The City portal returns HTTP 200 for *any* slug — never check a City link by status code, use the CKAN API.
+- **Audit 2026-10-17 (task list vs every ref).** Checked the task list against the tree of each local and remote branch, not just this checkout (which is 46 commits behind `origin/main` = `b166ea8`). Present: `db/migrations/001`–`003` (applied), `Dockerfile`, `docker-compose.yml`, `Caddyfile`, `deploy.sh`, `.dockerignore`, `DEPLOY.md`, `docs/datasets.md`, `DEVPOST.md` draft. **Absent everywhere:** `apps/worker/src/civic/`, the `data:civic` script, `otp/`, `apps/web/src/lib/geo/`, `packages/shared/engine/safety.ts` + `affordability.ts`, `db/seed/benchmarks.json`, `src/app/api/health`, `/api/areas/*`, `/api/listings/[id]/travel`, `/api/listings/[id]/nearby`, and migration `004_aggregates` (main jumps 003 → 005). `/data` and `/areas` are still `PagePlaceholder`; `/status` renders DB counts only, not OTP/AI/ingest state. B's `apps/search/DOCS.md` independently lists `routeTimes`, `safetyFor`, benchmark inputs and cached travel/safety mappings as blocked on D's definitions. Nothing past P0.9 is ticked because it does not exist yet.
 - **Toolchain on D's machine:** Node 22.16 against the repo's `engines: >=24` (installs fine, `next build` is the risk); corepack's pnpm cache is broken — use `npx pnpm@12.14.0 <script>`.
 
 - **OTP is on the critical path** (SPEC 7.4). Start the graph build in Phase 1, not later: TTC GTFS + Geofabrik Ontario extract clipped to Toronto + 10 km (osmium), all four modes. Needs ~4–6 GB RAM, so the Vultr instance is 4 vCPU / 8 GB. Build once, keep the graph on disk. If OTP isn't working by S3, everything falls back to labelled straight-line distance; tell the team at once.
@@ -30,7 +31,7 @@ Task ids match `PROGRESS.md`; task details are in `SPEC.md`.
 - **Precompute budget:** ~108k routes for 1,500 listings × 9 categories × 4 modes × 2 nearest; ~1.5 h at 20 req/s. Order: new listings → categories in the demo prompts (supermarket, school, rapid transit) → the rest. Run the full pass on the final snapshot before H30.
 - **Groceries come from OSM** (`shop=supermarket`, `shop=greengrocer`, larger `shop=grocery`), not convenience stores. Schools need `elementary` / `secondary` subcategories from the City dataset.
 - **Safety data:** TPS Neighbourhood Crime Rates, 158 neighbourhoods, 5 major crime indicators, 3-year average; `relativeRate` = neighbourhood ÷ city. Confirm the latest published years. Keep the caveats text in one place (`safety.ts`) so A and B show the same words.
-- Some City dataset slugs in SPEC 8.1 are marked "(verify)". The old RentSafeTO evaluation dataset is **retired**; find its replacement. Record source URL, retrieval date and licence for every loader in the `sources` table.
+- Some City dataset slugs in SPEC 8.1 are marked "(verify)", but all were resolved in `docs/datasets.md` (P0.4). The RentSafeTO evaluation dataset is **not** retired — `apartment-building-evaluation` still carries 2023-current plus pre-2023. Record source URL, retrieval date and licence for every loader in the `sources` table.
 - Ask the School of Cities organizers for the Toronto Civic Data Starter Guide in the first hour.
 - `/status` is for judges: live counts (listings by source, observations, areas, travel times computed and % by OTP), last ingest per source, Vultr host/region, AI status, OTP status.
 
