@@ -8,6 +8,10 @@
 // Two data traps: the file starts with a UTF-8 BOM, and HOOD_158 is unpadded ("83") while the
 // boundary table uses the City's zero-padded code ("083"). Matching without padding silently
 // drops every neighbourhood below 100.
+//
+// The file's one population column (`POPULATION_2025`, published with a trailing space) is loaded
+// too, as indicator `population`: it weights the city-wide rate the safety preference compares
+// against (all crimes ÷ all residents), instead of counting every neighbourhood equally.
 import type { Sql } from "postgres";
 import { csvTable, toFloat, type Row } from "./lib/csv.ts";
 import { fetchText } from "./lib/http.ts";
@@ -44,6 +48,18 @@ export interface CrimeLoad {
   indicators: number;
   neighbourhoods: number;
   period: string;
+  /** Neighbourhoods with a population figure (weights the city rate). */
+  populations: number;
+}
+
+/** The latest `POPULATION_<year>` column, or null when the file has none. */
+export function latestPopulationColumn(header: string[]): { column: string; year: number } | null {
+  let best: { column: string; year: number } | null = null;
+  for (const column of header) {
+    const match = /^POPULATION_(\d{4})$/.exec(column);
+    if (match && (!best || Number(match[1]) > best.year)) best = { column, year: Number(match[1]) };
+  }
+  return best;
 }
 
 export async function loadCrimeRates(sql: Sql): Promise<CrimeLoad> {
@@ -62,6 +78,7 @@ export async function loadCrimeRates(sql: Sql): Promise<CrimeLoad> {
   if (yearsByType.size === 0) throw new Error("no <TYPE>_RATE_<YEAR> columns in the TPS file");
 
   const latest = Math.max(...[...yearsByType.values()].flat());
+  const population = latestPopulationColumn(header);
   const windowYears = [latest - 2, latest - 1, latest];
   const period = `${windowYears[0]}–${latest}`;
 
@@ -95,6 +112,20 @@ export async function loadCrimeRates(sql: Sql): Promise<CrimeLoad> {
       });
     }
     if (!counted) missingCodes++;
+    const people = population ? toFloat(row[population.column] ?? null) : null;
+    if (population && people !== null && people > 0) {
+      values.push({
+        area_id: hood,
+        area_kind: "neighbourhood",
+        indicator_id: "population",
+        value: Math.round(people),
+        unit: "people",
+        period: String(population.year),
+        source_id: SOURCE_ID,
+        sample_size: null,
+        note: "TPS neighbourhood population estimate; weights the city-wide crime rate",
+      });
+    }
   }
   if (values.length === 0) throw new Error("no crime rates parsed");
 
@@ -113,6 +144,7 @@ export async function loadCrimeRates(sql: Sql): Promise<CrimeLoad> {
   const knownIds = new Set(known.map((row) => row.id));
   const kept = values.filter((row) => knownIds.has(row.area_id));
   const orphaned = values.length - kept.length;
+  const populations = kept.filter((row) => row.indicator_id === "population").length;
 
   for (let i = 0; i < kept.length; i += 500) {
     const chunk = kept.slice(i, i + 500);
@@ -139,7 +171,7 @@ export async function loadCrimeRates(sql: Sql): Promise<CrimeLoad> {
   }
 
   console.log(
-    `  crime: ${kept.length} indicators for ${seen.size} neighbourhoods (${period}); ${orphaned} not matching a boundary row, ${missingCodes} rows with no rates`,
+    `  crime: ${kept.length - populations} indicators for ${seen.size} neighbourhoods (${period}), ${populations} populations (${population?.year ?? "none"}); ${orphaned} not matching a boundary row, ${missingCodes} rows with no rates`,
   );
-  return { indicators: kept.length, neighbourhoods: seen.size, period };
+  return { indicators: kept.length - populations, neighbourhoods: seen.size, period, populations };
 }
