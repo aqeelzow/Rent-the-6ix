@@ -12,7 +12,9 @@ import type {
 } from "maplibre-gl";
 import { useEffect, useRef, useState } from "react";
 import { useTheme } from "@/lib/theme/theme";
+import type { SearchResultItem } from "@/lib/store/types";
 import { t, type MessageKey } from "@/lib/format/messages";
+import { formatCad } from "@/lib/format/number";
 import { appStore, useAppStore } from "@/lib/store/store";
 import {
   BAND_COLORS,
@@ -20,6 +22,8 @@ import {
   PLACE_COLOR,
   boundsOf,
   placePins,
+  allAtSamePlace,
+  listingsAtSamePlace,
   resultsToGeoJSON,
   routesToPlaces,
   searchAreasToGeoJSON,
@@ -115,7 +119,7 @@ export function ResultsMap({ className = "" }: { className?: string }) {
         map.on("load", () => {
           if (!map) return;
           addLayers(map);
-          bindEvents(map);
+          bindEvents(map, maplibregl);
           mapRef.current = map;
           // Lets browser tests find pins on screen; never in production builds.
           if (process.env.NODE_ENV !== "production") Object.assign(window, { __resultsMap: map });
@@ -506,7 +510,67 @@ function addLayers(map: MapLibreMap) {
   });
 }
 
-function bindEvents(map: MapLibreMap) {
+/**
+ * A list of the listings at one spot (often units in the same building), opened from their dot.
+ * Picking one selects it, as clicking a lone dot does. Built from text nodes: titles come from
+ * listings, which are untrusted.
+ */
+function openPlaceList(
+  map: MapLibreMap,
+  maplibregl: typeof import("maplibre-gl"),
+  at: [number, number],
+  group: SearchResultItem[],
+) {
+  placeList?.remove();
+  const { setSelectedListingId } = appStore.getState();
+  const content = document.createElement("div");
+  const heading = document.createElement("p");
+  heading.className = "text-muted-foreground mb-1 text-xs font-semibold";
+  heading.textContent = t("results.map.unitsHere", { count: group.length });
+  const list = document.createElement("ul");
+  list.className = "-mx-1.5 flex max-h-64 flex-col gap-0.5 overflow-y-auto";
+  for (const { listing } of group) {
+    const item = document.createElement("li");
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className =
+      "unit-list-item hover:bg-accent focus-visible:bg-accent flex w-full cursor-pointer flex-col rounded-lg p-1.5 text-left outline-none";
+    const rent = document.createElement("span");
+    rent.className = "figures text-sm font-semibold";
+    rent.textContent = `${formatCad(listing.monthlyRentCad)}${
+      listing.rentIsPerRoom ? t("results.perRoom") : t("results.perMonth")
+    }`;
+    const rooms =
+      listing.bedrooms === null
+        ? null
+        : listing.bedrooms === 0
+          ? t("results.studio")
+          : t("results.beds", { n: listing.bedrooms });
+    const title = document.createElement("span");
+    title.className = "text-muted-foreground truncate text-xs";
+    title.textContent = rooms ? `${rooms}, ${listing.title}` : listing.title;
+    button.append(rent, title);
+    button.addEventListener("click", () => {
+      setSelectedListingId(listing.id);
+      placeList?.remove();
+    });
+    item.append(button);
+    list.append(item);
+  }
+  content.append(heading, list);
+  placeList = new maplibregl.Popup({
+    offset: 14,
+    closeButton: false,
+    maxWidth: "300px",
+    className: "place-popup unit-list-popup",
+  })
+    .setLngLat(at)
+    .setDOMContent(content)
+    .addTo(map);
+}
+let placeList: Popup | null = null;
+
+function bindEvents(map: MapLibreMap, maplibregl: typeof import("maplibre-gl")) {
   const { setHoveredListingId, setSelectedListingId } = appStore.getState();
   for (const layer of ["pins", "approx-fill"]) {
     map.on("mousemove", layer, (event) => {
@@ -521,6 +585,12 @@ function bindEvents(map: MapLibreMap) {
     map.on("click", layer, (event) => {
       const id = event.features?.[0]?.properties?.id;
       if (typeof id !== "string") return;
+      // Several units in the same building: list them instead of picking one.
+      const group = listingsAtSamePlace(appStore.getState().results, id);
+      if (group.length > 1) {
+        openPlaceList(map, maplibregl, [event.lngLat.lng, event.lngLat.lat], group);
+        return;
+      }
       // Clicking the selected listing again unselects it. Otherwise the list scrolls to the
       // card itself, once it's rendered (it may be past "Show more").
       setSelectedListingId(appStore.getState().selectedListingId === id ? null : id);
@@ -530,10 +600,26 @@ function bindEvents(map: MapLibreMap) {
     const feature = event.features?.[0];
     const clusterId = feature?.properties?.cluster_id;
     if (typeof clusterId !== "number" || feature?.geometry.type !== "Point") return;
-    const zoom = await (map.getSource("listings") as GeoJSONSource).getClusterExpansionZoom(
-      clusterId,
+    const source = map.getSource("listings") as GeoJSONSource;
+    const center = feature.geometry.coordinates as [number, number];
+    // A cluster that is really one building can't be split by zooming: list its units.
+    const leaves = await source.getClusterLeaves(clusterId, 200, 0);
+    const ids = leaves.flatMap((leaf) =>
+      typeof leaf.properties?.id === "string" ? [leaf.properties.id] : [],
     );
-    map.easeTo({ center: feature.geometry.coordinates as [number, number], zoom });
+    const { results } = appStore.getState();
+    if (allAtSamePlace(results, ids)) {
+      const here = new Set(ids);
+      openPlaceList(
+        map,
+        maplibregl,
+        center,
+        results.filter((result) => here.has(result.listing.id)),
+      );
+      return;
+    }
+    const zoom = await source.getClusterExpansionZoom(clusterId);
+    map.easeTo({ center, zoom });
   });
   map.on("mouseenter", "clusters", () => (map.getCanvas().style.cursor = "pointer"));
   map.on("mouseleave", "clusters", () => (map.getCanvas().style.cursor = ""));

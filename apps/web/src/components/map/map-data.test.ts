@@ -2,7 +2,9 @@ import { searchFixture, travelIntent } from "@rentthe6ix/shared/fixtures";
 import { describe, expect, it } from "vitest";
 import {
   boundsOf,
+  allAtSamePlace,
   circlePolygon,
+  listingsAtSamePlace,
   placePins,
   resultsToGeoJSON,
   routesToPlaces,
@@ -142,5 +144,26 @@ describe("routesToPlaces", () => {
       { ...target, id: "b", resolved: undefined },
     ] as unknown as Parameters<typeof routesToPlaces>[1];
     expect(routesToPlaces(result([]), others)).toEqual([]);
+  });
+});
+
+describe("listings at the same place", () => {
+  const at = (id: string, lng: number, lat: number) =>
+    ({ listing: { id, location: { lng, lat } } }) as unknown as Parameters<
+      typeof listingsAtSamePlace
+    >[0][number];
+  // a and b are ~11 m apart (one building); c is ~1 km away.
+  const results = [at("a", -79.4, 43.66), at("b", -79.4, 43.6601), at("c", -79.4, 43.67)];
+
+  it("finds the other units in the same building, in result order", () => {
+    expect(listingsAtSamePlace(results, "b").map((r) => r.listing.id)).toEqual(["a", "b"]);
+    expect(listingsAtSamePlace(results, "c").map((r) => r.listing.id)).toEqual(["c"]);
+    expect(listingsAtSamePlace(results, "missing")).toEqual([]);
+  });
+
+  it("tells when a group can't be split by zooming", () => {
+    expect(allAtSamePlace(results, ["a", "b"])).toBe(true);
+    expect(allAtSamePlace(results, ["a", "c"])).toBe(false);
+    expect(allAtSamePlace(results, ["a"])).toBe(false);
   });
 });

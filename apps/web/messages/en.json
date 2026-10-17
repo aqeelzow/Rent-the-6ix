@@ -475,7 +475,8 @@
       "placePopup": "Your place",
       "routeMinutes": "{minutes} min by {mode}",
       "routeDrive": "{minutes} min drive, no traffic",
-      "routeKm": "{km} km straight-line"
+      "routeKm": "{km} km straight-line",
+      "unitsHere": "{count} listings at this spot"
     },
     "mobile": {
       "showMap": "Map",

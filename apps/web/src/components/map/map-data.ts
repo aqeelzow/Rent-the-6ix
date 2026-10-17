@@ -145,6 +145,31 @@ export function placePins(targets: SearchIntent["travelTargets"]) {
   );
 }
 
+/** Listings this close together are treated as one building (units in the same block). */
+export const SAME_PLACE_M = 30;
+
+/** Every result at the same place as the given listing (itself included), in result order. */
+export function listingsAtSamePlace(results: SearchResultItem[], id: string): SearchResultItem[] {
+  const origin = results.find((result) => result.listing.id === id);
+  if (!origin) return [];
+  return results.filter(
+    (result) => distanceM(origin.listing.location, result.listing.location) <= SAME_PLACE_M,
+  );
+}
+
+/** True when every one of these listings sits at the same place (so zooming can't split them). */
+export function allAtSamePlace(results: SearchResultItem[], ids: string[]): boolean {
+  const here = new Set(ids);
+  const located = results.filter((result) => here.has(result.listing.id));
+  const first = located[0];
+  return (
+    located.length > 1 &&
+    located.every(
+      (result) => distanceM(first!.listing.location, result.listing.location) <= SAME_PLACE_M,
+    )
+  );
+}
+
 /**
  * From the selected listing to each place the renter named: the quickest routed time over the
  * renter's modes, else a straight-line distance (from the travel rows, else computed). A
