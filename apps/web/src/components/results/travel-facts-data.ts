@@ -4,6 +4,7 @@ import {
   preferredReference,
   type PreferredReference,
 } from "@rentthe6ix/shared/engine/preferred-area";
+import type { ResultOrder } from "@/lib/store/searchSlice";
 import type { SearchIntent, SearchResultItem } from "@/lib/store/types";
 
 // Presentation rules for the two travel facts on a result card. Pure and tested, because the
@@ -47,6 +48,25 @@ export function formatDistance(metres: number): string {
  */
 export function preferredAreaReference(intent: SearchIntent | null): PreferredReference | null {
   return intent ? preferredReference(intent) : null;
+}
+
+/** True when at least one trip was routed, so a carbon figure exists for some listing. */
+export function carbonComparable(results: SearchResultItem[]): boolean {
+  return results.some((result) => result.travel.some((row) => row.method === "otp"));
+}
+
+/**
+ * The order actually in effect. A local order that has nothing to measure — no routed trips, or no
+ * place to measure from — falls back to B's ranking instead of pretending to reorder.
+ */
+export function effectiveResultOrder(
+  order: ResultOrder,
+  results: SearchResultItem[],
+  intent: SearchIntent | null,
+): ResultOrder {
+  if (order === "carbon" && !carbonComparable(results)) return "server";
+  if (order === "distance" && !preferredAreaReference(intent)) return "server";
+  return order;
 }
 
 /**

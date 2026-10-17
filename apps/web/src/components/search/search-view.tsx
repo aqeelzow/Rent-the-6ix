@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { ResultsMap } from "@/components/map/results-map";
 import { ResultCard } from "@/components/results/result-card";
 import {
+  effectiveResultOrder,
   orderByCarbon,
   orderByPreferredDistance,
   preferredAreaReference,
@@ -82,15 +83,16 @@ export function SearchView({ prompt, shared }: { prompt: string | null; shared: 
   // "Closest to my area" and "lowest-carbon trips" reorder the results already on screen, so they
   // never cost another search (a server-side sort is requested in PERSON_D.md for B to add).
   const resultOrder = useAppStore((s) => s.resultOrder);
+  const order = effectiveResultOrder(resultOrder, results, intent);
   const ordered = useMemo(() => {
-    if (resultOrder === "carbon")
+    if (order === "carbon")
       return orderByCarbon(results, (result) =>
         commuteCarbon(intent?.travelTargets ?? [], result.travel),
       );
-    if (resultOrder === "distance")
+    if (order === "distance")
       return orderByPreferredDistance(results, preferredAreaReference(intent));
     return results;
-  }, [resultOrder, results, intent]);
+  }, [order, results, intent]);
   // Paging resets whenever a new set of results arrives.
   const [paging, setPaging] = useState({ results: ordered, count: PAGE_SIZE });
   const pageCount = paging.results === ordered ? paging.count : PAGE_SIZE;
@@ -259,11 +261,11 @@ export function SearchView({ prompt, shared }: { prompt: string | null; shared: 
                 ))}
               </ul>
             )}
-            {resultOrder !== "server" && (
+            {order !== "server" && (
               // Says what the order does to the listings nothing is known about, so "first" is
               // never read as "every one of these is close" or "every one of these is clean".
               <p className="text-muted-foreground text-xs">
-                {t(resultOrder === "carbon" ? "results.order.carbon" : "results.order.distance")}
+                {t(order === "carbon" ? "results.order.carbon" : "results.order.distance")}
               </p>
             )}
             <ol className={`flex flex-col gap-3 ${busy ? "opacity-60" : ""}`}>

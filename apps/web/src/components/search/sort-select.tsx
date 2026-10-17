@@ -1,7 +1,11 @@
 "use client";
 
 import { useId } from "react";
-import { preferredAreaReference } from "@/components/results/travel-facts-data";
+import {
+  carbonComparable,
+  effectiveResultOrder,
+  preferredAreaReference,
+} from "@/components/results/travel-facts-data";
 import { t, type MessageKey } from "@/lib/format/messages";
 import { runSearch } from "@/lib/store/actions";
 import { useAppStore } from "@/lib/store/store";
@@ -30,13 +34,16 @@ export function SortSelect() {
   if (!intent) return null;
 
   const reference = preferredAreaReference(intent);
-  const routed = results.some((result) => result.travel.some((row) => row.method === "otp"));
+  const routed = carbonComparable(results);
   const sorts = SORTS.filter((sort) => sort !== "shortest_trips" || intent.travelTargets.length);
   const locals: LocalOrder[] = [
     ...(routed ? (["carbon"] as const) : []),
     ...(reference ? (["distance"] as const) : []),
   ];
-  const value: Choice = resultOrder === "server" ? intent.sortBy : resultOrder;
+  // An option that has nothing to measure falls back to B's ranking, so the control never sits on
+  // a value it isn't offering.
+  const effective = effectiveResultOrder(resultOrder, results, intent);
+  const value: Choice = effective === "server" ? intent.sortBy : effective;
 
   return (
     <div className="flex items-center gap-2">
