@@ -2,7 +2,7 @@ import { ListingSchema, SearchRequestSchema, SearchResponseSchema, TravelTimeRow
 import { filterListing } from '../../../../../packages/shared/engine/filters';
 import { scoreListing, selectPercentile, type ScoreContext } from '../../../../../packages/shared/engine/score';
 import { distanceM, targetModes } from '../../../../../packages/shared/engine/travel';
-import { fillDistanceRows, mapCandidatePool, type SearchDependencies } from './candidates';
+import { fillAmenityDistances, fillDistanceRows, mapCandidatePool, type SearchDependencies } from './candidates';
 import { engineConfig } from '../../../../../packages/shared/engine/config';
 
 export type PercentileExecution = { referenceYear: number; deadline?: number; signal?: AbortSignal };
@@ -43,7 +43,7 @@ export async function searchPercentileCandidates(input: SearchRequest, dependenc
     });
     if (controller.signal.aborted) return unavailable('timeout');
     const eligible = enriched.filter((listing): listing is Listing => listing !== null);
-    await fillDistanceRows(dependencies, eligible, routeTargets, contexts);
+    await fillDistanceRows(eligible, routeTargets, contexts);
     if (routeTargets.length && eligible.length && dependencies.routeTimes) {
       const routingDeadline = exactTravel ? deadline : Date.now() + Math.min(engineConfig.routingBudgetMs, Math.max(0, dependencies.routingBudgetMs ?? engineConfig.routingBudgetMs));
       let routingTimer: ReturnType<typeof setTimeout> | undefined;
@@ -71,6 +71,8 @@ export async function searchPercentileCandidates(input: SearchRequest, dependenc
       finally { clearTimeout(routingTimer); }
       if (exactTravel && (controller.signal.aborted || Date.now() >= deadline)) return unavailable('timeout');
     }
+    // Amenity targets have no point of their own, so every eligible listing gets a distance for them.
+    await fillAmenityDistances(dependencies, eligible, routeTargets, contexts);
     const filtered = eligible.filter(listing => filterListing(listing, intent, contexts.get(listing.id)!, request.hideUnconfirmed).passes);
     const target = intent.travelTargets.find(target => target.id === selector.targetId);
     const selected = selectBeforeEnrichment ? filtered : selectPercentile(filtered, selector, execution.referenceYear, listing => {

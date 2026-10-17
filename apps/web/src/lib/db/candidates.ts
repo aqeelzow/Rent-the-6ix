@@ -16,10 +16,9 @@ export type SearchDependencies = {
   // Optional and off by default: travel is answered by straight-line distance, and a router only
   // replaces those rows when a deployment explicitly switches it on.
   routeTimes?: (origins: Listing[], targets: TravelTarget[], mode: TravelTimeRow['mode'], budgetMs: number, signal: AbortSignal) => Promise<TravelTimeRow[]>;
+  /** Labelled straight-line distance from each listing to its nearest POI per amenity target. */
+  amenityDistances?: (listings: readonly Listing[], targets: readonly TravelTarget[]) => Promise<TravelTimeRow[]>;
   routingBudgetMs?: number;
-  // The nearest POI of a target's category around a listing. An amenity target has no point of its
-  // own — "close to groceries" is a different address for every listing — so this supplies one.
-  amenityDestination?: (listing: Listing, target: TravelTarget) => Promise<{ lat: number; lng: number } | null>;
 };
 export class SearchUnavailable extends Error {}
 // Eight pipelined contexts hide network round trips without adding database connections.
@@ -58,14 +57,14 @@ export function compareResults(intent: SearchRequest['intent'], a: SearchResult,
   return (Number.isNaN(primary) ? 0 : primary) || tieBreak(left, right);
 }
 /**
- * Fills the straight-line distance for every target: a place target uses its own resolved point, an
- * amenity target the nearest POI of its category. This is what the app reports as travel, so no
- * router, network call or budget is involved — one indexed lookup per 100 m cell at worst.
+ * Fills the straight-line distance for every target that carries its own point, which is what the
+ * app reports as travel: no router, network call or budget is involved. An amenity target has no
+ * point of its own — "close to groceries" is a different address for every listing — so those are
+ * left to `fillAmenityDistances`, which answers them in one query per category.
  * Existing rows for a target are replaced, except a routed row, which is a better answer when a
  * deployment has switched routing on.
  */
 export async function fillDistanceRows(
-  dependencies: SearchDependencies,
   origins: readonly Listing[],
   targets: readonly TravelTarget[],
   contexts: Map<string, ScoreContext>,
@@ -76,7 +75,7 @@ export async function fillDistanceRows(
     if (!context) return;
     for (const target of targets) {
       if (context.travel.some(row => row.targetId === target.id && row.method === 'otp')) continue;
-      const point = target.resolved ?? (await dependencies.amenityDestination?.(listing, target)) ?? null;
+      const point = target.resolved ?? null;
       if (!point) continue;
       const rows = targetModes(target).map(mode => TravelTimeRowSchema.parse({
         listingId: listing.id, targetId: target.id, mode, minutes: null,
@@ -135,8 +134,11 @@ export async function searchCandidates(input: SearchRequest, dependencies: Searc
   const targets = intent.travelTargets.filter(t => t.kind === 'place' || t.kind === 'amenity');
   const origins = candidates.slice(0, engineConfig.routingLimit).map(r => r.listing);
   // Distance is the answer; a configured router only upgrades those rows to real times.
-  await fillDistanceRows(dependencies, origins, targets, contexts);
+  await fillDistanceRows(origins, targets, contexts);
   await routeCandidateContexts(dependencies, origins, targets, contexts);
+  // Amenities are filled for every candidate, not just the routed ones, and after routing so the
+  // batch lookups never compete with the router for the same budget.
+  await fillAmenityDistances(dependencies, candidates.map(r => r.listing), intent.travelTargets, contexts);
   const results = candidates.flatMap(result => {
     const context = contexts.get(result.listing.id)!;
     if (!filterListing(result.listing, intent, context, request.hideUnconfirmed).passes) return [];
@@ -144,6 +146,33 @@ export async function searchCandidates(input: SearchRequest, dependencies: Searc
   }).sort((a, b) => compareResults(intent, a, b));
   const eligibleCount = fullContextRequired || filterContexts.size ? pool.filter(listing => filterListing(listing, intent, contexts.get(listing.id) ?? filterContexts.get(listing.id), request.hideUnconfirmed).passes).length : pool.length - (candidates.length - results.length);
   return { results, eligibleCount, notices: [dependencies.loadCandidates ? 'Unconfirmed fields and unrouted travel times remain unknown' : 'Fixture-backed application pool; live SQL and owner integrations pending'] };
+}
+
+/**
+ * Amenity targets the router never reached still get a labelled distance to their nearest POI.
+ *
+ * This runs after routing on purpose: the lookups are a batched query per category, so they cost
+ * milliseconds, but running them before routing measurably starved the router and turned minutes
+ * into distances. Rows already present — routed or not — are never overwritten.
+ */
+export async function fillAmenityDistances(
+  dependencies: SearchDependencies,
+  listings: readonly Listing[],
+  travelTargets: readonly TravelTarget[],
+  contexts: Map<string, ScoreContext>,
+): Promise<void> {
+  const amenities = travelTargets.filter(target => target.kind === 'amenity');
+  if (!dependencies.amenityDistances || !amenities.length || !listings.length) return;
+  const missing = listings.filter(listing => amenities.some(target => !contexts.get(listing.id)?.travel.some(row => row.targetId === target.id)));
+  if (!missing.length) return;
+  try {
+    const rows = (await dependencies.amenityDistances(missing, amenities)).map(row => TravelTimeRowSchema.parse(row));
+    for (const row of rows) {
+      const context = contexts.get(row.listingId);
+      if (!context || context.travel.some(existing => existing.targetId === row.targetId && existing.mode === row.mode)) continue;
+      context.travel = [...context.travel, row];
+    }
+  } catch { /* A failed lookup leaves the time unconfirmed rather than guessed. */ }
 }
 
 // Shared ordinary search/detail routing preserves one deadline and owner-failure fallback.
