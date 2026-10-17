@@ -74,6 +74,9 @@ function routeLabel(route: RouteToPlace): string {
   });
 }
 
+/** How close the map comes in on a place pin that's clicked (a few blocks around it). */
+const PLACE_ZOOM = 15;
+
 /** How close the map comes in on a listing hovered in the list (street level). */
 const HOVER_ZOOM = 14.5;
 
@@ -184,11 +187,20 @@ export function ResultsMap({ className = "" }: { className?: string }) {
         element.addEventListener("mouseleave", () => {
           if (!pinned) popup.remove();
         });
-        // A click keeps it open until clicked again or the map is clicked elsewhere.
+        // A click zooms in on the place and keeps its popup open until clicked again or the
+        // map is clicked elsewhere.
         element.addEventListener("click", (event) => {
           event.stopPropagation();
           pinned = !pinned;
           if (pinned && !popup.isOpen()) popup.setLngLat(marker.getLngLat()).addTo(map);
+          // Opening a place also brings the map in close around it.
+          if (pinned) {
+            map.easeTo({
+              center: [place.lng, place.lat],
+              zoom: Math.max(map.getZoom(), PLACE_ZOOM),
+              duration: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 700,
+            });
+          }
           if (!pinned) popup.remove();
         });
         element.addEventListener("keydown", (event) => {
