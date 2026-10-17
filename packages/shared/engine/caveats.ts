@@ -18,6 +18,7 @@ export type CaveatCode =
   | "fields_unknown"
   | "rentsafeto_low"
   | "price_dropped"
+  | "newer_building"
   | "insufficient_comparables";
 
 export interface Caveat {
@@ -42,6 +43,7 @@ export interface CaveatListing {
   airConditioning: "central" | "yes" | "no" | "unknown";
   /** Stored at ingest from the full description; the excerpt is checked too. */
   depositBeforeViewing?: boolean;
+  yearBuilt?: number | null;
 }
 
 export interface CaveatContext {
@@ -52,6 +54,8 @@ export interface CaveatContext {
   sameTextElsewhere: number;
   /** The first asking rent seen for this listing (listing_observations), if it's stored. */
   firstSeen?: { rentCad: number; at: string } | null;
+  /** Share of the comparables' weight from buildings known to be of a similar age (sameEraShare). */
+  sameEraShare?: number | null;
   now: Date;
 }
 
@@ -138,6 +142,23 @@ export function caveats(listing: CaveatListing, ctx: CaveatContext): Caveat[] {
       code: "price_dropped",
       title: "Price dropped",
       explanation: `The asking rent dropped from $${first.rentCad.toLocaleString("en-CA")} to $${listing.monthlyRentCad.toLocaleString("en-CA")} since ${first.at.slice(0, 10)}. A listing that's been reduced may be open to negotiation.`,
+    });
+
+  // New towers ask more than the older or undated units around them; say so rather than let the
+  // label alone suggest they're overpriced.
+  const year = listing.yearBuilt;
+  if (
+    ctx.valuation?.status === "ok" &&
+    year != null &&
+    year >= ctx.now.getUTCFullYear() - C.newerBuildingYears &&
+    ctx.sameEraShare != null &&
+    ctx.sameEraShare < C.newerBuildingSameEraShare
+  )
+    out.push({
+      severity: "info",
+      code: "newer_building",
+      title: "Newer building",
+      explanation: `Built in ${year}. Most comparable listings nearby are in older buildings or don't say when theirs was built, and newer buildings usually ask more, so the estimate may be low for this one.`,
     });
 
   if (ctx.valuation?.status === "insufficient_data")

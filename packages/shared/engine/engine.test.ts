@@ -85,3 +85,11 @@ test('missing civic IDs stay unconfirmed through geographic OR and hide gates', 
   assert.deepEqual(filterListing(sparse, withNear, {}, true), { passes: true, notes: [] });
   assert.deepEqual(filterListing(sparse, baseIntent, {}, true), { passes: true, notes: [] });
 });
+
+test('a rent far below the estimate gets no value score (check it, not a deal)', () => {
+  const listing = sampleListings[0];
+  const deal = scoreListing(listing, baseIntent, { ...context, valuation: { ...valuations[3], status: 'ok', differencePct: 20 } as never });
+  const suspicious = scoreListing(listing, baseIntent, { ...context, valuation: { ...valuations[3], status: 'ok', differencePct: 55 } as never });
+  assert.equal(deal.parts.find(p => p.id === 'value')!.score, 100);
+  assert.equal(suspicious.parts.find(p => p.id === 'value')!.score, null);
+});

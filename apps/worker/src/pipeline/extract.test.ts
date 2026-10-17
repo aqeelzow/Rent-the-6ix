@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { emptyRawListing } from "../sources/types.ts";
 import {
   accept,
+  AiBusyError,
   extractFields,
   geminiExtractorFromEnv,
   needsExtraction,
@@ -146,6 +147,8 @@ describe("extractFields", () => {
       cache,
       max: 10,
       today: TODAY,
+      delayMs: 0,
+      busyWaitMs: 0,
     });
     expect(targets[0]).toMatchObject({
       airConditioning: "yes",
@@ -161,7 +164,13 @@ describe("extractFields", () => {
     });
     expect(stats).toMatchObject({ candidates: 1, sent: 1, filled: 1 });
 
-    await extractFields([listing], () => TEXT, { extractor, cache, max: 10, today: TODAY });
+    await extractFields([listing], () => TEXT, {
+      extractor,
+      cache,
+      max: 10,
+      today: TODAY,
+      delayMs: 0,
+    });
     expect(extractor).toHaveBeenCalledTimes(1);
   });
 
@@ -174,6 +183,8 @@ describe("extractFields", () => {
       cache: {},
       max: 10,
       today: TODAY,
+      delayMs: 0,
+      busyWaitMs: 0,
     });
     expect(targets[0].airConditioning).toBe("no");
   });
@@ -187,9 +198,30 @@ describe("extractFields", () => {
       cache: {},
       max: 10,
       today: TODAY,
+      delayMs: 0,
+      busyWaitMs: 0,
     });
     expect(targets[0]).toEqual(listing);
     expect(stats.stopped).toContain("429");
+  });
+
+  it("waits and retries once after a rate limit", async () => {
+    let calls = 0;
+    const extractor: Extractor = async (items) => {
+      if (++calls === 1) throw new AiBusyError("Gemini busy (429)");
+      return Object.fromEntries(items.map((i) => [i.id, answer]));
+    };
+    const { stats } = await extractFields([listing], () => TEXT, {
+      extractor,
+      cache: {},
+      max: 10,
+      today: TODAY,
+      delayMs: 0,
+      busyWaitMs: 0,
+    });
+    expect(calls).toBe(2);
+    expect(stats).toMatchObject({ sent: 1, filled: 1 });
+    expect(stats.stopped).toBeUndefined();
   });
 
   it("sends at most `max` listings", async () => {
@@ -200,6 +232,7 @@ describe("extractFields", () => {
       cache: {},
       max: 12,
       today: TODAY,
+      delayMs: 0,
     });
     expect(stats.sent).toBe(12);
     expect(extractor).toHaveBeenCalledTimes(2);
