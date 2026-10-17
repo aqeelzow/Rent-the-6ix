@@ -1,7 +1,6 @@
 import { createHash } from 'node:crypto';
 export const inputHash = (input: string) => createHash('sha256').update(input).digest('hex');
 export interface Cache<T> { get(key: string): T | undefined; set(key: string, value: T): void; }
-// shortcut: temporary process-local draft cache, replace with D's ai_cache contract before production.
 export class MemoryCache<T> implements Cache<T> {
   private entries = new Map<string, { expires: number; value: T }>();
   constructor(private capacity = 128, private ttlMs = 300000, private now = Date.now) {}

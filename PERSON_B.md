@@ -6,8 +6,8 @@ Task ids match `PROGRESS.md`; task details are in `SPEC.md`.
 
 ## Current state
 
-- **Current task:** static-search MVP against the supplied PostgreSQL database.
-- **Status:** endpoint feature changes verified (283 tests, lint/typecheck/build and live native smoke); remaining owner integration tracked on `b/search-static-mvp` in `/tmp/rent-search-mvp`, reviewed against upstream `1853fdf`.
+- **Current task:** sequential completion of apps/search/plan.md with a subagent per feature and live DB validation.
+- **Status:** active on `b/search-plan-completion` in `/tmp/rent-search-mvp`, based on main `f0d729b`. Feature1 parse ai_cache integration passes real PostgreSQL cross-runtime/privacy/expiry validation and154 web tests.
 - **Verified:** 20,956 live listings / 16,892 active nonduplicates at inspection; native SQL-backed cheapest/known filters, scalar percentiles, fairness, detail and overlap acceptance.
 - **Remaining:** cold/full enriched performance (latest ordinary8.863s) needs C optimization/bulk context; live static safety needs D city-rate/lookup/score exports. Owner changes remain outside B scope under TEAM.md. Dynamic routing/distance computations are deferred by the user.
 - **Last updated:** 2026-10-17
@@ -61,7 +61,7 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked · `[-]` 
 - [~] P1.21 `/api/search/parse`: criteria with must-have/preference, travel targets with mode and minutes, safety, household, `fieldSources`, `droppedRequests`; validation and clean-up
 - [x] P1.22 Fallback regex parser (rent, bedrooms, bathrooms, size, unit type, AC, pets, "built after", "X min walk/drive/bike/transit to …", neighbourhood names)
 - [~] P1.23 `known_places.json` (campuses, hospitals, major stations, employment hubs) + `/api/geo/resolve` (known places → Address Points → MapTiler)
-- [!] P1.24 `ai_cache` (input hash) + per-IP limits on AI routes; parse tests with 10 sample prompts
+- [~] P1.24 `ai_cache` integration implemented and live-DB verified; parser regressions pass. Production trusted per-IP identity and live Gemini quota acceptance remain open.
 
 ### S2 → S3 (H10–H18) — Search & score · Core
 - [!] P2.20 Candidate query SQL: hard criteria with unknowns passing as "not confirmed", areas (`ST_Within`), hard amenity times from `travel_times`, hard safety, limit 500
