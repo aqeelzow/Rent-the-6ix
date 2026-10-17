@@ -9,10 +9,6 @@ import { formatCad, formatCount } from "@/lib/format/number";
 import { selectIsShortlisted } from "@/lib/store/searchSlice";
 import { useAppStore } from "@/lib/store/store";
 import type { SearchIntent, SearchResultItem } from "@/lib/store/types";
-<<<<<<< HEAD
-import { daysSince, topCaveat, travelSummaries, yearSpan, type TravelSummary } from "./card-data";
-import { TravelFacts } from "./travel-facts";
-=======
 import {
   acFact,
   daysSince,
@@ -22,7 +18,7 @@ import {
   yearSpan,
   type TravelSummary,
 } from "./card-data";
->>>>>>> 9b657b61037f7580c1f616937381ccb99a631484
+import { TravelFacts } from "./travel-facts";
 import { SafetyInfoButton } from "@/components/safety/safety-info";
 import { PriceBadge } from "./price-badge";
 import { ScoreBar } from "./score-bar";

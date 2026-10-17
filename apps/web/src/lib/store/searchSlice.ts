@@ -13,12 +13,12 @@ export type SearchStatus = "idle" | "parsing" | "searching" | "ready" | "error";
 type CompletedSearch = Extract<SearchResponse, { status: "completed" }>;
 
 /**
-<<<<<<< HEAD
  * How the list on screen is ordered. "server" keeps B's ranking (the intent's own sort); the other
  * two reorder the results already loaded, so switching them never costs another search.
  */
 export type ResultOrder = "server" | "carbon" | "distance";
-=======
+
+/**
  * What the shortlist shows for a saved listing until it's opened again: the figures as they were
  * when it was saved. Kept separate from `Listing` so saved shortlists survive schema changes.
  */
@@ -26,7 +26,6 @@ export type SavedListing = Pick<
   Listing,
   "title" | "monthlyRentCad" | "rentIsPerRoom" | "bedrooms" | "bathrooms" | "sqft" | "source"
 >;
->>>>>>> 9b657b61037f7580c1f616937381ccb99a631484
 
 /** Shortlisted listings live only in the browser (SPEC 15); pasted ones keep the whole listing. */
 export type ShortlistEntry =
@@ -79,12 +78,9 @@ export interface SearchSlice {
   /** For chip and filter edits. Callers re-run search afterwards; editing never calls Gemini. */
   updateIntent: (update: (intent: SearchIntent) => SearchIntent) => void;
   setHideUnconfirmed: (hide: boolean) => void;
-<<<<<<< HEAD
   setResultOrder: (order: ResultOrder) => void;
-=======
   /** Opens a saved or shared search as it was edited; nothing from an earlier parse is kept. */
   loadSearch: (intent: SearchIntent, hideUnconfirmed: boolean) => void;
->>>>>>> 9b657b61037f7580c1f616937381ccb99a631484
   /** Marks a prompt as being read and returns its request id, to pass to `receiveParse`. */
   startParse: (prompt: string) => number;
   /** Stores the parsed intent. Returns false when a newer request has started. */
@@ -132,9 +128,8 @@ export const createSearchSlice: StateCreator<SearchSlice, [], [], SearchSlice> =
 
   setHideUnconfirmed: (hideUnconfirmed) => set({ hideUnconfirmed }),
 
-<<<<<<< HEAD
   setResultOrder: (resultOrder) => set({ resultOrder }),
-=======
+
   loadSearch: (intent, hideUnconfirmed) =>
     set({
       intent,
@@ -144,7 +139,6 @@ export const createSearchSlice: StateCreator<SearchSlice, [], [], SearchSlice> =
       parsingPrompt: null,
       destinations: [],
     }),
->>>>>>> 9b657b61037f7580c1f616937381ccb99a631484
 
   startParse: (prompt) => {
     const requestId = get().searchRequestId + 1;

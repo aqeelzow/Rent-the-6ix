@@ -269,23 +269,14 @@ export function SearchView({ prompt, shared }: { prompt: string | null; shared: 
             <ol className={`flex flex-col gap-3 ${busy ? "opacity-60" : ""}`}>
               {ordered.slice(0, visibleCount).map((result) => (
                 <li key={result.listing.id}>
-<<<<<<< HEAD
-          <ResultCard
-            result={result}
-            targets={intent?.travelTargets ?? []}
-            areas={intent?.areas ?? []}
-            safetyOn={intent?.safety.enabled ?? false}
-            now={now}
-          />
-=======
                   <ResultCard
                     result={result}
                     targets={intent?.travelTargets ?? []}
+                    areas={intent?.areas ?? []}
                     safetyOn={intent?.safety.enabled ?? false}
                     acInSearch={intent?.criteria.airConditioning !== undefined}
                     now={now}
                   />
->>>>>>> 9b657b61037f7580c1f616937381ccb99a631484
                 </li>
               ))}
             </ol>

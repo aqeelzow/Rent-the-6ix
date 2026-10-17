@@ -419,11 +419,12 @@
     "dataStatus": {
       "snapshot": "snapshot",
       "demo": "demo data"
-    },      "order": {
-        "carbon": "Lowest-carbon first: car-free trips, then the smallest drive figure. Listings with no routed trips are last, not counted as clean.",
-        "distance": "Closest first: straight-line distance from your area, not a travel time. Listings without a location are last."
-      },
-      "shortlistAdd": "Add {title} to shortlist",
+    },
+    "order": {
+      "carbon": "Lowest-carbon first: car-free trips, then the smallest drive figure. Listings with no routed trips are last, not counted as clean.",
+      "distance": "Closest first: straight-line distance from your area, not a travel time. Listings without a location are last."
+    },
+    "shortlistAdd": "Add {title} to shortlist",
     "shortlistRemove": "Remove {title} from shortlist",
     "map": {
       "label": "Map of results",
@@ -624,30 +625,6 @@
       "parks_ha_per_1000": "Park space per 1,000 residents (ha)"
     }
   },
-<<<<<<< HEAD
-  "travel": {
-    "preferred": {
-      "distance": "{km} from {place} (straight line)",
-      "distanceArea": "{km} from your search area (straight line)"
-    },
-    "carbon": {
-      "carFree": "No car needed for your trips — no direct emissions",
-      "figure": "≈ {co2e} CO₂e per one-way trip by {mode}",
-      "transitUnknown": "Transit not counted (no published factor for Toronto)",
-      "transitUnknownDrive": "Transit not counted (no published factor) — ≈ {co2e} if you drove",
-      "unrouted": "Emissions need routed travel times — not estimated yet",
-      "open": "How carbon is counted",
-      "sortLabel": "Lowest-carbon trips first",
-      "sortHint": "Reorders the results on this page; the search itself is unchanged",
-      "title": "How we count travel carbon",
-      "what": "Direct operational emissions for the trips you asked about — the journey to your saved places, one way.",
-      "method": "Walking and cycling are counted as no direct emissions. Driving uses 2023 average Canadian gasoline-car fuel use with the US EPA combustion factor, at one occupant. Transit is left out because no per-passenger-kilometre figure is published for Toronto, and distances shown as straight-line are never converted into emissions. The yearly figure assumes {days} commute days, travelling both ways.",
-      "factorsTitle": "What each mode counts as",
-      "factorValue": "{grams} g CO₂e per km",
-      "factorUnknown": "not quantified",
-      "source": "source",
-      "caveatsTitle": "What this does not include"
-=======
   "shortlist": {
     "title": "Your shortlist",
     "intro": "Saved in this browser only. Nothing is sent to our server.",
@@ -715,7 +692,30 @@
       "service_unavailable": "Checking is busy right now. Try again in a minute.",
       "network_error": "We couldn’t reach RentThe6ix. Check your connection and try again.",
       "default": "Something went wrong checking this listing. Try again, or paste the text instead of a link."
->>>>>>> 9b657b61037f7580c1f616937381ccb99a631484
+    }
+  },
+  "travel": {
+    "preferred": {
+      "distance": "{km} from {place} (straight line)",
+      "distanceArea": "{km} from your search area (straight line)"
+    },
+    "carbon": {
+      "carFree": "No car needed for your trips — no direct emissions",
+      "figure": "≈ {co2e} CO₂e per one-way trip by {mode}",
+      "transitUnknown": "Transit not counted (no published factor for Toronto)",
+      "transitUnknownDrive": "Transit not counted (no published factor) — ≈ {co2e} if you drove",
+      "unrouted": "Emissions need routed travel times — not estimated yet",
+      "open": "How carbon is counted",
+      "sortLabel": "Lowest-carbon trips first",
+      "sortHint": "Reorders the results on this page; the search itself is unchanged",
+      "title": "How we count travel carbon",
+      "what": "Direct operational emissions for the trips you asked about — the journey to your saved places, one way.",
+      "method": "Walking and cycling are counted as no direct emissions. Driving uses 2023 average Canadian gasoline-car fuel use with the US EPA combustion factor, at one occupant. Transit is left out because no per-passenger-kilometre figure is published for Toronto, and distances shown as straight-line are never converted into emissions. The yearly figure assumes {days} commute days, travelling both ways.",
+      "factorsTitle": "What each mode counts as",
+      "factorValue": "{grams} g CO₂e per km",
+      "factorUnknown": "not quantified",
+      "source": "source",
+      "caveatsTitle": "What this does not include"
     }
   }
 }

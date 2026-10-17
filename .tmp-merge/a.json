@@ -1,0 +1,691 @@
+{
+  "common": {
+    "appName": "RentThe6ix",
+    "search": "Search",
+    "close": "Close",
+    "menu": "Menu",
+    "comingSoon": "This page is still being built. Check back soon."
+  },
+  "layout": {
+    "skipToContent": "Skip to content",
+    "homeLink": "RentThe6ix home",
+    "nav": {
+      "label": "Main",
+      "areas": "Explore neighbourhoods",
+      "paste": "Paste a listing",
+      "shortlist": "Shortlist",
+      "data": "About the data"
+    },
+    "footer": {
+      "label": "Footer",
+      "askingRents": "Asking rents from public listings, not official statistics.",
+      "data": "Sources and methods",
+      "status": "Status"
+    },
+    "metaDescription": "Describe the rental you need. RentThe6ix searches Toronto listings, checks each price against similar homes, and shows the neighbourhood around it."
+  },
+  "landing": {
+    "tagline": "Toronto home finding, made easy",
+    "logoTop": "Rent the",
+    "logoBottom": "6ix",
+    "scrollCue": "Scroll",
+    "jump": "Skip to search",
+    "say": {
+      "title": "Say it how you would say it.",
+      "prompt": "2-bed near UofT under $2,800, cat-friendly, with AC",
+      "caption": "Every phrase becomes a filter you can change. Solid ones are must-haves; outlined ones only move a listing up or down.",
+      "chips": {
+        "beds": {
+          "phrase": "2-bed",
+          "label": "2 bedrooms"
+        },
+        "near": {
+          "phrase": "near UofT",
+          "label": "Near UofT by transit"
+        },
+        "rent": {
+          "phrase": "under $2,800",
+          "label": "Up to $2,800"
+        },
+        "pets": {
+          "phrase": "cat-friendly",
+          "label": "Cats allowed"
+        },
+        "ac": {
+          "phrase": "with AC",
+          "label": "Air conditioning"
+        }
+      }
+    },
+    "start": {
+      "title": "Where do you want to live?"
+    },
+    "title": "Find a Toronto rental that fits, at a fair price",
+    "subtitle": "Describe what you need in your own words. We search listings from several sites, check each price against similar homes nearby, and show you the neighbourhood around it.",
+    "promptLabel": "Describe the place you're looking for",
+    "promptPlaceholder": "e.g. 2-bedroom near UofT under $2,800, 25 minutes by transit, cat-friendly, with AC",
+    "submit": "Search",
+    "examplesLabel": "Or try an example",
+    "examples": {
+      "student": {
+        "label": "Student",
+        "prompt": "Room or studio near York University under $1,300, close to the subway, furnished."
+      },
+      "couple": {
+        "label": "Couple",
+        "prompt": "I need a 2-bedroom near UofT St. George under $2,800, within 25 minutes by transit, close to groceries, cat-friendly, and I really care about getting a good deal. I make about $95k with my roommate."
+      },
+      "family": {
+        "label": "Family",
+        "prompt": "3 bedrooms in Scarborough under $3,200, near a public school and a park, parking."
+      }
+    },
+    "areas": {
+      "title": "Explore neighbourhoods",
+      "body": "Rents, renters and housing pressure across Toronto's 158 neighbourhoods and 25 wards."
+    },
+    "paste": {
+      "title": "Paste a listing",
+      "body": "Found a place on Facebook or anywhere else? Paste it to check the price and the area."
+    }
+  },
+  "search": {
+    "title": "Results",
+    "yourRequest": "Your request",
+    "noPrompt": "Describe the place you're looking for to start a search.",
+    "startSearch": "Start a search",
+    "editRequest": "Change request",
+    "parsing": "Reading your request…",
+    "searching": "Finding listings…",
+    "basicSearch": "AI wasn't used for this search",
+    "count": "Showing {shown} of {eligible} matching listings",
+    "noResults": "No listings match all of your must-haves. Try turning one into a preference.",
+    "retry": "Try again",
+    "errors": {
+      "rate_limited": "Too many searches at once. Try again in {seconds} seconds.",
+      "service_unavailable": "Search isn't available right now. Try again in a moment.",
+      "network_error": "Couldn't reach RentThe6ix. Check your connection and try again.",
+      "validation_error": "We couldn't use that request. Try rewording it.",
+      "search_timeout": "This search took too long. Try fewer travel targets.",
+      "search_capacity": "Lots of people are searching right now. Try again shortly.",
+      "search_routing_incomplete": "We couldn't work out every travel time for this search. Try again shortly.",
+      "search_job_expired": "This search expired. Run it again.",
+      "default": "Something went wrong with this search. Try again."
+    },
+    "searchingElapsed": "Finding listings… {seconds} s",
+    "slowHint": "Searching thousands of listings can take a minute or two.",
+    "showMore": "Show {count} more",
+    "droppedOne": "1 request we couldn't use",
+    "droppedMany": "{count} requests we couldn't use",
+    "share": {
+      "button": "Share search",
+      "copied": "Link copied. Anyone with it sees this search with your filters.",
+      "manual": "Copy this link to share the search:"
+    },
+    "lastSearch": "Continue your last search"
+  },
+  "status": {
+    "title": "System status",
+    "database": "TigerData database",
+    "connected": "Connected",
+    "notConnected": "Not connected",
+    "notConfigured": "Not configured",
+    "connectionFailed": "Connection failed",
+    "databaseName": "Database",
+    "migrations": "Applied migrations",
+    "extensions": "Extensions",
+    "listingCount": "Listings",
+    "observations": "Listing observations",
+    "sources": "Data sources",
+    "neighbourhoods": "Neighbourhoods",
+    "wards": "Wards",
+    "notLoaded": "Not loaded",
+    "comingSoon": "Other system checks will appear here as those services are connected."
+  },
+  "filters": {
+    "label": "Your filters",
+    "legend": "Solid chips are must-haves; outlined chips are preferences. Tap a chip to change it.",
+    "mustHave": "Must-have",
+    "preference": "Preference",
+    "mustHaveHelp": "Must-haves hide listings that don't match. Preferences only change the ranking.",
+    "fromPrompt": "From your words: “{phrase}”",
+    "fromUser": "You set this",
+    "fromDefault": "Default value",
+    "edited": "Edited by you",
+    "remove": "Remove",
+    "apply": "Apply",
+    "travelModes": "How you'll get there",
+    "minutes": "Up to (minutes)",
+    "minutesHelp": "Leave empty for the default time.",
+    "chipAria": "{label}, {kind}. Edit",
+    "modes": {
+      "transit": "transit",
+      "drive": "car",
+      "walk": "walk",
+      "bike": "bike"
+    },
+    "or": "or",
+    "chips": {
+      "rentMax": "Up to {max}",
+      "rentMin": "From {min}",
+      "rentRange": "{min}–{max}",
+      "fairness": {
+        "underpriced": "Underpriced",
+        "reasonable": "Reasonably priced",
+        "overpriced": "Overpriced"
+      },
+      "studio": "Studio",
+      "bedroomsOne": "1 bedroom",
+      "bedroomsExact": "{n} bedrooms",
+      "bedroomsMin": "{n}+ bedrooms",
+      "bedroomsMax": "Up to {n} bedrooms",
+      "bedroomsRange": "{min}–{max} bedrooms",
+      "bathsOne": "1 bath",
+      "bathsExact": "{n} baths",
+      "bathsMin": "{n}+ baths",
+      "bathsMax": "Up to {n} baths",
+      "bathsRange": "{min}–{max} baths",
+      "sizeMin": "{n}+ sq ft",
+      "sizeMax": "Under {n} sq ft",
+      "sizeRange": "{min}–{max} sq ft",
+      "unitTypes": {
+        "apartment": "Apartment",
+        "condo": "Condo",
+        "basement": "Basement",
+        "house": "House",
+        "townhouse": "Townhouse",
+        "room": "Room",
+        "studio": "Studio"
+      },
+      "builtAfter": "Built after {year}",
+      "builtBefore": "Built before {year}",
+      "builtRange": "Built {after}–{before}",
+      "acAny": "Air conditioning",
+      "acCentral": "Central air",
+      "petsCats": "Cats allowed",
+      "petsDogs": "Dogs allowed",
+      "petsAny": "Pets allowed",
+      "furnished": "Furnished",
+      "unfurnished": "Unfurnished",
+      "parking": "Parking",
+      "noParking": "No parking",
+      "laundry": "In-suite laundry",
+      "noLaundry": "No in-suite laundry",
+      "utilities": "Utilities included",
+      "noUtilities": "Utilities not included",
+      "availableBy": "Available by {date}",
+      "leaseShort": "Short-term lease",
+      "lease12": "12-month lease",
+      "travel": "{label}: {minutes} min by {modes}",
+      "travelDefault": "{label}: {minutes} min by {modes} (default)",
+      "safety": "Consider safety",
+      "income": "Income {amount}/year",
+      "people": "{n} people",
+      "area": "In {area}",
+      "near": "Within {km} km of a point",
+      "sort": "Sort: {sort}",
+      "sorts": {
+        "best_match": "best match",
+        "lowest_rent": "lowest rent",
+        "best_value": "best value",
+        "shortest_trips": "shortest trips",
+        "lowest_true_cost": "lowest true monthly cost",
+        "newest": "newest"
+      },
+      "extreme": "{direction} {percentage}% by {field}",
+      "directions": {
+        "min": "Lowest",
+        "max": "Highest"
+      },
+      "extremeFields": {
+        "rent": "rent",
+        "bedrooms": "bedrooms",
+        "bathrooms": "bathrooms",
+        "sizeSqft": "size",
+        "buildingAge": "building age",
+        "travel": "travel time"
+      },
+      "safetyMax": "Crime at most {rate}× city rate"
+    },
+    "panel": {
+      "open": "Filters",
+      "openWithCount": "Filters ({count})",
+      "title": "Filters",
+      "description": "Changes apply when you press Show results. Editing filters never calls AI.",
+      "apply": "Show results",
+      "cancel": "Cancel",
+      "invalid": "Some values don't fit together, for example a minimum above the maximum. Fix them to continue.",
+      "hideUnconfirmed": "Hide listings that don't confirm my must-haves",
+      "hideUnconfirmedHelp": "Listings often leave details out. By default they stay in the results, marked “not confirmed”.",
+      "sections": {
+        "price": "Price",
+        "home": "The home",
+        "travel": "Getting around",
+        "safety": "Safety",
+        "area": "Area"
+      },
+      "any": "Any",
+      "min": "Min",
+      "max": "Max",
+      "minOf": "Minimum {field}",
+      "maxOf": "Maximum {field}",
+      "yes": "Yes",
+      "no": "No",
+      "rent": "Rent per month",
+      "priceFairness": "Price compared with similar listings",
+      "priceFairnessHelp": "Compared with asking rents for similar listings nearby, not signed leases.",
+      "bedrooms": "Bedrooms",
+      "bedroomsHelp": "0 means a studio.",
+      "bathrooms": "Bathrooms",
+      "size": "Size (sq ft)",
+      "unitTypes": "Type of place",
+      "buildingAge": "Year built",
+      "builtAfter": "After",
+      "builtBefore": "Before",
+      "airConditioning": "Air conditioning",
+      "acAny": "Any kind",
+      "acCentral": "Central air only",
+      "pets": "Pets",
+      "petsCats": "Cats",
+      "petsDogs": "Dogs",
+      "petsAny": "Any pets",
+      "furnished": "Furnished",
+      "parking": "Parking",
+      "laundry": "In-suite laundry",
+      "utilities": "Utilities included",
+      "availableBy": "Available by",
+      "leaseTerm": "Lease",
+      "leaseShort": "Short-term",
+      "lease12": "12 months",
+      "travelHelp": "Transit times use TTC schedules for a weekday at 8:30 am. Driving times assume no traffic.",
+      "noTargets": "No places or amenities yet.",
+      "removeTarget": "Remove {label}",
+      "addPlace": "Add a place",
+      "placeLabel": "Place or address",
+      "placePlaceholder": "e.g. Union Station, UofT St. George",
+      "find": "Find",
+      "finding": "Finding…",
+      "whichOne": "Which one do you mean?",
+      "notFound": "We couldn't find “{query}”. Try a landmark or a full street address.",
+      "lookupFailed": "We couldn't look that place up right now. Try again.",
+      "unresolved": "We don't know exactly where this is yet, so no travel time is worked out for it.",
+      "addAmenity": "Add a nearby amenity",
+      "amenityLabel": "Amenity",
+      "add": "Add",
+      "amenities": {
+        "grocery": "Supermarket",
+        "rapid_transit": "Subway or LRT station",
+        "school": "School",
+        "park": "Park",
+        "library": "Library",
+        "pharmacy": "Pharmacy",
+        "clinic": "Clinic",
+        "community_centre": "Community centre",
+        "university": "University or college"
+      },
+      "safetyToggle": "Consider safety",
+      "safetyHelp": "Uses Toronto Police neighbourhood crime rates compared with the city rate. Off unless you turn it on. Rates describe whole neighbourhoods, not a street, a building or the people who live there.",
+      "areaHelp": "Areas come from your request. Picking neighbourhoods on a map comes with the explorer.",
+      "noAreas": "All of Toronto.",
+      "removeArea": "Remove {label}",
+      "sortBy": "Sort by"
+    },
+    "summaryLabel": "Your filters:",
+    "summaryMore": "+{count} more"
+  },
+  "results": {
+    "perMonth": "/month",
+    "perRoom": "/month per room",
+    "studio": "Studio",
+    "beds": "{n} bed",
+    "baths": "{n} bath",
+    "sqft": "{n} sq ft",
+    "built": "Built {year}",
+    "acCentral": "Central air",
+    "acYes": "AC",
+    "acNotStated": "AC not stated",
+    "notes": {
+      "notConfirmed": "{label} not confirmed",
+      "area": "Area",
+      "rent": "Rent",
+      "bedrooms": "Bedrooms",
+      "bathrooms": "Bathrooms",
+      "size": "Size",
+      "unitTypes": "Type of place",
+      "buildingAge": "Year built",
+      "airConditioning": "Air conditioning",
+      "pets": "Pets",
+      "furnished": "Furnished",
+      "parking": "Parking",
+      "laundry": "In-suite laundry",
+      "utilities": "Utilities",
+      "availableBy": "Available by",
+      "lease": "Lease",
+      "priceFairness": "Price compared with similar listings",
+      "safety": "Safety"
+    },
+    "approx": "Approximate location",
+    "price": {
+      "underpriced": "Underpriced",
+      "reasonable": "Reasonably priced",
+      "overpriced": "Overpriced",
+      "unknown": "Not enough data",
+      "below": "{percent}% below similar listings",
+      "above": "{percent}% above similar listings",
+      "inLine": "In line with similar listings",
+      "thin": "Too few similar listings to compare",
+      "note": "Compared with asking rents for {count} similar listings nearby, not signed leases.",
+      "noteThin": "We compare with asking rents for similar listings nearby (not signed leases) and need at least 5 of them to give a label.",
+      "confidence": {
+        "low": "Low confidence",
+        "medium": "Medium confidence",
+        "high": "High confidence"
+      },
+      "more": "About this price check"
+    },
+    "score": "{total} match",
+    "scoreAria": "Match score {total} out of 100. {parts}",
+    "scorePart": "{part} {points}",
+    "parts": {
+      "value": "Value",
+      "price": "Price",
+      "travel": "Travel",
+      "home": "Home",
+      "safety": "Safety"
+    },
+    "travel": {
+      "transit": "{minutes} min by TTC to {target}",
+      "drive": "{minutes} min drive to {target} (no traffic)",
+      "walk": "{minutes} min walk to {target}",
+      "bike": "{minutes} min by bike to {target}",
+      "straightLine": "{km} km to {target} (straight-line, travel time not available)",
+      "missing": "{target}: travel time not available"
+    },
+    "safety": "Police-reported crime: {rate}× the city rate (TPS {years})",
+    "safetyNoData": "Police-reported crime: not enough data",
+    "notConfirmed": "Not confirmed: {items}",
+    "sources": {
+      "kijiji": "Kijiji",
+      "torontorentals": "TorontoRentals.com",
+      "rentals_ca": "Rentals.ca",
+      "zillow": "Zillow",
+      "realtor_ca": "Realtor.ca",
+      "manual": "Hand-checked",
+      "pasted": "Pasted by you"
+    },
+    "seen": "seen {when}",
+    "dataStatus": {
+      "snapshot": "snapshot",
+      "demo": "demo data"
+    },
+    "shortlistAdd": "Add {title} to shortlist",
+    "shortlistRemove": "Remove {title} from shortlist",
+    "map": {
+      "label": "Map of results",
+      "legendTitle": "Match score",
+      "high": "75 and up",
+      "mid": "50 to 74",
+      "low": "Under 50",
+      "approx": "Shaded circle: approximate location",
+      "place": "Your places",
+      "unavailable": "The map couldn't load. The list has every result."
+    },
+    "mobile": {
+      "showMap": "Map",
+      "showList": "List",
+      "closeCard": "Close listing"
+    },
+    "safetyInfo": {
+      "open": "How this works",
+      "title": "How the safety figure works",
+      "what": "Safety is optional and off unless you turn it on. It uses Toronto Police Service neighbourhood crime rates.",
+      "measure": "We add up five major crime types (assault, break and enter, auto theft, robbery, theft over $5,000) per 100,000 residents, averaged over the last three published years, and compare the neighbourhood with the city. \"0.7× the city rate\" means 30% below it.",
+      "ranking": "When it's on, safety is {weight}% of the match score: {full}× the city rate or lower scores 100, {zero}× or higher scores 0, in a straight line between.",
+      "mustHave": "With a limit set, it keeps only neighbourhoods at or below that many times the city rate (the city rate unless you move the slider).",
+      "never": "Every listing in a neighbourhood gets the same figure. Nothing is worked out for a street or a building, and the figure is never a label for a place or the people in it.",
+      "caveatsTitle": "Read before using it"
+    },
+    "safetyLimit": {
+      "label": "Only neighbourhoods up to",
+      "value": "{rate}× the city rate",
+      "none": "No limit",
+      "city": "city",
+      "help": "1.0× is the city rate; lower keeps fewer neighbourhoods. With no limit, safety only changes the ranking."
+    }
+  },
+  "listing": {
+    "title": "Listing",
+    "back": "Back to results",
+    "newSearch": "Start a search",
+    "loading": "Loading this listing…",
+    "notFound": "This listing isn't available any more. It may have been taken down on the source site.",
+    "loadFailed": "We couldn't load this listing right now.",
+    "retry": "Try again",
+    "perMonth": "/month",
+    "perRoom": "/month per room",
+    "viewOnSource": "View on {source}",
+    "sourceNote": "Contact the landlord and apply on the source site; RentThe6ix doesn't host listings.",
+    "seen": "Last seen {when}",
+    "listedSince": "first seen {date}",
+    "dataStatus": {
+      "live": "Live listing",
+      "snapshot": "Snapshot of {date}",
+      "demo": "Demo data"
+    },
+    "alsoOn": "Also on: ",
+    "approxAddress": "Exact address not shown by the source",
+    "sections": {
+      "why": "Why it ranks here",
+      "rent": "Rent check",
+      "home": "The home",
+      "travel": "Getting around",
+      "safety": "Safety",
+      "building": "Building",
+      "area": "The area",
+      "check": "Things to check",
+      "unconfirmed": "Must-haves we couldn't confirm"
+    },
+    "why": {
+      "total": "{total} out of 100",
+      "part": "{score}/100 × {weight}%",
+      "points": "{points} points",
+      "omitted": "Not scored for this search: {parts}. They count once you ask for them or the data exists.",
+      "sum": "The parts add up to the total."
+    },
+    "rent": {
+      "estimate": "Estimated rent for similar homes",
+      "range": "Typical range",
+      "difference": "This listing",
+      "below": "{amount} ({percent}%) below the estimate",
+      "above": "{amount} ({percent}%) above the estimate",
+      "inLine": "In line with the estimate",
+      "basis": "Based on {count} similar listings within {km} km, seen in the last {days} days. {confidence}.",
+      "thin": "Not enough data: {count} similar listings within {km} km (at least 5 are needed for a price label).",
+      "asking": "Compared with asking rents for similar listings, not signed leases.",
+      "comparables": "Similar listings",
+      "colRent": "Rent",
+      "colAdjusted": "On this listing's terms",
+      "colDistance": "Distance",
+      "colSeen": "Last seen",
+      "view": "View",
+      "adjustments": "Adjustments to compare like with like",
+      "benchmark": "Benchmark",
+      "benchmarkValue": "{label}: {value} ({period})",
+      "benchmarkNone": "City-wide benchmark (Statistics Canada, CMHC) isn't loaded yet.",
+      "mapNote": "A map of these listings needs their locations, which aren't available yet."
+    },
+    "fields": {
+      "bedrooms": "Bedrooms",
+      "bathrooms": "Bathrooms",
+      "size": "Size",
+      "unitType": "Type of place",
+      "yearBuilt": "Year built",
+      "airConditioning": "Air conditioning",
+      "pets": "Pets",
+      "furnished": "Furnished",
+      "parking": "Parking",
+      "laundry": "In-suite laundry",
+      "utilities": "Utilities",
+      "availableFrom": "Available from",
+      "leaseTerm": "Lease",
+      "location": "Location"
+    },
+    "values": {
+      "notStated": "Not stated",
+      "aiRead": "read from the description",
+      "yes": "Yes",
+      "no": "No",
+      "studio": "Studio",
+      "sqft": "{n} sq ft",
+      "yearFrom": "{year} (from {source})",
+      "yearSource": {
+        "rentsafeto": "RentSafeTO",
+        "ai_extracted": "the description"
+      },
+      "lease12": "12 months",
+      "leaseShort": "Short-term",
+      "ac": {
+        "central": "Central air",
+        "yes": "Yes (type not stated)",
+        "no": "No"
+      },
+      "pets": {
+        "yes": "Allowed",
+        "no": "Not allowed",
+        "cats_only": "Cats only",
+        "dogs_only": "Dogs only"
+      },
+      "utilities": {
+        "yes": "Included",
+        "partial": "Some included",
+        "no": "Not included"
+      },
+      "precision": {
+        "exact": "Exact address",
+        "street": "Street-level (approximate)",
+        "area": "Neighbourhood only (approximate)"
+      }
+    },
+    "travel": {
+      "none": "Add a place or an amenity in Filters to see travel times from here.",
+      "chosen": "your choice",
+      "routed": "{minutes} min",
+      "routedDrive": "{minutes} min, no traffic",
+      "straightLine": "{km} km straight-line",
+      "missing": "Not available",
+      "note": "Transit uses TTC schedules for a weekday at 8:30 am. Driving assumes no traffic. Straight-line distance is shown where a travel time isn't available yet, never as minutes."
+    },
+    "safety": {
+      "rate": "Police-reported major crime here: {rate}× the city rate ({years} average, Toronto Police Service).",
+      "noData": "Police-reported crime rates for this neighbourhood aren't available.",
+      "byType": "By type, per 100,000 residents",
+      "types": {
+        "assault": "Assault",
+        "autotheft": "Auto theft",
+        "breakenter": "Break and enter",
+        "robbery": "Robbery",
+        "theftover": "Theft over $5,000"
+      }
+    },
+    "building": {
+      "none": "No RentSafeTO record is available for this building yet. The City's RentSafeTO program covers apartment buildings with 3 or more storeys and 10 or more units; houses and smaller buildings aren't evaluated."
+    },
+    "area": {
+      "none": "Neighbourhood facts (renters, rent burden, transit, development nearby) aren't loaded yet.",
+      "indicator": "{value} {unit}",
+      "source": "{period} · source: {source}",
+      "sample": "based on {n}"
+    },
+    "check": {
+      "none": "Nothing flagged."
+    },
+    "explanation": "In plain words",
+    "indicators": {
+      "median_asking_rent_0br": "Typical asking rent here, studio",
+      "median_asking_rent_1br": "Typical asking rent here, 1 bedroom",
+      "median_asking_rent_2br": "Typical asking rent here, 2 bedrooms",
+      "median_asking_rent_3br": "Typical asking rent here, 3+ bedrooms",
+      "listing_count_30d": "Listings seen here in the last 30 days",
+      "renter_households_pct": "Renter households",
+      "renters_shelter_cost_30pct": "Renters spending 30%+ of income on shelter",
+      "median_household_income": "Median household income",
+      "rentsafeto_avg_score": "Average RentSafeTO score",
+      "rentsafeto_buildings": "RentSafeTO buildings",
+      "dev_applications_12m": "Development applications in the last 12 months",
+      "residential_units_proposed_12m": "Homes proposed in the last 12 months",
+      "transit_stops_per_km2": "Transit stops per km²",
+      "rapid_transit_within_800m_pct": "Area within 800 m of rapid transit",
+      "libraries": "Libraries",
+      "parks_ha_per_1000": "Park space per 1,000 residents (ha)"
+    }
+  },
+  "shortlist": {
+    "title": "Your shortlist",
+    "intro": "Saved in this browser only. Nothing is sent to our server.",
+    "count": "{n} saved",
+    "empty": "Nothing saved yet. Tap the bookmark on any listing to keep it here.",
+    "startSearch": "Start a search",
+    "savedOn": "Saved {date}",
+    "pasted": "Pasted listing",
+    "asSaved": "Rents and details are shown as they were when you saved each listing. Open one to see its latest.",
+    "clear": {
+      "button": "Clear my data",
+      "title": "Clear my data?",
+      "body": "This removes your shortlist and your last search from this browser. It can’t be undone.",
+      "confirm": "Clear my data",
+      "cancel": "Cancel",
+      "done": "Your shortlist and last search were removed from this browser."
+    }
+  },
+  "areas": {
+    "mapPending": "The neighbourhood map is still being built. It will show one indicator at a time for the 158 neighbourhoods or 25 wards, with its source.",
+    "wardsTitle": "Ward pages",
+    "wardsIntro": "Each of Toronto’s 25 city wards has a page with official election information. Housing briefings are on the way.",
+    "ward": {
+      "title": "Ward {n}",
+      "intro": "One of Toronto’s 25 city wards. Figures describe the whole ward, not a street, a building or the people who live there.",
+      "briefingTitle": "Housing in your ward",
+      "briefingPending": "This briefing isn’t ready yet. It will be three short paragraphs on rents and affordability, housing stock and conditions, and growth and development, written only from the figures below. Every number in it is checked against those figures.",
+      "figuresTitle": "The figures behind it",
+      "figuresPending": "Ward figures aren’t loaded yet. Each one will show this ward, the city, the period it covers and its source."
+    },
+    "election": {
+      "title": "Municipal election: {date}",
+      "hours": "Voting places are open 10 a.m. to 8 p.m. on election day.",
+      "advanceUpcoming": "Advance voting: {dates}, 10 a.m. to 7 p.m.",
+      "advancePast": "Advance voting ran {dates}.",
+      "myVote": "Find where and when to vote (MyVote)",
+      "candidates": "Official candidate list",
+      "keyDates": "Key election dates",
+      "resultsTitle": "Municipal election results",
+      "results": "Official results from the City of Toronto",
+      "note": "From the City of Toronto’s election pages. RentThe6ix doesn’t summarize, compare or rank candidates or platforms."
+    }
+  },
+  "paste": {
+    "intro": "Found a place in a Facebook group, on Craigslist or on a building’s own site? Paste the ad or its link and we’ll check it the way we check our own listings: the rent against similar homes nearby, and how it fits your search.",
+    "tabText": "Paste the text",
+    "tabLink": "Paste a link",
+    "textLabel": "Listing text",
+    "textPlaceholder": "Paste the whole ad: rent, bedrooms, address and anything else it says.",
+    "textCount": "{n} of {max} characters",
+    "linkLabel": "Link to a public listing page",
+    "linkHelp": "Public pages only. We fetch the page once and don’t keep it.",
+    "linkInvalid": "Enter a full link starting with http:// or https://.",
+    "againstSearch": "It will be compared with your search: “{prompt}”.",
+    "noSearch": "You haven’t searched yet, so it won’t be compared with a search.",
+    "submit": "Check this listing",
+    "checking": "Checking…",
+    "privacy": "Pasted listings are never stored on our server. If you save one, it stays in this browser’s shortlist.",
+    "unavailableTitle": "Checking pasted listings isn’t available yet",
+    "unavailable": "This part of RentThe6ix is still being built. Nothing you pasted was stored.",
+    "save": "Save to shortlist",
+    "saved": "Saved to your shortlist",
+    "errors": {
+      "rate_limited": "Too many checks at once. Try again in {seconds} seconds.",
+      "service_unavailable": "Checking is busy right now. Try again in a minute.",
+      "network_error": "We couldn’t reach RentThe6ix. Check your connection and try again.",
+      "default": "Something went wrong checking this listing. Try again, or paste the text instead of a link."
+    }
+  }
+}
