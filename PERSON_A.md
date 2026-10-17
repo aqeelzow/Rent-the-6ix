@@ -6,10 +6,10 @@ Task ids match `PROGRESS.md`; task details are in `SPEC.md`.
 
 ## Current state
 
-- **Current task:** P2.35 live results, then the listing detail page (P2.30–P2.36)
+- **Current task:** listing detail page (P2.30–P2.36)
 - **Status:** in progress
 - **Branch:** `a/P2.30-listing-detail` (P1.30–P1.35 merged to `main` via PR #7)
-- **Next action:** P2.35: cap the live list (top 50, "Show more"), a clear long-wait state, and recovery from 503s. Then the detail page: render from the search result in the store, and add `GET /api/listings/[id]?intent=…` extras (areas, indicators, duplicates, all travel rows) when they arrive.
+- **Next action:** the detail page: render from the search result in the store, and add `GET /api/listings/[id]?intent=…` extras (areas, indicators, duplicates, all travel rows) when they arrive.
 - **Blockers / needs from others:** see "Depends on others". Nothing blocks starting; travel, building, area and benchmark sections show "not available yet" until D delivers.
 - **Last updated:** 2026-10-17
 
@@ -83,8 +83,8 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked · `[-]` 
 - [x] P1.35 Mobile: list with sticky Map toggle, bottom sheet on pin tap, filters as a sheet
 
 ### S2 → S3 (H10–H18) — Live search & detail · Core
-- [~] P2.35 Wire results to B's live `/api/listings/search`; loading, empty and error states
-- [ ] P2.30 Listing detail page layout and header (rent, beds/baths, address or area, source button, freshness, data status)
+- [x] P2.35 Wire results to B's live `/api/listings/search`; loading, empty and error states
+- [~] P2.30 Listing detail page layout and header (rent, beds/baths, address or area, source button, freshness, data status)
 - [ ] P2.31 Rent check: price label, estimate, range, difference, confidence, comparables table + mini map, adjustments, benchmark
 - [ ] P2.33 The home: size, year built + source, AC, other fields, unknowns marked
 - [ ] P2.32 Getting around: each target with the amenity/place reached and its time by transit, car, walk and bike, chosen mode highlighted, method labels

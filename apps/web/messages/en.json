@@ -91,7 +91,10 @@
       "search_routing_incomplete": "We couldn't work out every travel time for this search. Try again shortly.",
       "search_job_expired": "This search expired. Run it again.",
       "default": "Something went wrong with this search. Try again."
-    }
+    },
+    "searchingElapsed": "Finding listings… {seconds} s",
+    "slowHint": "Searching thousands of listings can take a minute or two.",
+    "showMore": "Show {count} more"
   },
   "status": {
     "title": "System status",

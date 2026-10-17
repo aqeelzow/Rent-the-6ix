@@ -34,6 +34,8 @@ export interface SearchSlice {
   /** "Hide listings that don't confirm my must-haves" (SPEC 7.1). */
   hideUnconfirmed: boolean;
   status: SearchStatus;
+  /** When the current parse or search started (ms), for the "taking a while" message. */
+  busySince: number | null;
   error: ApiError | null;
   /** Goes up by one on every parse or search; responses to older requests are dropped. */
   searchRequestId: number;
@@ -81,6 +83,7 @@ export const createSearchSlice: StateCreator<SearchSlice, [], [], SearchSlice> =
   notices: [],
   hideUnconfirmed: false,
   status: "idle",
+  busySince: null,
   error: null,
   searchRequestId: 0,
   shortlist: [],
@@ -98,7 +101,13 @@ export const createSearchSlice: StateCreator<SearchSlice, [], [], SearchSlice> =
 
   startParse: (prompt) => {
     const requestId = get().searchRequestId + 1;
-    set({ searchRequestId: requestId, status: "parsing", parsingPrompt: prompt, error: null });
+    set({
+      searchRequestId: requestId,
+      status: "parsing",
+      parsingPrompt: prompt,
+      busySince: Date.now(),
+      error: null,
+    });
     return requestId;
   },
 
@@ -116,7 +125,7 @@ export const createSearchSlice: StateCreator<SearchSlice, [], [], SearchSlice> =
 
   startSearch: () => {
     const requestId = get().searchRequestId + 1;
-    set({ searchRequestId: requestId, status: "searching", error: null });
+    set({ searchRequestId: requestId, status: "searching", busySince: Date.now(), error: null });
     return requestId;
   },
 
@@ -129,6 +138,7 @@ export const createSearchSlice: StateCreator<SearchSlice, [], [], SearchSlice> =
       eligibleCount: response.eligibleCount,
       notices: response.notices,
       status: "ready",
+      busySince: null,
       error: null,
       // A listing that dropped out of the results can't stay highlighted.
       hoveredListingId: hoveredListingId && ids.has(hoveredListingId) ? hoveredListingId : null,
@@ -139,7 +149,7 @@ export const createSearchSlice: StateCreator<SearchSlice, [], [], SearchSlice> =
   receiveError: (requestId, error) => {
     if (requestId !== get().searchRequestId) return;
     // Keep the previous results on screen; the UI shows the error next to them.
-    set({ status: "error", error, parsingPrompt: null });
+    set({ status: "error", error, parsingPrompt: null, busySince: null });
   },
 
   toggleShortlist: (id) => {

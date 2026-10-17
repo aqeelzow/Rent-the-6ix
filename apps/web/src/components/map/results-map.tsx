@@ -37,11 +37,6 @@ const bandColor: ExpressionSpecification = [
   BAND_COLORS.low,
 ];
 
-/** Scrolls the results list to a listing's card (the selection contract's "select"). */
-function scrollToCard(id: string) {
-  document.getElementById(`listing-${id}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
-}
-
 /**
  * Results map (SPEC 12): clustered pins coloured by score band, approximate locations as circles,
  * place pins. Hover and select are shared with the list through the store.
@@ -247,8 +242,8 @@ function bindEvents(map: MapLibreMap) {
     map.on("click", layer, (event) => {
       const id = event.features?.[0]?.properties?.id;
       if (typeof id !== "string") return;
+      // The list scrolls to the card itself, once it's rendered (it may be past "Show more").
       setSelectedListingId(id);
-      scrollToCard(id);
     });
   }
   map.on("click", "clusters", async (event) => {

@@ -33,7 +33,7 @@ type Result = { ok: true; json: unknown } | { ok: false; error: ApiError };
 async function request(
   fetchFn: typeof fetch,
   url: string,
-  init: { method: "GET" | "POST"; body?: unknown },
+  init: { method: "GET" | "POST"; body?: unknown; signal?: AbortSignal },
 ): Promise<Result> {
   let response: Response;
   try {
@@ -41,6 +41,7 @@ async function request(
       method: init.method,
       headers: init.body === undefined ? undefined : { "Content-Type": "application/json" },
       body: init.body === undefined ? undefined : JSON.stringify(init.body),
+      signal: init.signal,
     });
   } catch {
     return {
@@ -90,6 +91,9 @@ export async function parseAndSearch(prompt: string, options: ActionOptions = {}
   await runSearch(options);
 }
 
+// The search in flight; a newer search cancels it so slow live searches don't pile up.
+let inFlight: AbortController | null = null;
+
 /** Searches with the current intent, without calling the parser (chip and filter edits). */
 export async function runSearch(options: ActionOptions = {}): Promise<void> {
   const store = options.store ?? appStore;
@@ -102,10 +106,15 @@ export async function runSearch(options: ActionOptions = {}): Promise<void> {
   if (!intent) return;
   const requestId = store.getState().startSearch();
   const isCurrent = () => store.getState().searchRequestId === requestId;
+  inFlight?.abort();
+  const controller = new AbortController();
+  inFlight = controller;
+  const { signal } = controller;
 
   let response = await request(fetchFn, "/api/listings/search", {
     method: "POST",
     body: { intent, hideUnconfirmed },
+    signal,
   });
 
   for (;;) {
@@ -132,7 +141,7 @@ export async function runSearch(options: ActionOptions = {}): Promise<void> {
     }
     await sleep(pollIntervalMs);
     if (!isCurrent()) return;
-    response = await request(fetchFn, result.pollUrl, { method: "GET" });
+    response = await request(fetchFn, result.pollUrl, { method: "GET", signal });
   }
 }
 

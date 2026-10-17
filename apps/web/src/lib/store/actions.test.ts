@@ -163,6 +163,32 @@ describe("runSearch", () => {
     expect(store.getState().status).toBe("searching");
   });
 
+  it("cancels a search that's still in flight when a newer one starts", async () => {
+    const signals: AbortSignal[] = [];
+    let release: (value: Response) => void = () => {};
+    const fetch = vi.fn(
+      (_url: string | URL | Request, init?: RequestInit) =>
+        new Promise<Response>((resolve, reject) => {
+          signals.push(init!.signal!);
+          if (signals.length === 1) {
+            init!.signal!.addEventListener("abort", () =>
+              reject(new DOMException("Aborted", "AbortError")),
+            );
+          } else release = resolve;
+        }),
+    ) as unknown as typeof globalThis.fetch;
+
+    const first = runSearch(options(fetch));
+    const second = runSearch(options(fetch));
+    release(Response.json(searchFixture));
+    await Promise.all([first, second]);
+
+    expect(signals[0]?.aborted).toBe(true);
+    expect(signals[1]?.aborted).toBe(false);
+    expect(store.getState().status).toBe("ready");
+    expect(store.getState().error).toBeNull();
+  });
+
   it("does nothing without an intent", async () => {
     store.getState().setIntent(null);
     const { fetch, calls } = fakeFetch();
