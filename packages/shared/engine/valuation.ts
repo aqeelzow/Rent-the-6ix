@@ -71,6 +71,8 @@ export interface Valuation {
   differencePct?: number;
   priceLabel: PriceLabel | "unknown";
   comparableCount: number;
+  /** Comparables after the same-building cap (SPEC 7.2); drives the five-comparable floor and confidence. */
+  effectiveCount: number;
   radiusM: number;
   windowDays: number;
   confidence: Confidence;
@@ -100,7 +102,13 @@ export function valuate(
     C.radiiM.find((r) => effectiveCount(withinRadius(pool, r)) >= C.minComparables) ?? widest;
   const chosen = withinRadius(pool, radiusM);
   const effective = effectiveCount(chosen);
-  const base = { radiusM, windowDays: C.windowDays, benchmark, comparableCount: chosen.length };
+  const base = {
+    radiusM,
+    windowDays: C.windowDays,
+    benchmark,
+    comparableCount: chosen.length,
+    effectiveCount: effective,
+  };
 
   const adjustments = new Map<string, Adjustment>();
   const points: { value: number; weight: number }[] = [];
