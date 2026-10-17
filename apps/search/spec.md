@@ -38,9 +38,10 @@ This subservice will also need to be able to query for locations by natural lang
 ## Validation
 
 User query with natural language: something like
-- "I'm looking for houses or apartments around the university of toronto. Should be within 10 minutes biking distance"
+- "I'm looking for houses or apartments around the university of toronto. Should be within 10 minutes biking distance. Around 3-5k per"
   - Locate the university of toronto general area, since no specific building is specified
-  - Determine time
+  - Calculate and filter by time
+  - 3-5k price range
 - "I work at TD Canada on bay st and queens st w. I'm looking for a place to commute, bike, or walk to work, and it should take no longer than 10 minutes."
   - Locate the relevant TD location
   - Assume one person, since no other people are mentionned
