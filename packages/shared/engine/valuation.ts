@@ -110,18 +110,6 @@ export function valuate(
     effectiveCount: effective,
   };
 
-  if (effective < C.minComparables) {
-    return {
-      ...base,
-      status: "insufficient_data",
-      priceLabel: "unknown",
-      confidence: "low",
-      comparables: [],
-      adjustments: [],
-      method: `Fewer than ${C.minComparables} comparable listings within ${km(widest)} in the last ${C.windowDays} days${chosen.length > effective ? ` (floor plans in one building count as at most ${C.maxPerBuilding})` : ""}.`,
-    };
-  }
-
   const adjustments = new Map<string, Adjustment>();
   const points: { value: number; weight: number }[] = [];
   const perBuilding = groupSizes(chosen);
@@ -149,6 +137,19 @@ export function valuate(
       lastSeenAt: c.lastSeenAt,
     };
   });
+
+  if (effective < C.minComparables) {
+    return {
+      ...base,
+      status: "insufficient_data",
+      priceLabel: "unknown",
+      confidence: "low",
+      // The few that were found are still listed, so the shortfall is visible.
+      comparables: comparables.sort((a, b) => b.weight - a.weight || a.distanceM - b.distanceM),
+      adjustments: [...adjustments.values()],
+      method: `Fewer than ${C.minComparables} comparable listings within ${km(widest)} in the last ${C.windowDays} days${chosen.length > effective ? ` (floor plans in one building count as at most ${C.maxPerBuilding})` : ""}.`,
+    };
+  }
 
   const estimate = Math.round(weightedQuantile(points, 0.5));
   const low = Math.round(weightedQuantile(points, 0.25));

@@ -9,12 +9,15 @@
     "test": "vitest run --passWithNoTests",
     "start": "node --env-file-if-exists=../../.env.local src/index.ts",
     "ingest:once": "node --env-file-if-exists=../../.env.local src/ingest.ts",
-    "browser:install": "cloakbrowser install"
+    "browser:install": "cloakbrowser install",
+    "load:cache": "node --env-file-if-exists=../../.env.local src/load-cache.ts",
+    "dedupe:listings": "node --env-file-if-exists=../../.env.local src/dedupe.ts"
   },
   "dependencies": {
     "@rentthe6ix/shared": "workspace:*",
     "cloakbrowser": "^0.6.3",
-    "playwright-core": "^1.64.1"
+    "playwright-core": "^1.64.1",
+    "postgres": "^3.4.9"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.5",

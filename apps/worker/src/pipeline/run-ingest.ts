@@ -1,12 +1,15 @@
 // One listing collection run over the given sources, used by `pnpm ingest:once` and the schedule.
 // Until the database pipeline lands (P1.5–P1.6), normalized listings (scrubbed, description →
-// excerpt) are written to the git-ignored apps/worker/.cache/ingest/ as JSON, with field coverage,
+// excerpt) are written to the git-ignored apps/worker/.cache/ingest/ as JSON (every 10 index
+// pages, then once more with detail pages merged), with field coverage,
 // and the run summary to .cache/ingest/last-run.json (the stats /status will show).
 import { mkdir, writeFile } from "node:fs/promises";
 import { openSession, SourceBlockedError } from "../lib/fetch.ts";
 import { sources } from "../sources/index.ts";
 import type { DetailPatch, RawListing, SourceAdapter, SourceId } from "../sources/types.ts";
 import type { Session } from "../lib/fetch.ts";
+import type { Sql } from "postgres";
+import { openDb } from "../lib/db.ts";
 import {
   applyPatch,
   loadDetailCache,
@@ -15,6 +18,8 @@ import {
   scrubPatch,
 } from "./details.ts";
 import { normalize, type NormalizedListing } from "./normalize.ts";
+import { dedupeStored } from "./dedupe-store.ts";
+import { markFreshness, upsertListings } from "./upsert.ts";
 
 export interface SourceRun {
   source: SourceId;
@@ -25,6 +30,8 @@ export interface SourceRun {
   dropped: number;
   /** Detail pages fetched this run (new or changed listings, up to maxDetails). */
   details: number;
+  /** Rows written to TigerData (0 when DATABASE_URL isn't set). */
+  stored: number;
   message?: string;
 }
 
@@ -33,6 +40,8 @@ export interface IngestOptions {
   maxPages: number;
   /** Detail pages per source per run; each costs one request (INGEST_REQUEST_DELAY_MS). */
   maxDetails: number;
+  /** Resume a single-source run from this index cursor (e.g. "55"); first page if absent. */
+  cursor?: string;
 }
 
 export interface IngestResult {
@@ -48,7 +57,7 @@ const DEFAULT_SOURCES = "kijiji,torontorentals,zillow,realtor_ca";
  * `manual` is loaded separately.
  */
 export function ingestOptionsFromEnv(
-  overrides: { sources?: string; pages?: string; details?: string } = {},
+  overrides: { sources?: string; pages?: string; details?: string; cursor?: string } = {},
 ): IngestOptions {
   const list = overrides.sources ?? process.env.INGEST_SOURCES ?? DEFAULT_SOURCES;
   return {
@@ -58,12 +67,15 @@ export function ingestOptionsFromEnv(
       .filter((s) => s && s !== "manual"),
     maxPages: Number(overrides.pages ?? process.env.INGEST_MAX_PAGES ?? 3),
     maxDetails: Number(overrides.details ?? process.env.INGEST_MAX_DETAILS ?? 50),
+    cursor: overrides.cursor,
   };
 }
 
 export async function runIngest(options: IngestOptions): Promise<IngestResult> {
   const outDir = new URL("../../.cache/ingest/", import.meta.url);
   await mkdir(outDir, { recursive: true });
+  // With DATABASE_URL, every checkpoint and the final rows are also upserted into TigerData.
+  const db = openDb();
 
   const runs: SourceRun[] = [];
   for (const id of options.sources) {
@@ -76,6 +88,7 @@ export async function runIngest(options: IngestOptions): Promise<IngestResult> {
         listings: 0,
         dropped: 0,
         details: 0,
+        stored: 0,
         message: "unknown source",
       });
       continue;
@@ -87,15 +100,24 @@ export async function runIngest(options: IngestOptions): Promise<IngestResult> {
       listings: 0,
       dropped: 0,
       details: 0,
+      stored: 0,
     };
     const raws: RawListing[] = [];
     // Featured listings repeat on later index pages (torontorentals); keep the first copy.
     const seen = new Set<string>();
+    // One file per source per run, rewritten every few pages so a crash or stop loses little.
+    // The run's start time is also when its listings count as seen.
+    const observedAt = new Date().toISOString();
+    const file = new URL(`${adapter.id}-${observedAt.replace(/[:.]/g, "-")}.json`, outDir);
+    const save = async (rows: NormalizedListing[]) => {
+      await writeRows(file, rows);
+      if (db) run.stored = await store(db, adapter.id, rows, observedAt);
+    };
     const session = await openSession();
     try {
-      let cursor: string | null = null;
+      let cursor: string | null = options.cursor ?? null;
       do {
-        const page = await adapter.fetchIndex(session, cursor);
+        const page = await fetchIndexWithRetry(adapter, session, cursor);
         for (const raw of page.listings) {
           if (seen.has(raw.sourceListingId)) continue;
           seen.add(raw.sourceListingId);
@@ -104,6 +126,7 @@ export async function runIngest(options: IngestOptions): Promise<IngestResult> {
         run.pages++;
         cursor = page.nextCursor;
         console.log(`${adapter.id}: page ${run.pages}, ${page.listings.length} listings`);
+        if (run.pages % CHECKPOINT_PAGES === 0) await save(normalizeAll(raws).rows);
       } while (cursor && run.pages < options.maxPages);
       await addDetails(adapter, session, raws, options.maxDetails, run);
     } catch (error) {
@@ -113,28 +136,88 @@ export async function runIngest(options: IngestOptions): Promise<IngestResult> {
     } finally {
       await session.close();
     }
-    const rows: NormalizedListing[] = [];
-    for (const raw of raws) {
-      const listing = normalize(raw);
-      if (listing) rows.push(listing);
-      else run.dropped++;
-    }
+    const { rows, dropped } = normalizeAll(raws);
+    run.dropped = dropped;
     run.listings = rows.length;
     runs.push(run);
     if (rows.length) {
-      const file = new URL(
-        `${adapter.id}-${new Date().toISOString().replace(/[:.]/g, "-")}.json`,
-        outDir,
-      );
-      await writeFile(file, JSON.stringify(rows, null, 2));
+      await save(rows);
       console.log(`${adapter.id}: wrote ${rows.length} listings to ${file.pathname}`);
+      if (db) console.log(`${adapter.id}: ${run.stored} listings in TigerData`);
       console.log(`${adapter.id}: field coverage ${coverage(rows)}`);
     }
   }
 
+  if (db) {
+    try {
+      console.log(`freshness: ${await markFreshness(db, new Date())} listings changed status`);
+      const dedupe = await dedupeStored(db);
+      console.log(`dedupe: ${dedupe.duplicates} of ${dedupe.listings} listings are duplicates`);
+    } finally {
+      await db.end();
+    }
+  }
   const result = { finishedAt: new Date().toISOString(), runs };
   await writeFile(new URL("last-run.json", outDir), JSON.stringify(result, null, 2));
   return result;
+}
+
+/** A database error is logged, not fatal: the JSON file still has the run. */
+async function store(
+  db: Sql,
+  source: SourceId,
+  rows: NormalizedListing[],
+  observedAt: string,
+): Promise<number> {
+  try {
+    return (await upsertListings(db, rows, observedAt)).written;
+  } catch (error) {
+    console.error(
+      `${source}: TigerData upsert failed: ${error instanceof Error ? error.message : error}`,
+    );
+    return 0;
+  }
+}
+
+const INDEX_ATTEMPTS = 3;
+
+/**
+ * A page whose results arrive late ("no results response") is tried again before the source is
+ * given up; a block never is.
+ */
+async function fetchIndexWithRetry(
+  adapter: SourceAdapter,
+  session: Session,
+  cursor: string | null,
+) {
+  for (let attempt = 1; ; attempt++) {
+    try {
+      return await adapter.fetchIndex(session, cursor);
+    } catch (error) {
+      if (error instanceof SourceBlockedError || attempt >= INDEX_ATTEMPTS) throw error;
+      console.error(
+        `${adapter.id}: retrying index page (${attempt}/${INDEX_ATTEMPTS - 1}): ${String(error)}`,
+      );
+    }
+  }
+}
+
+/** Rewrite the source's file every this many index pages. */
+const CHECKPOINT_PAGES = 10;
+
+function normalizeAll(raws: RawListing[]): { rows: NormalizedListing[]; dropped: number } {
+  const rows: NormalizedListing[] = [];
+  let dropped = 0;
+  for (const raw of raws) {
+    const listing = normalize(raw);
+    if (listing) rows.push(listing);
+    else dropped++;
+  }
+  return { rows, dropped };
+}
+
+async function writeRows(file: URL, rows: NormalizedListing[]): Promise<void> {
+  await writeFile(file, JSON.stringify(rows, null, 2));
 }
 
 const MAX_DETAIL_FAILURES = 3;

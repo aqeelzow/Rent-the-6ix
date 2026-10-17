@@ -1,14 +1,89 @@
 // Realtor.ca rentals in Toronto. The map page loads results from
 // api2.realtor.ca/Listing.svc/PropertySearch_Post; we capture that response while the page loads.
+// One map view serves at most 600 results (MaxRecords), so the Toronto box is split into tiles:
+// a view that reports more than it serves is split in four, until every tile fits.
 // Realtor.ca answers plain Playwright with "Sorry, you have been blocked" (403); CloakBrowser gets
 // through and the parser was checked against a live response on 2026-10-16 (SOURCES.md).
 import { htmlToText } from "../lib/text.ts";
 import { emptyRawListing, type DetailPatch, type RawListing, type SourceAdapter } from "./types.ts";
 
 const ORIGIN = "https://www.realtor.ca";
-// Toronto bounding box, rentals only (TransactionTypeId=3).
-const MAP_HASH =
-  "ZoomLevel=11&Center=43.718%2C-79.378&LatitudeMax=43.856&LongitudeMax=-79.115&LatitudeMin=43.581&LongitudeMin=-79.639&TransactionTypeId=3&PropertySearchTypeId=0&Currency=CAD";
+
+export interface Box {
+  latMin: number;
+  latMax: number;
+  lngMin: number;
+  lngMax: number;
+}
+
+/** City of Toronto bounding box (also catches some of Vaughan and Mississauga; geocode drops them). */
+export const TORONTO_BOX: Box = {
+  latMin: 43.581,
+  latMax: 43.856,
+  lngMin: -79.639,
+  lngMax: -79.115,
+};
+/** Tiles under ~1.1 km tall (2 × this) aren't split again: that many rentals there is a few big buildings. */
+const MIN_TILE_DEG = 0.005;
+const DEFAULT_MAX_RECORDS = 600;
+
+/** Map page URL for a box, rentals only (TransactionTypeId=3). */
+export function realtorMapUrl(box: Box, page: number): string {
+  const lat = (box.latMin + box.latMax) / 2;
+  const lng = (box.lngMin + box.lngMax) / 2;
+  const zoom = Math.max(
+    11,
+    Math.min(16, Math.round(11 + Math.log2(0.275 / (box.latMax - box.latMin)))),
+  );
+  const hash = new URLSearchParams({
+    ZoomLevel: String(zoom),
+    Center: `${lat.toFixed(4)},${lng.toFixed(4)}`,
+    LatitudeMax: box.latMax.toFixed(4),
+    LongitudeMax: box.lngMax.toFixed(4),
+    LatitudeMin: box.latMin.toFixed(4),
+    LongitudeMin: box.lngMin.toFixed(4),
+    TransactionTypeId: "3",
+    PropertySearchTypeId: "0",
+    Currency: "CAD",
+    CurrentPage: String(page),
+  });
+  return `${ORIGIN}/map#${hash}`;
+}
+
+/** Tiles still to visit and the page of the first one. */
+export interface TileCursor {
+  queue: Box[];
+  page: number;
+}
+
+/** Where to go after a page: next page, split the tile, next tile, or done (null). */
+export function nextTileCursor(
+  state: TileCursor,
+  paging: RealtorResponse["Paging"],
+): TileCursor | null {
+  const [box, ...rest] = state.queue;
+  const totalRecords = paging?.TotalRecords ?? 0;
+  const maxRecords = paging?.MaxRecords ?? DEFAULT_MAX_RECORDS;
+  if (state.page === 1 && totalRecords > maxRecords && box.latMax - box.latMin > MIN_TILE_DEG * 2)
+    return { queue: [...split(box), ...rest], page: 1 };
+  if (state.page < (paging?.TotalPages ?? 0)) return { queue: state.queue, page: state.page + 1 };
+  return rest.length ? { queue: rest, page: 1 } : null;
+}
+
+function split(b: Box): Box[] {
+  const lat = round4((b.latMin + b.latMax) / 2);
+  const lng = round4((b.lngMin + b.lngMax) / 2);
+  return [
+    { latMin: lat, latMax: b.latMax, lngMin: b.lngMin, lngMax: lng },
+    { latMin: lat, latMax: b.latMax, lngMin: lng, lngMax: b.lngMax },
+    { latMin: b.latMin, latMax: lat, lngMin: b.lngMin, lngMax: lng },
+    { latMin: b.latMin, latMax: lat, lngMin: lng, lngMax: b.lngMax },
+  ];
+}
+
+function round4(n: number): number {
+  return Math.round(n * 10_000) / 10_000;
+}
 
 interface RealtorResult {
   Id?: string;
@@ -32,7 +107,12 @@ interface RealtorResult {
 }
 
 interface RealtorResponse {
-  Paging?: { CurrentPage?: number; TotalPages?: number } | null;
+  Paging?: {
+    CurrentPage?: number;
+    TotalPages?: number;
+    TotalRecords?: number;
+    MaxRecords?: number;
+  } | null;
   Results?: RealtorResult[];
 }
 
@@ -45,7 +125,8 @@ export function findRealtorResults(bodies: unknown[]): RealtorResponse | null {
 export function parseRealtor(response: RealtorResponse): RawListing[] {
   const listings: RawListing[] = [];
   for (const r of response.Results ?? []) {
-    const rent = money(r.Property?.LeaseRent ?? r.Property?.Price);
+    // Only LeaseRent: a sale listing (Price only) sometimes slips into the first response.
+    const rent = money(r.Property?.LeaseRent);
     if (!r.MlsNumber || !r.RelativeDetailsURL || !rent) continue;
     // "2 + 1" = two bedrooms plus a den.
     const [beds, plus] = (r.Building?.Bedrooms ?? "").split("+").map((s) => s.trim());
@@ -126,16 +207,17 @@ export const realtorCa: SourceAdapter = {
   id: "realtor_ca",
   displayName: "Realtor.ca",
   async fetchIndex(session, cursor) {
-    const page = cursor ? Number(cursor) : 1;
-    const { json } = await session.visit(`${ORIGIN}/map#${MAP_HASH}&CurrentPage=${page}`, {
+    const state: TileCursor = cursor ? JSON.parse(cursor) : { queue: [TORONTO_BOX], page: 1 };
+    const url = realtorMapUrl(state.queue[0], state.page);
+    const { json } = await session.visit(url, {
       captureJson: (u) => u.includes("PropertySearch_Post"),
       settleMs: 4000,
     });
     const response = findRealtorResults(json);
     if (!response)
-      throw new Error(`realtor_ca: no results response on page ${page} (page layout changed?)`);
-    const total = response.Paging?.TotalPages ?? 0;
-    return { listings: parseRealtor(response), nextCursor: page < total ? String(page + 1) : null };
+      throw new Error(`realtor_ca: no results response on ${url} (page layout changed?)`);
+    const next = nextTileCursor(state, response.Paging);
+    return { listings: parseRealtor(response), nextCursor: next ? JSON.stringify(next) : null };
   },
   async fetchDetail(session, listing) {
     const { html } = await session.visit(listing.sourceUrl);
