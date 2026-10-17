@@ -202,7 +202,15 @@ export function buildChips(intent: SearchIntent): Chip[] {
     const name =
       area.kind === "near"
         ? tk("near", { km: decimal.format(area.radiusM / 1000) })
-        : tk("area", { area: area.kind === "configured" ? area.label : area.id });
+        : tk("area", {
+            area:
+              area.kind === "configured"
+                ? area.label.replace(
+                    " approximate configured search boundary (not an official boundary)",
+                    " (approx.)",
+                  )
+                : area.id,
+          });
     chips.push({
       key: `areas.${areaIndex}`,
       kind: "area",

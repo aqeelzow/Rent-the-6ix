@@ -1,5 +1,9 @@
 # Natural-language rental search
 
+## Configured general-area display (2026-10-17)
+
+When a search intent contains a configured general area such as Scarborough or Downtown, the results map shades and labels its approximate rectangle and fits the initial view to include it. Listing uncertainty circles remain separate. The filter chip shortens the configured boundary description to a readable “Area (approx.)” label. This overlay is a visual guide to B's configured approximate search bounds, not an official City boundary; civic neighbourhood/ward filters are not drawn from those bounds.
+
 ## P5.5b route states (2026-10-17)
 
 `POST /api/listings/search` returns HTTP 200 `status:"completed",results:[],eligibleCount:0` for no matches; `eligibleCount` may be greater than zero when the result window is empty. The UI can show its existing empty state without treating this as a failure. An exact travel percentile returns HTTP 200 `status:"pending"` with an opaque token, `pollUrl` and expiry; `GET` on that URL repeats pending until it returns a terminal completed or unavailable response. Terminal `status:"unavailable"` reasons are `timeout`, `routing_incomplete` and `capacity`, mapped by A to `search_timeout`, `search_routing_incomplete` and `search_capacity`. No partial exact result is shown. Synchronous routes have no separate loading payload; the client displays loading while its request is in flight.

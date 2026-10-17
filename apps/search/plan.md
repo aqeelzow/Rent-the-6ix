@@ -1,6 +1,6 @@
 # Natural-language rental search — execution plan
 
-Status: active sequential completion on `b/s4-s5-search-polish` in `/tmp/rent-search-mvp`, branched from merged main `b3290d4`. One subagent implements each feature, followed by one brief, relevant end-of-feature check. The current sequence is P4.1 weights, P4.2 sorts, then P5.5b route states. P3.2 import and P2.24 latency optimization are deferred by the user. Historical entries below describe earlier checkpoints.
+Status: active on `b/general-area-display` in `/tmp/rent-search-mvp`, branched from merged main `3da246f`. Current feature: show configured general-area filters on the results map and label them clearly as approximate. P3.2 import and P2.24 latency optimization remain deferred by the user. Historical entries below describe earlier checkpoints.
 
 ## Source of truth and scope
 
@@ -76,6 +76,10 @@ Implementation defaults: unstated criteria impose no constraints; household size
 
 P4.2 end-of-feature check: 37 focused parser/candidate tests and web typecheck pass. Read-only live DB has nine rent and two transit benchmarks, with no utilities or car-cost rows. The existing EXT-4 request covers D affordability and sourced missing inputs; P4.2 remains partial.
 P5.5b end-of-feature check: focused empty/briefing/API-state tests and web typecheck pass; route-state behavior is contract-level and needs no database mutation.
+
+### General-area display
+
+- [x] Configured general-area filters draw as a labelled approximate region on the results map, and map bounds include that region when fitting the view.
 
 ### Current P3 sequence
 
