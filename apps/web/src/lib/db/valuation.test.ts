@@ -57,6 +57,22 @@ const selects = (sql: ReturnType<typeof fakeSql>) =>
 
 afterEach(() => clearValuationCache());
 
+// D's StatCan rows as the benchmarks subselect returns them.
+const statcan = (bedrooms: number, valueCad: number, basis = "asking") => ({
+  id: `apt-${bedrooms}-${basis}`,
+  key: { geo: "Toronto CMA", dwelling: "Apartment", bedrooms, basis },
+  valueCad,
+  period: "2026 Q2",
+  sourceId: "statcan-46100092",
+});
+const benchmarks = [statcan(1, 1840, "paid"), statcan(1, 2090), statcan(2, 2650)];
+const statcan1br = {
+  label: "Toronto-area average asking rent, 1-bedroom apartments",
+  valueCad: 2090,
+  period: "2026 Q2",
+  sourceId: "statcan-46100092",
+};
+
 describe("listingValuation", () => {
   it("values a stored listing from its SQL candidates", async () => {
     const v = await listingValuation(fakeSql([subject], five()), id(1), NOW);
@@ -89,6 +105,21 @@ describe("listingValuation", () => {
     expect(() => ValuationSchema.parse(without)).not.toThrow();
   });
 
+  it("adds the StatCan asking rent for the listing's bedrooms, without moving the estimate", async () => {
+    const v = await listingValuation(fakeSql([{ ...subject, benchmarks }], five()), id(1), NOW);
+    expect(v!.benchmark).toEqual(statcan1br);
+    expect(v!.estimatedRentCad).toBe(2650);
+    expect(() => ValuationSchema.parse(v)).not.toThrow();
+    // An empty benchmarks table gives no line, not an error.
+    clearValuationCache();
+    const none = await listingValuation(
+      fakeSql([{ ...subject, benchmarks: null }], five()),
+      id(1),
+      NOW,
+    );
+    expect(none).toMatchObject({ status: "ok", benchmark: null });
+  });
+
   it("insufficient data still lists what it found", async () => {
     const v = await listingValuation(
       fakeSql([subject], [candidate(2, 2400), candidate(3, 2500)]),
@@ -118,6 +149,16 @@ describe("listingContext", () => {
     const { valuation, caveats } = await listingContext(sql, listing, NOW);
     expect(valuation).toMatchObject({ status: "insufficient_data", comparableCount: 2 });
     expect(caveats.map((c) => c.code)).toContain("insufficient_comparables");
+  });
+
+  it("adds the benchmark from the stored-listing query and caches it", async () => {
+    const sql = fakeSql(five(), [
+      { deposit: null, asking_rent_cad: null, observed_at: null, benchmarks },
+    ]);
+    const { valuation } = await listingContext(sql, listing, NOW);
+    expect(valuation.benchmark).toEqual(statcan1br);
+    const again = await listingContext(fakeSql([]), listing, NOW);
+    expect(again.valuation.benchmark).toEqual(statcan1br);
   });
 
   it("flags a price drop from the first observation", async () => {

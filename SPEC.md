@@ -308,7 +308,7 @@ Valuation {
   confidence: 'low' | 'medium' | 'high'
   comparables: { listingId, rentCad, adjustedRentCad, distanceM, weight, lastSeenAt }[]
   adjustments: { code?, amountCad, count?, label }[]   // e.g. "utilities included: −$150 to compare", with (when known) how many comparables it moved
-  benchmark: { label, valueCad, period, sourceId } | null   // context, never the estimate; null until D's benchmarks seed (P2.15)
+  benchmark: { label, valueCad, period, sourceId } | null   // context, never the estimate; StatCan asking rent for the dwelling and bedrooms; null when bedrooms are unknown
   method: string
 }
 ```
@@ -976,6 +976,7 @@ One line per change to this spec: `YYYY-MM-DD P#.#: what changed and why`. Newes
 - 2026-10-17 P2.24 [B] (drafted by A for B's review): live search attaches D's safety and safety score in `enrich()` only when the renter opts in. An unreadable crime table leaves safety unknown instead of failing the search.
 - 2026-10-17 P3.23 [A]: "How this works" dialog for the safety preference (measure, 15% weight, score scale, must-have, caveats from D's engine), opened from the filters panel, cards and the detail page. The detail page shows rates by type per 100,000 residents.
 - 2026-10-17 P2.24 [B] (drafted by A for B's review): `SearchIntent.safety` gains an optional `maxRelativeRate` (at most 5). The hard filter keeps neighbourhoods with `relativeRate` ≤ that limit, or ≤ 1 (`SAFETY.hardMaxRelativeRate`) when it is absent, so existing intents behave as before. `clean.ts` deletes any limit from AI output, because only the renter's slider sets one.
+- 2026-10-17 P2.3 [C]: The benchmark line uses StatCan **asking** rent only (paid rent is what sitting tenants pay). Dwelling: rooms → Room; house/townhouse → House (2 and 3+ bedrooms; smaller houses use apartments, as StatCan has no house row); everything else, including basements and unknown type → Apartment; 3+ bedrooms use the "3+" row; latest quarter; unknown bedrooms → no benchmark. Labelled "Toronto-area average asking rent, <size> <dwelling>".
 - 2026-10-17 P3.23 [A]: The safety must-have is a slider ("Only neighbourhoods up to 0.8× the city rate") from 0.5× to 2.0× in steps of 0.1, ending at "No limit", which means a preference. It replaces the must-have switch in the filters panel and the chip popover. The chip reads "Crime at most 0.8× city rate". In the popover, a drag starts one search when released, and arrow keys start one after a half-second pause.
 
 - 2026-10-17 P2.25 [B]: DetailResponse adds optional nullable `building`, mapped directly from D’s published RentSafeTO columns with previousScores `{year,score}` and sourceId. Existing clients/fixtures remain compatible. Live detail now returns official areas, source-backed indicators and direct duplicates; crime indicators require explicit safety opt-in. No owner score/colour/data semantics change.

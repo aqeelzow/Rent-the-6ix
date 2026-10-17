@@ -5,6 +5,7 @@
 import "server-only";
 import type { Sql } from "postgres";
 import { VALUATION } from "../../../../../packages/shared/engine/config";
+import { benchmarkFor, type BenchmarkRow } from "../../../../../packages/shared/engine/benchmark";
 import { caveats, type Caveat } from "../../../../../packages/shared/engine/caveats";
 import type { Listing } from "../../../../../packages/shared/schemas/index";
 import {
@@ -116,16 +117,25 @@ export async function selectComparables(
   sql: Sql,
   listingId: string,
   now: Date,
-): Promise<{ subject: ValuationSubject; candidates: ComparableCandidate[] } | null> {
-  const [row] = await sql<(ListingFields & { lng: number; lat: number })[]>`
+): Promise<{
+  subject: ValuationSubject;
+  candidates: ComparableCandidate[];
+  benchmarks: BenchmarkRow[] | null;
+} | null> {
+  const [row] = await sql<
+    (ListingFields & { lng: number; lat: number; benchmarks?: BenchmarkRow[] | null })[]
+  >`
     SELECT ${sql.unsafe(FIELDS("s"))},
-      ST_X(s.location::geometry) AS lng, ST_Y(s.location::geometry) AS lat
+      ST_X(s.location::geometry) AS lng, ST_Y(s.location::geometry) AS lat,
+      ${sql.unsafe(BENCHMARK_ROWS)}
     FROM listings s WHERE s.id = ${listingId}`;
   if (!row) return null;
   const subject = subjectOf(row);
+  const benchmarks = row.benchmarks ?? null;
   // A whole unit with unknown bedrooms has no pool; skip the query, the engine says so.
-  if (subject.unitType !== "room" && subject.bedrooms === null) return { subject, candidates: [] };
-  return { subject, candidates: await candidatesNear(sql, subject, row, now) };
+  if (subject.unitType !== "room" && subject.bedrooms === null)
+    return { subject, candidates: [], benchmarks };
+  return { subject, candidates: await candidatesNear(sql, subject, row, now), benchmarks };
 }
 
 const cache = new Map<string, { at: number; value: Valuation }>();
@@ -147,20 +157,42 @@ function remember(key: string, now: Date, value: Valuation) {
 }
 
 /**
- * Valuation for a stored listing, cached 6 h. `benchmark` is null until D's benchmarks table is
- * loaded (P2.3); the estimate never uses it.
+ * D's StatCan rent rows (P2.15) as one jsonb column, added to a query that runs anyway so the
+ * benchmark costs no extra round trip.
+ */
+const BENCHMARK_ROWS = `(SELECT jsonb_agg(jsonb_build_object('id', b.id, 'key', b.key,
+    'valueCad', b.value_cad::float8, 'period', b.period, 'sourceId', b.source_id))
+  FROM benchmarks b WHERE b.kind = 'rent' AND b.value_cad IS NOT NULL) AS benchmarks`;
+
+/** The benchmark line (P2.3): context under the rent check, never part of the estimate. */
+function benchmarkOf(
+  subject: Pick<ValuationSubject, "unitType" | "bedrooms">,
+  rows: BenchmarkRow[] | null | undefined,
+  given: Benchmark | null | undefined,
+): Benchmark | null {
+  return given !== undefined ? given : benchmarkFor(subject, rows ?? []);
+}
+
+/**
+ * Valuation for a stored listing, cached 6 h. `benchmark` defaults to the StatCan row for the
+ * listing's type and bedrooms (P2.3); the estimate never uses it.
  */
 export async function listingValuation(
   sql: Sql,
   listingId: string,
   now = new Date(),
-  benchmark: Benchmark | null = null,
+  benchmark?: Benchmark | null,
 ): Promise<Valuation | null> {
   const hit = cached(listingId, now);
   if (hit) return hit;
   const found = await selectComparables(sql, listingId, now);
   if (!found) return null;
-  const value = valuate(found.subject, found.candidates, benchmark, now);
+  const value = valuate(
+    found.subject,
+    found.candidates,
+    benchmarkOf(found.subject, found.benchmarks, benchmark),
+    now,
+  );
   remember(listingId, now, value);
   return value;
 }
@@ -182,30 +214,40 @@ export async function listingContext(
   sql: Sql,
   listing: Listing,
   now = new Date(),
-  benchmark: Benchmark | null = null,
+  benchmark?: Benchmark | null,
 ): Promise<{ valuation: Valuation; caveats: Caveat[] }> {
   // Keyed by rent too: a pasted listing may reuse an id with a different price.
   const key = `${listing.id}:${listing.monthlyRentCad}`;
   let valuation = cached(key, now);
+  let fresh: { candidates: ComparableCandidate[] } | null = null;
   if (!valuation) {
     const pooled = listing.unitType === "room" || listing.bedrooms !== null;
     const candidates = pooled ? await candidatesNear(sql, listing, listing.location, now) : [];
-    valuation = valuate(listing, candidates, benchmark, now);
-    remember(key, now, valuation);
-    eraShares.set(key, sameEraShare(listing, valuation, candidates));
+    valuation = valuate(listing, candidates, null, now);
+    fresh = { candidates };
   }
   // The first observation and the scam flag stored at ingest; both absent for pasted listings.
   // to_jsonb keeps this working before migration 005 adds deposit_before_viewing.
   const [stored] = await sql<
-    { deposit: boolean | null; asking_rent_cad: number | null; observed_at: Date | null }[]
+    {
+      deposit: boolean | null;
+      asking_rent_cad: number | null;
+      observed_at: Date | null;
+      benchmarks?: BenchmarkRow[] | null;
+    }[]
   >`
     SELECT (to_jsonb(l) ->> 'deposit_before_viewing')::boolean AS deposit,
-      o.asking_rent_cad, o.observed_at
+      o.asking_rent_cad, o.observed_at, ${sql.unsafe(BENCHMARK_ROWS)}
     FROM (SELECT 1) one
     LEFT JOIN listings l ON l.id = ${listing.id}
     LEFT JOIN LATERAL (
       SELECT asking_rent_cad, observed_at FROM listing_observations
       WHERE listing_id = ${listing.id} ORDER BY observed_at LIMIT 1) o ON true`;
+  if (fresh) {
+    valuation = { ...valuation, benchmark: benchmarkOf(listing, stored?.benchmarks, benchmark) };
+    remember(key, now, valuation);
+    eraShares.set(key, sameEraShare(listing, valuation, fresh.candidates));
+  }
   const [building] = listing.buildingId
     ? await sql<{ latest_score: string | null; score_date: Date | null }[]>`
         SELECT latest_score, score_date FROM buildings WHERE id = ${listing.buildingId}`
