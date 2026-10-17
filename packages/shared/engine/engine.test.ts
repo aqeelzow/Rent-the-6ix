@@ -46,11 +46,14 @@ test('studio virtual choice, rooms excluded unless explicitly requested', () => 
   assert.equal(filterListing(room, intent({ bedrooms: { value: { min: 2 }, hard: true } })).passes, false);
   assert.equal(filterListing(room, intent({ bedrooms: { value: { min: 2 }, hard: true }, unitTypes: { value: ['room', 'studio'], hard: true } })).passes, true);
 });
-test('alternative modes OR, destinations AND, unknown fallback never confirms minutes', () => {
+test('alternative modes OR, destinations AND, distance confirms against its mode budget', () => {
   const target = travelIntent.travelTargets[0];
   assert.equal(evaluateTarget(target, [row('bike', 20), row('walk', 8)]).state, 'pass');
   assert.equal(evaluateTarget(target, [row('bike', 20), row('walk', 30)]).state, 'fail');
-  assert.equal(evaluateTarget(target, [row('bike', 20), row('walk', null)]).state, 'unknown');
+  // 1000 m on foot is outside the 600 m a 15-minute walk implies, so it fails rather than staying unknown.
+  assert.equal(evaluateTarget(target, [row('bike', 20), row('walk', null)]).state, 'fail');
+  assert.equal(evaluateTarget(target, [row('bike', 20), { ...row('walk', null), distanceM: 400 }]).state, 'pass');
+  assert.equal(evaluateTarget(target, [row('bike', 20)]).state, 'unknown');
   assert.equal(travelScore([target], [row('bike', 15), row('walk', 10)]), 100);
   const i = { ...travelIntent, travelTargets: [target, { ...target, id: 'work', label: 'Work' }] };
   assert.equal(filterListing(listing, i, { travel: [row('walk', 8), row('bike', 20, 'work'), row('walk', 30, 'work')] }).passes, false);
@@ -74,11 +77,13 @@ test('five parts, exact value/price formulas, renormalization, safety off', () =
   assert.equal(enabled.total, 80); assert.equal(enabled.parts[4].weight, 15); MatchScoreSchema.parse(enabled);
 });
 
-test('travel evidence labels distance and driving free flow', () => {
+test('travel evidence labels straight-line distance and the distance budget it is judged against', () => {
   const t = { ...travelIntent.travelTargets[0], mode: 'drive' as const, alternativeModes: undefined };
   const score = scoreListing(listing, { ...baseIntent, travelTargets: [t] }, { ...context, travel: [row('drive', null)] });
   const evidence = score.parts.find(p => p.id === 'travel')!.evidence.join(' ');
-  assert.ok(evidence.includes('1000 m straight-line')); assert.ok(evidence.includes('driving, no traffic')); assert.ok(!evidence.includes('null minutes'));
+  assert.ok(evidence.includes('1000 m straight-line distance')); assert.ok(evidence.includes('budget'));
+  // A straight-line row has no minutes, so no duration may appear in its evidence.
+  assert.ok(!evidence.includes('minutes') && !evidence.includes('null'));
 });
 
 test('missing civic IDs stay unconfirmed through geographic OR and hide gates', () => {
@@ -132,4 +137,14 @@ test('hard safety keeps neighbourhoods at or below the renter\'s limit, else the
   assert.equal(filterListing(listing, hard(1.5), safe(1.4)).passes, true);
   assert.equal(SearchIntentSchema.safeParse(hard(0.8)).success, true);
   assert.equal(SearchIntentSchema.safeParse(hard(0)).success, false);
+});
+
+test('Rent verification threshold keeps a neutral value without dropping the caveat or breaking totals', () => {
+  for (const differencePct of [20, 30, 30.01, 55]) {
+    const caveat = { code: 'rent_far_below', severity: 'warning' as const, title: 'Check the asking rent', explanation: 'More than 30% below comparable asking rents.' };
+    const score = scoreListing(listing, intent({ furnished: { value: true, hard: false } }), { ...context, valuation: { ...valuations[0], differencePct }, caveats: [caveat] });
+    assert.equal(score.parts.find(p => p.id === 'value')!.score, differencePct <= 30 ? 100 : 50);
+    assert.deepEqual(score.caveats, [caveat]);
+    assert.equal(score.total, Math.round(score.parts.reduce((sum, p) => sum + (p.score ?? 0) * p.effectiveWeight, 0)));
+  }
 });

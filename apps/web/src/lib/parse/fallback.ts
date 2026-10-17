@@ -1,5 +1,7 @@
 import { SearchIntentSchema, type SearchIntent, type TravelTarget, type AreaFilter } from '../../../../../packages/shared/schemas/index';
 
+import { civicAreaMatches, type CivicArea } from './civic-areas';
+
 // shortcut: configured search boxes are approximate, replace with agreed D-owned geographic areas when available.
 export const configuredAreas: Record<string, AreaFilter> = {
   downtown: { kind: 'configured', id: 'search-downtown-v1', label: 'Downtown approximate configured search boundary (not an official boundary)', bounds: [-79.425, 43.635, -79.345, 43.675] },
@@ -8,13 +10,17 @@ export const configuredAreas: Record<string, AreaFilter> = {
 const amount = (n: string) => Number(n.replace(/[$,\s]/g, '').replace(/k$/i, '')) * (/k$/i.test(n) ? 1000 : 1);
 const modes = (s: string): TravelTarget['mode'][] => [...new Set([...s.toLowerCase().matchAll(/\b(transit|ttc|subway|commute|bus|car|drive|driving|walk|walking|bike|biking|cycling)\b/g)].map(m => /car|driv/.test(m[0]) ? 'drive' as const : /walk/.test(m[0]) ? 'walk' as const : /bik|cycl/.test(m[0]) ? 'bike' as const : 'transit' as const))];
 const soft = /\b(prefer|ideally|nice|would like|around|close|about)\b/i;
-export function fallbackParse(rawPrompt: string, now = new Date()): SearchIntent {
+export function fallbackParse(rawPrompt: string, now = new Date(), catalogue: CivicArea[] = []): SearchIntent {
   const intent: SearchIntent = { schemaVersion: 1, rawPrompt, areas: [], criteria: {}, travelTargets: [], safety: { enabled: false, hard: false }, sortBy: 'best_match', fieldSources: {}, droppedRequests: [] };
   const source = (field: string, phrase: string) => { intent.fieldSources[field] = { source: 'ai_prompt', phrase }; };
   const hard = (phrase: string, index = rawPrompt.indexOf(phrase)) => !soft.test(rawPrompt.slice(Math.max(rawPrompt.lastIndexOf('.', index), rawPrompt.lastIndexOf(',', index), rawPrompt.lastIndexOf(';', index)) + 1, index) + phrase);
   const put = <K extends keyof SearchIntent['criteria']>(field: K, value: NonNullable<SearchIntent['criteria'][K]>['value'], phrase: string, isHard = hard(phrase)) => { Object.assign(intent.criteria, { [field]: { value, hard: isHard } }); source(`criteria.${field}`, phrase); };
   const drop = (phrase: string, reason: string) => intent.droppedRequests.push({ phrase, reason });
   for (const [name, area] of Object.entries(configuredAreas)) { const m = rawPrompt.match(new RegExp(`\\b${name}\\b`, 'i')); if (m) { intent.areas.push(area); source('areas', m[0]); } }
+  for (const match of civicAreaMatches(rawPrompt, catalogue)) {
+    if (match.ambiguous) { if (!intent.droppedRequests.some(d => d.phrase === match.phrase)) drop(match.phrase, 'Area name is ambiguous; specify neighbourhood or ward.'); }
+    else if (!intent.areas.some(a => a.kind === match.area.kind && 'id' in a && a.id === ('id' in match.area ? match.area.id : ''))) { intent.areas.push(match.area); source('areas', match.phrase); }
+  }
   const income = rawPrompt.match(/(?:make|earn|income(?: of| is)?)\s+(?:about\s+)?(\$?[\d,]+(?:\.\d+)?k?)/i);
   if (income) { intent.household = { annualIncomeCad: amount(income[1]) }; source('household.annualIncomeCad', income[0]); }
   const people = rawPrompt.match(/\b(\d+)\s+(?:people|persons|of us)\b/i);
@@ -73,8 +79,11 @@ export function fallbackParse(rawPrompt: string, now = new Date()): SearchIntent
   const fairness = rawPrompt.match(/\b(?:only underpriced|not overpriced|reasonably priced|good deal|underpriced|overpriced)\b/i);
   if (fairness) put('priceFairness', /not overpriced/i.test(fairness[0]) ? ['underpriced', 'reasonable'] : /reasonably/i.test(fairness[0]) ? ['reasonable'] : /^overpriced/i.test(fairness[0]) ? ['overpriced'] : ['underpriced'], fairness[0], /only/i.test(fairness[0]) || (!/good deal/i.test(fairness[0]) && hard(fairness[0])));
   const safety = rawPrompt.match(/\b(?:safety|safe (?:neighbourhood|area)|low crime|safer|below (?:the )?city (?:crime )?rate)\b/i); if (safety) { intent.safety = { enabled: true, hard: /below/i.test(safety[0]) }; source('safety', safety[0]); }
-  const cheapest = rawPrompt.match(/\b(?:cheapest|lowest (?:rent|cost))\b/i); if (cheapest) { intent.sortBy = 'lowest_rent'; source('sortBy', cheapest[0]); }
-  if (!cheapest) {
+  const trueCost = rawPrompt.match(/\b(?:lowest|cheapest) true monthly cost\b/i);
+  const shortest = rawPrompt.match(/\bshortest (?:trips?|commutes?|travel times?)\b/i);
+  const cheapest = rawPrompt.match(/\b(?:cheapest|lowest (?:rent|cost))\b/i);
+  if (trueCost || shortest || cheapest) { intent.sortBy = trueCost ? 'lowest_true_cost' : shortest ? 'shortest_trips' : 'lowest_rent'; source('sortBy', (trueCost ?? shortest ?? cheapest)![0]); }
+  if (!trueCost && !shortest && !cheapest) {
     const value = rawPrompt.match(/\bbest value\b/i);
     const newest = rawPrompt.match(/\b(?:newest listings?|latest listings?|most recently (?:listed|seen)|recently listed|newest first)\b/i);
     if (value || newest) { intent.sortBy = value ? 'best_value' : 'newest'; source('sortBy', (value ?? newest)![0]); }
@@ -100,8 +109,8 @@ export function fallbackParse(rawPrompt: string, now = new Date()): SearchIntent
   for (const [category, re] of [['grocery', /\b(?:groceries|grocery|supermarkets?)\b/gi], ['school', /\b(?:public school|schools?)\b/gi], ['park', /\bparks?\b/gi], ['rapid_transit', /\bsubway\b/gi], ['library', /\blibrar(?:y|ies)\b/gi], ['pharmacy', /\bpharmac(?:y|ies)\b/gi], ['clinic', /\bclinics?\b/gi]] as const) {
     for (const m of rawPrompt.matchAll(re)) { if (category === 'rapid_transit' && /by\s*$/i.test(rawPrompt.slice(0, m.index))) continue; const before = rawPrompt.slice(0, m.index); const clause = before.slice(Math.max(before.lastIndexOf(','), before.lastIndexOf(';'), before.lastIndexOf(' and ')) + 1) + m[0]; addTarget(m[0], m[0], category, clause); }
   }
-  // Explicit mode/time-to arbitrary addresses complements the small known-place vocabulary.
-  for (const m of rawPrompt.matchAll(/(\d+\s*(?:minutes?|mins?)\s+(?:by\s+)?(?:transit|drive|walk|bike|car|walking|biking)\s+to\s+)([^,;.]+)/gi)) {
+  // Street abbreviations keep their dots; sentence ends and separately timed destinations stop capture.
+  for (const m of rawPrompt.matchAll(/(\d+\s*(?:minutes?|mins?)\s+(?:by\s+)?(?:transit|drive|walk|bike|car|walking|biking)\s+to\s+)((?:(?!\s+and\s+\d+\s*(?:minutes?|mins?)\b)(?:\b(?:st|ave|rd|blvd|dr|cres|ct|pl|hwy)\.(?=\s+\w)|[^,;.!?]))+)/gi)) {
     const amenity = /^(?:(?:a|the|nearest)\s+)?(supermarkets?|grocer(?:y|ies)|public schools?|schools?|parks?|subway|librar(?:y|ies)|pharmac(?:y|ies)|clinics?)\b/i.exec(m[2].trim());
     const category: TravelTarget['category'] | undefined = amenity ? /supermarket|grocer/i.test(amenity[1]) ? 'grocery' : /school/i.test(amenity[1]) ? 'school' : /park/i.test(amenity[1]) ? 'park' : /subway/i.test(amenity[1]) ? 'rapid_transit' : /librar/i.test(amenity[1]) ? 'library' : /pharmac/i.test(amenity[1]) ? 'pharmacy' : 'clinic' : undefined;
     if (category || !intent.travelTargets.some(t => t.query && m[2].toLowerCase().includes(t.query.toLowerCase()))) addTarget(m[2].trim(), m[0], category, m[0]);

@@ -24,7 +24,7 @@ function client(options: { candidates?: unknown[]; observations?: unknown[]; com
     if (text.includes('listing_observations')) return Promise.resolve(options.observations ?? [{ deposit: true, asking_rent_cad: 2200, observed_at: new Date('2026-10-01') }]);
     throw new Error('Unexpected SQL');
   });
-  const unsafe = vi.fn((text: string, parameters?: unknown[]) => parameters ? Promise.resolve(options.candidates ?? [rowFor(listing)]) : text);
+  const unsafe = vi.fn((text: string, parameters?: unknown[]) => parameters ? Promise.resolve(text.includes('FROM neighbourhoods') || text.includes('FROM area_indicators') || text.includes('FROM buildings WHERE') || text.includes('WHERE duplicate_of =') ? [] : options.candidates ?? [rowFor(listing)]) : text);
   Object.assign(sql, { unsafe });
   return { sql: sql as unknown as Sql, tagged: sql, unsafe };
 }
@@ -67,15 +67,22 @@ test('SQL context failures and malformed owner results return private 503 respon
     const response = await api.search(http(input), undefined); assert.equal(response.status, 503); assert.doesNotMatch(JSON.stringify(await response.json()), /secret/);
   }
 });
-test('missing routing/safety remain unknown and hide-unconfirmed excludes hard travel failures', async () => {
-  const db = client(), dependencies = sqlSearchDependencies(() => db.sql), api = createRuntime({ dependencies, env: {} });
+test('missing routing/safety remain unknown; distance decides the hard travel gate and a hidden failure is excluded', async () => {
+  // Inside the 10-minute walk-or-bike budget the intent asks for, so the gate is a decision not a gap.
+  const near = { ...listing, location: { lng: -79.401, lat: 43.6605 } };
+  const db = client({ candidates: [rowFor(near)] }), dependencies = sqlSearchDependencies(() => db.sql), api = createRuntime({ dependencies, env: {} });
   const intent = { ...travelIntent, safety: { enabled: true, hard: false }, travelTargets: travelIntent.travelTargets.map(t => ({ ...t, hard: true })) };
   const response = await api.search(http({ ...input, intent }), undefined), result = (await response.json()).results[0];
+  assert.equal(result.listing.id, near.id);
   assert.equal(result.safety, null); assert.ok(result.travel.length); assert.ok(result.travel.every((r: { method: string; minutes: number | null }) => r.method === 'straight_line' && r.minutes === null));
   assert.equal(result.matchScore.parts.find((p: { id: string }) => p.id === 'safety').score, null);
-  const hidden = await api.search(http({ intent, hideUnconfirmed: true }), undefined); assert.equal((await hidden.json()).results.length, 0);
+  const hidden = await api.search(http({ intent, hideUnconfirmed: true }), undefined); assert.equal((await hidden.json()).results.length, 1);
+  // The same intent against a listing 2.7 km away is a hard travel failure, which hiding removes.
+  const far = client(); const farApi = createRuntime({ dependencies: sqlSearchDependencies(() => far.sql), env: {} });
+  const farHidden = await farApi.search(http({ intent, hideUnconfirmed: true }), undefined); assert.equal((await farHidden.json()).results.length, 0);
+  // A travel percentile needs no router: distance ranks the pool, so the answer is complete.
   const exact = await searchPercentileCandidates({ ...input, intent: { ...travelIntent, numericExtreme: { field: 'travel', direction: 'min', percentage: 5, minimumCount: 10, targetId: travelIntent.travelTargets[0].id } } }, dependencies, { referenceYear: 2026 });
-  assert.equal(exact.status, 'unavailable'); if (exact.status === 'unavailable') assert.equal(exact.reason, 'routing_incomplete');
+  assert.equal(exact.status, 'completed'); if (exact.status === 'completed') assert.equal(exact.results.length, 1);
 });
 test('exact deadline aborts enrichment while another runtime can still serve static context', async () => {
   let finish: (rows: unknown[]) => void = () => {};
@@ -164,4 +171,13 @@ test('enrich adds D safety and its score only when the renter opted in', async (
   assert.equal((await deps.enrich(listing, { ...baseIntent, safety: { enabled: true, hard: false } })).safety, null);
   const missing = sqlSearchDependencies(getClient, async () => { throw new Error('down'); });
   assert.equal((await missing.enrich(located, { ...baseIntent, safety: { enabled: true, hard: false } })).safety, null);
+});
+
+test('SQL eligibility phase exposes safety/travel without valuation reads or opt-out crime reads', async () => {
+  const db = client(), crime = vi.fn(async () => null);
+  const deps = sqlSearchDependencies(() => db.sql, crime);
+  assert.deepEqual(await deps.filterContext!(listing, baseIntent), { safety: null, travel: [] });
+  assert.equal(crime.mock.calls.length, 0); assert.equal(db.tagged.mock.calls.length, 0);
+  assert.deepEqual(await deps.filterContext!(listing, { ...travelIntent, safety: { enabled: true, hard: true } }), { safety: null, travel: [] });
+  assert.equal(crime.mock.calls.length, 1); assert.equal(db.tagged.mock.calls.length, 0);
 });

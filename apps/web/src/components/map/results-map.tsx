@@ -39,7 +39,7 @@ const bandColor: ExpressionSpecification = [
 ];
 
 /**
- * Results map (SPEC 12): clustered pins coloured by score band, approximate locations as circles,
+ * Results map (SPEC 12): clustered pins, listing uncertainty circles and
  * place pins. Hover and select are shared with the list through the store.
  */
 export function ResultsMap({ className = "" }: { className?: string }) {
@@ -97,9 +97,9 @@ export function ResultsMap({ className = "" }: { className?: string }) {
   useEffect(() => {
     const map = mapRef.current;
     if (!ready || !map) return;
-    const { points, areas } = resultsToGeoJSON(results);
+    const { points, areas: approximateAreas } = resultsToGeoJSON(results);
     (map.getSource("listings") as GeoJSONSource | undefined)?.setData(points);
-    (map.getSource("approx") as GeoJSONSource | undefined)?.setData(areas);
+    (map.getSource("approx") as GeoJSONSource | undefined)?.setData(approximateAreas);
 
     const places = placePins(targets ?? []);
     void import("maplibre-gl").then((maplibregl) => {

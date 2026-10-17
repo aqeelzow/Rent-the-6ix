@@ -17,6 +17,14 @@
       "licence": "City of Toronto — TTC fare schedule (public information)",
       "period": "2026-09",
       "note": "Adult PRESTO fare $3.30. Monthly fare capping started 2026-09-01 and replaced the Adult Monthly Pass, which TTC discontinued 2026-08-31; the cap is 47 eligible fares per calendar month."
+    },
+    {
+      "id": "toronto-amr-utility-allowances",
+      "title": "City of Toronto Average Market Rents and Utility Allowances",
+      "url": "https://www.toronto.ca/community-people/community-partners/social-housing-providers/affordable-housing-operators/current-city-of-toronto-average-market-rents-and-utility-allowances",
+      "licence": "City of Toronto — published rent and allowance tables (public information)",
+      "period": "2026",
+      "note": "Read from the page's own tables (modified 2026-09-24). Average Market Rents: CMHC Rental Market Report Tables 1.1.2 and 2.1.2, Zones 1-17 (the City of Toronto), as the City publishes them for 2026 — the average rent of occupied purpose-built rental units, i.e. sitting tenants, not asking rents for vacant units. Utility allowances: the City's 2026 monthly allowances for tenants who pay their own hydro, water, gas heat and gas hot water; a 2027 table is also published."
     }
   ],
   "rows": [
@@ -134,6 +142,266 @@
       "period": "2026-09",
       "sourceId": "ttc-fares",
       "sample": true
+    },
+    {
+      "id": "toronto-amr-2026-room",
+      "kind": "rent",
+      "key": { "geo": "City of Toronto (CMHC zones 1-17)", "dwelling": "Room", "basis": "cmhc_average" },
+      "valueCad": 1246,
+      "unit": "CAD/month",
+      "period": "2026",
+      "sourceId": "toronto-amr-utility-allowances",
+      "sample": false
+    },
+    {
+      "id": "toronto-amr-2026-apt-0br",
+      "kind": "rent",
+      "key": { "geo": "City of Toronto (CMHC zones 1-17)", "dwelling": "Apartment", "bedrooms": 0, "basis": "cmhc_average" },
+      "valueCad": 1499,
+      "unit": "CAD/month",
+      "period": "2026",
+      "sourceId": "toronto-amr-utility-allowances",
+      "sample": false
+    },
+    {
+      "id": "toronto-amr-2026-apt-1br",
+      "kind": "rent",
+      "key": { "geo": "City of Toronto (CMHC zones 1-17)", "dwelling": "Apartment", "bedrooms": 1, "basis": "cmhc_average" },
+      "valueCad": 1763,
+      "unit": "CAD/month",
+      "period": "2026",
+      "sourceId": "toronto-amr-utility-allowances",
+      "sample": false
+    },
+    {
+      "id": "toronto-amr-2026-apt-2br",
+      "kind": "rent",
+      "key": { "geo": "City of Toronto (CMHC zones 1-17)", "dwelling": "Apartment", "bedrooms": 2, "basis": "cmhc_average" },
+      "valueCad": 2055,
+      "unit": "CAD/month",
+      "period": "2026",
+      "sourceId": "toronto-amr-utility-allowances",
+      "sample": false
+    },
+    {
+      "id": "toronto-amr-2026-apt-3br",
+      "kind": "rent",
+      "key": { "geo": "City of Toronto (CMHC zones 1-17)", "dwelling": "Apartment", "bedrooms": 3, "basis": "cmhc_average" },
+      "valueCad": 2361,
+      "unit": "CAD/month",
+      "period": "2026",
+      "sourceId": "toronto-amr-utility-allowances",
+      "sample": false
+    },
+    {
+      "id": "toronto-amr-2026-apt-4br",
+      "kind": "rent",
+      "key": { "geo": "City of Toronto (CMHC zones 1-17)", "dwelling": "Apartment", "bedrooms": 4, "basis": "cmhc_average" },
+      "valueCad": 2905,
+      "unit": "CAD/month",
+      "period": "2026",
+      "sourceId": "toronto-amr-utility-allowances",
+      "sample": false
+    },
+    {
+      "id": "toronto-utility-2026-apt-0br-hydro",
+      "kind": "utilities",
+      "key": { "geo": "City of Toronto", "dwelling": "Apartment", "bedrooms": 0, "utility": "hydro", "measure": "City utility allowance" },
+      "valueCad": 46,
+      "unit": "CAD/month",
+      "period": "2026",
+      "sourceId": "toronto-amr-utility-allowances",
+      "sample": false
+    },
+    {
+      "id": "toronto-utility-2026-apt-0br-water",
+      "kind": "utilities",
+      "key": { "geo": "City of Toronto", "dwelling": "Apartment", "bedrooms": 0, "utility": "water", "measure": "City utility allowance" },
+      "valueCad": 13,
+      "unit": "CAD/month",
+      "period": "2026",
+      "sourceId": "toronto-amr-utility-allowances",
+      "sample": false
+    },
+    {
+      "id": "toronto-utility-2026-apt-0br-gas-heat",
+      "kind": "utilities",
+      "key": { "geo": "City of Toronto", "dwelling": "Apartment", "bedrooms": 0, "utility": "gas_heat", "measure": "City utility allowance" },
+      "valueCad": 31,
+      "unit": "CAD/month",
+      "period": "2026",
+      "sourceId": "toronto-amr-utility-allowances",
+      "sample": false
+    },
+    {
+      "id": "toronto-utility-2026-apt-0br-gas-hot-water",
+      "kind": "utilities",
+      "key": { "geo": "City of Toronto", "dwelling": "Apartment", "bedrooms": 0, "utility": "gas_hot_water", "measure": "City utility allowance" },
+      "valueCad": 22,
+      "unit": "CAD/month",
+      "period": "2026",
+      "sourceId": "toronto-amr-utility-allowances",
+      "sample": false
+    },
+    {
+      "id": "toronto-utility-2026-apt-1br-hydro",
+      "kind": "utilities",
+      "key": { "geo": "City of Toronto", "dwelling": "Apartment", "bedrooms": 1, "utility": "hydro", "measure": "City utility allowance" },
+      "valueCad": 46,
+      "unit": "CAD/month",
+      "period": "2026",
+      "sourceId": "toronto-amr-utility-allowances",
+      "sample": false
+    },
+    {
+      "id": "toronto-utility-2026-apt-1br-water",
+      "kind": "utilities",
+      "key": { "geo": "City of Toronto", "dwelling": "Apartment", "bedrooms": 1, "utility": "water", "measure": "City utility allowance" },
+      "valueCad": 13,
+      "unit": "CAD/month",
+      "period": "2026",
+      "sourceId": "toronto-amr-utility-allowances",
+      "sample": false
+    },
+    {
+      "id": "toronto-utility-2026-apt-1br-gas-heat",
+      "kind": "utilities",
+      "key": { "geo": "City of Toronto", "dwelling": "Apartment", "bedrooms": 1, "utility": "gas_heat", "measure": "City utility allowance" },
+      "valueCad": 31,
+      "unit": "CAD/month",
+      "period": "2026",
+      "sourceId": "toronto-amr-utility-allowances",
+      "sample": false
+    },
+    {
+      "id": "toronto-utility-2026-apt-1br-gas-hot-water",
+      "kind": "utilities",
+      "key": { "geo": "City of Toronto", "dwelling": "Apartment", "bedrooms": 1, "utility": "gas_hot_water", "measure": "City utility allowance" },
+      "valueCad": 22,
+      "unit": "CAD/month",
+      "period": "2026",
+      "sourceId": "toronto-amr-utility-allowances",
+      "sample": false
+    },
+    {
+      "id": "toronto-utility-2026-apt-2br-hydro",
+      "kind": "utilities",
+      "key": { "geo": "City of Toronto", "dwelling": "Apartment", "bedrooms": 2, "utility": "hydro", "measure": "City utility allowance" },
+      "valueCad": 66,
+      "unit": "CAD/month",
+      "period": "2026",
+      "sourceId": "toronto-amr-utility-allowances",
+      "sample": false
+    },
+    {
+      "id": "toronto-utility-2026-apt-2br-water",
+      "kind": "utilities",
+      "key": { "geo": "City of Toronto", "dwelling": "Apartment", "bedrooms": 2, "utility": "water", "measure": "City utility allowance" },
+      "valueCad": 25,
+      "unit": "CAD/month",
+      "period": "2026",
+      "sourceId": "toronto-amr-utility-allowances",
+      "sample": false
+    },
+    {
+      "id": "toronto-utility-2026-apt-2br-gas-heat",
+      "kind": "utilities",
+      "key": { "geo": "City of Toronto", "dwelling": "Apartment", "bedrooms": 2, "utility": "gas_heat", "measure": "City utility allowance" },
+      "valueCad": 35,
+      "unit": "CAD/month",
+      "period": "2026",
+      "sourceId": "toronto-amr-utility-allowances",
+      "sample": false
+    },
+    {
+      "id": "toronto-utility-2026-apt-2br-gas-hot-water",
+      "kind": "utilities",
+      "key": { "geo": "City of Toronto", "dwelling": "Apartment", "bedrooms": 2, "utility": "gas_hot_water", "measure": "City utility allowance" },
+      "valueCad": 31,
+      "unit": "CAD/month",
+      "period": "2026",
+      "sourceId": "toronto-amr-utility-allowances",
+      "sample": false
+    },
+    {
+      "id": "toronto-utility-2026-apt-3br-hydro",
+      "kind": "utilities",
+      "key": { "geo": "City of Toronto", "dwelling": "Apartment", "bedrooms": 3, "utility": "hydro", "measure": "City utility allowance" },
+      "valueCad": 77,
+      "unit": "CAD/month",
+      "period": "2026",
+      "sourceId": "toronto-amr-utility-allowances",
+      "sample": false
+    },
+    {
+      "id": "toronto-utility-2026-apt-3br-water",
+      "kind": "utilities",
+      "key": { "geo": "City of Toronto", "dwelling": "Apartment", "bedrooms": 3, "utility": "water", "measure": "City utility allowance" },
+      "valueCad": 30,
+      "unit": "CAD/month",
+      "period": "2026",
+      "sourceId": "toronto-amr-utility-allowances",
+      "sample": false
+    },
+    {
+      "id": "toronto-utility-2026-apt-3br-gas-heat",
+      "kind": "utilities",
+      "key": { "geo": "City of Toronto", "dwelling": "Apartment", "bedrooms": 3, "utility": "gas_heat", "measure": "City utility allowance" },
+      "valueCad": 37,
+      "unit": "CAD/month",
+      "period": "2026",
+      "sourceId": "toronto-amr-utility-allowances",
+      "sample": false
+    },
+    {
+      "id": "toronto-utility-2026-apt-3br-gas-hot-water",
+      "kind": "utilities",
+      "key": { "geo": "City of Toronto", "dwelling": "Apartment", "bedrooms": 3, "utility": "gas_hot_water", "measure": "City utility allowance" },
+      "valueCad": 38,
+      "unit": "CAD/month",
+      "period": "2026",
+      "sourceId": "toronto-amr-utility-allowances",
+      "sample": false
+    },
+    {
+      "id": "toronto-utility-2026-apt-4br-hydro",
+      "kind": "utilities",
+      "key": { "geo": "City of Toronto", "dwelling": "Apartment", "bedrooms": 4, "utility": "hydro", "measure": "City utility allowance" },
+      "valueCad": 82,
+      "unit": "CAD/month",
+      "period": "2026",
+      "sourceId": "toronto-amr-utility-allowances",
+      "sample": false
+    },
+    {
+      "id": "toronto-utility-2026-apt-4br-water",
+      "kind": "utilities",
+      "key": { "geo": "City of Toronto", "dwelling": "Apartment", "bedrooms": 4, "utility": "water", "measure": "City utility allowance" },
+      "valueCad": 34,
+      "unit": "CAD/month",
+      "period": "2026",
+      "sourceId": "toronto-amr-utility-allowances",
+      "sample": false
+    },
+    {
+      "id": "toronto-utility-2026-apt-4br-gas-heat",
+      "kind": "utilities",
+      "key": { "geo": "City of Toronto", "dwelling": "Apartment", "bedrooms": 4, "utility": "gas_heat", "measure": "City utility allowance" },
+      "valueCad": 37,
+      "unit": "CAD/month",
+      "period": "2026",
+      "sourceId": "toronto-amr-utility-allowances",
+      "sample": false
+    },
+    {
+      "id": "toronto-utility-2026-apt-4br-gas-hot-water",
+      "kind": "utilities",
+      "key": { "geo": "City of Toronto", "dwelling": "Apartment", "bedrooms": 4, "utility": "gas_hot_water", "measure": "City utility allowance" },
+      "valueCad": 47,
+      "unit": "CAD/month",
+      "period": "2026",
+      "sourceId": "toronto-amr-utility-allowances",
+      "sample": false
     }
   ]
 }

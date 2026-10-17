@@ -1,5 +1,7 @@
 import { searchFixture, travelIntent, valuations } from "@rentthe6ix/shared/fixtures";
+import { WALKABLE_M, travelAdvice } from "@rentthe6ix/shared/engine/travel";
 import { describe, expect, it } from "vitest";
+import { t, type MessageKey } from "@/lib/format/messages";
 import type { SearchResultItem } from "@/lib/store/types";
 import {
   acFact,
@@ -11,6 +13,24 @@ import {
   travelSummaries,
   yearSpan,
 } from "./card-data";
+
+// The label the card writes for a distance: under 1.5 km the renter can walk it, beyond that they
+// need transport. These are the exact strings result-card and the detail chart render.
+describe("distance advice", () => {
+  // The card's own helper reads `results.travel.*`, so the expectation goes through that namespace.
+  const label = (metres: number) =>
+    t(`results.travel.${travelAdvice(metres)}` as MessageKey, {
+      km: (metres / 1000).toFixed(1),
+      target: "UTSG",
+    });
+  it("walks anything under 1.5 km and recommends transport at or above it", () => {
+    expect(WALKABLE_M).toBe(1500);
+    expect(travelAdvice(1499)).toBe("walkable");
+    expect(travelAdvice(1500)).toBe("transport");
+    expect(label(1100)).toBe("1.1 km to UTSG — walking distance");
+    expect(label(2700)).toBe("2.7 km to UTSG — take transit or a car");
+  });
+});
 
 const results = searchFixture.status === "completed" ? searchFixture.results : [];
 const result = results[1]!;

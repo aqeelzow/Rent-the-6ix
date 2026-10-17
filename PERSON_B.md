@@ -6,10 +6,10 @@ Task ids match `PROGRESS.md`; task details are in `SPEC.md`.
 
 ## Current state
 
-- **Current task:** static-search MVP against the supplied PostgreSQL database.
-- **Status:** endpoint feature changes verified (283 tests, lint/typecheck/build and live native smoke); remaining owner integration tracked on `b/search-static-mvp` in `/tmp/rent-search-mvp`, reviewed against upstream `1853fdf`.
+- **Current task:** General-area display and Gemini-assisted place normalization; P3.2 import and P2.24 latency optimization are deferred by the user.
+- **Status:** active on `b/general-area-display` in `/tmp/rent-search-mvp`, branched from merged main `3da246f`. Place queries retain original evidence plus an optional normalized search name; only DestinationResolver supplies coordinates. Focused checks and live ROM → Royal Ontario Museum → MapTiler-coordinate acceptance pass. The new key was used only by the test process; runtime/deployment environment credentials were not changed. P3.3 and P3.4 remain partial for the dependencies below.
 - **Verified:** 20,956 live listings / 16,892 active nonduplicates at inspection; native SQL-backed cheapest/known filters, scalar percentiles, fairness, detail and overlap acceptance.
-- **Remaining:** cold/full enriched performance (latest ordinary8.863s) needs C optimization/bulk context; live static safety needs D city-rate/lookup/score exports. Owner changes remain outside B scope under TEAM.md. Dynamic routing/distance computations are deferred by the user.
+- **Remaining:** D ward housing indicators and a sourced Toronto comparator for 25 full P3.3 briefings; Gemini quota for all three P3.4 AI outputs and demo cache population; P3.2 import for the pasted-listing part of P3.4. P2.24 cold-search optimization is deferred by the user. Owner changes remain outside B scope under TEAM.md.
 - **Last updated:** 2026-10-17
 
 
@@ -17,7 +17,7 @@ Task ids match `PROGRESS.md`; task details are in `SPEC.md`.
 
 Read-only upstream audit found main advanced from570300e to29a7393. Current code has A’s actual actions/store/UI and C’s comparable query/cache/effectiveCount/scam/caveat contracts. Reconciliation preserves all owner code and removes B’s obsolete duplicate top-level result.id shim: A consumes listing.id directly. Actual A actions/store integration tests cover destination choices, selection/detail and polling through B runtime. Reconciled frozen install,245 tests(shared48/web129/worker68), workspace typecheck/lint, production build and native fixture HTTP smoke pass. The original checkout remains unchanged outside apps/search; current source changes are reviewable patches, not pushed/merged.
 
-Live provider evidence remains limited: configured main model parses took7–11s and four of six requests exhausted12s. Source-key, hard-time and partial-geocoder defects were repaired and regression-tested. A temporary FAST diagnostic advertised by authenticated metadata returned generation404 on its first request; five further calls were skipped. No model/source/owner configuration was changed by that diagnostic. TD branch remains unavailable rather than a guessed point; DB/OTP/deployed acceptance are unverified. Eight synthetic listings remain intermediate test data; all50 shared fixtures are preserved.
+Live provider evidence remains limited: configured main model parses took7–11s and four of six requests exhausted12s. Source-key, hard-time and partial-geocoder defects were repaired and regression-tested. A temporary FAST diagnostic advertised by authenticated metadata returned generation404 on its first request; five further calls were skipped. No model/source/owner configuration was changed by that diagnostic. The old TD blocker is now resolved with official 394 Bay St branch identity and live civic coordinates; DB destination paths are verified. OTP/deployed acceptance remains separate. Eight synthetic listings remain intermediate test data; all50 shared fixtures are preserved.
 
 > Where an unfinished task stopped, gotchas, things to verify. Replace each session.
 
@@ -33,17 +33,17 @@ Live provider evidence remains limited: configured main model parses took7–11s
 
 ## Requests to others
 
-Current external blocker register: [apps/search/change-request.md](apps/search/change-request.md#external-blocker-register--2026-10-17), reviewed against upstream main1853fdf (civic PR15). Older handoff sections above describe earlier checkpoints.
+Current external blocker register: [apps/search/change-request.md](apps/search/change-request.md#external-blocker-register--2026-10-17), reviewed against upstream main17bf (merged civic/safety/UI work). Older handoff sections above describe earlier checkpoints.
 
 - **C / EXT-1:** optimize `listingContext` or provide batch valuation/context without changing comparable, confidence or caveat semantics. B eight-call pipeline/cache is implemented; cold/full-pool latency still needs owner work and representative acceptance.
-- **D / EXT-2:** publish authoritative city-rate/safety lookup and score functions. Crime data is loaded; safety computation contracts remain absent.
-- **D / EXT-3 (deferred by user):** OTP, routed-time precompute, `routeTimes` and cache/mapping contracts for full travel filters/sorts/detail.
-- **D + C / EXT-4:** affordability and sourced benchmarks/mapping for true-cost sorting and benchmark display; C consumes valuation benchmark data.
+- **D / EXT-2 resolved:** authoritative safety lookup/engine and B enrichment are merged; real DB opt-in/off, hard limits, caveats and score acceptance pass. The city mean lacks population data and the owner caveat states its equal-neighbourhood denominator.
+- **D / EXT-3 (deferred by user):** OTP setup is published; routed-time precompute, `routeTimes` and cache/mapping remain unavailable for full travel filters/sorts/detail.
+- **D + C / EXT-4:**11 sourced benchmark rows are verified live. Affordability/true-cost integration and C benchmark consumption remain unavailable.
 - **D / EXT-5:** source-backed derived civic indicators/rent trends for full ward briefings. B can consume existing civic/building/duplicate tables now.
 - **A + deployment owner / EXT-6–8:** trusted request identity, a verified process-affinity deployment for in-memory jobs, and usable fast-model access/quota/configuration. These gate production acceptance, not B endpoint implementation or fallback.
 - **A / EXT-9:** rendered/deployed API acceptance and UI mounting/response-contract agreement for subsequent explanation/import/briefing/building features. Existing actions/store integration is verified.
 
-P2.25 static civic/building/duplicate integration, P3.1 explanations, B cache adapter and import/scoring implementation can proceed in B's scope; do not classify them as waiting on missing tables/services.
+P2.25 static civic/building/duplicate integration and B parse DB cache are implemented and live-verified. P3.1 explanations and import/scoring can proceed in B’s scope; do not classify them as waiting on missing tables/services. A needs to render the additive optional building detail field.
 
 ---
 
@@ -58,10 +58,10 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked · `[-]` 
 
 ### S1 → S2 (H3–H12) — Parsing · Core
 - [x] P1.20 `AIProvider` interface, `GeminiProvider` (structured output from zod, 1 retry, 12 s timeout, 429/503 → unavailable), `NoneProvider`
-- [~] P1.21 `/api/search/parse`: criteria with must-have/preference, travel targets with mode and minutes, safety, household, `fieldSources`, `droppedRequests`; validation and clean-up
+- [~] P1.21 `/api/search/parse`: criteria with must-have/preference, travel targets with mode and minutes, safety, household, `fieldSources`, `droppedRequests`; validation and clean-up. Authoritative civic catalogue + known-place labels now supplied; grounded exact neighbourhood/ward parsing and owner ID validation verified against live DB (Annex095, ward01). Live Gemini/deployed acceptance remains open.
 - [x] P1.22 Fallback regex parser (rent, bedrooms, bathrooms, size, unit type, AC, pets, "built after", "X min walk/drive/bike/transit to …", neighbourhood names)
-- [~] P1.23 `known_places.json` (campuses, hospitals, major stations, employment hubs) + `/api/geo/resolve` (known places → Address Points → MapTiler)
-- [!] P1.24 `ai_cache` (input hash) + per-IP limits on AI routes; parse tests with 10 sample prompts
+- [x] P1.23 `known_places.json` (campuses, hospitals, major stations, employment hubs) + `/api/geo/resolve` (known places → Address Points → MapTiler). Known-place ambiguity, indexed civic lookup and live MapTiler path verified; TD Bay/Queen now uses official branch identity and live civic row 8067834, with a labelled representative point.
+- [~] P1.24 `ai_cache` integration implemented and live-DB verified; parser regressions pass. Production trusted per-IP identity and live Gemini quota acceptance remain open.
 
 ### S2 → S3 (H10–H18) — Search & score · Core
 - [!] P2.20 Candidate query SQL: hard criteria with unknowns passing as "not confirmed", areas (`ST_Within`), hard amenity times from `travel_times`, hard safety, limit 500
@@ -69,20 +69,20 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked · `[-]` 
 - [x] P2.22 Travel scoring (`travel.ts`): per target vs minutes, straight-line distance fallback with per-mode distance targets + tests
 - [x] P2.23 Match score (`score.ts`): value, price, travel, home, safety; renormalization; tie-breakers; sum-consistency test
 - [~] P2.24 `/api/listings/search`: two-pass (pass 2 via D's `routeTimes()` for the top 100, 3 s budget), all sort modes, "hide unconfirmed" flag
-- [~] P2.25 `/api/listings/[id]` detail route (listing, building, area ids, duplicates, travel, valuation)
+- [~] P2.25 `/api/listings/[id]`: live listing/valuation/caveats, official areas, source-backed opt-in indicators, building and direct duplicates are SQL-verified; full routed travel and A building rendering remain open.
 
 ### S3 → S4 (H16–H24) — Explanations & imports · Core
-- [ ] P3.1 `/api/listings/[id]/explain`: facts only, number check, safety wording check, template fallback
-- [ ] P3.2 `/api/listings/import` (paste text or public URL → `Listing` via Gemini, geocode, score against the current intent; SSRF guard; regex fallback) + `/api/listings/score`
-- [ ] P3.3 `/api/areas/[kind]/[id]/briefing`: indicators only, neutral, no candidates or parties, number check, template fallback; pre-generate all 25 wards
-- [ ] P3.4 Cached parse and explain outputs for the 3 demo prompts (SPEC 16) and the demo pasted listing
+- [x] P3.1 `/api/listings/[id]/explain`: facts only, number check, safety wording check, template fallback
+- [ ] P3.2 **Deferred / not a priority — implement `/api/listings/import` only when the user explicitly instructs it.** Planned scope: paste text or public URL → `Listing` via Gemini, geocode, score against the current intent; SSRF guard; regex fallback, plus `/api/listings/score`.
+- [~] P3.3 `/api/areas/[kind]/[id]/briefing`: grounded route/fallback/cache implemented; 25 full ward briefings await D indicators and city comparator
+- [~] P3.4 Persistent explanation cache and three-prompt prewarm path implemented; Gemini quota and deferred P3.2 import prevent full demo cache population
 
 ### S4 → S5 (H22–H30) — P1 · Stretch
-- [ ] P4.1 Weight sliders: accept `weights` in the intent, validate, rescore (A builds the UI, P4.24)
-- [ ] P4.2 Sorts "shortest trips" and "lowest true monthly cost" (uses D's affordability)
+- [x] P4.1 Weight sliders: B accepts `weights` in the intent, validates, rescores search/detail; A builds the UI (P4.24)
+- [~] P4.2 "Shortest trips" sorts confirmed routed minutes and the basic parser recognizes explicit requests; live ordering is limited by D's missing amenity precompute. "Lowest true monthly cost" is recognized but returns 503 until D P3.12 publishes affordability and sourced utility/transport estimates (EXT-4).
 
 ### S5 → end (H30–H36) — Polish
-- [ ] P5.5b Empty, loading and error states in your routes (clear error codes the UI can translate)
+- [x] P5.5b Empty, loading and error states in your routes (clear error codes the UI can translate)
 - [ ] P5.9 Run the 3 demo prompts with `AI_PROVIDER=gemini` and `AI_PROVIDER=none`; both must give a usable result
 - [ ] P5.7 Rehearse the demo walkthrough (SPEC 23) ×3 with everyone
 
@@ -115,3 +115,8 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked · `[-]` 
 ## Final C/SQL handoff
 
 C listingContext is composed with B SQL candidate loading in default DATABASE_URL mode, while explicit fixture mode wins. No D times/rates are fabricated; live detail remains503. One unfinished C enrichment blocks overlapping enrichment until actual owner queries settle. Final250 tests(shared48/web134/worker68), workspace typecheck/lint/build, fixture native HTTP and invalid-DB resilience checks pass. All servers stopped. Actual DB/PostGIS/deployed acceptance unverified. No push/merge/deploy; durable patches target29a7393. User requested finish current work and stop before another feature.
+
+2026-10-17 — Main17bf8b4 reconciliation: merged C room-data/caveat fixes and A/D safety engine/lookup/integration. Read-only realDB acceptance verifies safety opt-in/off, score/caveats, renter hard limit and unknown neighbourhood handling; EXT-2 resolved. Benchmarks now11 live rows, but affordability and C benchmark consumption are still pending. Ranking regression suite159 web tests passed before merge; after merge347 workspace tests pass (66 shared/180 web/101 worker), live probes run separately. Indexed Address Points is the next sequential feature; full plan remains open.
+
+
+2026-10-17 static detail handoff — `DetailResponse.building` is additive optional/nullable; live API supplies D’s mapped building fields and owner score/colour/history/source. Existing fixtures omit it. Both official area geometries and direct duplicates are live, and crime:* indicators are opt-in only. Read-only real API/SQL oracle passed. A: consume this field in BuildingSection; its current placeholder is not evidence of missing API data. P2.25 remains partial because routed travel is unavailable.

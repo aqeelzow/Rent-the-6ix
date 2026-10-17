@@ -13,6 +13,26 @@ export function defaultMinutes(target: TravelTarget, mode: TravelTimeRow['mode']
   const group = target.kind === 'place' || target.category === 'university' ? 'place' : ['grocery', 'pharmacy', 'rapid_transit'].includes(target.category ?? '') ? 'quick' : 'civic';
   return engineConfig.minutes[group][mode];
 }
+/**
+ * The straight-line distance that stands for "within maxMinutes by this mode". Travel is measured
+ * as distance from the listing to the target, so a minute budget becomes a metre budget by scaling
+ * the mode's reference distance (SPEC 7.4) by how many minutes were asked for.
+ */
+export function distanceBudgetM(target: TravelTarget, mode: TravelTimeRow['mode']): number {
+  const minutes = target.maxMinutes ?? defaultMinutes(target, mode);
+  return engineConfig.distanceM[mode] * minutes / defaultMinutes(target, mode);
+}
+/**
+ * The straight-line distance at which walking stops being the sensible answer (SPEC 7.4). Travel
+ * here is measured between the two addresses, so this is a fact about the pair, not a promise about
+ * a route: under it the listing is a walk from the target, over it the renter needs transport.
+ */
+export const WALKABLE_M = 1500;
+/**
+ * What to say about a distance: walkable, or get a way of transport. Named after the advice rather
+ * than after a mode, so it can never be confused with the travel mode of the same idea.
+ */
+export const travelAdvice = (metres: number): 'walkable' | 'transport' => metres < WALKABLE_M ? 'walkable' : 'transport';
 export function evaluateTarget(target: TravelTarget, rows: TravelTimeRow[]) {
   const scores: number[] = [];
   const confirmed: boolean[] = [];
@@ -23,7 +43,13 @@ export function evaluateTarget(target: TravelTarget, rows: TravelTimeRow[]) {
       scores.push(decliningScore(row.minutes, minutes));
       confirmed.push(row.minutes <= minutes);
     } else {
-      if (row) scores.push(decliningScore(row.distanceM, engineConfig.distanceM[mode] * minutes / defaultMinutes(target, mode)));
+      if (row) {
+        const budget = distanceBudgetM(target, mode);
+        scores.push(decliningScore(row.distanceM, budget));
+        // A straight-line distance is a known answer, not a missing one, so a hard travel target is
+        // pass or fail against the same budget the score uses — never reported as unconfirmed.
+        confirmed.push(row.distanceM <= budget);
+      }
     }
   }
   return {

@@ -1,5 +1,16 @@
 [
   {
+    "id": "cn-tower",
+    "label": "CN Tower representative point",
+    "aliases": [
+      "cn tower",
+      "the cn tower",
+      "canadian national tower"
+    ],
+    "lng": -79.387087,
+    "lat": 43.642564
+  },
+  {
     "id": "uoft-st-george",
     "label": "UofT St. George campus representative point",
     "aliases": [
@@ -8,6 +19,7 @@
       "university of toronto st. george"
     ],
     "group": "University of Toronto",
+    "primary": true,
     "lng": -79.3957,
     "lat": 43.6629
   },
@@ -41,6 +53,7 @@
       "york university keele"
     ],
     "group": "York University",
+    "primary": true,
     "lng": -79.5031,
     "lat": 43.7735
   },
@@ -103,5 +116,193 @@
     ],
     "lng": -79.3819,
     "lat": 43.6485
+  },
+  {
+    "id": "downtown-core",
+    "label": "Downtown core representative point",
+    "aliases": [
+      "downtown",
+      "downtown toronto",
+      "the core"
+    ],
+    "lng": -79.3832,
+    "lat": 43.6532
+  },
+  {
+    "id": "kensington-market",
+    "label": "Kensington Market representative point",
+    "aliases": [
+      "kensington market",
+      "kensington"
+    ],
+    "lng": -79.4004,
+    "lat": 43.6547
+  },
+  {
+    "id": "liberty-village",
+    "label": "Liberty Village representative point",
+    "aliases": [
+      "liberty village"
+    ],
+    "lng": -79.4195,
+    "lat": 43.6376
+  },
+  {
+    "id": "cityplace",
+    "label": "CityPlace representative point",
+    "aliases": [
+      "cityplace",
+      "city place"
+    ],
+    "lng": -79.39,
+    "lat": 43.6418
+  },
+  {
+    "id": "leslieville",
+    "label": "Leslieville representative point",
+    "aliases": [
+      "leslieville"
+    ],
+    "lng": -79.3398,
+    "lat": 43.6626
+  },
+  {
+    "id": "corktown",
+    "label": "Corktown representative point",
+    "aliases": [
+      "corktown"
+    ],
+    "lng": -79.3629,
+    "lat": 43.6549
+  },
+  {
+    "id": "distillery-district",
+    "label": "Distillery District representative point",
+    "aliases": [
+      "distillery district",
+      "the distillery"
+    ],
+    "lng": -79.3596,
+    "lat": 43.6503
+  },
+  {
+    "id": "riverside",
+    "label": "Riverside representative point",
+    "aliases": [
+      "riverside",
+      "riverside toronto"
+    ],
+    "lng": -79.348,
+    "lat": 43.6605
+  },
+  {
+    "id": "yorkville",
+    "label": "Yorkville representative point",
+    "aliases": [
+      "yorkville"
+    ],
+    "lng": -79.3914,
+    "lat": 43.6702
+  },
+  {
+    "id": "greektown",
+    "label": "Greektown on the Danforth representative point",
+    "aliases": [
+      "greektown",
+      "greek town",
+      "the danforth",
+      "danforth village"
+    ],
+    "lng": -79.3455,
+    "lat": 43.6789
+  },
+  {
+    "id": "north-york-centre",
+    "label": "North York Centre representative point",
+    "aliases": [
+      "north york",
+      "north york centre",
+      "north york center"
+    ],
+    "lng": -79.4111,
+    "lat": 43.7615
+  },
+  {
+    "id": "jane-finch",
+    "label": "Jane and Finch representative point",
+    "aliases": [
+      "jane and finch",
+      "jane-finch"
+    ],
+    "lng": -79.5168,
+    "lat": 43.7625
+  },
+  {
+    "id": "scarborough-town-centre",
+    "label": "Scarborough Town Centre representative point",
+    "aliases": [
+      "scarborough town centre",
+      "scarborough town center"
+    ],
+    "lng": -79.2578,
+    "lat": 43.7764
+  },
+  {
+    "id": "mimico",
+    "label": "Mimico representative point",
+    "aliases": [
+      "mimico"
+    ],
+    "lng": -79.4987,
+    "lat": 43.6135
+  },
+  {
+    "id": "moss-park",
+    "label": "Moss Park representative point",
+    "aliases": [
+      "moss park"
+    ],
+    "lng": -79.3706,
+    "lat": 43.6527
+  },
+  {
+    "id": "td-bay-queen",
+    "label": "TD Bay & Queen, 394 Bay St representative point",
+    "aliases": [
+      "td at bay st and queen st w",
+      "td at bay st and queen street w",
+      "td at bay st and queens st w",
+      "td at bay st and queens street w",
+      "td at bay street and queen st w",
+      "td at bay street and queen street w",
+      "td at bay street and queens st w",
+      "td at bay street and queens street w",
+      "td on bay st and queen st w",
+      "td on bay st and queen street w",
+      "td on bay st and queens st w",
+      "td on bay st and queens street w",
+      "td on bay street and queen st w",
+      "td on bay street and queen street w",
+      "td on bay street and queens st w",
+      "td on bay street and queens street w",
+      "td canada at bay st and queen st w",
+      "td canada at bay st and queen street w",
+      "td canada at bay st and queens st w",
+      "td canada at bay st and queens street w",
+      "td canada at bay street and queen st w",
+      "td canada at bay street and queen street w",
+      "td canada at bay street and queens st w",
+      "td canada at bay street and queens street w",
+      "td canada on bay st and queen st w",
+      "td canada on bay st and queen street w",
+      "td canada on bay st and queens st w",
+      "td canada on bay st and queens street w",
+      "td canada on bay street and queen st w",
+      "td canada on bay street and queen street w",
+      "td canada on bay street and queens st w",
+      "td canada on bay street and queens street w"
+    ],
+    "lng": -79.3818682150789,
+    "lat": 43.6516733153441
   }
 ]

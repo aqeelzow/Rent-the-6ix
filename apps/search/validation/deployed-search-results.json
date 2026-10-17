@@ -1,0 +1,111 @@
+{
+  "checkedAt": "2026-10-17T17:54:46.310Z",
+  "deployment": "https://rent-the-6ix.vercel.app",
+  "scope": "Published main only; branch b/search-plan-completion is not deployed",
+  "readOnlyDatabase": true,
+  "requests": [
+    {
+      "method": "POST",
+      "path": "/api/listings/search",
+      "status": 200,
+      "elapsedMs": 612,
+      "server": "Vercel",
+      "contentType": "application/json"
+    },
+    {
+      "method": "GET",
+      "path": "/api/listings/87fd3ab2-a07e-45d5-89e5-52dd3d749d39",
+      "status": 200,
+      "elapsedMs": 154,
+      "server": "Vercel",
+      "contentType": "application/json"
+    },
+    {
+      "method": "POST",
+      "path": "/api/search/parse",
+      "status": 200,
+      "elapsedMs": 97,
+      "server": "Vercel",
+      "contentType": "application/json"
+    }
+  ],
+  "checks": {
+    "searchCount": true,
+    "searchIds": true,
+    "searchOrder": true,
+    "fields": true,
+    "safetyOptOut": true,
+    "scoreTotals": true,
+    "detailIdentity": true,
+    "detailValuation": true,
+    "detailScore": true
+  },
+  "oracle": {
+    "criteria": {
+      "neighbourhoodId": "002",
+      "bedrooms": 3,
+      "unitType": "apartment",
+      "monthlyRentCad": 2586
+    },
+    "count": 2,
+    "ids": [
+      "87fd3ab2-a07e-45d5-89e5-52dd3d749d39",
+      "9028bcfa-a713-4043-b6c0-15a1b7b909ac"
+    ],
+    "order": "last_seen_at DESC,id (identical rents)",
+    "allLive": true
+  },
+  "search": {
+    "status": "completed",
+    "eligibleCount": 2,
+    "returned": 2,
+    "ids": [
+      "87fd3ab2-a07e-45d5-89e5-52dd3d749d39",
+      "9028bcfa-a713-4043-b6c0-15a1b7b909ac"
+    ],
+    "dataStatuses": [
+      "live"
+    ]
+  },
+  "detail": {
+    "dataStatus": "live",
+    "areas": 0,
+    "indicators": 0,
+    "duplicates": 0,
+    "buildingField": false
+  },
+  "parse": {
+    "parser": "fallback",
+    "notice": "Used basic search; review the interpreted filters.",
+    "criteria": {
+      "rent": {
+        "value": {
+          "max": 3200
+        },
+        "hard": true
+      },
+      "bedrooms": {
+        "value": {
+          "min": 3,
+          "max": 3
+        },
+        "hard": true
+      },
+      "unitTypes": {
+        "value": [
+          "apartment"
+        ],
+        "hard": true
+      }
+    }
+  },
+  "renderedUi": {
+    "verified": false,
+    "reason": "No browser available in this environment; HTTP API acceptance does not verify rendered list/map/detail."
+  },
+  "limitations": [
+    "Branch changes are not deployed; these results cannot prove their rollout.",
+    "One low-volume synthetic parse request does not establish Gemini reliability or latency distribution.",
+    "In-memory job affinity and trusted identity rollout are unverified."
+  ]
+}

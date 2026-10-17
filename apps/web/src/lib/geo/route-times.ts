@@ -86,6 +86,12 @@ type Router = {
 export type CreateRouteTimesOptions = {
   cache?: RouteTimeCache;
   /**
+   * Destination for a target that carries none of its own. Amenity targets ("close to") have no
+   * fixed place to route to, so the caller supplies each listing's nearest POI of that category.
+   * Returning null leaves the pair unrouted, which the UI shows as unknown rather than guessed.
+   */
+  destinationFor?: (listing: Listing, target: TravelTarget) => Promise<{ lat: number; lng: number } | null>;
+  /**
    * Parallel router requests. Measured on the demo graph through one connection: 42 walk routes
    * finish in ~0.6 s at 12 concurrent (15 ms each), while 42 transit routes need ~4 s even at 16
    * (100 ms each) because transit search is CPU-bound. 12 keeps walk/bike/drive well inside the
@@ -125,8 +131,8 @@ const straightLineRow = (
 
 /**
  * Builds the `routeTimes` dependency. Place targets carry their own coordinates; amenity targets
- * have none until the POI precompute lands (P2.10), so they produce no rows here and stay
- * "unknown" rather than guessed.
+ * borrow one per listing from `destinationFor` (the nearest POI), so "close to groceries" is
+ * routed to the shop that listing would actually walk to instead of one city-wide pin.
  */
 export function createRouteTimes(router: Router, options: CreateRouteTimesOptions = {}): RouteTimes {
   const cache = options.cache ?? new RouteTimeCache();
@@ -136,40 +142,35 @@ export function createRouteTimes(router: Router, options: CreateRouteTimesOption
   return async (origins, targets, mode, budgetMs, signal) => {
     try {
       if (signal.aborted || !origins.length) return [];
-      const places = targets.filter(
-        (target): target is TravelTarget & { resolved: NonNullable<TravelTarget["resolved"]> } =>
-          !!target.resolved && Number.isFinite(target.resolved.lat) && Number.isFinite(target.resolved.lng),
-      );
-      if (!places.length) return [];
+      // Places carry their own coordinates; amenities get one per listing from `destinationFor`.
+      const routable = targets.filter((target) => {
+        if (target.resolved) return Number.isFinite(target.resolved.lat) && Number.isFinite(target.resolved.lng);
+        return target.kind === "amenity" && !!options.destinationFor;
+      });
+      if (!routable.length) return [];
 
       const departure = options.departure ?? { date: torontoDate(new Date(now())), time: COMMUTE_TIME };
       const at = new Date(now()).toISOString();
-      const queued: { index: number; listing: Listing; target: TravelTarget; to: { lat: number; lng: number }; key: string }[] = [];
-      const rows = new Array<TravelTimeRow>(origins.length * places.length);
+      const queued: { index: number; listing: Listing; target: TravelTarget; to: { lat: number; lng: number } | null }[] = [];
+      const rows = new Array<TravelTimeRow>(origins.length * routable.length);
       let cursor = 0;
-
-      for (const listing of origins) for (const target of places) {
-        const index = cursor++;
-        const key = `${mode}|${originCell(listing.location)}|${destinationKey(target.resolved)}`;
-        const hit = cache.get(key, now());
-        if (hit) {
-          rows[index] = {
-            listingId: listing.id,
-            targetId: target.id,
-            mode,
-            distanceM: Math.round(hit.distanceM),
-            minutes: hit.minutes,
-            poiId: null,
-            computedAt: at,
-            method: "otp",
-          };
-        } else {
-          queued.push({ index, listing, target, to: target.resolved, key });
-        }
-      }
+      for (const listing of origins) for (const target of routable) queued.push({ index: cursor++, listing, target, to: target.resolved ?? null });
 
       const deadline = now() + Math.max(0, budgetMs);
       const softDeadline = deadline - RETURN_MARGIN_MS;
+      // Resolve every amenity destination before racing the router. The lookups are indexed and
+      // cached per cell, so this costs milliseconds; doing it first means a listing the router never
+      // reaches still shows its distance to the nearest shop instead of "travel time not available".
+      if (options.destinationFor) {
+        let pending = 0;
+        await Promise.all(Array.from({ length: Math.min(8, queued.length) }, async () => {
+          while (pending < queued.length) {
+            const item = queued[pending++];
+            if (item.to || signal.aborted || now() >= softDeadline) continue;
+            try { item.to = await options.destinationFor!(item.listing, item.target); } catch { item.to = null; }
+          }
+        }));
+      }
       // Coalesce concurrent misses: two ads in one cell must share a single router call, and the
       // cache only holds answers that have already come back.
       const inFlight = new Map<string, Promise<RoutedTrip | null>>();
@@ -178,8 +179,25 @@ export function createRouteTimes(router: Router, options: CreateRouteTimesOption
         while (next < queued.length) {
           const item = queued[next++];
           let trip: RoutedTrip | null = null;
-          if (!signal.aborted && now() < softDeadline) {
-            let request = inFlight.get(item.key);
+          // A destination that is already known keeps its distance row even when the budget is spent.
+          const to = item.to;
+          if (to && !signal.aborted && now() < softDeadline) {
+            const key = `${mode}|${originCell(item.listing.location)}|${destinationKey(to)}`;
+            const hit = cache.get(key, now());
+            if (hit) {
+              rows[item.index] = {
+                listingId: item.listing.id,
+                targetId: item.target.id,
+                mode,
+                distanceM: Math.round(hit.distanceM),
+                minutes: hit.minutes,
+                poiId: null,
+                computedAt: at,
+                method: "otp",
+              };
+              continue;
+            }
+            let request = inFlight.get(key);
             if (!request) {
               const controller = new AbortController();
               const forward = () => controller.abort();
@@ -189,7 +207,7 @@ export function createRouteTimes(router: Router, options: CreateRouteTimesOption
               // to hold the search open past the budget. Aborting the request is housekeeping.
               request = Promise.race([
                 router
-                  .route(item.listing.location, item.to, mode, { signal: controller.signal, departure })
+                  .route(item.listing.location, to, mode, { signal: controller.signal, departure })
                   .catch(() => null),
                 new Promise<RoutedTrip | null>((resolve) => {
                   timer = setTimeout(() => {
@@ -201,8 +219,8 @@ export function createRouteTimes(router: Router, options: CreateRouteTimesOption
                 clearTimeout(timer);
                 signal.removeEventListener("abort", forward);
               });
-              inFlight.set(item.key, request);
-              void request.finally(() => inFlight.delete(item.key));
+              inFlight.set(key, request);
+              void request.finally(() => inFlight.delete(key));
             }
             try {
               trip = await request;
@@ -210,8 +228,8 @@ export function createRouteTimes(router: Router, options: CreateRouteTimesOption
               trip = null;
             }
           }
-          if (trip && Number.isFinite(trip.minutes) && trip.minutes >= 0 && !signal.aborted) {
-            cache.set(item.key, trip, now());
+          if (trip && to && Number.isFinite(trip.minutes) && trip.minutes >= 0 && !signal.aborted) {
+            cache.set(`${mode}|${originCell(item.listing.location)}|${destinationKey(to)}`, trip, now());
             rows[item.index] = {
               listingId: item.listing.id,
               targetId: item.target.id,
@@ -222,8 +240,8 @@ export function createRouteTimes(router: Router, options: CreateRouteTimesOption
               computedAt: at,
               method: "otp",
             };
-          } else {
-            rows[item.index] = straightLineRow(item.listing, item.target, mode, item.to, at);
+          } else if (to) {
+            rows[item.index] = straightLineRow(item.listing, item.target, mode, to, at);
           }
         }
       };

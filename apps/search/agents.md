@@ -17,6 +17,14 @@
 - Verify the behavior changed, including relevant callers, schemas, fixtures and tests, before marking a step complete.
 - Keep requirements in the spec and execution details in the plan. When requirements change, update the relevant specification and its change log under the team's rules, then align the plan.
 
+## Validation cadence
+
+- Complete each feature before running general validation once at the end. This is the default acceptance check before moving to the next feature.
+- Keep validation brief and proportionate to the feature. Comprehensive validation is not necessary; use a small set of relevant existing checks.
+- Avoid repeated intermediary validation, benchmarks, browser runs and separate validation-only work unless a failure or specific unresolved concern requires investigation.
+- Use the database during end-of-feature validation when relevant. Reuse existing checks and evidence; repeat or broaden checks only when subsequent changes or failures justify it.
+- For documentation-only changes, review the diff; no test run is needed.
+
 ## Maintain documentation and API specifications
 
 - Keep reliable feature documentation and an API specification current as features progress, updating them in the same change as the implementation. Do this in DOCS.md

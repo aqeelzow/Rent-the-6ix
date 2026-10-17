@@ -1,0 +1,89 @@
+{
+  "checkedAt": "2026-10-17T19:29:27.065Z",
+  "scope": "Local production branch, real read-only DB, AI_PROVIDER=none; not deployed acceptance",
+  "viewports": [
+    {
+      "name": "desktop",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "checks": {
+        "landingParseAndLiveCards": true,
+        "filterAppliesAndEmptyState": true,
+        "destinationChoicesAndSelection": true,
+        "liveMap": "unverified; external basemap requests aborted for this run",
+        "liveDetailAndCivicArea": true,
+        "safetyOptOut": true,
+        "backKeepsEditedFilters": true
+      },
+      "pageErrors": [],
+      "consoleErrors": [
+        "Failed to load resource: net::ERR_FAILED",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: net::ERR_FAILED"
+      ],
+      "detailBuildingProvided": true,
+      "buildingUiPlaceholder": true
+    },
+    {
+      "name": "mobile",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "checks": {
+        "landingParseAndLiveCards": true,
+        "filterAppliesAndEmptyState": true,
+        "destinationChoicesAndSelection": true,
+        "liveMap": "unverified; external basemap requests aborted for this run",
+        "liveDetailAndCivicArea": true,
+        "safetyOptOut": true,
+        "backKeepsEditedFilters": true
+      },
+      "pageErrors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)"
+      ],
+      "detailBuildingProvided": true,
+      "buildingUiPlaceholder": true
+    }
+  ],
+  "limitations": [
+    "Map visibility timed out with external maps enabled in an earlier local headless Chromium run. Software WebGL was used; the cause is unresolved. This run aborts only external basemap requests.",
+    "Building UI remains a placeholder despite the optional API building contract; owner A follow-up remains open.",
+    "No live Gemini, OTP, deployment rollout, canvas pin interaction or screenshot acceptance is claimed.",
+    "Console resource errors include expected map aborts and an unattributed 404; no clean-console claim."
+  ],
+  "oracle": {
+    "rent": 2586,
+    "bedrooms": 3,
+    "unitType": "apartment",
+    "count": 2,
+    "ids": [
+      "87fd3ab2-a07e-45d5-89e5-52dd3d749d39",
+      "9028bcfa-a713-4043-b6c0-15a1b7b909ac"
+    ]
+  },
+  "previousMapAttempt": {
+    "checkedAt": "2026-10-17T19:27:55.160Z",
+    "scope": "Local desktop production UI with external basemap requests enabled",
+    "passed": {
+      "landingParseAndLiveCards": true,
+      "filterAppliesAndEmptyState": true,
+      "destinationChoicesAndSelection": true
+    },
+    "failedCheck": "Map of results region visibility",
+    "timeoutMs": 20000,
+    "mapVerified": false,
+    "cause": "Unresolved; headless Chromium used software WebGL",
+    "screenshotCaptured": false
+  },
+  "review": {
+    "roleAndLabelLocators": true,
+    "noFixedSleeps": true,
+    "noOwnAppMocks": true,
+    "isolatedBrowserContexts": true,
+    "limitations": "Standalone node:assert with explicit locator waits and response synchronization; no screenshot, clean-console or complete accessibility acceptance."
+  }
+}

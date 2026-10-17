@@ -27,13 +27,14 @@ export const AreaFilterSchema = z.discriminatedUnion('kind', [
 export const ResolvedDestinationSchema = CoordinateSchema.extend({ source: z.enum(['address_points', 'maptiler', 'known_place']), representativePoint: z.boolean().optional(), label: text.optional() }).refine(v => !v.representativePoint || !!v.label, 'Representative points need a label');
 export const TravelTargetSchema = z.strictObject({
   id: text, kind: z.enum(['place', 'amenity']), label: text,
-  query: text.optional(), resolved: ResolvedDestinationSchema.optional(),
+  query: text.max(500).optional(), normalizedQuery: text.max(500).optional(), resolved: ResolvedDestinationSchema.optional(),
   category: z.enum(['grocery', 'school', 'university', 'library', 'park', 'community_centre', 'pharmacy', 'clinic', 'rapid_transit']).optional(),
   schoolLevel: z.enum(['elementary', 'secondary', 'any']).optional(),
   mode: ModeSchema, alternativeModes: unique(ModeSchema).optional(), maxMinutes: positive.optional(), hard: z.boolean(),
 }).superRefine((v, ctx) => {
   if (v.kind === 'place' && (!v.query && !v.resolved || v.category || v.schoolLevel)) ctx.addIssue({ code: 'custom', message: 'Place requires query or resolved coordinates, without amenity fields' });
-  if (v.kind === 'amenity' && (!v.category || v.query || v.resolved)) ctx.addIssue({ code: 'custom', message: 'Amenity requires category, without place fields' });
+  if (v.normalizedQuery && !v.query) ctx.addIssue({ code: 'custom', message: 'Normalized query requires an original place query' });
+  if (v.kind === 'amenity' && (!v.category || v.query || v.normalizedQuery || v.resolved)) ctx.addIssue({ code: 'custom', message: 'Amenity requires category, without place fields' });
   if (v.schoolLevel && v.category !== 'school') ctx.addIssue({ code: 'custom', message: 'schoolLevel only applies to school' });
   if (v.alternativeModes?.includes(v.mode)) ctx.addIssue({ code: 'custom', message: 'Alternative modes must differ from primary mode' });
 });
@@ -139,8 +140,9 @@ export const SearchResponseSchema = z.discriminatedUnion('status', [
 ]);
 export const ErrorResponseSchema = z.strictObject({ error: z.strictObject({ code: text, message: text, issues: z.array(z.strictObject({ path: z.array(z.union([z.string(), z.number().int()])), message: text })).optional(), retryAfterSeconds: positive.int().optional() }) });
 export const JobExpiredResponseSchema = z.strictObject({ error: z.strictObject({ code: z.literal('search_job_expired'), message: text }) });
-// Building details await D's exported contract; this draft cannot invent them.
-export const DetailResponseSchema = SearchResultSchema.safeExtend({ areas: z.array(AreaSchema), indicators: z.array(AreaIndicatorSchema), duplicates: z.array(ListingSchema) });
+// RentSafeTO fields mirror D's buildings table and published loader; colours are passed through.
+export const BuildingSchema = z.strictObject({ id: text, address: text, addressPointId: text.nullable(), location: CoordinateSchema.nullable(), yearBuilt: year.nullable(), storeys: nonnegative.int().nullable(), units: nonnegative.int().nullable(), propertyType: z.enum(['private', 'social_housing', 'tchc']).nullable(), latestScore: nonnegative.max(100).nullable(), scoreDate: z.iso.date().nullable(), signColour: text.nullable(), previousScores: z.array(z.strictObject({ year, score: nonnegative.max(100) })), sourceId: text.nullable() });
+export const DetailResponseSchema = SearchResultSchema.safeExtend({ building: BuildingSchema.nullable().optional(), areas: z.array(AreaSchema), indicators: z.array(AreaIndicatorSchema), duplicates: z.array(ListingSchema) });
 
 export type Listing = z.infer<typeof ListingSchema>;
 export type SearchIntent = z.infer<typeof SearchIntentSchema>;
@@ -163,3 +165,27 @@ export type NumericExtreme = z.infer<typeof NumericExtremeSchema>;
 export type ParseRequest = z.infer<typeof ParseRequestSchema>;
 export type ParseResponse = z.infer<typeof ParseResponseSchema>;
 export type ErrorResponse = z.infer<typeof ErrorResponseSchema>;
+// D's nearby response (P2.16; drafted by A for D's and B's review). Straight-line distances only,
+// never minutes (SPEC 7.4); `locationPrecision` says how approximate the listing's own point is.
+export const PoiCategorySchema = z.enum(['grocery', 'school', 'university', 'library', 'park', 'community_centre', 'pharmacy', 'clinic']);
+export const NearbyPlaceSchema = z.strictObject({ id: text, name: text, category: PoiCategorySchema, subcategory: text.nullable(), distanceM: nonnegative, location: CoordinateSchema });
+export const NearbyStopSchema = z.strictObject({ id: text, name: text, isRapid: z.boolean(), routeTypes: z.array(text), distanceM: nonnegative, location: CoordinateSchema });
+export const NearbyResponseSchema = z.strictObject({
+  listingId: z.uuid(), locationPrecision: z.enum(['exact', 'street', 'area']), method: z.literal('straight_line'),
+  categories: z.array(z.strictObject({ category: PoiCategorySchema, places: z.array(NearbyPlaceSchema) })),
+  stops: z.array(NearbyStopSchema), nearestRapid: NearbyStopSchema.nullable(),
+});
+export type PoiCategory = z.infer<typeof PoiCategorySchema>;
+export type NearbyResponse = z.infer<typeof NearbyResponseSchema>;
+// One area's facts with the city value beside each (D's P3.10; drafted by A for D's review).
+export const AreaFactSchema = z.strictObject({
+  indicatorId: text, value: z.number().finite().nullable(), cityValue: z.number().finite().nullable(), unit: text, period: text,
+  sourceId: text, sampleSize: nonnegative.int().nullable(), note: z.string().nullable(),
+});
+export const AreaFactsSchema = z.strictObject({
+  area: z.strictObject({ kind: z.enum(['neighbourhood', 'ward']), id: text, name: text, number: positive.int().nullable() }),
+  facts: z.array(AreaFactSchema),
+  sources: z.array(z.strictObject({ id: text, title: text, url: z.string(), retrievedAt: z.string().nullable() })),
+});
+export type AreaFact = z.infer<typeof AreaFactSchema>;
+export type AreaFacts = z.infer<typeof AreaFactsSchema>;
