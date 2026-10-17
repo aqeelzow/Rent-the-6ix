@@ -9,7 +9,17 @@ import { formatCad, formatCount } from "@/lib/format/number";
 import { selectIsShortlisted } from "@/lib/store/searchSlice";
 import { useAppStore } from "@/lib/store/store";
 import type { SearchIntent, SearchResultItem } from "@/lib/store/types";
-import { daysSince, topCaveat, travelSummaries, yearSpan, type TravelSummary } from "./card-data";
+import {
+  acFact,
+  daysSince,
+  plainHardFilterNote,
+  topCaveat,
+  travelSummaries,
+  yearSpan,
+  type TravelSummary,
+} from "./card-data";
+import { TravelFacts } from "./travel-facts";
+import { SafetyInfoButton } from "@/components/safety/safety-info";
 import { PriceBadge } from "./price-badge";
 import { ScoreBar } from "./score-bar";
 
@@ -40,7 +50,7 @@ function travelText(summary: TravelSummary): string {
   return r("travel.missing", { target: summary.target });
 }
 
-function homeFacts(listing: SearchResultItem["listing"]): string[] {
+function homeFacts(listing: SearchResultItem["listing"], acInSearch: boolean): string[] {
   const facts: string[] = [];
   if (listing.bedrooms !== null) {
     facts.push(listing.bedrooms === 0 ? r("studio") : r("beds", { n: listing.bedrooms }));
@@ -48,20 +58,28 @@ function homeFacts(listing: SearchResultItem["listing"]): string[] {
   if (listing.bathrooms !== null) facts.push(r("baths", { n: decimal.format(listing.bathrooms) }));
   if (listing.sqft !== null) facts.push(r("sqft", { n: formatCount(listing.sqft) }));
   if (listing.yearBuilt !== null) facts.push(r("built", { year: listing.yearBuilt }));
-  if (listing.airConditioning === "central") facts.push(r("acCentral"));
-  else if (listing.airConditioning === "yes") facts.push(r("acYes"));
+  const ac = acFact(listing.airConditioning, acInSearch);
+  if (ac === "central") facts.push(r("acCentral"));
+  else if (ac === "yes") facts.push(r("acYes"));
+  else if (ac === "not_stated") facts.push(r("acNotStated"));
   return facts;
 }
 
 export function ResultCard({
   result,
   targets,
+  areas = [],
   safetyOn,
+  acInSearch,
   now,
 }: {
   result: SearchResultItem;
   targets: SearchIntent["travelTargets"];
+  /** Area filters, so a "within X km" search still has a point to measure distance from. */
+  areas?: SearchIntent["areas"];
   safetyOn: boolean;
+  /** The renter asked for air conditioning, as a must-have or a preference. */
+  acInSearch: boolean;
   now: number;
 }) {
   const { listing, valuation, safety, matchScore } = result;
@@ -74,7 +92,8 @@ export function ResultCard({
   const caveat = topCaveat(matchScore.caveats);
   const travel = travelSummaries(result, targets);
   const days = daysSince(listing.lastSeenAt, now);
-  const facts = homeFacts(listing);
+  const facts = homeFacts(listing, acInSearch);
+  const unconfirmed = matchScore.hardFilterNotes.map(plainHardFilterNote);
 
   return (
     <article
@@ -114,7 +133,7 @@ export function ResultCard({
               aria-label={r(shortlisted ? "shortlistRemove" : "shortlistAdd", {
                 title: listing.title,
               })}
-              onClick={() => toggleShortlist(id)}
+              onClick={() => toggleShortlist(listing)}
               className="hover:bg-accent focus-visible:ring-ring/50 relative z-10 -mt-1 -mr-1 grid size-9 shrink-0 place-items-center rounded-md outline-none focus-visible:ring-3"
             >
               <Bookmark
@@ -159,19 +178,25 @@ export function ResultCard({
         </ul>
       )}
 
+      {/* Distance from the place the renter named, and what the trips emit (owner D). */}
+      <TravelFacts result={result} targets={targets} areas={areas} />
+
       {safetyOn && (
         <p className="text-muted-foreground figures flex items-start gap-2 text-sm">
           <ShieldQuestion aria-hidden className="mt-0.5 size-4 shrink-0" />
-          {safety && safety.relativeRate !== null
-            ? r("safety", {
-                rate: decimal.format(safety.relativeRate),
-                years: yearSpan(safety.years),
-              })
-            : r("safetyNoData")}
+          <span>
+            {safety && safety.relativeRate !== null
+              ? r("safety", {
+                  rate: decimal.format(safety.relativeRate),
+                  years: yearSpan(safety.years),
+                })
+              : r("safetyNoData")}{" "}
+            <SafetyInfoButton caveats={safety?.caveats} className="text-xs" />
+          </span>
         </p>
       )}
 
-      {(caveat || matchScore.hardFilterNotes.length > 0) && (
+      {(caveat || unconfirmed.length > 0) && (
         <div className="flex flex-col items-start gap-1.5">
           {caveat && (
             <span
@@ -180,10 +205,10 @@ export function ResultCard({
               {caveat.title}
             </span>
           )}
-          {matchScore.hardFilterNotes.length > 0 && (
+          {unconfirmed.length > 0 && (
             <p className="text-caveat-warning-foreground flex items-start gap-1.5 text-xs">
               <CircleHelp aria-hidden className="mt-px size-3.5 shrink-0" />
-              {matchScore.hardFilterNotes.join(" · ")}
+              {unconfirmed.join(" · ")}
             </p>
           )}
         </div>

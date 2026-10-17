@@ -37,7 +37,7 @@ Person B's request uses `valuate(listingId)` and `safetyFor(neighbourhoodId)`; t
 
 Cheap hard filters precede enrichment/routing. Ordinary search uses up to 500 candidates, scores pass 1, routes top 100 within one shared three-second budget, drops confirmed hard failures and rescores. Unknown hard values pass with a not-confirmed note; hide-unconfirmed removes them. Unknown preferences are omitted from scores. Numeric sorts must select the requested end of the full eligible pool before truncation.
 
-Root score defaults: value 30, price 15, travel 30, home 25, safety 0; good-deal/soft fairness raises value to 45; enabled safety receives 15. Drop null parts and renormalize. Price is scored only for soft rent; home only for stated soft home criteria. Tie-break on newer `lastSeenAt`, then lower rent. Root SPEC sections 7.4–7.6 define formulas and travel defaults.
+Root score defaults: value 30, price 15, travel 30, home 25, safety 0; good-deal/soft fairness raises value to 45; enabled safety receives 15. Drop null parts and renormalize. Price is scored only for soft rent. Home averages the soft home criteria, and an unknown scores 50. Best match ranks fewer "not confirmed" notes first, then the score. Tie-break is valuation confidence, then more confirmed fields, then newer `lastSeenAt`, then lower rent. Root SPEC sections 7.4–7.6 define formulas and travel defaults.
 
 Straight-line rows expose distance, never fabricated minutes, and cannot confirm a time limit. Driving labels say no traffic. Safety is opt-in, relative neighbourhood police-reported rates with all D-owned caveats; no characterizations of residents or safe/unsafe labels.
 

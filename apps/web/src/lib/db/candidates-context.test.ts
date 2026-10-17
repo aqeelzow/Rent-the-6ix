@@ -6,6 +6,7 @@ import type { getClient as ClientFactory } from '../db';
 import { getClient } from '../db';
 import { clearValuationCache } from './valuation';
 import { sqlSearchDependencies } from './candidates-context';
+import { crimeTableFromRows } from './safety';
 import { searchPercentileCandidates } from './candidates-percentiles';
 import { SearchUnavailable } from './candidates';
 import { createRuntime } from '../api/runtime';
@@ -146,4 +147,21 @@ test('failed and aborted owner reads never populate the context cache', async ()
   const afterAbort = reads;
   await dependencies.enrich(listing, baseIntent);
   assert.ok(reads > afterAbort);
+});
+test('enrich adds D safety and its score only when the renter opted in', async () => {
+  const db = client(); vi.mocked(getClient).mockReturnValue(db.sql);
+  const period = '2023–2025';
+  const rates = (area: string, values: number[]) => ['assault', 'autotheft', 'breakenter', 'robbery', 'theftover'].map((type, i) => ({ area_id: area, indicator_id: `crime:${type}`, value: values[i], period }));
+  const table = crimeTableFromRows([...rates('001', [600, 150, 150, 50, 50]), ...rates('002', [1200, 300, 300, 100, 100])]);
+  const deps = sqlSearchDependencies(getClient, async () => table);
+  const located = { ...listing, neighbourhoodId: '001' };
+  const off = await deps.enrich(located, baseIntent);
+  assert.equal(off.safety, null); assert.equal(off.safetyScore, undefined);
+  const on = await deps.enrich(located, { ...baseIntent, safety: { enabled: true, hard: true } });
+  assert.equal(on.safety?.areaId, '001'); assert.equal(on.safety?.relativeRate, 0.67);
+  assert.ok(on.safety!.caveats.length >= 5); assert.ok(Math.abs(on.safetyScore! - 88.67) < 0.01);
+  // No neighbourhood or no crime table: unknown, never a failed search.
+  assert.equal((await deps.enrich(listing, { ...baseIntent, safety: { enabled: true, hard: false } })).safety, null);
+  const missing = sqlSearchDependencies(getClient, async () => { throw new Error('down'); });
+  assert.equal((await missing.enrich(located, { ...baseIntent, safety: { enabled: true, hard: false } })).safety, null);
 });

@@ -12,7 +12,8 @@ import {
 import Link from "next/link";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useEffect, useState } from "react";
-import { daysSince, yearSpan } from "@/components/results/card-data";
+import { SafetyInfoButton } from "@/components/safety/safety-info";
+import { daysSince, plainHardFilterNote, yearSpan } from "@/components/results/card-data";
 import { formatDaysAgo } from "@/lib/format/date";
 import { t, type MessageKey } from "@/lib/format/messages";
 import { formatCad, formatCount } from "@/lib/format/number";
@@ -387,18 +388,20 @@ export function SafetySection({
             })
           : l("safety.noData")}
       </p>
-      {safety && safety.caveats.length > 0 && (
-        <details className="text-sm">
-          <summary className="text-primary cursor-pointer font-medium">
-            {l("safety.caveats")}
-          </summary>
-          <ul className="text-muted-foreground mt-2 list-disc pl-5">
-            {safety.caveats.map((caveat) => (
-              <li key={caveat.code}>{caveat.explanation}</li>
+      {safety && Object.values(safety.byType).some((value) => value !== null) && (
+        <div className="flex flex-col gap-1">
+          <h3 className="text-sm font-medium">{l("safety.byType")}</h3>
+          <dl className="figures grid grid-cols-2 gap-x-4 gap-y-1 text-sm sm:grid-cols-3">
+            {Object.entries(safety.byType).map(([type, value]) => (
+              <div key={type} className="flex justify-between gap-2">
+                <dt className="text-muted-foreground">{l(`safety.types.${type}`)}</dt>
+                <dd>{value === null ? "–" : decimal.format(value)}</dd>
+              </div>
             ))}
-          </ul>
-        </details>
+          </dl>
+        </div>
       )}
+      <SafetyInfoButton caveats={safety?.caveats} className="self-start text-sm" />
     </DetailSection>
   );
 }
@@ -517,7 +520,7 @@ export function ThingsToCheck({
       key: note,
       severity: "warning" as const,
       title: l("check.unconfirmed"),
-      detail: note,
+      detail: plainHardFilterNote(note),
     })),
   ];
   return (

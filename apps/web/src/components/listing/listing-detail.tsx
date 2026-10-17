@@ -218,7 +218,7 @@ function Header({
             aria-label={t(shortlisted ? "results.shortlistRemove" : "results.shortlistAdd", {
               title: listing.title,
             })}
-            onClick={() => toggleShortlist(listing.id)}
+            onClick={() => toggleShortlist(listing)}
             className="grid size-10 shrink-0 place-items-center rounded-full border border-white/25 outline-none hover:bg-white/10 focus-visible:ring-3 focus-visible:ring-white/50"
           >
             <Bookmark

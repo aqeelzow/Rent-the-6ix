@@ -129,6 +129,22 @@ describe("safety and counts", () => {
     });
   });
 
+  it("sets a safety limit only for a must-have", () => {
+    expect(
+      valid(setSafety(intent, { enabled: true, hard: true, maxRelativeRate: 0.7 })).safety,
+    ).toEqual({
+      enabled: true,
+      hard: true,
+      maxRelativeRate: 0.7,
+    });
+    expect(
+      valid(setSafety(intent, { enabled: true, hard: false, maxRelativeRate: 0.7 })).safety,
+    ).toEqual({
+      enabled: true,
+      hard: false,
+    });
+  });
+
   it("counts active filters", () => {
     expect(activeFilterCount(intent)).toBe(1);
     expect(

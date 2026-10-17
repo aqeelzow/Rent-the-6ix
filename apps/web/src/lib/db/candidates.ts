@@ -1,8 +1,8 @@
 import { ListingSchema, SearchRequestSchema, SearchResultSchema, TravelTimeRowSchema, type Listing, type SearchRequest, type SearchResult, type TravelTarget, type TravelTimeRow } from '../../../../../packages/shared/schemas/index';
 import { engineConfig } from '../../../../../packages/shared/engine/config';
 import { filterListing } from '../../../../../packages/shared/engine/filters';
-import { scoreListing, tieBreak, type ScoreContext } from '../../../../../packages/shared/engine/score';
-import { clamp, distanceM, targetModes } from '../../../../../packages/shared/engine/travel';
+import { bestMatchOrder, scoreListing, tieBreak, valueScore, type ScoreContext, type TieSide } from '../../../../../packages/shared/engine/score';
+import { distanceM, targetModes } from '../../../../../packages/shared/engine/travel';
 export type SearchDependencies = {
   // Fixture/detail pool; live search can inject the read-only SQL candidate loader.
   listings: readonly Listing[];
@@ -39,9 +39,12 @@ export function tripMinutes(intent: SearchRequest['intent'], travel: TravelTimeR
   }
   return sum / intent.travelTargets.length;
 }
+const tieSide = (listing: Listing, valuation?: { status: string; confidence: TieSide['confidence'] }): TieSide => ({ listing, confidence: valuation?.confidence, valued: valuation?.status === 'ok' });
 export function compareResults(intent: SearchRequest['intent'], a: SearchResult, b: SearchResult): number {
+  const left = tieSide(a.listing, a.valuation), right = tieSide(b.listing, b.valuation);
+  if (intent.sortBy === 'best_match') return bestMatchOrder({ total: a.matchScore.total, unconfirmed: a.matchScore.hardFilterNotes.length, tie: left }, { total: b.matchScore.total, unconfirmed: b.matchScore.hardFilterNotes.length, tie: right });
   const primary = intent.sortBy === 'lowest_rent' ? a.listing.monthlyRentCad - b.listing.monthlyRentCad : intent.sortBy === 'newest' ? Date.parse(b.listing.lastSeenAt) - Date.parse(a.listing.lastSeenAt) : intent.sortBy === 'best_value' ? part(b, 'value') - part(a, 'value') : intent.sortBy === 'shortest_trips' ? tripMinutes(intent, a.travel) - tripMinutes(intent, b.travel) : b.matchScore.total - a.matchScore.total;
-  return (Number.isNaN(primary) ? 0 : primary) || tieBreak(a.listing, b.listing);
+  return (Number.isNaN(primary) ? 0 : primary) || tieBreak(left, right);
 }
 export async function searchCandidates(input: SearchRequest, dependencies: SearchDependencies) {
   const request = SearchRequestSchema.parse(input), { intent } = request;
@@ -50,7 +53,7 @@ export async function searchCandidates(input: SearchRequest, dependencies: Searc
   const source = dependencies.loadCandidates ? await dependencies.loadCandidates(request) : dependencies.listings;
   const pool = source.map(l => ListingSchema.parse(l)).filter(l => filterListing(l, intent, {}, request.hideUnconfirmed, true).passes);
   // Numeric listing sorts operate on the entire cheap-filtered pool before expensive enrichment.
-  if (intent.sortBy === 'lowest_rent' || intent.sortBy === 'newest') pool.sort((a, b) => intent.sortBy === 'lowest_rent' ? a.monthlyRentCad - b.monthlyRentCad || tieBreak(a, b) : tieBreak(a, b));
+  if (intent.sortBy === 'lowest_rent' || intent.sortBy === 'newest') pool.sort((a, b) => intent.sortBy === 'lowest_rent' ? a.monthlyRentCad - b.monthlyRentCad || tieBreak(tieSide(a), tieSide(b)) : Date.parse(b.lastSeenAt) - Date.parse(a.lastSeenAt) || tieBreak(tieSide(a), tieSide(b)));
   const contexts = new Map<string, ScoreContext>();
   // Fairness/safety hard filters must be known before taking the numeric candidate cap.
   const fullContextRequired = intent.sortBy === 'best_value' || intent.sortBy === 'shortest_trips' || intent.criteria.priceFairness?.hard || intent.safety.hard || intent.travelTargets.some(t => t.hard);
@@ -69,9 +72,9 @@ export async function searchCandidates(input: SearchRequest, dependencies: Searc
   if (intent.sortBy === 'best_value' || intent.sortBy === 'shortest_trips') {
     const key = (listing: Listing) => {
       const context = contexts.get(listing.id)!;
-      return intent.sortBy === 'best_value' ? context.valuation.status === 'ok' ? clamp(50 + context.valuation.differencePct! * 2.5) : -Infinity : -tripMinutes(intent, context.travel);
+      return intent.sortBy === 'best_value' ? valueScore(context.valuation) ?? -Infinity : -tripMinutes(intent, context.travel);
     };
-    eligible.sort((a, b) => (key(b) - key(a) || tieBreak(a, b)));
+    eligible.sort((a, b) => (key(b) - key(a) || tieBreak(tieSide(a, contexts.get(a.id)!.valuation), tieSide(b, contexts.get(b.id)!.valuation))));
   }
   const candidates = eligible.slice(0, engineConfig.candidateLimit).map(listing => {
     const context = contexts.get(listing.id)!;

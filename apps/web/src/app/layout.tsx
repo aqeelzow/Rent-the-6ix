@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Big_Shoulders, Public_Sans } from "next/font/google";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { SiteHeader } from "@/components/layout/site-header";
+import { StorePersistence } from "@/components/shortlist/store-persistence";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { t } from "@/lib/format/messages";
 import "./globals.css";
@@ -38,6 +39,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     >
       <body className="flex min-h-full flex-col">
         <TooltipProvider>
+          <StorePersistence />
           <SiteHeader />
           <main id="main" className="flex flex-1 flex-col">
             {children}

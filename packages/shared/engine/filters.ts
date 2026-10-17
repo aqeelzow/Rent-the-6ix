@@ -1,6 +1,7 @@
 import type { Listing, SearchIntent, Safety, TravelTimeRow, Valuation, AreaFilter } from '../schemas/index';
 import { homeCriteria } from './home-fit';
 import { distanceM, evaluateTarget } from './travel';
+import { SAFETY } from './config';
 export type FilterContext = { valuation?: Valuation; travel?: TravelTimeRow[]; safety?: Safety | null };
 function areaMatches(listing: Listing, area: AreaFilter): boolean | null {
   if (area.kind === 'neighbourhood') return listing.neighbourhoodId === null ? null : listing.neighbourhoodId === area.id;
@@ -23,7 +24,8 @@ export function filterListing(listing: Listing, intent: SearchIntent, context: F
   if (!cheapOnly) {
     const fairness = intent.criteria.priceFairness;
     if (fairness?.hard) check('priceFairness', !context.valuation || context.valuation.priceLabel === 'unknown' ? null : fairness.value.includes(context.valuation.priceLabel));
-    if (intent.safety.enabled && intent.safety.hard) check('safety', context.safety?.relativeRate == null ? null : context.safety.relativeRate <= 1);
+    // The renter's limit from the safety slider, else D's default (the city rate).
+    if (intent.safety.enabled && intent.safety.hard) check('safety', context.safety?.relativeRate == null ? null : context.safety.relativeRate <= (intent.safety.maxRelativeRate ?? SAFETY.hardMaxRelativeRate));
     for (const target of intent.travelTargets) if (target.hard) {
       const state = evaluateTarget(target, context.travel ?? []).state;
       check(`Travel to ${target.label}`, state === 'unknown' ? null : state === 'pass');

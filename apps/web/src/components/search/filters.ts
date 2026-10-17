@@ -155,14 +155,25 @@ export function chooseDestination(
   };
 }
 
-/** Safety is opt-in (SPEC 7.6); turning it off also drops any safety weight. */
+/**
+ * Safety is opt-in (SPEC 7.6). A must-have keeps neighbourhoods at most `maxRelativeRate` times the
+ * city rate (the slider); without a limit it only changes the ranking. Turning safety off also
+ * drops any safety weight.
+ */
 export function setSafety(
   intent: SearchIntent,
-  safety: { enabled: boolean; hard: boolean },
+  safety: { enabled: boolean; hard: boolean; maxRelativeRate?: number },
 ): SearchIntent {
+  const hard = safety.enabled && safety.hard;
   const next: SearchIntent = {
     ...intent,
-    safety: { enabled: safety.enabled, hard: safety.enabled && safety.hard },
+    safety: {
+      enabled: safety.enabled,
+      hard,
+      ...(hard && safety.maxRelativeRate !== undefined
+        ? { maxRelativeRate: safety.maxRelativeRate }
+        : {}),
+    },
     fieldSources: editedSources(intent, "safety"),
   };
   if (!safety.enabled && next.weights?.safety) next.weights = { ...next.weights, safety: 0 };

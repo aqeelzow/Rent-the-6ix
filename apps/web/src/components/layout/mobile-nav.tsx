@@ -3,6 +3,7 @@
 import { MenuIcon } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
+import { ShortlistCount } from "@/components/shortlist/shortlist-count";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { t } from "@/lib/format/messages";
@@ -32,6 +33,7 @@ export function MobileNav() {
             >
               <Icon aria-hidden className="text-muted-foreground size-5" />
               {t(label)}
+              {href === "/shortlist" && <ShortlistCount />}
             </Link>
           ))}
         </nav>

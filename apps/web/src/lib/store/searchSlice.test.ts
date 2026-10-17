@@ -125,13 +125,27 @@ describe("selection contract", () => {
 });
 
 describe("shortlist", () => {
-  it("toggles listings in and out", () => {
-    store.getState().toggleShortlist("a");
-    expect(selectIsShortlisted("a")(store.getState())).toBe(true);
-    expect(store.getState().shortlist[0]).toMatchObject({ kind: "listing", id: "a" });
+  it("toggles listings in and out, keeping the figures as saved", () => {
+    const listing = listings[0]!;
+    store.getState().toggleShortlist(listing);
+    expect(selectIsShortlisted(listing.id)(store.getState())).toBe(true);
+    expect(store.getState().shortlist[0]).toEqual({
+      kind: "listing",
+      id: listing.id,
+      addedAt: expect.any(String),
+      saved: {
+        title: listing.title,
+        monthlyRentCad: listing.monthlyRentCad,
+        rentIsPerRoom: listing.rentIsPerRoom,
+        bedrooms: listing.bedrooms,
+        bathrooms: listing.bathrooms,
+        sqft: listing.sqft,
+        source: listing.source,
+      },
+    });
 
-    store.getState().toggleShortlist("a");
-    expect(selectIsShortlisted("a")(store.getState())).toBe(false);
+    store.getState().toggleShortlist(listing);
+    expect(selectIsShortlisted(listing.id)(store.getState())).toBe(false);
   });
 
   it("keeps pasted listings whole and replaces a re-pasted one", () => {
@@ -145,10 +159,11 @@ describe("shortlist", () => {
   });
 
   it("removes one entry or clears everything", () => {
-    store.getState().toggleShortlist("a");
-    store.getState().toggleShortlist("b");
-    store.getState().removeFromShortlist("a");
-    expect(store.getState().shortlist.map((e) => e.id)).toEqual(["b"]);
+    const [first, second] = listings;
+    store.getState().toggleShortlist(first!);
+    store.getState().toggleShortlist(second!);
+    store.getState().removeFromShortlist(first!.id);
+    expect(store.getState().shortlist.map((e) => e.id)).toEqual([second!.id]);
 
     store.getState().clearShortlist();
     expect(store.getState().shortlist).toEqual([]);
