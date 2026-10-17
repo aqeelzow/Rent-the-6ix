@@ -150,10 +150,10 @@ test('Gemini busy never retries, timeout bounds full retry and text uses main mo
   await assert.rejects(provider.generateStructured({system:'test',prompt:'test',schema:z.object({ok:z.boolean()})}), (e: unknown) => e instanceof AIUnavailable && e.reason === 'timeout'); assert.equal(calls,2);
   const text = new GeminiProvider({ apiKey:'test',model:'main',fastModel:'fast',fetch:async url => { assert.match(String(url), /main/); return Response.json({candidates:[{content:{parts:[{text:'hello'}]}}]}); } }); assert.equal(await text.generateText({system:'test',prompt:'test'}),'hello');
 });
-test('Gemini fast requests cap the shared retry deadline at three seconds and respect shorter budgets', async () => {
+test('Gemini fast requests cap the shared retry deadline at ten seconds and respect shorter budgets', async () => {
   vi.useFakeTimers();
   try {
-    for (const [fast, deadlineMs, budget] of [[true, undefined, 3000], [true, 12000, 3000], [true, 500, 500], [false, undefined, 12000], [false, 1500, 1500]] as const) {
+    for (const [fast, deadlineMs, budget] of [[true, undefined, 10000], [true, 12000, 10000], [true, 500, 500], [false, undefined, 12000], [false, 1500, 1500]] as const) {
       let calls = 0;
       let signal: AbortSignal | undefined;
       const provider = new GeminiProvider({ apiKey: 'test', model: 'configured', deadlineMs, fetch: async (_url, opts) => {
@@ -228,7 +228,7 @@ test('AI source contract uses target IDs and missing travel evidence falls back 
 });
 
 
-test('MapTiler partial or missing relevance cannot become a destination choice', async () => {
+test('MapTiler weak or missing relevance cannot become a destination choice', async () => {
   const partial = { id: 'wrong', place_name: 'Unrelated landform', place_type: ['major_landform'], center: [-79.4,43.7] };
   const features = [partial, { ...partial, id: 'partial', relevance: 0.554815 }];
   const resolver = new DestinationResolver({ maptilerKey: 'test', fetch: async () => Response.json({ features }) });

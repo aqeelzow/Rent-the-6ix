@@ -1,5 +1,16 @@
 [
   {
+    "id": "cn-tower",
+    "label": "CN Tower representative point",
+    "aliases": [
+      "cn tower",
+      "the cn tower",
+      "canadian national tower"
+    ],
+    "lng": -79.387087,
+    "lat": 43.642564
+  },
+  {
     "id": "uoft-st-george",
     "label": "UofT St. George campus representative point",
     "aliases": [

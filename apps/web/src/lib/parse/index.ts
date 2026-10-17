@@ -36,6 +36,10 @@ export class ParseService {
         if (requiredTravel.some(required => !intent.travelTargets.some(actual => actual.kind === required.kind && (required.kind === 'place' ? actual.query?.toLowerCase() === required.query?.toLowerCase() : actual.category === required.category) && actual.hard && actual.maxMinutes === required.maxMinutes))) throw new AIUnavailable('invalid');
         parser = 'gemini';
       } catch (error) {
+        console.warn('[search.parse] Gemini parse fell back', {
+          reason: error instanceof AIUnavailable ? error.reason : error instanceof z.ZodError ? 'schema_validation' : 'parse_validation',
+          status: error instanceof AIUnavailable && error.reason === 'busy' ? error.status : undefined,
+        });
         intent = fallbackParse(prompt, this.options.now?.(), catalogue);
         notice = [notice, error instanceof AIUnavailable && error.reason === 'busy' ? 'AI busy, used basic search.' : 'Used basic search; review the interpreted filters.'].filter(Boolean).join(' ');
       }

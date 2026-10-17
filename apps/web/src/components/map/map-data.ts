@@ -43,8 +43,6 @@ type Position = [number, number];
 type Props = { id: string; band: ScoreBand; total: number };
 export type PointCollection = FeatureCollection<Point, Props>;
 export type AreaCollection = FeatureCollection<Polygon, Props>;
-type SearchAreaProps = { id: string; label: string };
-export type SearchAreaCollection = FeatureCollection<Polygon, SearchAreaProps>;
 
 /** A circle of `radiusM` metres around a point, as a closed polygon ring. */
 export function circlePolygon(
@@ -100,31 +98,6 @@ export function resultsToGeoJSON(results: SearchResultItem[]): {
   return { points, areas };
 }
 
-/** Configured general-area filters are approximate rectangles, shown separately from listing areas. */
-export function searchAreasToGeoJSON(areas: SearchIntent["areas"]): SearchAreaCollection {
-  return {
-    type: "FeatureCollection",
-    features: areas.flatMap((area) => {
-      if (area.kind !== "configured") return [];
-      const [west, south, east, north] = area.bounds;
-      return [{
-        type: "Feature" as const,
-        properties: {
-          id: area.id,
-          label: area.label.replace(
-            " approximate configured search boundary (not an official boundary)",
-            " (approx.)",
-          ),
-        },
-        geometry: {
-          type: "Polygon" as const,
-          coordinates: [[[west, south], [east, south], [east, north], [west, north], [west, south]]],
-        },
-      }];
-    }),
-  };
-}
-
 /** Places the renter wants to reach that have coordinates, for destination pins. */
 export function placePins(targets: SearchIntent["travelTargets"]) {
   return targets.flatMap((target) =>
@@ -141,7 +114,6 @@ export function placePins(targets: SearchIntent["travelTargets"]) {
 export function boundsOf(
   results: SearchResultItem[],
   places: { lng: number; lat: number }[],
-  searchAreas: SearchIntent["areas"] = [],
 ): [number, number, number, number] | null {
   const boxes = [
     ...results
@@ -152,12 +124,6 @@ export function boundsOf(
         return { ...listing.location, radiusM };
       }),
     ...places.filter(inRegion).map((place) => ({ ...place, radiusM: 0 })),
-    ...searchAreas.flatMap((area) => {
-      if (area.kind !== "configured") return [];
-      const [west, south, east, north] = area.bounds;
-      return [{ lng: west, lat: south, radiusM: 0 }, { lng: east, lat: north, radiusM: 0 }]
-        .filter(inRegion);
-    }),
   ];
   if (!boxes.length) return null;
   let [west, south, east, north] = [Infinity, Infinity, -Infinity, -Infinity];

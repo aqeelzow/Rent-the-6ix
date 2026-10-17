@@ -18,7 +18,6 @@ import {
   boundsOf,
   placePins,
   resultsToGeoJSON,
-  searchAreasToGeoJSON,
   type ScoreBand,
 } from "./map-data";
 
@@ -40,7 +39,7 @@ const bandColor: ExpressionSpecification = [
 ];
 
 /**
- * Results map (SPEC 12): clustered pins, listing uncertainty circles, configured search areas and
+ * Results map (SPEC 12): clustered pins, listing uncertainty circles and
  * place pins. Hover and select are shared with the list through the store.
  */
 export function ResultsMap({ className = "" }: { className?: string }) {
@@ -51,7 +50,6 @@ export function ResultsMap({ className = "" }: { className?: string }) {
   const [failed, setFailed] = useState(false);
   const results = useAppStore((s) => s.results);
   const targets = useAppStore((s) => s.intent?.travelTargets);
-  const searchAreas = useAppStore((s) => s.intent?.areas);
   const hovered = useAppStore((s) => s.hoveredListingId);
   const selected = useAppStore((s) => s.selectedListingId);
 
@@ -100,10 +98,8 @@ export function ResultsMap({ className = "" }: { className?: string }) {
     const map = mapRef.current;
     if (!ready || !map) return;
     const { points, areas: approximateAreas } = resultsToGeoJSON(results);
-    const queryAreas = searchAreasToGeoJSON(searchAreas ?? []);
     (map.getSource("listings") as GeoJSONSource | undefined)?.setData(points);
     (map.getSource("approx") as GeoJSONSource | undefined)?.setData(approximateAreas);
-    (map.getSource("search-area") as GeoJSONSource | undefined)?.setData(queryAreas);
 
     const places = placePins(targets ?? []);
     void import("maplibre-gl").then((maplibregl) => {
@@ -118,9 +114,9 @@ export function ResultsMap({ className = "" }: { className?: string }) {
       });
     });
 
-    const bounds = boundsOf(results, places, searchAreas ?? []);
+    const bounds = boundsOf(results, places);
     if (bounds) map.fitBounds(bounds, { padding: 48, maxZoom: 15, duration: 0 });
-  }, [ready, results, targets, searchAreas]);
+  }, [ready, results, targets]);
 
   // Hover and selection from the list highlight the matching pin or circle.
   useEffect(() => {
@@ -162,27 +158,6 @@ function addLayers(map: MapLibreMap) {
     clusterMaxZoom: 14,
   });
   map.addSource("approx", { type: "geojson", data: empty });
-  map.addSource("search-area", { type: "geojson", data: empty });
-
-  map.addLayer({
-    id: "search-area-fill",
-    type: "fill",
-    source: "search-area",
-    paint: { "fill-color": "#795bbf", "fill-opacity": 0.08 },
-  });
-  map.addLayer({
-    id: "search-area-line",
-    type: "line",
-    source: "search-area",
-    paint: { "line-color": "#795bbf", "line-width": 2, "line-dasharray": [2, 1] },
-  });
-  map.addLayer({
-    id: "search-area-label",
-    type: "symbol",
-    source: "search-area",
-    layout: { "text-field": ["get", "label"], "text-size": 12, "text-allow-overlap": true },
-    paint: { "text-color": "#553c9a", "text-halo-color": "#ffffff", "text-halo-width": 1.5 },
-  });
 
   map.addLayer({
     id: "approx-fill",
@@ -307,10 +282,6 @@ function Legend() {
         {t("results.map.place")}
       </p>
       <p className="text-muted-foreground">{t("results.map.approx")}</p>
-      <p className="flex items-center gap-1.5">
-        <span aria-hidden className="size-3 border border-dashed border-[#795bbf] bg-[#795bbf]/10" />
-        {t("results.map.searchArea")}
-      </p>
     </div>
   );
 }
