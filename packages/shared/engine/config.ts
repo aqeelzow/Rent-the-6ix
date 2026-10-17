@@ -23,6 +23,8 @@ export const VALUATION = {
   recencyFloor: 0.5,
   /** Similarity weight = 1 − perBathroom × |Δbathrooms| − sqftPenalty (if sizes differ > sqftTolerance). */
   similarity: { perBathroom: 0.15, sqftPenalty: 0.1, sqftTolerance: 0.25 },
+  /** One building's floor plans count as at most this many comparables (weight and counts). */
+  maxPerBuilding: 2,
   /** Bathrooms may differ by at most this much. */
   maxBathroomDifference: 1,
   /** Confidence from comparable count and spread (IQR / median). */

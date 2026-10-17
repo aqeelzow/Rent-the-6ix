@@ -33,6 +33,7 @@ function comp(overrides: Partial<ComparableCandidate> = {}): ComparableCandidate
     distanceM: 500,
     lastSeenAt: daysAgo(1),
     duplicateOf: null,
+    buildingKey: null,
     ...overrides,
   };
 }
@@ -230,5 +231,29 @@ describe("priceLabel", () => {
       NOW,
     );
     expect(v).toMatchObject({ priceLabel: "underpriced", differenceCad: 400, differencePct: 16.7 });
+  });
+});
+
+describe("same-building floor plans", () => {
+  it("count as at most 2 comparables toward the floor", () => {
+    const tower = comps([2400, 2420, 2440, 2460, 2480, 2500], { buildingKey: "b1", distanceM: 0 });
+    const v = valuate(subject, tower, null, NOW);
+    expect(v).toMatchObject({ status: "insufficient_data", comparableCount: 6 });
+    expect(v.method).toContain("floor plans in one building count as at most 2");
+    // Three more buildings bring it to 2 + 3 = 5.
+    const others = comps([2600, 2650, 2700], { distanceM: 800 });
+    expect(valuate(subject, [...tower, ...others], null, NOW).status).toBe("ok");
+  });
+
+  it("share the weight of 2, so one building can't decide the estimate", () => {
+    const tower = comps(Array(10).fill(2000), { buildingKey: "b1", distanceM: 0 });
+    const others = comps([3000, 3000, 3000, 3000, 3000], { distanceM: 0 });
+    const v = valuate(subject, [...tower, ...others], null, NOW);
+    // Uncapped, 10 of 15 equal weights at $2,000 would make the median $2,000.
+    expect(v.estimatedRentCad).toBe(3000);
+    const towerWeight = v.comparables.find((c) => c.rentCad === 2000)!.weight;
+    expect(towerWeight).toBe(0.2);
+    // Confidence counts 2 + 5 = 7 comparables, not 15.
+    expect(v.confidence).not.toBe("high");
   });
 });
