@@ -462,23 +462,25 @@ Vitest coverage for: intent validation and dropped requests; hard criteria with 
 
 All under the Open Government Licence – Toronto unless noted. Each loader records source URL, retrieval date and licence in a `sources` table, shown on `/data`. **P0.4 confirms every link and dataset name below before loading** (some City datasets get retired and replaced, e.g. the original RentSafeTO evaluation dataset).
 
+> **Verified 2026-10-16 (P0.4).** Every link below resolved, and the resource each loader fetches was fetched and inspected; details, exact resource URLs, licences and the corrections are in `docs/datasets.md`. Note that `open.toronto.ca` answers HTTP 200 for any slug, so a 200 there proves nothing — resolve slugs through the CKAN API (`ckan0.cf.opendata.inter.prod-toronto.ca/api/3/action/package_show?id=<slug>`).
+
 | Dataset | Used for | Link |
 | --- | --- | --- |
 | Neighbourhoods (158) boundaries | area lookup, explorer map | https://open.toronto.ca/dataset/neighbourhoods/ |
-| Neighbourhood Profiles (2021 Census) | renter share, shelter cost burden, income | https://open.toronto.ca/dataset/neighbourhood-profiles/ |
+| Neighbourhood Profiles (2021 Census) | renter share, shelter cost burden, income | https://open.toronto.ca/dataset/neighbourhood-profiles/ (2021 file is XLSX only, 158-model; the CSVs are 2001–2016) |
 | Neighbourhood Improvement Areas | NIA flag (context only) | https://open.toronto.ca/dataset/neighbourhood-improvement-areas/ |
 | City Wards (25) boundaries | ward lookup, ward pages | https://open.toronto.ca/dataset/city-wards/ |
-| Ward Profiles (25-ward model, 2021 Census) | ward indicators | https://www.toronto.ca/city-government/council/ward-profiles/ |
-| Apartment Building Registration | RentSafeTO building list, storeys, units, year built | https://open.toronto.ca/dataset/apartment-building-registration/ (verify) |
-| Apartment Building Evaluations (current) | RentSafeTO scores and dates | search "Apartment Building Evaluation" on open.toronto.ca; older dataset retired: https://open.toronto.ca/dataset/apartment-building-evaluation/ |
-| Address Points (Toronto One Address Repository) | geocoding listing addresses offline, building matching | https://open.toronto.ca/dataset/address-points-municipal-toronto-one-address-repository/ (verify) |
+| Ward Profiles (25-ward model, 2021 Census) | ward indicators | https://www.toronto.ca/city-government/council/ward-profiles/ (HTML only, no data feed — compute ward indicators from the tables below) |
+| Apartment Building Registration | RentSafeTO building list, storeys, units, year built | https://open.toronto.ca/dataset/apartment-building-registration/ |
+| Apartment Building Evaluations (current) | RentSafeTO scores and dates | https://open.toronto.ca/dataset/apartment-building-evaluation/ — holds "2023 - current" plus "Pre-2023" resources |
+| Address Points (Toronto One Address Repository) | geocoding listing addresses offline, building matching | https://open.toronto.ca/dataset/address-points-municipal-toronto-one-address-repository/ |
 | TTC Routes and Schedules (GTFS) | transit stops, rapid transit access, OTP | https://open.toronto.ca/dataset/ttc-routes-and-schedules/ |
-| Development Applications | applications and proposed units near listings and per area | https://open.toronto.ca/dataset/development-applications/ (verify) |
-| Building Permits – Active | new residential construction (P1) | https://open.toronto.ca/dataset/building-permits-active-permits/ (verify) |
-| Library Branch General Information | libraries | https://open.toronto.ca/dataset/library-branch-general-information/ (verify) |
-| Parks and Recreation Facilities | parks, community centres | https://open.toronto.ca/dataset/parks-and-recreation-facilities/ (verify) |
-| School Locations – All Types | schools | https://open.toronto.ca/dataset/school-locations-all-types/ (verify) |
-| 311 Service Requests (P1) | most common requests near a listing | https://open.toronto.ca/dataset/311-service-requests-customer-initiated/ (verify) |
+| Development Applications | applications and proposed units near listings and per area | https://open.toronto.ca/dataset/development-applications/ |
+| Building Permits – Active | new residential construction (P1) | https://open.toronto.ca/dataset/building-permits-active-permits/ |
+| Library Branch General Information | libraries | https://open.toronto.ca/dataset/library-branch-general-information/ |
+| Parks and Recreation Facilities | parks, community centres | https://open.toronto.ca/dataset/parks-and-recreation-facilities/ |
+| School Locations – All Types | schools | https://open.toronto.ca/dataset/school-locations-all-types/ |
+| 311 Service Requests (P1) | most common requests near a listing | https://open.toronto.ca/dataset/311-service-requests-customer-initiated/ |
 | 2026 Municipal Election info | election date, official candidate list link, voting places | https://www.toronto.ca/city-government/elections/ |
 
 Also ask the School of Cities organizers for the **Toronto Civic Data Starter Guide** and add anything useful from it here.
@@ -487,7 +489,7 @@ Also ask the School of Cities organizers for the **Toronto Civic Data Starter Gu
 
 | Source | Used for | Link |
 | --- | --- | --- |
-| Toronto Police Service Public Safety Data Portal: Neighbourhood Crime Rates | opt-in safety preference (7.6) and area card: per-100k rates by neighbourhood and year, with TPS caveats | https://data.torontopolice.on.ca/pages/open-data |
+| Toronto Police Service Public Safety Data Portal: Neighbourhood Crime Rates | opt-in safety preference (7.6) and area card: per-100k rates by neighbourhood and year, with TPS caveats | https://data.tps.ca/datasets/TorontoPS::neighbourhood-crime-rates-open-data (the old `data.torontopolice.on.ca/pages/open-data` link now redirects to the portal root) |
 | Statistics Canada table 46-10-0092-01 (Quarterly rent statistics, experimental) | Toronto CMA asking-rent benchmark by bedrooms and rooms | https://www150.statcan.gc.ca/t1/tbl1/en/tv.action?pid=4610009201 |
 | CMHC Rental Market Survey data tables (Oct 2025) | average rent by survey zone and bedroom count | https://www.cmhc-schl.gc.ca/professionals/housing-markets-data-and-research/housing-data/data-tables/rental-market/rental-market-report-data-tables |
 | OpenStreetMap (Geofabrik Ontario extract) | supermarkets and grocery stores (`shop=supermarket`, `shop=greengrocer`, larger `shop=grocery`), pharmacies, clinics (City has no grocery dataset); OTP street, path and road network | https://download.geofabrik.de/north-america/canada/ontario.html (ODbL; credit "© OpenStreetMap contributors") |
@@ -906,6 +908,7 @@ One line per change to this spec: `YYYY-MM-DD P#.#: what changed and why`. Newes
 - 2026-10-16 P0.10 [A]: UI strings use a small typed `t()` over `messages/en.json` instead of next-intl (simpler, no provider or middleware). "Paste a listing" gets its own route, `/paste`. One `.env.local` at the repo root serves web (loaded by `next.config.ts`), worker and scripts. Unbuilt pages (`/search`, `/areas`, `/paste`, `/data`, `/status`) render a placeholder so early deploys have no dead links.
 - 2026-10-16 P0.13 [A]: Store contract: `useAppStore(selector)` from `apps/web/src/lib/store/store.ts` (one browser store; slices combined there). Search runs as `startSearch()` → `receiveResults(id, results)` / `receiveError(id, error)`, and responses to older requests are dropped. Shortlist entries are `{ kind: "listing", id, addedAt }` or `{ kind: "pasted", id, listing, addedAt }`. Selection contract: `hoveredListingId` / `selectedListingId`, both cleared when that listing leaves the results.
 - 2026-10-16 P0.12 [C]: Removed source-access rules (robots.txt, rate limits, user agent, login and bot-block drops, Facebook exclusion); privacy rules (no photos, scrubbed contact details) kept.
+- 2026-10-16 P0.4 [D]: Every dataset link in 8.1–8.2 verified against the publishers' own APIs; all 14 City slugs exist and the fetched resources were inspected. Corrections: TPS crime rates move to `data.tps.ca/datasets/TorontoPS::neighbourhood-crime-rates-open-data` (the old `data.torontopolice.on.ca` page now redirects to the portal root); the RentSafeTO evaluation dataset is **not** retired — the same slug holds 2023–current and pre-2023; 2021 Neighbourhood Profiles are XLSX-only; Ward Profiles has no data feed. CKAN licence metadata is mostly `notspecified` while the portal terms are OGL-Toronto, so loaders record OGL-Toronto. Details and exact resource URLs: `docs/datasets.md`.
 - 2026-10-16 P0.11 [C]: Adapters are `{ id, displayName, fetchIndex(session, cursor) → { listings: RawListing[], nextCursor } }` (index pages carry full rows on the working sources, so no `fetchDetail`/`parse(html)` step; parsing is a pure function per adapter). All fetching is plain Playwright; a 401/403/429 or bot-check page marks the source unhealthy for the run. New source `torontorentals` (torontorentals.com, Rentals.ca network); rentals.ca, Zillow and Realtor.ca are blocked, Facebook not collected (see `apps/worker/SOURCES.md`).
 - 2026-10-16 P0.1 [A]: pnpm pinned to 10.34.7 (`packageManager`). Vercel's pnpm 9/10 can't read pnpm 12's lockfile, and newer pnpm switches to the pinned version automatically. The team's Vercel project builds from Root Directory `apps/web`, and `apps/web/vercel.json` pins the Next.js preset. `.env.example` is git-ignored and removed from the repo at the team's request; SPEC 20 is the variable list.
 - 2026-10-16 P0.1 [A]: The Vercel project builds from the repo root. The root `vercel.json` sets `framework: nextjs`, `buildCommand: pnpm --filter web build` and `outputDirectory: apps/web/.next`, and `next` is a root devDependency so Vercel's Next.js builder detects it. The output matches a Root Directory `apps/web` build (`apps/web/vercel.json`), which also works. Root `engines.node` is `24.x`.

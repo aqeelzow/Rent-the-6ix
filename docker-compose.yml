@@ -1,0 +1,76 @@
+# docker-compose.yml — owner: D (P0.9)
+#
+# The whole production stack on one Vultr instance: Caddy (TLS) → web (Next.js) and
+# worker (ingest + travel precompute), plus OTP once the graph exists.
+#
+#   docker compose up -d --build          # web + worker + caddy
+#   docker compose --profile otp up -d    # add the router (needs otp/graphs/)
+#
+# Values come from a manually-created `.env` next to this file (variables are listed in
+# SPEC.md §20). `.env` is git-ignored; `DATABASE_URL` and `GEMINI_API_KEY` only live there.
+name: rentthe6ix
+
+services:
+  web:
+    build:
+      context: .
+      target: web
+      args:
+        # Inlined at build time. Empty ⇒ OpenFreeMap basemap (SPEC 20).
+        NEXT_PUBLIC_MAPTILER_KEY: ${NEXT_PUBLIC_MAPTILER_KEY:-}
+    restart: unless-stopped
+    env_file: .env
+    # No host ports: Caddy reaches the app by service name on the compose network.
+    expose:
+      - "3000"
+
+  worker:
+    build:
+      context: .
+      target: worker
+    # on-failure, not unless-stopped: while the entry point is still a no-op it exits
+    # 0, and a clean exit must not restart-loop. Real crashes still come back.
+    restart: on-failure
+    env_file: .env
+    environment:
+      # In-network name; ignores whatever OTP_URL says in .env.
+      OTP_URL: http://otp:8080
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      # <ip-with-dashes>.sslip.io resolves to the instance's public IP, so Caddy can
+      # get a real certificate without a domain. Set it in .env.
+      SITE_HOST: ${SITE_HOST:?set SITE_HOST in .env, e.g. 203-0-113-7.sslip.io}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      web:
+        condition: service_healthy
+
+  # --- OpenTripPlanner (S2) -------------------------------------------------
+  # Hidden behind a profile: `docker compose up -d` never starts it, so a missing or
+  # stale graph cannot break a deploy. Build the graph first (DEPLOY.md §4).
+  otp:
+    profiles: ["otp"]
+    image: ${OTP_IMAGE:-opentripplanner/opentripplanner:2.7.0}
+    restart: unless-stopped
+    environment:
+      JAVA_TOOL_OPTIONS: -Xmx6g
+    volumes:
+      - ./otp/data:/var/opentripplanner
+      - ./otp/graphs:/var/opentripplanner/graphs
+    expose:
+      - "8080"
+    mem_limit: 7g
+
+volumes:
+  caddy_data:
+  caddy_config:

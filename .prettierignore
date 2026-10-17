@@ -1,5 +1,12 @@
 # Team docs are hand-formatted
 *.md
+# Infra files and SQL have no Prettier parser; checking them errors, not warns
+Dockerfile
+Caddyfile
+deploy.sh
+.dockerignore
+.env.example
+db/migrations/*.sql
 pnpm-lock.yaml
 node_modules/
 .next/
