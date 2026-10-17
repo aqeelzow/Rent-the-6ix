@@ -6,12 +6,12 @@ Task ids match `PROGRESS.md`; task details are in `SPEC.md`.
 
 ## Current state
 
-- **Current task:** none in progress (all of A's S1→S2 tasks are done: P1.30–P1.35)
-- **Status:** at sync point (S2)
-- **Branch:** `a/P1.30-landing-parse`, 8 commits (P1.30–P1.35), all of A's checks green; **not pushed or merged yet**
-- **Next action:** merge the branch to `main`. Next block (S2→S3): P2.35 live search once B's search route reads the DB (it answers 503 without `SEARCH_FIXTURES=1`), then P2.30 listing detail against B's `/api/listings/[id]?intent=…`.
-- **Blockers / needs from others:** live results need B's DB-backed search (P2.20/P2.24). Neighbourhood names and "Also on" need fields in B's `SearchResult` (see Requests).
-- **Last updated:** 2026-10-17 (P1.35 done: phones get a sticky Map/List toggle, a full-screen map with a bottom card for the tapped pin, and a sticky Filters/Sort bar; only the visible map mounts)
+- **Current task:** P2.35 live results, then the listing detail page (P2.30–P2.36)
+- **Status:** in progress
+- **Branch:** `a/P2.30-listing-detail` (P1.30–P1.35 merged to `main` via PR #7)
+- **Next action:** P2.35: cap the live list (top 50, "Show more"), a clear long-wait state, and recovery from 503s. Then the detail page: render from the search result in the store, and add `GET /api/listings/[id]?intent=…` extras (areas, indicators, duplicates, all travel rows) when they arrive.
+- **Blockers / needs from others:** see "Depends on others". Nothing blocks starting; travel, building, area and benchmark sections show "not available yet" until D delivers.
+- **Last updated:** 2026-10-17
 
 ## Handoff notes
 
@@ -83,7 +83,7 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked · `[-]` 
 - [x] P1.35 Mobile: list with sticky Map toggle, bottom sheet on pin tap, filters as a sheet
 
 ### S2 → S3 (H10–H18) — Live search & detail · Core
-- [ ] P2.35 Wire results to B's live `/api/listings/search`; loading, empty and error states
+- [~] P2.35 Wire results to B's live `/api/listings/search`; loading, empty and error states
 - [ ] P2.30 Listing detail page layout and header (rent, beds/baths, address or area, source button, freshness, data status)
 - [ ] P2.31 Rent check: price label, estimate, range, difference, confidence, comparables table + mini map, adjustments, benchmark
 - [ ] P2.33 The home: size, year built + source, AC, other fields, unknowns marked
@@ -115,9 +115,27 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked · `[-]` 
 
 ## Depends on others
 
-- **B:** schemas and fixtures (S1); parse route (S2); search, detail and explain routes (S3); import and briefing routes (S4).
-- **C:** valuation route and real listings (S3).
-- **D:** travel and safety routes (S3); area/explorer API and `/status` + `/data` data (S4); deployment pipeline (S1).
+Status checked 2026-10-17 against `main` at `147c74b`.
+
+| From | What A needs | For | Status |
+| --- | --- | --- | --- |
+| B | `POST /api/listings/search` on live data | P2.35 | ✅ live (PR #12/#13), but 77–147 s for a broad search and ~3.5 MB for 500 results; B is working on scan performance |
+| B | `GET /api/listings/[id]?intent=…` for live listings | P2.30–P2.36 | ✅ live (~1.6 s); areas, indicators and duplicates come back empty until D's data lands |
+| B | `/api/listings/[id]/explain` | P2.36 explanation slot | ⏳ not started (P3.1) |
+| B | `/api/listings/import` + `/api/listings/score` | P3.22 paste a listing | ⏳ not started (P3.2) |
+| B | `/api/areas/[kind]/[id]/briefing` | P3.21 ward page | ⏳ not started (P3.3) |
+| B | Neighbourhood name and duplicate sources in `SearchResult` | card neighbourhood, "Also on" | ⏳ requested |
+| C | Valuation with comparables, adjustments, confidence | P2.31 rent check | ✅ live (in search results and `/api/listings/[id]/valuation`) |
+| C | Comparable coordinates | P2.31 mini map | ⏳ not in `Valuation.comparables` (only id, rent, distance); to request |
+| D | Benchmarks (StatCan, CMHC) | P2.31 benchmark line | ⏳ P2.15 not started (`benchmark` is null) |
+| D | `POST /api/listings/[id]/travel` + OTP times | P2.32 getting around (4 modes) | ⏳ P2.12/P1.15 not started; only one straight-line row per target today |
+| D | RentSafeTO buildings | P2.34 building | ⏳ P1.14 not started; no building in the detail response |
+| D | Area indicators | P2.34 area card | ⏳ P2.14 not started |
+| D | `safetyFor()` + caveat text | P3.23 safety UI | ⏳ P2.13 not started |
+| D | Explorer API (`/api/areas…`), boundaries | P3.20 explorer | ⏳ P3.10/P1.10 not started |
+| D | Affordability engine | P4.21 true monthly cost | ⏳ P3.12 not started |
+| D | `/status` and `/data` content as JSON | `/data` page | ⏳ P3.13/P3.14 not started (D built `/status` itself) |
+| D | OTP route geometry | P4.22 route lines | ⏳ depends on OTP (Vultr access) |
 
 ## Feature map (your files)
 
