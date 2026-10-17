@@ -6,6 +6,7 @@
 // The building's contact (name, phone, email) and photos are never read.
 import {
   emptyRawListing,
+  NoResultsError,
   type RawListing,
   type SourceAdapter,
   type SourceId,
@@ -215,7 +216,8 @@ function rentalsNetworkAdapter(
         settleMs: 3000,
       });
       const results = findResults(json) ?? findEmbeddedResults(html);
-      if (!results) throw new Error(`${id}: no results response on ${url} (page layout changed?)`);
+      if (!results)
+        throw new NoResultsError(`${id}: no results response on ${url} (page layout changed?)`);
       const listings = parseRentalListings(id, origin, results);
       const hasNext = results.data?.rentalListings?.pageInfo?.hasNextPage ?? false;
       return { listings, nextCursor: hasNext ? String(page + 1) : null };

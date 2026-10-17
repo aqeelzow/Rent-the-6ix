@@ -62,6 +62,17 @@ export function httpsUrl(value: unknown): string | null {
   }
 }
 
+/**
+ * An index page loaded but carried no results. On the first page that means the layout changed;
+ * after it, almost always that the site's "next page" overshot the last one.
+ */
+export class NoResultsError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "NoResultsError";
+  }
+}
+
 export interface IndexPage {
   listings: RawListing[];
   /** Cursor for the next index page, or null when this was the last one. */

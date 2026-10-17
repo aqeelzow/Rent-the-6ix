@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { findEmbeddedResults, findResults, parseRentalListings } from "./rentals-network.ts";
+import {
+  findEmbeddedResults,
+  findResults,
+  parseRentalListings,
+  torontoRentals,
+} from "./rentals-network.ts";
+import { NoResultsError } from "./types.ts";
 
 // Same shape as torontorentals.com's /graphql results (checked 2026-10-16); values are made up.
 const results = {
@@ -128,5 +134,15 @@ describe("rentals.ca embedded results", () => {
     });
     expect(JSON.stringify(row)).not.toMatch(/555-0100|Leasing Office/);
     expect(findEmbeddedResults("<html></html>")).toBeNull();
+  });
+});
+
+describe("fetchIndex", () => {
+  it("throws NoResultsError when a page has no results, so the pipeline can tell the end apart", async () => {
+    const session = {
+      visit: async () => ({ status: 200, url: "", html: "<html></html>", json: [] }),
+      close: async () => {},
+    };
+    await expect(torontoRentals.fetchIndex(session, "409")).rejects.toBeInstanceOf(NoResultsError);
   });
 });
