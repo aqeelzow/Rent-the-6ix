@@ -14,6 +14,7 @@ export function cleanAIIntent(intent: SearchIntent, prompt: string, catalogue: C
   });
   intent.travelTargets = intent.travelTargets.filter(t => {
     delete t.resolved;
+    if (t.normalizedQuery?.toLowerCase() === t.query?.toLowerCase()) delete t.normalizedQuery;
     if (!source(`travelTargets.${t.id}`) || t.kind === 'place' && (!t.query || !prompt.toLowerCase().includes(t.query.toLowerCase()))) { drop(t.label); return false; } return true;
   });
   if (intent.household) {

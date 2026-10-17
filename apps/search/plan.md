@@ -1,6 +1,6 @@
 # Natural-language rental search — execution plan
 
-Status: active on `b/general-area-display` in `/tmp/rent-search-mvp`, branched from merged main `3da246f`. Current feature: show configured general-area filters on the results map and label them clearly as approximate. P3.2 import and P2.24 latency optimization remain deferred by the user. Historical entries below describe earlier checkpoints.
+Status: active on `b/general-area-display` in `/tmp/rent-search-mvp`, branched from merged main `3da246f`. Current feature: Gemini recognizes and normalizes named destinations; DestinationResolver verifies coordinates. General-area map display is implemented. P3.2 import and P2.24 latency optimization remain deferred by the user. Historical entries below describe earlier checkpoints.
 
 ## Source of truth and scope
 
@@ -80,6 +80,11 @@ P5.5b end-of-feature check: focused empty/briefing/API-state tests and web typec
 ### General-area display
 
 - [x] Configured general-area filters draw as a labelled approximate region on the results map, and map bounds include that region when fitting the view.
+
+### Gemini place normalization
+
+- [x] Optional normalized search name alongside original grounded place query; resolver verifies canonical name and supplies the displayed label/coordinates, preserving original campus ambiguity. Amenities unchanged; no normalized text persisted in DB parse cache.
+- Verification: 31 focused parser/cache tests pass (two opt-in live tests skipped), web typecheck passes. One actual Gemini/MapTiler acceptance attempt returned AI busy before normalization; successful live normalization remains unverified. The independent live MapTiler museum lookup passes after explicitly enabling its POI index, which was excluded by default. No DB mutation or extra Gemini retry.
 
 ### Current P3 sequence
 

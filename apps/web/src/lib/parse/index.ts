@@ -43,8 +43,11 @@ export class ParseService {
     }
     const resolver = this.options.resolver ?? new DestinationResolver();
     const destinations = await Promise.all(intent.travelTargets.filter(t => t.kind === 'place' && t.query).map(async target => {
-      const resolution = await resolver.resolve(target.query!);
-      if (resolution.status === 'resolved') target.resolved = resolution.destination.resolved;
+      const resolution = await resolver.resolve(target.query!, target.normalizedQuery);
+      if (resolution.status === 'resolved') {
+        target.resolved = resolution.destination.resolved;
+        if (target.normalizedQuery) target.label = resolution.destination.label;
+      }
       else delete target.resolved;
       return { targetId: target.id, resolution };
     }));
