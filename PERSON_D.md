@@ -8,9 +8,9 @@ Task ids match `PROGRESS.md`; task details are in `SPEC.md`.
 
 - **Current task:** P2.10 travel-time precompute into `travel_times` — now the only piece of travel missing
 - **Status:** in progress   <!-- not started | in progress | blocked | at sync point -->
-- **Next action:** P2.10 — the resumable precompute job (2 nearest POIs per category × 4 modes, priority order, throttled, resumable) writing `travel_times`, then P2.12's `POST /api/listings/[id]/travel`. P2.11 `routeTimes()` landed, so search already routes live; the precompute is what makes it **complete** inside the search budget. After that, P2.13's remaining route + city baseline.
+- **Next action:** P2.10 — the resumable precompute job (2 nearest POIs per category × 4 modes, priority order, throttled, resumable) writing `travel_times`, then P2.12's `POST /api/listings/[id]/travel`. P2.11 `routeTimes()` landed, so search already routes live; the precompute is what makes it **complete** inside the search budget. Also review A's drafts on `d/P2.13-P2.16-civic` (P2.13 route + population-weighted city rate, P2.14 indicators, P2.15 City AMR + utilities, P2.16 nearby) — all loaded live; adopt or replace, then P2.15's car-cost sample and zone mapping.
 - **Blockers / needs from others:** P0.9 is blocked only on a Vultr instance (account access) — the stack files themselves are done. Nothing blocks P2.10/P2.13 locally; the graph is built and OTP runs in Compose. For the demo, full transit coverage needs the precompute or a larger `routingBudgetMs` (B's `engineConfig`) — see the transit note below.
-- **Last updated:** 2026-10-17 (P2.11 `routeTimes()` implemented and verified live end to end through `/api/listings/search`; worker-cache volume added and verified; benchmarks seeded from official StatCan/TTC figures; P1.15 closed: 215 MB graph, four-mode smoke test green; crime indicators verified live)
+- **Last updated:** 2026-10-17 (A drafted P2.13–P2.16 for review on `d/P2.13-P2.16-civic`; earlier: P2.11 `routeTimes()` implemented and verified live end to end through `/api/listings/search`; worker-cache volume added and verified; benchmarks seeded from official StatCan/TTC figures; P1.15 closed: 215 MB graph, four-mode smoke test green; crime indicators verified live)
 
 ## Handoff notes
 
