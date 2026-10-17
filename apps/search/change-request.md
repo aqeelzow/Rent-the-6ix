@@ -161,3 +161,5 @@ TD Bay/Queen acceptance resolved (2026-10-17): official TD/Payments Canada recor
 
 
 2026-10-17 main f53fc69 integration: PR29/30 are reconciled on the B branch. StatCan consumption remains resolved; latest dashboard still puts building data in its unavailable section regardless of the optional API building value. EXT-9 therefore remains open for A building consumption and fresh rendered/map/deployed acceptance. Workspace checks/build and read-only benchmark/detail/safety acceptance pass; no provider/OTP/latency/deployment blocker is closed by this merge.
+
+2026-10-17 P3.4 provider recheck: one bounded run of the exact first SPEC16 demo prompt against the local Gemini-configured server returned `AI busy, used basic search`; prewarming stopped with zero prompts completed. The server was stopped. EXT-8 remains open; no successful Gemini parse or explanation cache population is claimed.
