@@ -32,3 +32,17 @@ test.skipIf(process.env.RUN_LIVE_ADDRESS_POINTS !== '1')('live normalized Addres
     console.info(JSON.stringify({ feature: 'P1.23 Address Points', database: 'live', source: 'address_points', matches: choices.length, geocodes, index: 'address_points_trgm_idx', executionMs: plan['Execution Time'] }));
   } finally { await sql.end({ timeout: 2 }); }
 }, 15000);
+
+test.skipIf(process.env.RUN_LIVE_MAPTILER !== '1')('live MapTiler fallback returns only full query matches', async () => {
+  if (!process.env.NEXT_PUBLIC_MAPTILER_KEY) process.loadEnvFile('.env.local');
+  assert.ok(process.env.NEXT_PUBLIC_MAPTILER_KEY);
+  const resolver = new DestinationResolver({ addressLookup: async () => undefined, maptilerKey: process.env.NEXT_PUBLIC_MAPTILER_KEY });
+  const known = await resolver.resolve('Union Station');
+  assert.equal(known.status, 'resolved');
+  if (known.status === 'resolved') assert.equal(known.destination.resolved.source, 'known_place');
+  const result = await resolver.resolve('100 Queen Street West Toronto');
+  assert.ok(result.status === 'resolved' || result.status === 'ambiguous');
+  const choices = result.status === 'resolved' ? [result.destination] : result.choices;
+  assert.ok(choices.length > 0);
+  assert.ok(choices.every(choice => choice.resolved.source === 'maptiler'));
+}, 10000);

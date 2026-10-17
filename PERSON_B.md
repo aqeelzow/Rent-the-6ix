@@ -33,17 +33,17 @@ Live provider evidence remains limited: configured main model parses took7–11s
 
 ## Requests to others
 
-Current external blocker register: [apps/search/change-request.md](apps/search/change-request.md#external-blocker-register--2026-10-17), reviewed against upstream main1853fdf (civic PR15). Older handoff sections above describe earlier checkpoints.
+Current external blocker register: [apps/search/change-request.md](apps/search/change-request.md#external-blocker-register--2026-10-17), reviewed against upstream main17bf (merged civic/safety/UI work). Older handoff sections above describe earlier checkpoints.
 
 - **C / EXT-1:** optimize `listingContext` or provide batch valuation/context without changing comparable, confidence or caveat semantics. B eight-call pipeline/cache is implemented; cold/full-pool latency still needs owner work and representative acceptance.
-- **D / EXT-2:** publish authoritative city-rate/safety lookup and score functions. Crime data is loaded; safety computation contracts remain absent.
-- **D / EXT-3 (deferred by user):** OTP, routed-time precompute, `routeTimes` and cache/mapping contracts for full travel filters/sorts/detail.
-- **D + C / EXT-4:** affordability and sourced benchmarks/mapping for true-cost sorting and benchmark display; C consumes valuation benchmark data.
+- **D / EXT-2 resolved:** authoritative safety lookup/engine and B enrichment are merged; real DB opt-in/off, hard limits, caveats and score acceptance pass. The city mean lacks population data and the owner caveat states its equal-neighbourhood denominator.
+- **D / EXT-3 (deferred by user):** OTP setup is published; routed-time precompute, `routeTimes` and cache/mapping remain unavailable for full travel filters/sorts/detail.
+- **D + C / EXT-4:**11 sourced benchmark rows are verified live. Affordability/true-cost integration and C benchmark consumption remain unavailable.
 - **D / EXT-5:** source-backed derived civic indicators/rent trends for full ward briefings. B can consume existing civic/building/duplicate tables now.
 - **A + deployment owner / EXT-6–8:** trusted request identity, a verified process-affinity deployment for in-memory jobs, and usable fast-model access/quota/configuration. These gate production acceptance, not B endpoint implementation or fallback.
 - **A / EXT-9:** rendered/deployed API acceptance and UI mounting/response-contract agreement for subsequent explanation/import/briefing/building features. Existing actions/store integration is verified.
 
-P2.25 static civic/building/duplicate integration, P3.1 explanations, B cache adapter and import/scoring implementation can proceed in B's scope; do not classify them as waiting on missing tables/services.
+P2.25 static civic/building/duplicate integration and B parse DB cache are implemented and live-verified. P3.1 explanations and import/scoring can proceed in B’s scope; do not classify them as waiting on missing tables/services. A needs to render the additive optional building detail field.
 
 ---
 
@@ -69,7 +69,7 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked · `[-]` 
 - [x] P2.22 Travel scoring (`travel.ts`): per target vs minutes, straight-line distance fallback with per-mode distance targets + tests
 - [x] P2.23 Match score (`score.ts`): value, price, travel, home, safety; renormalization; tie-breakers; sum-consistency test
 - [~] P2.24 `/api/listings/search`: two-pass (pass 2 via D's `routeTimes()` for the top 100, 3 s budget), all sort modes, "hide unconfirmed" flag
-- [~] P2.25 `/api/listings/[id]` detail route (listing, building, area ids, duplicates, travel, valuation)
+- [~] P2.25 `/api/listings/[id]`: live listing/valuation/caveats, official areas, source-backed opt-in indicators, building and direct duplicates are SQL-verified; full routed travel and A building rendering remain open.
 
 ### S3 → S4 (H16–H24) — Explanations & imports · Core
 - [ ] P3.1 `/api/listings/[id]/explain`: facts only, number check, safety wording check, template fallback
@@ -117,3 +117,6 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked · `[-]` 
 C listingContext is composed with B SQL candidate loading in default DATABASE_URL mode, while explicit fixture mode wins. No D times/rates are fabricated; live detail remains503. One unfinished C enrichment blocks overlapping enrichment until actual owner queries settle. Final250 tests(shared48/web134/worker68), workspace typecheck/lint/build, fixture native HTTP and invalid-DB resilience checks pass. All servers stopped. Actual DB/PostGIS/deployed acceptance unverified. No push/merge/deploy; durable patches target29a7393. User requested finish current work and stop before another feature.
 
 2026-10-17 — Main17bf8b4 reconciliation: merged C room-data/caveat fixes and A/D safety engine/lookup/integration. Read-only realDB acceptance verifies safety opt-in/off, score/caveats, renter hard limit and unknown neighbourhood handling; EXT-2 resolved. Benchmarks now11 live rows, but affordability and C benchmark consumption are still pending. Ranking regression suite159 web tests passed before merge; after merge347 workspace tests pass (66 shared/180 web/101 worker), live probes run separately. Indexed Address Points is the next sequential feature; full plan remains open.
+
+
+2026-10-17 static detail handoff — `DetailResponse.building` is additive optional/nullable; live API supplies D’s mapped building fields and owner score/colour/history/source. Existing fixtures omit it. Both official area geometries and direct duplicates are live, and crime:* indicators are opt-in only. Read-only real API/SQL oracle passed. A: consume this field in BuildingSection; its current placeholder is not evidence of missing API data. P2.25 remains partial because routed travel is unavailable.

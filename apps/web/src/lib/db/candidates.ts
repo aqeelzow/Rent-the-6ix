@@ -1,4 +1,4 @@
-import { ListingSchema, SearchRequestSchema, SearchResultSchema, TravelTimeRowSchema, type Listing, type SearchRequest, type SearchResult, type TravelTarget, type TravelTimeRow } from '../../../../../packages/shared/schemas/index';
+import { ListingSchema, SearchRequestSchema, SearchResultSchema, TravelTimeRowSchema, type DetailResponse, type Listing, type SearchRequest, type SearchResult, type TravelTarget, type TravelTimeRow } from '../../../../../packages/shared/schemas/index';
 import { CAVEATS, engineConfig } from '../../../../../packages/shared/engine/config';
 import { filterListing } from '../../../../../packages/shared/engine/filters';
 import { scoreListing, tieBreak, type ScoreContext } from '../../../../../packages/shared/engine/score';
@@ -7,6 +7,7 @@ export type SearchDependencies = {
   // Fixture/detail pool; live search can inject the read-only SQL candidate loader.
   listings: readonly Listing[];
   loadListing?: (id: string) => Promise<Listing | null>;
+  loadDetail?: (listing: Listing, intent: SearchRequest['intent']) => Promise<Pick<DetailResponse, 'areas' | 'indicators' | 'duplicates' | 'building'>>;
   loadCandidates?: (request: SearchRequest, signal?: AbortSignal) => Promise<readonly Listing[]>;
   // Full-pool hard gates/numeric ordering also use the owner context.
   enrich: (listing: Listing, intent: SearchRequest['intent'], signal?: AbortSignal) => Promise<ScoreContext>;

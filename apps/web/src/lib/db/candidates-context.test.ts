@@ -24,7 +24,7 @@ function client(options: { candidates?: unknown[]; observations?: unknown[]; com
     if (text.includes('listing_observations')) return Promise.resolve(options.observations ?? [{ deposit: true, asking_rent_cad: 2200, observed_at: new Date('2026-10-01') }]);
     throw new Error('Unexpected SQL');
   });
-  const unsafe = vi.fn((text: string, parameters?: unknown[]) => parameters ? Promise.resolve(options.candidates ?? [rowFor(listing)]) : text);
+  const unsafe = vi.fn((text: string, parameters?: unknown[]) => parameters ? Promise.resolve(text.includes('FROM neighbourhoods') || text.includes('FROM area_indicators') || text.includes('FROM buildings WHERE') || text.includes('WHERE duplicate_of =') ? [] : options.candidates ?? [rowFor(listing)]) : text);
   Object.assign(sql, { unsafe });
   return { sql: sql as unknown as Sql, tagged: sql, unsafe };
 }

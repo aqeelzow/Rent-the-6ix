@@ -68,19 +68,19 @@ export function createRuntime(options: RuntimeOptions = {}) {
       const intent = SearchIntentSchema.parse(input);
       if (intent.rawPrompt || Object.keys(intent.fieldSources).length || intent.droppedRequests.length) throw new ApiError(422, 'validation_error', 'Detail intent must redact rawPrompt, fieldSources and droppedRequests');
       const deps = requireDependencies();
-      let listing, owner;
+      let listing, owner, extras;
       try {
         listing = deps.loadListing ? await deps.loadListing(id) : deps.listings.find(l => l.id === id);
         if (!listing) throw new ApiError(404, 'listing_not_found', 'Listing not found');
         owner = await deps.enrich(listing, intent);
+        extras = await deps.loadDetail?.(listing, intent);
       } catch (error) { if (error instanceof SearchUnavailable) throw new ApiError(503, 'service_unavailable', 'Listing details temporarily unavailable'); throw error; }
       const travel = owner.travel.map(row => TravelTimeRowSchema.parse(row)).filter(row => row.listingId === id);
       for (const target of intent.travelTargets) if (target.resolved) for (const mode of targetModes(target)) if (!travel.some(row => row.targetId === target.id && row.mode === mode)) travel.push({ listingId: id, targetId: target.id, mode, minutes: null, distanceM: distanceM(listing.location, target.resolved), method: 'straight_line', poiId: null, computedAt: listing.lastSeenAt });
       const scoring = { ...owner, travel, safety: intent.safety.enabled ? owner.safety : null };
       await routeCandidateContexts(deps, [listing], intent.travelTargets.filter(t => t.kind === 'place'), new Map([[id, scoring]]));
-      // shortcut: live civic detail and duplicate adapters are unavailable; never substitute synthetic geography.
       const fixture = !deps.loadCandidates && !deps.loadListing && listing.dataStatus === 'demo';
-      return DetailResponseSchema.parse({ listing, valuation: owner.valuation, travel: scoring.travel, safety: scoring.safety, matchScore: scoreListing(listing, intent, scoring), areas: fixture ? areas.filter(a => a.id === listing.neighbourhoodId || a.id === listing.wardId) : [], indicators: fixture ? detailFixture.indicators.filter(i => i.areaId === listing.neighbourhoodId) : [], duplicates: fixture ? deps.listings.filter(l => l.duplicateOf === id) : [] });
+      return DetailResponseSchema.parse({ listing, valuation: owner.valuation, travel: scoring.travel, safety: scoring.safety, matchScore: scoreListing(listing, intent, scoring), areas: fixture ? areas.filter(a => a.id === listing.neighbourhoodId || a.id === listing.wardId) : [], indicators: fixture ? detailFixture.indicators.filter(i => i.areaId === listing.neighbourhoodId) : [], duplicates: fixture ? deps.listings.filter(l => l.duplicateOf === id) : [], ...extras });
     }),
   };
 }
