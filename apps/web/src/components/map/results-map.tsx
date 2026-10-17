@@ -424,8 +424,9 @@ function bindEvents(map: MapLibreMap) {
     map.on("click", layer, (event) => {
       const id = event.features?.[0]?.properties?.id;
       if (typeof id !== "string") return;
-      // The list scrolls to the card itself, once it's rendered (it may be past "Show more").
-      setSelectedListingId(id);
+      // Clicking the selected listing again unselects it. Otherwise the list scrolls to the
+      // card itself, once it's rendered (it may be past "Show more").
+      setSelectedListingId(appStore.getState().selectedListingId === id ? null : id);
     });
   }
   map.on("click", "clusters", async (event) => {
