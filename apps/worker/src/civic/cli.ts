@@ -7,6 +7,7 @@
 import type { Sql } from "postgres";
 import { openDb } from "../lib/db.ts";
 import { loadAddressPoints } from "./address-points.ts";
+import { loadDerivedIndicators } from "./area-indicators.ts";
 import { loadBoundaries } from "./areas.ts";
 import { loadBuildings } from "./buildings.ts";
 import { loadCrimeRates } from "./crime.ts";
@@ -72,7 +73,13 @@ async function crime(sql: Sql): Promise<void> {
   console.log(`  area_indicators: ${load.indicators} crime rows for ${load.period}`);
 }
 
-const TASKS: Record<string, Task> = { areas, addresses, pois, stops, buildings, crime };
+async function indicators(sql: Sql): Promise<void> {
+  const load = await loadDerivedIndicators(sql);
+  console.log(`  area_indicators: ${load.rows} derived rows`, load.byIndicator);
+}
+
+// `indicators` reads buildings, stops and POIs, so it runs after them in `all`.
+const TASKS: Record<string, Task> = { areas, addresses, pois, stops, buildings, crime, indicators };
 
 async function main(): Promise<void> {
   const requested = process.argv[2] ?? "all";
