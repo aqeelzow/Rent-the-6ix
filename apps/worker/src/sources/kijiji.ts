@@ -38,6 +38,19 @@ interface KijijiListing {
   attributes?: { all?: { canonicalName: string; canonicalValues: string[] }[] } | null;
 }
 
+const ROOM_WORDS =
+  /\brooms?\b|(master|private|furnished|single|large|cozy|comfy)\s*bedroom|bedroom (in|with)\b|\bshar(ed|ing)\b|\bdorm|\bbed ?space/i;
+const UNIT_WORDS = /\b(basement|apartment|studio|condo|suite|bachelor|house)\b/i;
+/** Vaguer words, also used for rooms ("room in a quiet home"): a unit only at whole-unit rents. */
+const UNIT_WORDS_PRICED = /\b(townhouse|townhome|home|unit|penthouse|entire)\b/i;
+const UNIT_MIN_CAD = 1500;
+
+/** A Room Rentals entry that is a whole unit: its title names one and no room ("Roommates" doesn't count). */
+export function wholeUnitTitle(title: string, rentCad: number): boolean {
+  if (ROOM_WORDS.test(title)) return false;
+  return UNIT_WORDS.test(title) || (rentCad >= UNIT_MIN_CAD && UNIT_WORDS_PRICED.test(title));
+}
+
 export function parseKijiji(
   html: string,
   category: Category = "apartments",
@@ -53,16 +66,11 @@ export function parseKijiji(
   for (const entry of Object.values(state)) {
     const standard = entry?.__typename === "StandardListing";
     if (entry?.__typename !== "RealEstateListing" && !standard) continue;
-    // A whole basement or studio posted under Room Rentals isn't a room.
-    const room =
-      standard &&
-      !(
-        !/\broom/i.test(entry.title) &&
-        /\b(basement|apartment|studio|condo|suite|bachelor|house)\b/i.test(entry.title)
-      );
     // NonAmountPrice = "please contact"; no rent, nothing to compare.
     const cents = entry.price?.__typename === "StandardAmountPrice" ? entry.price.amount : null;
     if (!cents) continue;
+    // A whole basement or studio posted under Room Rentals isn't a room.
+    const room = standard && !wholeUnitTitle(entry.title, cents / 100);
 
     const attrs = new Map(
       (entry.attributes?.all ?? []).map((a) => [a.canonicalName, a.canonicalValues[0]]),
