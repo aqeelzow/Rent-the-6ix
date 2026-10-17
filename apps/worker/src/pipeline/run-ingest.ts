@@ -1,6 +1,7 @@
 // One listing collection run over the given sources, used by `pnpm ingest:once` and the schedule.
 // Until the database pipeline lands (P1.5–P1.6), normalized listings (scrubbed, description →
-// excerpt) are written to the git-ignored apps/worker/.cache/ingest/ as JSON, with field coverage,
+// excerpt) are written to the git-ignored apps/worker/.cache/ingest/ as JSON (every 10 index
+// pages, then once more with detail pages merged), with field coverage,
 // and the run summary to .cache/ingest/last-run.json (the stats /status will show).
 import { mkdir, writeFile } from "node:fs/promises";
 import { openSession, SourceBlockedError } from "../lib/fetch.ts";
@@ -91,6 +92,11 @@ export async function runIngest(options: IngestOptions): Promise<IngestResult> {
     const raws: RawListing[] = [];
     // Featured listings repeat on later index pages (torontorentals); keep the first copy.
     const seen = new Set<string>();
+    // One file per source per run, rewritten every few pages so a crash or stop loses little.
+    const file = new URL(
+      `${adapter.id}-${new Date().toISOString().replace(/[:.]/g, "-")}.json`,
+      outDir,
+    );
     const session = await openSession();
     try {
       let cursor: string | null = null;
@@ -104,6 +110,7 @@ export async function runIngest(options: IngestOptions): Promise<IngestResult> {
         run.pages++;
         cursor = page.nextCursor;
         console.log(`${adapter.id}: page ${run.pages}, ${page.listings.length} listings`);
+        if (run.pages % CHECKPOINT_PAGES === 0) await writeRows(file, normalizeAll(raws).rows);
       } while (cursor && run.pages < options.maxPages);
       await addDetails(adapter, session, raws, options.maxDetails, run);
     } catch (error) {
@@ -113,20 +120,12 @@ export async function runIngest(options: IngestOptions): Promise<IngestResult> {
     } finally {
       await session.close();
     }
-    const rows: NormalizedListing[] = [];
-    for (const raw of raws) {
-      const listing = normalize(raw);
-      if (listing) rows.push(listing);
-      else run.dropped++;
-    }
+    const { rows, dropped } = normalizeAll(raws);
+    run.dropped = dropped;
     run.listings = rows.length;
     runs.push(run);
     if (rows.length) {
-      const file = new URL(
-        `${adapter.id}-${new Date().toISOString().replace(/[:.]/g, "-")}.json`,
-        outDir,
-      );
-      await writeFile(file, JSON.stringify(rows, null, 2));
+      await writeRows(file, rows);
       console.log(`${adapter.id}: wrote ${rows.length} listings to ${file.pathname}`);
       console.log(`${adapter.id}: field coverage ${coverage(rows)}`);
     }
@@ -135,6 +134,24 @@ export async function runIngest(options: IngestOptions): Promise<IngestResult> {
   const result = { finishedAt: new Date().toISOString(), runs };
   await writeFile(new URL("last-run.json", outDir), JSON.stringify(result, null, 2));
   return result;
+}
+
+/** Rewrite the source's file every this many index pages. */
+const CHECKPOINT_PAGES = 10;
+
+function normalizeAll(raws: RawListing[]): { rows: NormalizedListing[]; dropped: number } {
+  const rows: NormalizedListing[] = [];
+  let dropped = 0;
+  for (const raw of raws) {
+    const listing = normalize(raw);
+    if (listing) rows.push(listing);
+    else dropped++;
+  }
+  return { rows, dropped };
+}
+
+async function writeRows(file: URL, rows: NormalizedListing[]): Promise<void> {
+  await writeFile(file, JSON.stringify(rows, null, 2));
 }
 
 const MAX_DETAIL_FAILURES = 3;
