@@ -1,3 +1,4 @@
+import { SAFETY } from "@rentthe6ix/shared/engine/config";
 import { defaultMinutes, targetModes } from "@rentthe6ix/shared/engine/travel";
 import { formatDate } from "@/lib/format/date";
 import { t, type MessageKey } from "@/lib/format/messages";
@@ -50,6 +51,10 @@ export type Chip = {
 };
 
 const decimal = new Intl.NumberFormat("en-CA", { maximumFractionDigits: 1 });
+const limitFormat = new Intl.NumberFormat("en-CA", {
+  minimumFractionDigits: 1,
+  maximumFractionDigits: 1,
+});
 const tk = (key: string, params?: Record<string, string | number>) =>
   t(`filters.chips.${key}` as MessageKey, params);
 const or = (labels: string[]) => labels.join(` ${t("filters.or")} `);
@@ -183,7 +188,11 @@ export function buildChips(intent: SearchIntent): Chip[] {
     chips.push({
       key: "safety",
       kind: "safety",
-      label: tk(intent.safety.hard ? "safetyHard" : "safety"),
+      label: intent.safety.hard
+        ? tk("safetyMax", {
+            rate: limitFormat.format(intent.safety.maxRelativeRate ?? SAFETY.hardMaxRelativeRate),
+          })
+        : tk("safety"),
       hard: intent.safety.hard,
       ...sourceOf("safety"),
     });
@@ -294,7 +303,16 @@ export function setChipHard(intent: SearchIntent, chip: Chip, hard: boolean): Se
     };
   }
   if (chip.kind === "safety") {
-    return { ...intent, safety: { enabled: true, hard }, fieldSources };
+    const { maxRelativeRate } = intent.safety;
+    return {
+      ...intent,
+      safety: {
+        enabled: true,
+        hard,
+        ...(hard && maxRelativeRate !== undefined ? { maxRelativeRate } : {}),
+      },
+      fieldSources,
+    };
   }
   return intent;
 }

@@ -14,7 +14,9 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
+import { SAFETY } from "@rentthe6ix/shared/engine/config";
 import { SafetyInfoButton } from "@/components/safety/safety-info";
+import { SafetyLimit } from "@/components/safety/safety-limit";
 import { Switch } from "@/components/ui/switch";
 import { t, type MessageKey } from "@/lib/format/messages";
 import { resolveDestination, runSearch } from "@/lib/store/actions";
@@ -673,17 +675,18 @@ function SafetySection({ draft, edit }: SectionProps) {
         </p>
       </div>
       {enabled && (
-        <div className="flex items-center justify-between gap-3">
-          <Label htmlFor={`${id}-hard`} className="font-normal">
-            {p("safetyHard")}
-          </Label>
-          <Switch
-            id={`${id}-hard`}
-            size="sm"
-            checked={hard}
-            onCheckedChange={(next) => edit((d) => setSafety(d, { enabled: true, hard: next }))}
-          />
-        </div>
+        <SafetyLimit
+          value={hard ? (draft.safety.maxRelativeRate ?? SAFETY.hardMaxRelativeRate) : null}
+          onChange={(limit) =>
+            edit((d) =>
+              setSafety(d, {
+                enabled: true,
+                hard: limit !== null,
+                maxRelativeRate: limit ?? undefined,
+              }),
+            )
+          }
+        />
       )}
     </PanelSection>
   );
