@@ -209,10 +209,11 @@ export function boundsOf(
 }
 
 // Crime layer (opt-in, SPEC 7.6 as changed 2026-10-17): neighbourhoods shaded by police-reported
-// major crime relative to the city. A neutral sand-to-brown scale, never red/green, so it reads as
-// "lower or higher than the city", not "good or bad"; distinct from the blue score pins.
+// major crime relative to the city, green (below the city) through yellow to red (well above),
+// as the user asked. The city rate (1.0×) is the boundary between green and yellow. Labels and
+// the hover readout carry the numbers, so the colours are never the only cue.
 export const CRIME_STEPS = [0.5, 1, 1.5, 2] as const;
-export const CRIME_COLORS = ["#f6efe2", "#e3cfab", "#c9a46e", "#a07240", "#6b4723"] as const;
+export const CRIME_COLORS = ["#1a9850", "#91cf60", "#fee08b", "#fc8d59", "#d73027"] as const;
 export const CRIME_NO_DATA = "#d4d4d4";
 
 /** Which of the five bands a relative rate falls in (0 = under 0.5×, 4 = 2× or more). */

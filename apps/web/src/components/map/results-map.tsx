@@ -472,7 +472,7 @@ function addCrimeLayer(
       type: "line",
       source: "crime",
       layout: { visibility: "none" },
-      paint: { "line-color": "#7a5a36", "line-width": 0.6, "line-opacity": 0.6 },
+      paint: { "line-color": "#6b7280", "line-width": 0.6, "line-opacity": 0.6 },
     },
     "approx-fill",
   );
