@@ -6,7 +6,13 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { openSession, SourceBlockedError } from "../lib/fetch.ts";
 import { sources } from "../sources/index.ts";
-import type { DetailPatch, RawListing, SourceAdapter, SourceId } from "../sources/types.ts";
+import type {
+  AdapterId,
+  DetailPatch,
+  RawListing,
+  SourceAdapter,
+  SourceId,
+} from "../sources/types.ts";
 import type { Session } from "../lib/fetch.ts";
 import type { Sql } from "postgres";
 import { openDb } from "../lib/db.ts";
@@ -79,7 +85,7 @@ export async function runIngest(options: IngestOptions): Promise<IngestResult> {
 
   const runs: SourceRun[] = [];
   for (const id of options.sources) {
-    const adapter = sources[id as SourceId];
+    const adapter = sources[id as AdapterId] as SourceAdapter | undefined;
     if (!adapter) {
       runs.push({
         source: id as SourceId,

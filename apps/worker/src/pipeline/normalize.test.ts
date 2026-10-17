@@ -73,6 +73,17 @@ describe("normalize: not housing, rooms, implausible rents (seen in TigerData)",
         .unitType,
     ).toBe("room");
     expect(norm({ title: "Bright 2 bedroom, rooms are spacious" }).unitType).toBeNull();
+    expect(
+      norm({
+        title: "FURNISHED BASEMENT PERSONAL ROOM+SHARED KITCHEN",
+        unitType: "basement-apartment",
+        monthlyRentCad: 820,
+      }).unitType,
+    ).toBe("room");
+    expect(
+      norm({ title: "Renovated basement apartment, 2 rooms", unitType: "basement-apartment" })
+        .unitType,
+    ).toBe("basement");
   });
 
   it("drops whole units under $600; rooms keep the $300 floor", () => {

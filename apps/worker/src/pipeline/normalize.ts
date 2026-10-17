@@ -191,7 +191,7 @@ export function isNotHousing(title: string): boolean {
 
 /** "Private room for rent", "Room available near Yonge/Finch", "1 Room in Main Floor". */
 export function isRoomListing(title: string): boolean {
-  return /\brooms? (?:for (?:rent|lease)|available|to rent)\b|\b(?:private|shared|sharing) (?:bed)?rooms?\b|^\W*(?:1|one) room\b|\broom rental\b|\broommates?\b/i.test(
+  return /\brooms? (?:for (?:rent|lease)|available|to rent)\b|\b(?:private|shared|sharing|personal|basement) (?:bed)?rooms?\b|^\W*(?:1|one) room\b|\broom rental\b|\broommates?\b/i.test(
     title,
   );
 }
