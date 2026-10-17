@@ -686,7 +686,8 @@
     "missing": {
       "title": "{count} sections not available yet",
       "aria": "Not available yet"
-    }
+    },
+    "toDetails": "See the details"
   },
   "shortlist": {
     "title": "Your shortlist",

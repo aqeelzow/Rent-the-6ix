@@ -1,8 +1,8 @@
 "use client";
 
-import { AlertCircle, ArrowLeft, Bookmark } from "lucide-react";
+import { AlertCircle, ArrowLeft, Bookmark, ChevronDown } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { daysSince } from "@/components/results/card-data";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -40,6 +40,8 @@ export function ListingDetail({ id }: { id: string }) {
   const { data, extras, loading, error, retry } = useListingDetail(id);
   // "Seen N days ago" is measured from when the page opened.
   const [now] = useState(() => Date.now());
+  // A photo the source no longer serves falls back to the plain header.
+  const [photoFailed, setPhotoFailed] = useState(false);
 
   const back = intent?.rawPrompt ? (
     <Link
@@ -89,10 +91,8 @@ export function ListingDetail({ id }: { id: string }) {
     );
   }
 
-  return (
-    <div className="mx-auto flex w-full max-w-[96rem] flex-col gap-5 px-4 py-6 lg:px-8">
-      {back}
-      <Header result={data} extras={extras} now={now} />
+  const body = (
+    <>
       <StatTiles result={data} targets={intent?.travelTargets ?? []} />
       <ThingsToCheck result={data} />
       <div className="grid items-start gap-5 lg:grid-cols-12">
@@ -110,6 +110,132 @@ export function ListingDetail({ id }: { id: string }) {
           <NotYetAvailable result={data} extras={extras} />
         </div>
       </div>
+    </>
+  );
+
+  // With a photo, the page opens on it full-screen and the details scroll up over it.
+  if (data.listing.imageUrl && !photoFailed) {
+    return (
+      <div className="relative">
+        <PhotoHero
+          src={data.listing.imageUrl}
+          onError={() => setPhotoFailed(true)}
+          back={back}
+          header={<Header result={data} extras={extras} now={now} overlay />}
+        />
+        <div
+          id="details"
+          className="bg-background relative z-10 -mt-6 scroll-mt-14 rounded-t-3xl shadow-[0_-12px_32px_rgb(0_0_0/0.18)]"
+        >
+          <div className="mx-auto flex w-full max-w-[96rem] flex-col gap-5 px-4 py-6 lg:px-8">
+            {body}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mx-auto flex w-full max-w-[96rem] flex-col gap-5 px-4 py-6 lg:px-8">
+      {back}
+      <Header result={data} extras={extras} now={now} />
+      {body}
+    </div>
+  );
+}
+
+/**
+ * The listing photo filling the screen under the site header. It stays pinned while the details
+ * scroll up over it, easing in and darkening as they do (like the landing). Hot-linked from the
+ * source only when its terms allow (SPEC 8.4); never re-hosted.
+ */
+function PhotoHero({
+  src,
+  onError,
+  back,
+  header,
+}: {
+  src: string;
+  onError: () => void;
+  back: React.ReactNode;
+  header: React.ReactNode;
+}) {
+  const stage = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const element = stage.current;
+    if (!element || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    let frame = 0;
+    const update = () => {
+      frame = 0;
+      const p = Math.min(1, Math.max(0, window.scrollY / (window.innerHeight * 0.8)));
+      element.style.setProperty("--p", p.toFixed(4));
+    };
+    const schedule = () => {
+      if (!frame) frame = requestAnimationFrame(update);
+    };
+    update();
+    window.addEventListener("scroll", schedule, { passive: true });
+    window.addEventListener("resize", schedule);
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener("scroll", schedule);
+      window.removeEventListener("resize", schedule);
+    };
+  }, []);
+
+  return (
+    <div
+      ref={stage}
+      className="bg-hero sticky top-14 flex h-[calc(100svh-3.5rem)] flex-col overflow-hidden [--p:0]"
+    >
+      {/* Sources give small thumbnails, so a blurred copy fills the screen behind the photo
+          and the photo itself is shown at a size it can carry. */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={src}
+        alt=""
+        aria-hidden
+        referrerPolicy="no-referrer"
+        className="absolute inset-0 size-full scale-125 object-cover opacity-70 blur-2xl"
+      />
+      <div className="relative px-4 pt-4 lg:px-8">
+        <div className="bg-background/90 w-fit rounded-full px-3 py-1.5 shadow-sm backdrop-blur">
+          {back}
+        </div>
+      </div>
+      {/* The photo takes whatever height the title block leaves, on any screen. */}
+      <div
+        className="relative flex min-h-0 flex-1 items-center justify-center px-4 py-4 will-change-transform"
+        style={{ transform: "scale(calc(1 + var(--p) * 0.08))" }}
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={src}
+          alt=""
+          referrerPolicy="no-referrer"
+          onError={onError}
+          className="h-full max-h-full w-auto max-w-full rounded-2xl object-contain shadow-2xl"
+        />
+      </div>
+      <div
+        className="relative bg-gradient-to-t from-black/85 via-black/60 to-transparent pt-10 pb-8"
+        style={{ transform: "translateY(calc(var(--p) * -3rem))", opacity: "calc(1 - var(--p))" }}
+      >
+        <div className="mx-auto w-full max-w-[96rem] px-4 lg:px-8">{header}</div>
+        <a
+          href="#details"
+          className="text-hero-foreground/90 hover:text-hero-foreground mx-auto mt-4 flex w-fit flex-col items-center gap-1 text-sm font-medium"
+        >
+          {l("toDetails")}
+          <ChevronDown aria-hidden className="size-5 motion-safe:animate-bounce" />
+        </a>
+      </div>
+      {/* Darkens as the details come up, so the photo recedes behind them. */}
+      <div
+        aria-hidden
+        className="bg-hero pointer-events-none absolute inset-0"
+        style={{ opacity: "calc(var(--p) * 0.6)" }}
+      />
     </div>
   );
 }
@@ -119,10 +245,13 @@ function Header({
   result,
   extras,
   now,
+  overlay = false,
 }: {
   result: SearchResultItem;
   extras: DetailResponse | null;
   now: number;
+  /** Laid over the full-screen photo: no panel of its own and no thumbnail. */
+  overlay?: boolean;
 }) {
   const { listing } = result;
   const shortlisted = useAppStore(selectIsShortlisted(listing.id));
@@ -152,8 +281,10 @@ function Header({
   const source = t(`results.sources.${listing.source}` as MessageKey);
 
   return (
-    <header className="bg-hero text-hero-foreground flex flex-col gap-6 rounded-2xl p-5 sm:p-7 lg:flex-row lg:items-stretch">
-      {listing.imageUrl && (
+    <header
+      className={`text-hero-foreground flex flex-col gap-6 lg:flex-row lg:items-stretch ${overlay ? "" : "bg-hero rounded-2xl p-5 sm:p-7"}`}
+    >
+      {listing.imageUrl && !overlay && (
         // Hot-linked from the source, only when its terms allow (SPEC 8.4); never re-hosted.
         // eslint-disable-next-line @next/next/no-img-element
         <img
@@ -161,10 +292,13 @@ function Header({
           alt={l("photoAlt", { source })}
           referrerPolicy="no-referrer"
           className="aspect-[4/3] w-full shrink-0 rounded-xl bg-white/10 object-cover lg:w-80"
+          onError={(event) => (event.currentTarget.hidden = true)}
         />
       )}
       <div className="flex min-w-0 flex-1 flex-col gap-3">
-        <h1 className="text-2xl font-semibold tracking-tight text-balance sm:text-3xl">
+        <h1
+          className={`font-semibold tracking-tight text-balance ${overlay ? "text-3xl sm:text-5xl" : "text-2xl sm:text-3xl"}`}
+        >
           {listing.title}
         </h1>
         {listing.addressText !== listing.title && (
