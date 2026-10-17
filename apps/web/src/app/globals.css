@@ -200,3 +200,28 @@
     scroll-behavior: auto !important;
   }
 }
+
+/* Popup naming a renter's place on the results map (MapLibre's popup, restyled to the tokens). */
+.place-popup .maplibregl-popup-content {
+  background: var(--popover);
+  color: var(--popover-foreground);
+  border: 1px solid var(--border);
+  border-radius: 0.625rem;
+  padding: 0.5rem 0.75rem;
+  box-shadow: 0 6px 20px rgb(0 0 0 / 0.2);
+  font-family: var(--font-sans);
+}
+.place-popup.maplibregl-popup-anchor-bottom .maplibregl-popup-tip {
+  border-top-color: var(--popover);
+}
+.place-popup.maplibregl-popup-anchor-top .maplibregl-popup-tip {
+  border-bottom-color: var(--popover);
+}
+.place-popup-name {
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+.place-popup-kind {
+  font-size: 0.75rem;
+  color: var(--muted-foreground);
+}

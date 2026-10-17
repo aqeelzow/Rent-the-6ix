@@ -471,7 +471,8 @@
       "approx": "Shaded circle: approximate location",
       "searchArea": "Shaded boundary: approximate search area",
       "place": "Your places",
-      "unavailable": "The map couldn't load. The list has every result."
+      "unavailable": "The map couldn't load. The list has every result.",
+      "placePopup": "Your place"
     },
     "mobile": {
       "showMap": "Map",

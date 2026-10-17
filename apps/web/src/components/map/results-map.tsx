@@ -8,6 +8,7 @@ import type {
   GeoJSONSource,
   Map as MapLibreMap,
   Marker,
+  Popup,
 } from "maplibre-gl";
 import { useEffect, useRef, useState } from "react";
 import { useTheme } from "@/lib/theme/theme";
@@ -61,6 +62,7 @@ export function ResultsMap({ className = "" }: { className?: string }) {
   const container = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MapLibreMap | null>(null);
   const markers = useRef<Marker[]>([]);
+  const popups = useRef<Popup[]>([]);
   const [ready, setReady] = useState(false);
   const [failed, setFailed] = useState(false);
   const results = useAppStore((s) => s.results);
@@ -126,12 +128,55 @@ export function ResultsMap({ className = "" }: { className?: string }) {
     const places = placePins(targets ?? []);
     void import("maplibre-gl").then((maplibregl) => {
       markers.current.forEach((marker) => marker.remove());
+      // Popups are opened by hand (not bound to the marker), so they go separately.
+      popups.current.forEach((popup) => popup.remove());
+      popups.current = [];
       markers.current = places.map((place) => {
+        // The place's name in a popup: shown while hovered, kept open by a click or Enter.
+        // Built from text nodes, since the label is the renter's own words.
+        const content = document.createElement("div");
+        const name = document.createElement("p");
+        name.className = "place-popup-name";
+        name.textContent = place.label;
+        const kind = document.createElement("p");
+        kind.className = "place-popup-kind";
+        kind.textContent = t("results.map.placePopup");
+        content.append(name, kind);
+        const popup = new maplibregl.Popup({
+          offset: 36,
+          closeButton: false,
+          maxWidth: "240px",
+          className: "place-popup",
+        }).setDOMContent(content);
+        popups.current.push(popup);
         const marker = new maplibregl.Marker({ color: PLACE_COLOR })
           .setLngLat([place.lng, place.lat])
           .addTo(map);
-        marker.getElement().setAttribute("aria-label", place.label);
-        marker.getElement().setAttribute("title", place.label);
+        const element = marker.getElement();
+        element.setAttribute("aria-label", place.label);
+        element.setAttribute("role", "button");
+        element.tabIndex = 0;
+        element.style.cursor = "pointer";
+        let pinned = false;
+        element.addEventListener("mouseenter", () => {
+          if (!popup.isOpen()) popup.setLngLat(marker.getLngLat()).addTo(map);
+        });
+        element.addEventListener("mouseleave", () => {
+          if (!pinned) popup.remove();
+        });
+        // A click keeps it open until clicked again or the map is clicked elsewhere.
+        element.addEventListener("click", (event) => {
+          event.stopPropagation();
+          pinned = !pinned;
+          if (pinned && !popup.isOpen()) popup.setLngLat(marker.getLngLat()).addTo(map);
+          if (!pinned) popup.remove();
+        });
+        element.addEventListener("keydown", (event) => {
+          if (event.key !== "Enter" && event.key !== " ") return;
+          event.preventDefault();
+          element.click();
+        });
+        popup.on("close", () => (pinned = false));
         return marker;
       });
     });
