@@ -125,6 +125,24 @@ describe("caveats", () => {
   });
 });
 
+describe("newer_building", () => {
+  const ok = { status: "ok" as const, differencePct: -12 };
+  const codes = (yearBuilt: number | null, sameEraShare: number | null) =>
+    caveats({ ...listing, yearBuilt }, { ...ctx, valuation: ok, sameEraShare }).map((c) => c.code);
+
+  it("explains a new tower compared mostly with older or undated buildings", () => {
+    const [c] = caveats(
+      { ...listing, yearBuilt: 2022 },
+      { ...ctx, valuation: ok, sameEraShare: 0.1 },
+    ).filter((c) => c.code === "newer_building");
+    expect(c.explanation).toContain("Built in 2022.");
+    expect(codes(2022, 0.5)).not.toContain("newer_building");
+    expect(codes(1975, 0)).not.toContain("newer_building");
+    expect(codes(null, 0)).not.toContain("newer_building");
+    expect(codes(2022, null)).not.toContain("newer_building");
+  });
+});
+
 describe("asksForMoneyBeforeViewing", () => {
   it("flags money before a viewing, in either order", () => {
     for (const text of [

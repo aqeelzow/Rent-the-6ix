@@ -19,6 +19,8 @@ export function cleanAIIntent(intent: SearchIntent, prompt: string): SearchInten
     for (const field of ['annualIncomeCad', 'people'] as const) if (intent.household[field] !== undefined && !source(`household.${field}`)) { delete intent.household[field]; drop(`household.${field}`); }
     if (!Object.keys(intent.household).length) delete intent.household;
   }
+  // Only the renter sets a safety limit (the slider); the AI never invents one.
+  delete intent.safety.maxRelativeRate;
   if (intent.safety.enabled && (!source('safety') || !/\b(?:safety|safe|safer|crime|city rate)\b/i.test(prompt))) { intent.safety = { enabled:false,hard:false }; drop('safety'); }
   if (intent.sortBy !== 'best_match' && !source('sortBy')) { intent.sortBy = 'best_match'; drop('sortBy'); }
   if (intent.numericExtreme && (!source('numericExtreme') || intent.numericExtreme.field === 'travel' && !intent.travelTargets.some(t => t.id === intent.numericExtreme?.targetId))) { delete intent.numericExtreme; drop('numericExtreme'); }

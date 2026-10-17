@@ -73,4 +73,22 @@ export const CAVEATS = {
   rentSafeToLowScore: 66,
   /** price_dropped: the asking rent is at least this much below the first one seen. */
   priceDropMinCad: 25,
+  /**
+   * newer_building: built within this many years, and less than newerBuildingSameEraShare of the
+   * comparables' weight is from buildings known to be of a similar age.
+   */
+  newerBuildingYears: 10,
+  newerBuildingSameEraShare: 0.3,
+} as const;
+
+/** Safety preference (SPEC 7.6). Owner: D. */
+export const SAFETY = {
+  /** The five Major Crime Indicators combined into one rate, as TPS indicator ids. */
+  majorTypes: ["assault", "autotheft", "breakenter", "robbery", "theftover"] as const,
+  /** relativeRate at or below this scores 100. */
+  fullScoreAt: 0.5,
+  /** relativeRate at or above this scores 0; linear in between (the city average scores 67). */
+  zeroScoreAt: 2,
+  /** "Below the city rate" must-have keeps relativeRate at or below this. */
+  hardMaxRelativeRate: 1,
 } as const;

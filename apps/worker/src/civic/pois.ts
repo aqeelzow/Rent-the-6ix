@@ -135,7 +135,11 @@ function parkRows(features: CityFeature[]): PoiRow[] {
     const p = feature.properties;
     const type = String(p.TYPE ?? "");
     const category: Category | null =
-      type === "Park" ? "park" : type === "Community Centre" || type === "Civic Centre" ? "community_centre" : null;
+      type === "Park"
+        ? "park"
+        : type === "Community Centre" || type === "Civic Centre"
+          ? "community_centre"
+          : null;
     const id = String(p.ASSET_ID ?? "").trim();
     const name = String(p.ASSET_NAME ?? "").trim();
     const location = pointLocation(feature);

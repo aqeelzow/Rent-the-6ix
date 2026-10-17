@@ -1,8 +1,10 @@
 "use client";
 
-import { Trash2 } from "lucide-react";
+import { ChevronRight, Trash2 } from "lucide-react";
 import { useId, useState } from "react";
+import { SAFETY } from "@rentthe6ix/shared/engine/config";
 import { modeIcons } from "@/components/mode-icons";
+import { SafetyLimit } from "@/components/safety/safety-limit";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -23,6 +25,10 @@ import {
   type Chip,
   type Mode,
 } from "./chips";
+import { setSafety } from "./filters";
+
+/** How many chip labels the collapsed summary shows before "+N more". */
+const SUMMARY_CHIPS = 3;
 
 /** Must-have solid, preference outlined, default dashed (SPEC 6 step 2). */
 function chipStyle(chip: Chip): string {
@@ -45,20 +51,34 @@ export function FilterChips({ intent }: { intent: SearchIntent }) {
     void runSearch();
   };
 
+  const preview = chips.slice(0, SUMMARY_CHIPS).map((chip) => chip.label);
+  const more = chips.length - preview.length;
+
+  // Collapsed by default: a one-line summary; the editable chips open on tap.
   return (
-    <section aria-labelledby="filters-label" className="flex flex-col gap-2">
-      <h2 id="filters-label" className="sr-only">
-        {t("filters.label")}
-      </h2>
-      <ul className="flex flex-wrap gap-2">
+    <details aria-labelledby="filters-label" className="group flex flex-col gap-2">
+      <summary className="hover:bg-accent focus-visible:ring-ring/50 -mx-2 flex cursor-pointer list-none items-center gap-1.5 rounded-md px-2 py-1 text-sm outline-none focus-visible:ring-3 [&::-webkit-details-marker]:hidden">
+        <ChevronRight
+          aria-hidden
+          className="size-4 shrink-0 transition-transform group-open:rotate-90"
+        />
+        <span id="filters-label" className="shrink-0 font-medium">
+          {t("filters.summaryLabel")}
+        </span>
+        <span className="text-muted-foreground truncate">
+          {preview.join(" · ")}
+          {more > 0 && ` · ${t("filters.summaryMore", { count: more })}`}
+        </span>
+      </summary>
+      <ul className="mt-2 flex flex-wrap gap-2">
         {chips.map((chip) => (
           <li key={chip.key} className="max-w-full">
             <ChipButton chip={chip} intent={intent} onEdit={edit} />
           </li>
         ))}
       </ul>
-      <p className="text-muted-foreground text-xs">{t("filters.legend")}</p>
-    </section>
+      <p className="text-muted-foreground mt-2 text-xs">{t("filters.legend")}</p>
+    </details>
   );
 }
 
@@ -90,8 +110,32 @@ function ChipButton({
           <SourceLine chip={chip} />
         </div>
 
-        {chip.hard !== null && (
-          <HardSwitch chip={chip} onChange={(hard) => onEdit((i) => setChipHard(i, chip, hard))} />
+        {chip.kind === "safety" ? (
+          <SafetyLimit
+            key={`${intent.safety.hard}-${intent.safety.maxRelativeRate ?? ""}`}
+            commitOnRelease
+            value={
+              intent.safety.hard
+                ? (intent.safety.maxRelativeRate ?? SAFETY.hardMaxRelativeRate)
+                : null
+            }
+            onChange={(limit) =>
+              onEdit((i) =>
+                setSafety(i, {
+                  enabled: true,
+                  hard: limit !== null,
+                  maxRelativeRate: limit ?? undefined,
+                }),
+              )
+            }
+          />
+        ) : (
+          chip.hard !== null && (
+            <HardSwitch
+              chip={chip}
+              onChange={(hard) => onEdit((i) => setChipHard(i, chip, hard))}
+            />
+          )
         )}
 
         {chip.kind === "travel" && chip.targetId && (

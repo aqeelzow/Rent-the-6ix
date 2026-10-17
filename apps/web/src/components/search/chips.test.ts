@@ -153,6 +153,33 @@ describe("chip edits", () => {
     expect(noHousehold.household).toBeUndefined();
   });
 
+  it("labels a safety must-have with its limit, defaulting to the city rate", () => {
+    const hard = (safety: SearchIntent["safety"]) =>
+      buildChips({ ...intent, safety }).find((c) => c.key === "safety")!.label;
+    expect(hard({ enabled: true, hard: true })).toBe("Crime at most 1.0× city rate");
+    expect(hard({ enabled: true, hard: true, maxRelativeRate: 0.8 })).toBe(
+      "Crime at most 0.8× city rate",
+    );
+    expect(hard({ enabled: true, hard: false })).toBe("Consider safety");
+  });
+
+  it("keeps a safety limit while must-have, and drops it as a preference", () => {
+    const limited = valid({
+      ...intent,
+      safety: { enabled: true, hard: true, maxRelativeRate: 0.8 },
+    });
+    const chipOf = buildChips(limited).find((c) => c.key === "safety")!;
+    expect(valid(setChipHard(limited, chipOf, true)).safety).toEqual({
+      enabled: true,
+      hard: true,
+      maxRelativeRate: 0.8,
+    });
+    expect(valid(setChipHard(limited, chipOf, false)).safety).toEqual({
+      enabled: true,
+      hard: false,
+    });
+  });
+
   it("turning safety off also drops its weight", () => {
     const next = valid(removeChip(intent, chip("safety")));
     expect(next.safety).toEqual({ enabled: false, hard: false });

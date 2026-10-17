@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { CnTower } from "@/components/brand/cn-tower";
 import { t } from "@/lib/format/messages";
 import { MobileNav } from "./mobile-nav";
 import { navLinks } from "./nav-links";
@@ -18,11 +19,8 @@ export function SiteHeader() {
           aria-label={t("layout.homeLink")}
           className="flex items-center gap-2 text-lg font-semibold tracking-tight"
         >
-          <span
-            aria-hidden
-            className="bg-primary text-primary-foreground figures grid size-7 place-items-center rounded-md text-sm font-bold"
-          >
-            6
+          <span aria-hidden className="text-primary">
+            <CnTower id="header" className="h-8 w-auto" />
           </span>
           {t("common.appName")}
         </Link>

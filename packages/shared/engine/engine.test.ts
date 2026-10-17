@@ -86,6 +86,26 @@ test('missing civic IDs stay unconfirmed through geographic OR and hide gates', 
   assert.deepEqual(filterListing(sparse, baseIntent, {}, true), { passes: true, notes: [] });
 });
 
+test('a rent far below the estimate gets no value score (check it, not a deal)', () => {
+  const listing = sampleListings[0];
+  const deal = scoreListing(listing, baseIntent, { ...context, valuation: { ...valuations[3], status: 'ok', differencePct: 20 } as never });
+  const suspicious = scoreListing(listing, baseIntent, { ...context, valuation: { ...valuations[3], status: 'ok', differencePct: 55 } as never });
+  assert.equal(deal.parts.find(p => p.id === 'value')!.score, 100);
+  assert.equal(suspicious.parts.find(p => p.id === 'value')!.score, null);
+});
+test('hard safety keeps neighbourhoods at or below the renter\'s limit, else the city rate', () => {
+  const listing = sampleListings[1];
+  const safe = (relativeRate: number) => ({ ...context, safety: { areaId: listing.neighbourhoodId!, rate: 1000 * relativeRate, relativeRate, byType: {}, years: [2025], caveats: [{ severity: 'info' as const, code: 'x', title: 'x', explanation: 'x' }] } });
+  const hard = (maxRelativeRate?: number): SearchIntent => ({ ...baseIntent, safety: { enabled: true, hard: true, ...(maxRelativeRate === undefined ? {} : { maxRelativeRate }) } });
+  assert.equal(filterListing(listing, hard(), safe(1)).passes, true);
+  assert.equal(filterListing(listing, hard(), safe(1.1)).passes, false);
+  assert.equal(filterListing(listing, hard(0.8), safe(0.8)).passes, true);
+  assert.equal(filterListing(listing, hard(0.8), safe(0.9)).passes, false);
+  assert.equal(filterListing(listing, hard(1.5), safe(1.4)).passes, true);
+  assert.equal(SearchIntentSchema.safeParse(hard(0.8)).success, true);
+  assert.equal(SearchIntentSchema.safeParse(hard(0)).success, false);
+});
+
 test('C rent verification threshold omits value without dropping the caveat or breaking totals', () => {
   for (const differencePct of [20, 30, 30.01, 55]) {
     const caveat = { code: 'rent_far_below', severity: 'warning' as const, title: 'Check the asking rent', explanation: 'More than 30% below comparable asking rents.' };

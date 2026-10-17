@@ -1,6 +1,12 @@
-import { baseIntent, searchFixture } from "@rentthe6ix/shared/fixtures";
+import { baseIntent, detailFixture, searchFixture } from "@rentthe6ix/shared/fixtures";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { parseAndSearch, resolveDestination, runSearch } from "./actions";
+import {
+  fetchListingDetail,
+  parseAndSearch,
+  redactIntent,
+  resolveDestination,
+  runSearch,
+} from "./actions";
 import { createAppStore } from "./store";
 
 const token = "a".repeat(43);
@@ -163,6 +169,32 @@ describe("runSearch", () => {
     expect(store.getState().status).toBe("searching");
   });
 
+  it("cancels a search that's still in flight when a newer one starts", async () => {
+    const signals: AbortSignal[] = [];
+    let release: (value: Response) => void = () => {};
+    const fetch = vi.fn(
+      (_url: string | URL | Request, init?: RequestInit) =>
+        new Promise<Response>((resolve, reject) => {
+          signals.push(init!.signal!);
+          if (signals.length === 1) {
+            init!.signal!.addEventListener("abort", () =>
+              reject(new DOMException("Aborted", "AbortError")),
+            );
+          } else release = resolve;
+        }),
+    ) as unknown as typeof globalThis.fetch;
+
+    const first = runSearch(options(fetch));
+    const second = runSearch(options(fetch));
+    release(Response.json(searchFixture));
+    await Promise.all([first, second]);
+
+    expect(signals[0]?.aborted).toBe(true);
+    expect(signals[1]?.aborted).toBe(false);
+    expect(store.getState().status).toBe("ready");
+    expect(store.getState().error).toBeNull();
+  });
+
   it("does nothing without an intent", async () => {
     store.getState().setIntent(null);
     const { fetch, calls } = fakeFetch();
@@ -205,5 +237,45 @@ describe("resolveDestination", () => {
       ok: false,
       error: { code: "service_unavailable" },
     });
+  });
+});
+
+describe("fetchListingDetail", () => {
+  it("sends a redacted intent and returns the validated detail", async () => {
+    const { fetch, calls } = fakeFetch({ body: detailFixture });
+    const id = detailFixture.listing.id;
+    const result = await fetchListingDetail(id, parsed.intent as never, { fetch });
+
+    expect(result).toEqual({ ok: true, detail: detailFixture });
+    const url = new URL(calls[0]!.url, "http://x");
+    expect(url.pathname).toBe(`/api/listings/${id}`);
+    const sent = JSON.parse(url.searchParams.get("intent")!);
+    expect(sent).toMatchObject({ rawPrompt: "", fieldSources: {}, droppedRequests: [] });
+  });
+
+  it("uses an empty search when there's no intent, and reports errors", async () => {
+    const { fetch, calls } = fakeFetch({
+      status: 404,
+      body: { error: { code: "listing_not_found", message: "Listing not found" } },
+    });
+    const result = await fetchListingDetail("x", null, { fetch });
+    expect(result).toEqual({
+      ok: false,
+      error: { code: "listing_not_found", message: "Listing not found" },
+    });
+    expect(
+      JSON.parse(new URL(calls[0]!.url, "http://x").searchParams.get("intent")!).criteria,
+    ).toEqual({});
+  });
+
+  it("redacts the renter's words but keeps the criteria", () => {
+    const redacted = redactIntent({
+      ...baseIntent,
+      rawPrompt: "secret",
+      droppedRequests: [{ phrase: "x", reason: "y" }],
+    });
+    expect(redacted.rawPrompt).toBe("");
+    expect(redacted.droppedRequests).toEqual([]);
+    expect(redacted.criteria).toEqual(baseIntent.criteria);
   });
 });

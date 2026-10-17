@@ -10,6 +10,7 @@ import { selectIsShortlisted } from "@/lib/store/searchSlice";
 import { useAppStore } from "@/lib/store/store";
 import type { SearchIntent, SearchResultItem } from "@/lib/store/types";
 import { daysSince, topCaveat, travelSummaries, yearSpan, type TravelSummary } from "./card-data";
+import { SafetyInfoButton } from "@/components/safety/safety-info";
 import { PriceBadge } from "./price-badge";
 import { ScoreBar } from "./score-bar";
 
@@ -162,12 +163,15 @@ export function ResultCard({
       {safetyOn && (
         <p className="text-muted-foreground figures flex items-start gap-2 text-sm">
           <ShieldQuestion aria-hidden className="mt-0.5 size-4 shrink-0" />
-          {safety && safety.relativeRate !== null
-            ? r("safety", {
-                rate: decimal.format(safety.relativeRate),
-                years: yearSpan(safety.years),
-              })
-            : r("safetyNoData")}
+          <span>
+            {safety && safety.relativeRate !== null
+              ? r("safety", {
+                  rate: decimal.format(safety.relativeRate),
+                  years: yearSpan(safety.years),
+                })
+              : r("safetyNoData")}{" "}
+            <SafetyInfoButton caveats={safety?.caveats} className="text-xs" />
+          </span>
         </p>
       )}
 

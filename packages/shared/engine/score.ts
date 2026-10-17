@@ -12,7 +12,7 @@ export function scoreListing(listing: Listing, intent: SearchIntent, context: Sc
   const rent = intent.criteria.rent;
   const max = rent?.value.max;
   const scores = {
-    // C's rent_far_below guard: an unusually low asking rent needs verification, not a maximum value score.
+    // Far below the estimate (rent_far_below) is a reason to check the listing, not a deal: no value score.
     value: context.valuation.status === 'ok' && context.valuation.differencePct !== undefined && context.valuation.differencePct <= CAVEATS.farBelowPct ? clamp(50 + context.valuation.differencePct * 2.5) : null,
     price: rent && !rent.hard ? max === undefined || listing.monthlyRentCad <= max ? 100 : clamp(100 * (1 - (listing.monthlyRentCad - max) / (max * engineConfig.priceOverrun))) : null,
     travel: travelScore(intent.travelTargets, context.travel), home: homeFit(listing, intent),

@@ -16,7 +16,9 @@ describe("normalizeAddress", () => {
   });
 
   it("gives the same key for the same address spelled two ways", () => {
-    expect(normalizeAddress("181-183  GERRARD ST E")).toBe(normalizeAddress("181 183 Gerrard St E"));
+    expect(normalizeAddress("181-183  GERRARD ST E")).toBe(
+      normalizeAddress("181 183 Gerrard St E"),
+    );
     expect(normalizeAddress("77 Howard St.")).toBe(normalizeAddress("77 Howard Street"));
   });
 

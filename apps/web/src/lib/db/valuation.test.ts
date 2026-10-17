@@ -140,6 +140,15 @@ describe("listingContext", () => {
     expect(caveats[0].code).toBe("deposit_before_viewing");
   });
 
+  it("flags a newer building valued mostly against older ones", async () => {
+    const old = [2400, 2450, 2500, 2550, 2600].map((r, i) =>
+      candidate(i + 2, r, { year_built: 1968 }),
+    );
+    const sql = fakeSql(old, []);
+    const { caveats } = await listingContext(sql, { ...listing, yearBuilt: 2023 }, NOW);
+    expect(caveats.map((c) => c.code)).toContain("newer_building");
+  });
+
   it("reads the RentSafeTO building for the low-score caveat", async () => {
     const sql = fakeSql(
       five(),

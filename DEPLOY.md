@@ -81,33 +81,63 @@ It comes back automatically once C's scheduler loop keeps it running.
 `web` has no published host port; only Caddy is reachable from outside. Caddy's health check
 hits `/status` inside the network.
 
+### Persistent volumes
+
+The stack keeps state outside the images in three named volumes, all re-created by Docker
+rather than by `--build`:
+
+| Volume | Mounted at | Holds |
+| --- | --- | --- |
+| `rentthe6ix_worker-cache` | `/app/apps/worker/.cache` | detail-page cache, Gemini extract cache, ingest snapshots |
+| `rentthe6ix_caddy_data` | `/data` | TLS certificates and ACME account |
+| `rentthe6ix_caddy_config` | `/config` | Caddy autosaved config |
+
+The worker's mount path follows the code, not the shell: every cache path is built with
+`new URL('../../.cache/…', import.meta.url)` from `apps/worker/src/…`, so it lands in
+`apps/worker/.cache` relative to the source tree — `/app/apps/worker/.cache` in the image,
+where `/app` is the worker stage's `WORKDIR`. Mount the path somewhere else and the worker
+simply writes to the image layer and loses it on the next deploy.
+
+`docker compose down -v` deletes all three (certificates included). Use `docker compose down`
+without `-v` when replacing containers, and never `down -v` on the instance.
+
 ## 4. OpenTripPlanner graph **[needs instance, S2]**
 
 Built once, kept on disk, never rebuilt on deploy.
 
-1. Inputs into `otp/data/`: TTC GTFS ("TTC Routes and Schedules") and Geofabrik
-   `ontario-latest.osm.pbf`.
-2. Clip OSM so the graph fits comfortably in 6 GB:
-   ```bash
-   sudo apt-get install -y osmium-tool
-   osmium extract -b -79.77,43.49,-78.99,43.95 otp/data/ontario-latest.osm.pbf \
-     -o otp/data/toronto.osm.pbf
-   rm otp/data/ontario-latest.osm.pbf
-   ```
-3. Build with `--build --save` into `otp/graphs/` (Java heap ~6 GB), then start the service:
-   ```bash
-   docker compose --profile otp up -d otp
-   docker compose logs -f otp        # wait for "Grizzly server running"
-   ```
-   Pin the image with `OTP_IMAGE` in `.env` if `2.7.0` is not the tag you built against.
-4. Smoke-test one route per mode between Union Station and UofT St. George; record the times
-   in `PERSON_D.md` → Handoff notes. Until `otp` is up, travel times fall back to labelled
-   straight-line distance and the app must still work.
+Do not do this by hand — `otp/build.sh` does all five steps (download via CKAN, clip, copy the
+router config, build, verify) and works on the instance exactly as it does locally:
+
+```bash
+./otp/build.sh
+```
+
+Three things about the image are easy to get wrong by hand:
+
+- It needs Docker (`stefda/osmium-tool` for the clip) and ~6 GB of free RAM for the build.
+- The graph object is written to `otp/data/graph.obj`, next to its inputs — the image's
+  entrypoint hard-codes `/var/opentripplanner` as the graph directory, so the compose service
+  mounts only `otp/data` and there is no separate `otp/graphs/`.
+- Never leave the province-wide `ontario-latest.osm.pbf` in `otp/data`: OTP merges every OSM
+  file in that directory. `build.sh` keeps it in `otp/downloads/` instead.
+
+Then start it:
+
+```bash
+docker compose --profile otp up -d otp
+docker compose logs -f otp        # wait for "Grizzly server running"
+```
+
+Pin the image with `OTP_IMAGE` in `.env` if `2.7.0` is not the tag you built against — a graph
+built by one OTP version is not guaranteed loadable by another.
+Then smoke-test one route per mode between Union Station and UofT St. George (`./otp/smoke-test.sh`)
+and record the times in `PERSON_D.md` → Handoff notes. Until `otp` is up, travel times fall back
+to labelled straight-line distance and the app must still work.
 
 ## 5. Data loads **[needs instance]**
 
 ```bash
-docker compose exec worker node apps/worker/src/civic/<loader>.ts   # as loaders land
+docker compose exec worker node apps/worker/src/civic/cli.ts all   # civic data (P1.10–P1.16)
 docker compose exec worker node apps/worker/src/index.ts            # or the scheduled run
 ```
 
@@ -144,6 +174,7 @@ script fails fast with a message if it is missing.
 | Certificate not issued | `docker compose logs caddy`; `SITE_HOST` must resolve to this box, and 80/443 must be open |
 | Compose aborts immediately | `.env` missing next to `docker-compose.yml`, or `SITE_HOST` unset |
 | Worker restarts in a loop | It is crashing (exit ≠ 0); `docker compose logs worker` |
+| Every scrape re-fetches details / re-asks Gemini | `docker compose exec worker ls /app/apps/worker/.cache` — empty means the `worker-cache` volume is missing or mounted at the wrong path (`docker compose config` shows the resolved mount) |
 | `pnpm install` fails in the build | A new workspace package needs its `package.json` added to the `deps` stage in the Dockerfile |
 
 ## Environment variables

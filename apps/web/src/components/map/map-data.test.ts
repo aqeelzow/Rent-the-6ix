@@ -61,11 +61,21 @@ describe("places and bounds", () => {
 
   it("bounds every listing and place", () => {
     const [west, south, east, north] = boundsOf(results, [{ lng: -79.6, lat: 43.9 }])!;
-    expect(west).toBe(-79.6);
+    expect(west).toBeCloseTo(-79.6, 6);
     expect(north).toBe(43.9);
     expect(east).toBeGreaterThan(west);
     expect(north).toBeGreaterThan(south);
     expect(boundsOf([], [])).toBeNull();
+  });
+
+  it("ignores listings and places far outside Toronto (bad geocodes)", () => {
+    const detroit = {
+      ...results[1]!,
+      listing: { ...results[1]!.listing, location: { lng: -83.05, lat: 42.33 } },
+    };
+    const withOutlier = boundsOf([...results, detroit], [{ lng: -84.55, lat: 42.73 }])!;
+    expect(withOutlier).toEqual(boundsOf(results, [])!);
+    expect(boundsOf([detroit], [])).toBeNull();
   });
 
   it("includes the whole circle around an approximate location", () => {
