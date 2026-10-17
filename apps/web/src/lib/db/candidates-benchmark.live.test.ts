@@ -14,7 +14,7 @@ test.skipIf(process.env.RUN_LIVE_SEARCH_BENCHMARK !== '1')('live search and deta
   assert.ok(process.env.DATABASE_URL);
   const sql = postgres(process.env.DATABASE_URL, { max: 2, connect_timeout: 5, onnotice: () => {} });
   const dependencies = sqlSearchDependencies(() => sql);
-  const api = createRuntime({ env: {}, dependencies });
+  const api = createRuntime({ env: { VERCEL: '1' }, dependencies });
   try {
     const rows = await sql`SELECT id, key, value_cad::float8 AS "valueCad", period, source_id AS "sourceId", unit, sample FROM benchmarks WHERE kind = 'rent' AND value_cad IS NOT NULL`;
     assert.ok(rows.length > 0);
@@ -61,7 +61,7 @@ test.skipIf(process.env.RUN_LIVE_SEARCH_BENCHMARK !== '1')('live search and deta
     const loaded = await dependencies.loadCandidates!({ intent: baseIntent, hideUnconfirmed: false });
     for (const listing of listings) assert.ok(loaded.some(candidate => candidate.id === listing.id));
     dependencies.loadCandidates = async () => listings;
-    const response = await api.search(new Request('http://localhost/api/listings/search', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ intent: baseIntent, hideUnconfirmed: false }) }), undefined);
+    const response = await api.search(new Request('http://localhost/api/listings/search', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-vercel-forwarded-for': '192.0.2.1' }, body: JSON.stringify({ intent: baseIntent, hideUnconfirmed: false }) }), undefined);
     assert.equal(response.status, 200);
     const search = SearchResponseSchema.parse(await response.json());
     assert.ok(search.status === 'completed');

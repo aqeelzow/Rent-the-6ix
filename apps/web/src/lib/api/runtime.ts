@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { isIP } from 'node:net';
 import { ParseRequestSchema, SearchRequestSchema, SearchResponseSchema, SearchIntentSchema, DetailResponseSchema, TravelTimeRowSchema, ValuationSchema, CaveatSchema } from '../../../../../packages/shared/schemas/index';
 import { sampleListings, fixtureTimestamp, safetySearchFixture, areas, detailFixture } from '../../../../../packages/shared/fixtures/index';
 import { valuate } from '../../../../../packages/shared/engine/valuation';
@@ -34,8 +35,11 @@ export function createRuntime(options: RuntimeOptions = {}) {
   const parser = options.parser ?? new ParseService({ provider: providerFromEnv(env), resolver, civicAreas: env.SEARCH_FIXTURES !== '1' && env.DATABASE_URL ? civicAreasLookup() : undefined, cacheNamespace: `${env.AI_PROVIDER}:${env.GEMINI_MODEL_FAST ?? env.GEMINI_MODEL}`, intentCache: env.SEARCH_FIXTURES !== '1' && env.DATABASE_URL && env.AI_PROVIDER === 'gemini' ? databaseIntentCache() : undefined });
   const jobs = options.jobs ?? new SearchJobs();
   const dependencies = options.dependencies ?? (env.SEARCH_FIXTURES === '1' ? fixtureDependencies : env.DATABASE_URL ? sqlSearchDependencies() : undefined);
-  // shortcut: one anonymous quota without trusted server identity, integrate A's trusted proxy adapter before production.
-  const identity = options.identity ?? (() => 'anonymous');
+  // Vercel overwrites this header; other deployments need their own trusted identity callback.
+  const identity = options.identity ?? ((request: Request) => {
+    const ip = env.VERCEL === '1' ? request.headers.get('x-vercel-forwarded-for') : null;
+    return ip && isIP(ip) ? ip : 'anonymous';
+  });
   const limiter = options.limiter ?? new IpLimiter(60), startLimiter = options.startLimiter ?? new IpLimiter(10), pollLimiter = options.pollLimiter ?? new IpLimiter(120);
   const limit = (request: Request) => limiter.check(identity(request));
   const requireDependencies = () => { if (!dependencies) throw new ApiError(503, 'service_unavailable', 'Search temporarily unavailable'); return dependencies; };
