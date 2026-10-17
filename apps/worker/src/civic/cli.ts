@@ -10,6 +10,7 @@ import { loadAddressPoints } from "./address-points.ts";
 import { loadDerivedIndicators } from "./area-indicators.ts";
 import { loadBoundaries } from "./areas.ts";
 import { loadBuildings } from "./buildings.ts";
+import { loadCensus } from "./census.ts";
 import { loadCrimeRates } from "./crime.ts";
 import { loadPois } from "./pois.ts";
 import { loadTransitStops } from "./transit-stops.ts";
@@ -78,8 +79,26 @@ async function indicators(sql: Sql): Promise<void> {
   console.log(`  area_indicators: ${load.rows} derived rows`, load.byIndicator);
 }
 
+async function census(sql: Sql): Promise<void> {
+  const load = await loadCensus(sql);
+  console.log(
+    `  area_indicators: ${load.indicators} census rows for ${load.neighbourhoods} neighbourhoods`,
+  );
+  if (load.neighbourhoods !== 158)
+    throw new Error("expected all 158 neighbourhoods in the profiles");
+}
+
 // `indicators` reads buildings, stops and POIs, so it runs after them in `all`.
-const TASKS: Record<string, Task> = { areas, addresses, pois, stops, buildings, crime, indicators };
+const TASKS: Record<string, Task> = {
+  areas,
+  addresses,
+  pois,
+  stops,
+  buildings,
+  crime,
+  census,
+  indicators,
+};
 
 async function main(): Promise<void> {
   const requested = process.argv[2] ?? "all";
