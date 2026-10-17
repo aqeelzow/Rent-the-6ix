@@ -8,9 +8,9 @@ Task ids match `PROGRESS.md`; task details are in `SPEC.md`.
 
 - **Current task:** none in progress
 - **Status:** in progress   <!-- not started | in progress | blocked | at sync point -->
-- **Next action:** B to call `listingContext` from search's `enrich()` (see Requests). After D applies `005_listing_details.sql`, store `den` and move the detail cache into the DB; load the Realtor.ca run when it finishes. Then a DB-backed `enrich()` for B's search once B's schema accepts live listings. P1.5 geocode once D loads Address Points + boundaries (tables exist, empty as of 2026-10-17). Unblocked options: the `rentals_ca` results capture, or computing `deposit_before_viewing` at ingest from the full description (caveats only see the 280-char excerpt). When D's migrations land: `selectComparables` SQL (finishes P2.1), P1.6 upsert. P1.5 geocode once D's Address Points are loaded.
-- **Blockers / needs from others:** B's `Listing` schema (P0.5; normalize uses a worker-local type until then), B's API conventions (P0.7) for P2.5, D's Address Points and boundaries (P1.10, P1.11; tables empty) for P1.5, a `004_` migration for `den` + detail-fetch columns.
-- **Last updated:** 2026-10-17 (P2.1, P2.5 valuation route live; P1.6, P1.7: 8,500 listings in TigerData)
+- **Next action:** (1) hand-check `apps/worker/.cache/manual-candidates.csv` (regenerate with `pnpm --filter worker manual:candidates` after the Kijiji rooms crawl) and copy 20–40 checked rows into `db/seed/manual.csv`, then `pnpm --filter worker load:manual`; (2) B wires `listingContext` into search's `enrich()`; (3) D reviews/applies `005_listing_details.sql` and `006_ingest_runs.sql`. P1.5 geocode once D loads Address Points + boundaries (tables exist, empty).
+- **Blockers / needs from others:** D: Address Points + neighbourhood/ward boundaries (P1.10, P1.11) for P1.5; benchmarks (P2.15) for P2.3; migrations 005/006 applied; Vultr for the scheduled worker. B: call `listingContext` from `enrich()`.
+- **Last updated:** 2026-10-17 overnight (manual source, price drops, scam flag at ingest, ingest_runs, Kijiji rooms, rentals.ca; ~16k listings in TigerData, detail-page runs in progress)
 
 ## Handoff notes
 
