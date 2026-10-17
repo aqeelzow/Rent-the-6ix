@@ -84,7 +84,7 @@ P5.5b end-of-feature check: focused empty/briefing/API-state tests and web typec
 ### Gemini place normalization
 
 - [x] Optional normalized search name alongside original grounded place query; resolver verifies canonical name and supplies the displayed label/coordinates, preserving original campus ambiguity. Amenities unchanged; no normalized text persisted in DB parse cache.
-- Verification: 31 focused parser/cache tests pass (two opt-in live tests skipped), web typecheck passes. One actual Gemini/MapTiler acceptance attempt returned AI busy before normalization; successful live normalization remains unverified. The independent live MapTiler museum lookup passes after explicitly enabling its POI index, which was excluded by default. No DB mutation or extra Gemini retry.
+- Verification: 31 focused parser/cache tests pass (two opt-in live tests skipped), web typecheck passes. The first actual Gemini attempt returned AI busy. A subsequent live Gemini/MapTiler acceptance check passed using a new key supplied only to the test process: ROM → Royal Ontario Museum → MapTiler coordinates. No environment file was modified. The independent live MapTiler museum lookup passes after explicitly enabling its POI index, which was excluded by default. No DB mutation or extra Gemini retry.
 
 ### Current P3 sequence
 
