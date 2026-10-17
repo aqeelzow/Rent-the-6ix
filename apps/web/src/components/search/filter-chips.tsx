@@ -2,7 +2,9 @@
 
 import { ChevronRight, Trash2 } from "lucide-react";
 import { useId, useState } from "react";
+import { SAFETY } from "@rentthe6ix/shared/engine/config";
 import { modeIcons } from "@/components/mode-icons";
+import { SafetyLimit } from "@/components/safety/safety-limit";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -23,6 +25,7 @@ import {
   type Chip,
   type Mode,
 } from "./chips";
+import { setSafety } from "./filters";
 
 /** How many chip labels the collapsed summary shows before "+N more". */
 const SUMMARY_CHIPS = 3;
@@ -107,8 +110,32 @@ function ChipButton({
           <SourceLine chip={chip} />
         </div>
 
-        {chip.hard !== null && (
-          <HardSwitch chip={chip} onChange={(hard) => onEdit((i) => setChipHard(i, chip, hard))} />
+        {chip.kind === "safety" ? (
+          <SafetyLimit
+            key={`${intent.safety.hard}-${intent.safety.maxRelativeRate ?? ""}`}
+            commitOnRelease
+            value={
+              intent.safety.hard
+                ? (intent.safety.maxRelativeRate ?? SAFETY.hardMaxRelativeRate)
+                : null
+            }
+            onChange={(limit) =>
+              onEdit((i) =>
+                setSafety(i, {
+                  enabled: true,
+                  hard: limit !== null,
+                  maxRelativeRate: limit ?? undefined,
+                }),
+              )
+            }
+          />
+        ) : (
+          chip.hard !== null && (
+            <HardSwitch
+              chip={chip}
+              onChange={(hard) => onEdit((i) => setChipHard(i, chip, hard))}
+            />
+          )
         )}
 
         {chip.kind === "travel" && chip.targetId && (
