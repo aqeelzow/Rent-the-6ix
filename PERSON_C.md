@@ -7,16 +7,19 @@ Task ids match `PROGRESS.md`; task details are in `SPEC.md`.
 ## Current state
 
 - **Current task:** none in progress
-- **Status:** not started   <!-- not started | in progress | blocked | at sync point -->
-- **Next action:** P0.11 worker skeleton and adapter interface.
+- **Status:** in progress   <!-- not started | in progress | blocked | at sync point -->
+- **Next action:** P1.3 normalize (`RawListing` → `Listing`), then P1.5 geocode once D's Address Points are loaded.
 - **Blockers / needs from others:** A's scaffold (P0.1) and D's migrations (P0.8).
-- **Last updated:** 2026-10-15 (file created from SPEC)
+- **Last updated:** 2026-10-16 (P0.11, P0.12, P1.1, P1.2)
 
 ## Handoff notes
 
 > Where an unfinished task stopped, gotchas, things to verify. Replace each session.
 
 - **Fetch logic is shared code, not per adapter** (SPEC 8.4). Two working sources plus `manual.csv` is enough for the demo.
+- **Working sources:** `kijiji` and `torontorentals` (see `apps/worker/SOURCES.md`). `rentals_ca`, `zillow`, `realtor_ca` adapters exist but are blocked (403 bot checks) and stop on the first request; Zillow and Realtor.ca parsers are unverified.
+- `pnpm ingest:once [--sources a,b] [--pages N]` writes scrubbed rows to git-ignored `apps/worker/.cache/ingest/*.json` until P1.6 upserts into TigerData. `scrub.ts` already does emails, phones, links and names after contact verbs (P1.4 still needs broader name heuristics).
+- **Field coverage (2 pages each, 2026-10-16):** Kijiji 91 rows: size 31%, AC 39%, year built 0%. torontorentals 254 rows: size 99%, year built 78%, AC 0%, no description. AC and Kijiji year built are the gaps; worth considering P4.10 earlier.
 - **Store only `Listing` fields.** Excerpt ≤ 280 chars after scrubbing phone numbers, emails and personal names. No photos stored; thumbnail URL only if the source's terms allow linking.
 - **Snapshots and raw HTML fixtures are git-ignored** and stay on the Vultr instance and team machines (SPEC 8.5). Save small HTML fixtures per source for adapter tests (strip personal info from them too).
 - **New fields:** size (sq ft; convert m²), year built ("built 2018", "new construction"), AC (`central` / `yes` / `no` / `unknown`). After the building match, fill missing `yearBuilt` from RentSafeTO (`yearBuiltSource: 'rentsafeto'`). Record `fieldEvidence` for each.
@@ -28,6 +31,7 @@ Task ids match `PROGRESS.md`; task details are in `SPEC.md`.
 ## Requests to others
 
 - **To D:** Address Points and neighbourhood/ward boundaries loaded early in S1→S2 (P1.10, P1.11) so geocoding and area joins work; RentSafeTO buildings with year built (P1.14); benchmarks table (P2.15) for the valuation's benchmark line.
+- **To B:** add `'torontorentals'` to `Listing.source`.
 - **To B:** the `Listing` and `Valuation` schemas include `sqft`, `yearBuilt`, `yearBuiltSource`, `airConditioning`, `priceLabel` (P0.5).
 - **To A:** tell me which listing fields look wrong on real data; I'll fix the normalizer.
 
@@ -38,11 +42,11 @@ Task ids match `PROGRESS.md`; task details are in `SPEC.md`.
 Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked · `[-]` dropped. **Core** = needed for the demo. **Stretch** = drop first if behind.
 
 ### Before S1 (H0–H3) — Rules first · Core
-- [ ] P0.11 Worker package skeleton; adapter interface `{ id, fetchIndex, fetchDetail, parse }`; shared fetch layer (delay, UA, retries)
+- [x] P0.11 Worker package skeleton; adapter interface `{ id, fetchIndex, fetchDetail, parse }`; shared fetch layer (delay, UA, retries)
 
 ### S1 → S2 (H3–H12) — Data in · Core
-- [ ] P1.1 First adapter (Kijiji or whichever is "go") + HTML fixture tests
-- [ ] P1.2 Second adapter (Rentals.ca or the next "go") + fixture tests
+- [x] P1.1 First adapter (Kijiji or whichever is "go") + HTML fixture tests
+- [x] P1.2 Second adapter (torontorentals.com, Rentals.ca network; rentals.ca itself is blocked) + fixture tests
 - [ ] P1.3 Normalize: rent, bedrooms (studio = 0, 1+den), bathrooms, unit type, size, year built, AC, tri-state amenities, availability, lease + tests
 - [ ] P1.4 Scrub phone numbers, emails, personal names; 280-char excerpt + tests
 - [ ] P1.5 Geocode (Address Points via `pg_trgm`, street-level, area centroid), drop outside Toronto, neighbourhood/ward join, building match + RentSafeTO year-built fill
@@ -84,8 +88,9 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked · `[-]` 
 
 | Feature | Key files | Notes |
 | --- | --- | --- |
-| Source rules & adapters | `apps/worker/SOURCES.md`, `src/sources/*.ts`, `src/lib/fetch.ts`, `fixtures/` | fixtures git-ignored if they contain scraped text |
-| Pipeline | `apps/worker/src/pipeline/normalize.ts`, `scrub.ts`, `geocode.ts`, `dedupe.ts`, `upsert.ts` (+ tests) | |
+| Source rules & adapters | `apps/worker/SOURCES.md`, `src/sources/*.ts`, `src/lib/fetch.ts` | test fixtures are inline, same shape as the live data, made-up values |
+| One-off run | `apps/worker/src/ingest.ts` (`pnpm ingest:once`) | output in `.cache/ingest/` |
+| Pipeline | `apps/worker/src/pipeline/normalize.ts`, `scrub.ts` (done, first pass), `geocode.ts`, `dedupe.ts`, `upsert.ts` (+ tests) | |
 | Schedule | `apps/worker/src/schedule.ts` | every 6 h |
 | Valuation | `packages/shared/engine/valuation.ts` (+ tests), `apps/web/src/app/api/listings/[id]/valuation/route.ts` | |
 | Caveats | `packages/shared/engine/caveats.ts` (+ tests) | |

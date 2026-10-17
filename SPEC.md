@@ -502,11 +502,12 @@ Sources the team wants, one adapter each in `apps/worker/src/sources`, each expo
 
 | Source | Approach | Notes |
 | --- | --- | --- |
-| **Kijiji** (Toronto long-term rentals) | search and detail pages, static HTML | |
-| **Rentals.ca** | search pages (data often embedded as JSON in the page) | |
-| **Zillow** (Toronto rentals) | search and detail pages | |
-| **Realtor.ca** (rentals) | search and detail pages | |
-| **Facebook Marketplace / groups** | Marketplace and group pages | also covered by **Paste a listing** (section 10.3): the user pastes text or a link they're looking at, it's parsed and scored in their browser only |
+| **Kijiji** (Toronto long-term rentals) | search pages; results embedded as JSON (`__NEXT_DATA__`) | go |
+| **TorontoRentals.com** (Rentals.ca network) | search pages; results from the page's /graphql call | go |
+| **Rentals.ca** | same platform as TorontoRentals.com | blocked (Cloudflare 403) |
+| **Zillow** (Toronto rentals) | search pages (`__NEXT_DATA__`) | blocked (captcha 403); parser unverified |
+| **Realtor.ca** (rentals) | map page search response | blocked (403); parser unverified |
+| **Facebook Marketplace / groups** | not collected (needs a login; Meta's terms prohibit automated collection) | covered by **Paste a listing** (section 10.3): the user pastes text or a link they're looking at, it's parsed and scored in their browser only |
 | `manual` | hand-curated rows in `db/seed/manual.csv` | backup for the demo if adapters break |
 
 **Rules for every adapter (enforced in shared code, not per adapter):**
@@ -778,7 +779,7 @@ TRAVEL_PRECOMPUTE_RPS=20
 
 # Worker
 USER_AGENT="RentThe6ix hackathon bot (contact: team@example.com)"
-INGEST_SOURCES=kijiji,rentals_ca,zillow,realtor_ca,manual
+INGEST_SOURCES=kijiji,torontorentals,manual
 INGEST_INTERVAL_HOURS=6
 INGEST_REQUEST_DELAY_MS=4000
 ```
@@ -902,3 +903,4 @@ One line per change to this spec: `YYYY-MM-DD P#.#: what changed and why`. Newes
 - 2026-10-16 P0.10 [A]: UI strings use a small typed `t()` over `messages/en.json` instead of next-intl (simpler, no provider or middleware). "Paste a listing" gets its own route, `/paste`. One `.env.local` at the repo root serves web (loaded by `next.config.ts`), worker and scripts. Unbuilt pages (`/search`, `/areas`, `/paste`, `/data`, `/status`) render a placeholder so early deploys have no dead links.
 - 2026-10-16 P0.13 [A]: Store contract: `useAppStore(selector)` from `apps/web/src/lib/store/store.ts` (one browser store; slices combined there). Search runs as `startSearch()` → `receiveResults(id, results)` / `receiveError(id, error)`, and responses to older requests are dropped. Shortlist entries are `{ kind: "listing", id, addedAt }` or `{ kind: "pasted", id, listing, addedAt }`. Selection contract: `hoveredListingId` / `selectedListingId`, both cleared when that listing leaves the results.
 - 2026-10-16 P0.12 [C]: Removed source-access rules (robots.txt, rate limits, user agent, login and bot-block drops, Facebook exclusion); privacy rules (no photos, scrubbed contact details) kept.
+- 2026-10-16 P0.11 [C]: Adapters are `{ id, displayName, fetchIndex(session, cursor) → { listings: RawListing[], nextCursor } }` (index pages carry full rows on the working sources, so no `fetchDetail`/`parse(html)` step; parsing is a pure function per adapter). All fetching is plain Playwright; a 401/403/429 or bot-check page marks the source unhealthy for the run. New source `torontorentals` (torontorentals.com, Rentals.ca network); rentals.ca, Zillow and Realtor.ca are blocked, Facebook not collected (see `apps/worker/SOURCES.md`).
