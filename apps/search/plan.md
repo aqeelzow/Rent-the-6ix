@@ -1,12 +1,12 @@
 # Natural-language rental search — execution plan
 
-Status: active sequential completion on `b/search-plan-completion` in `/tmp/rent-search-mvp`, reconciled through upstream main `538b18f` (PR28). One subagent implements each feature; each feature receives database-backed validation before the next starts. The local plan covers the search pipeline; explanations/imports/briefings remain outside its scope. Incoming ranking/filter feedback is included in deterministic search acceptance. Historical entries below describe earlier checkpoints.
+Status: active sequential completion on `b/search-plan-completion` in `/tmp/rent-search-mvp`. One subagent implements each feature, followed by one brief, relevant end-of-feature check. The search pipeline is implemented; the current sequence is P3.1 explanation, P3.3 area briefing, then P3.4 cached demo outputs. P3.2 import and P2.24 latency optimization are deferred by the user. Historical entries below describe earlier checkpoints.
 
 ## Source of truth and scope
 
 Read `spec.md` before implementing this plan. The spec defines requirements; this plan defines execution order and records the user's clarification answers. If the two conflict, surface the discrepancy and reconcile it before implementing the affected behavior.
 
-Build the search pipeline within the planned Next.js app: prompt parsing, editable search intent, destination resolution, deterministic filtering and ranking, and travel integration. A’s fetched main now provides the monorepo scaffold. C/D data services remain dependencies. Imports, AI explanations and ward briefings are outside this execution scope.
+Build the search pipeline and current P3.1/P3.3/P3.4 sequence within the planned Next.js app. A’s fetched main provides the monorepo scaffold. C/D data services remain dependencies. P3.2 imports are deferred until the user requests them.
 
 ## Agreed clarifications
 
@@ -67,6 +67,14 @@ Implementation defaults: unstated criteria impose no constraints; household size
 - Coordinate A's destination-choice and polling UI through documented contracts.
 
 ## Verification and acceptance
+
+### Current P3 sequence
+
+- [x] P3.1: POST listing explanation from computed detail facts, output number/safety checks, bounded fast-model cache, template fallback and API documentation. Focused feature validation recorded below.
+- [ ] P3.3: area briefing from available official indicators, neutral number-checked paragraphs, fallback and ward pre-generation. Ward source indicators remain an owner dependency; track partial scope precisely.
+- [ ] P3.4: cached parse/explain outputs for the three demo prompts and demo pasted listing. Pasted-listing import is deferred; do not implement P3.2 as part of this step.
+
+2026-10-17 — P3.1: B explanation route now consumes the shared computed detail pipeline and redacted intent, sends selected numeric facts to the fast model, checks sentence count/numbers/safety wording, and falls back to a deterministic three-sentence summary. A's existing explanation slot accepts `{explanation}`. Focused tests passed with a live read-only listing, web typecheck passed and changed-file ESLint passed. Provider availability remains unverified; the route returns a template when Gemini is unavailable. P3.4 will address persistent demo output caching.
 
 - Exercise all three local examples and the three root demo prompts with Gemini and the deterministic fallback.
 - Test alternative-mode OR behavior, independent destinations, ambiguous places, campus representative points and unstated criteria.
