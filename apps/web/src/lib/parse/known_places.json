@@ -1,0 +1,107 @@
+[
+  {
+    "id": "uoft-st-george",
+    "label": "UofT St. George campus representative point",
+    "aliases": [
+      "uoft st. george",
+      "uoft st george",
+      "university of toronto st. george"
+    ],
+    "group": "University of Toronto",
+    "lng": -79.3957,
+    "lat": 43.6629
+  },
+  {
+    "id": "uoft-scarborough",
+    "label": "UofT Scarborough campus representative point",
+    "aliases": [
+      "uoft scarborough",
+      "university of toronto scarborough"
+    ],
+    "group": "University of Toronto",
+    "lng": -79.1857,
+    "lat": 43.7847
+  },
+  {
+    "id": "uoft-mississauga",
+    "label": "UofT Mississauga campus representative point",
+    "aliases": [
+      "uoft mississauga",
+      "university of toronto mississauga"
+    ],
+    "group": "University of Toronto",
+    "lng": -79.6623,
+    "lat": 43.5483
+  },
+  {
+    "id": "york-keele",
+    "label": "York University Keele campus representative point",
+    "aliases": [
+      "york keele",
+      "york university keele"
+    ],
+    "group": "York University",
+    "lng": -79.5031,
+    "lat": 43.7735
+  },
+  {
+    "id": "york-glendon",
+    "label": "York University Glendon campus representative point",
+    "aliases": [
+      "york glendon",
+      "york university glendon"
+    ],
+    "group": "York University",
+    "lng": -79.3783,
+    "lat": 43.7278
+  },
+  {
+    "id": "york-markham",
+    "label": "York University Markham campus representative point",
+    "aliases": [
+      "york markham",
+      "york university markham"
+    ],
+    "group": "York University",
+    "lng": -79.314,
+    "lat": 43.856
+  },
+  {
+    "id": "eaton-centre",
+    "label": "Eaton Centre representative point",
+    "aliases": [
+      "eaton center",
+      "eaton centre",
+      "eaton's centre"
+    ],
+    "lng": -79.3806,
+    "lat": 43.6544
+  },
+  {
+    "id": "toronto-general",
+    "label": "Toronto General Hospital representative point",
+    "aliases": [
+      "toronto general hospital"
+    ],
+    "lng": -79.3884,
+    "lat": 43.6594
+  },
+  {
+    "id": "union-station",
+    "label": "Union Station representative point",
+    "aliases": [
+      "union station"
+    ],
+    "lng": -79.3806,
+    "lat": 43.6453
+  },
+  {
+    "id": "financial-district",
+    "label": "Financial District representative point",
+    "aliases": [
+      "financial district"
+    ],
+    "lng": -79.3819,
+    "lat": 43.6485
+  }
+]

@@ -23,6 +23,7 @@
   "devDependencies": {
     "next": "16.4.2",
     "prettier": "^3.9.10",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "@types/node": "^26.6.5"
   }
 }
