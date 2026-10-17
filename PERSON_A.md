@@ -6,12 +6,12 @@ Task ids match `PROGRESS.md`; task details are in `SPEC.md`.
 
 ## Current state
 
-- **Current task:** P1.35 mobile results
-- **Status:** in progress
-- **Branch:** `a/P1.30-landing-parse` (P1.30–P1.34 done, not merged yet)
-- **Next action:** P1.35 on phones: a sticky "Map ⇄ List" toggle on `/search`, a bottom sheet with the card when a pin is tapped (`selectedListingId`), and the filters as a sheet (already a full-width sheet). `ResultsMap` is `hidden lg:block` today, so mobile needs its own full-height instance behind the toggle.
-- **Blockers / needs from others:** none. Run the dev server with `SEARCH_FIXTURES=1`.
-- **Last updated:** 2026-10-17 (P1.34 done: MapLibre results map beside the list on desktop; clustered pins by score band with legend, approximate circles, place pins, two-way hover and select with the list)
+- **Current task:** none in progress (all of A's S1→S2 tasks are done: P1.30–P1.35)
+- **Status:** at sync point (S2)
+- **Branch:** `a/P1.30-landing-parse`, 8 commits (P1.30–P1.35), all of A's checks green; **not pushed or merged yet**
+- **Next action:** merge the branch to `main`. Next block (S2→S3): P2.35 live search once B's search route reads the DB (it answers 503 without `SEARCH_FIXTURES=1`), then P2.30 listing detail against B's `/api/listings/[id]?intent=…`.
+- **Blockers / needs from others:** live results need B's DB-backed search (P2.20/P2.24). Neighbourhood names and "Also on" need fields in B's `SearchResult` (see Requests).
+- **Last updated:** 2026-10-17 (P1.35 done: phones get a sticky Map/List toggle, a full-screen map with a bottom card for the tapped pin, and a sticky Filters/Sort bar; only the visible map mounts)
 
 ## Handoff notes
 
@@ -80,7 +80,7 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked · `[-]` 
 - [x] P1.32 Filters panel (SPEC 11.2): Price (range, price vs market), Home (rooms, size, unit type, building age, AC, pets, furnished, parking, laundry, utilities, availability, lease), Getting around (add place or amenity, mode, minutes), Safety (switch + explanation), Area; each with must-have/preference
 - [x] P1.33 Results cards (SPEC 11.2): price badge, segmented score bar, travel targets with mode icon, size/year/AC, top caveat, source + freshness, "Also on", shortlist button
 - [x] P1.34 Results map (MapLibre): clustered pins coloured by score band, approximate circles, place pins, synced hover/select with the list
-- [~] P1.35 Mobile: list with sticky Map toggle, bottom sheet on pin tap, filters as a sheet
+- [x] P1.35 Mobile: list with sticky Map toggle, bottom sheet on pin tap, filters as a sheet
 
 ### S2 → S3 (H10–H18) — Live search & detail · Core
 - [ ] P2.35 Wire results to B's live `/api/listings/search`; loading, empty and error states
@@ -131,7 +131,7 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked · `[-]` 
 | Search flow | `src/app/search/page.tsx`, `src/components/search/search-view.tsx`, `src/lib/store/actions.ts` (+ test) | parse → search → poll; states: parsing, searching, error + retry, ready; interim result rows until P1.33 |
 | Number formats | `src/lib/format/number.ts` (+ test) | `formatCad`, `formatCount` (en-CA) |
 | Chips & filters | `src/components/search/chips.ts` (+ test), `filter-chips.tsx`, `filters.ts` (+ test), `filter-fields.tsx`, `filters-panel.tsx`, `sort-select.tsx` | `buildChips(intent)`, `setChipHard`, `removeChip`, `setTargetModes`, `setTargetMinutes`; edits keep the intent valid under B's schema and never call the parser |
-| Results | `src/app/search/page.tsx`, `src/components/results/` (`card-data.ts` + test, `result-card.tsx`, `price-badge.tsx`, `score-bar.tsx`), `src/components/mode-icons.ts`, `src/components/map/` (`map-data.ts` + test, `results-map.tsx`), `apps/web/scripts/copy-maplibre-worker.mjs` | card helpers enforce honest labels; the card is a stretched link to `/listing/[id]` (placeholder until P2.30) |
+| Results | `src/app/search/page.tsx`, `src/components/search/search-view.tsx` (layout, mobile toggle, bottom card), `src/components/results/` (`card-data.ts` + test, `result-card.tsx`, `price-badge.tsx`, `score-bar.tsx`), `src/components/mode-icons.ts`, `src/components/use-media-query.ts`, `src/components/map/` (`map-data.ts` + test, `results-map.tsx`), `apps/web/scripts/copy-maplibre-worker.mjs` | card helpers enforce honest labels; the card is a stretched link to `/listing/[id]` (placeholder until P2.30) |
 | Listing detail | `src/app/listing/[id]/page.tsx`, `src/components/listing/*` | |
 | Explorer | `src/app/areas/*`, `src/components/areas/*` | |
 | Paste a listing | `src/components/listing/paste-listing.tsx` | |

@@ -376,6 +376,11 @@
       "approx": "Shaded circle: approximate location",
       "place": "Your places",
       "unavailable": "The map couldn't load. The list has every result."
+    },
+    "mobile": {
+      "showMap": "Map",
+      "showList": "List",
+      "closeCard": "Close listing"
     }
   },
   "listing": {

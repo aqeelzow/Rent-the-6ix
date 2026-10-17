@@ -1,12 +1,13 @@
 "use client";
 
-import { AlertCircle, Info, LoaderCircle } from "lucide-react";
+import { AlertCircle, Info, List, LoaderCircle, MapIcon, X } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ResultsMap } from "@/components/map/results-map";
 import { ResultCard } from "@/components/results/result-card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useMediaQuery } from "@/components/use-media-query";
 import { FilterChips } from "./filter-chips";
 import { FiltersPanel } from "./filters-panel";
 import { SortSelect } from "./sort-select";
@@ -14,7 +15,7 @@ import { t, type MessageKey } from "@/lib/format/messages";
 import { formatCount } from "@/lib/format/number";
 import { parseAndSearch, runSearch } from "@/lib/store/actions";
 import { appStore, useAppStore } from "@/lib/store/store";
-import type { ApiError } from "@/lib/store/types";
+import type { ApiError, SearchIntent, SearchResultItem } from "@/lib/store/types";
 
 const knownErrors = new Set([
   "rate_limited",
@@ -41,8 +42,13 @@ export function SearchView({ prompt }: { prompt: string | null }) {
   const parser = useAppStore((s) => s.parser);
   const parseNotice = useAppStore((s) => s.parseNotice);
   const notices = useAppStore((s) => s.notices);
+  const selectedId = useAppStore((s) => s.selectedListingId);
+  const setSelected = useAppStore((s) => s.setSelectedListingId);
   // "Seen N days ago" is measured from when this view opened.
   const [now] = useState(() => Date.now());
+  // Desktop shows the map beside the list; phones switch between them (SPEC 11.2).
+  const desktop = useMediaQuery("(min-width: 1024px)");
+  const [mobileView, setMobileView] = useState<"list" | "map">("list");
 
   useEffect(() => {
     if (!prompt) return;
@@ -88,13 +94,15 @@ export function SearchView({ prompt }: { prompt: string | null }) {
         </section>
 
         {intent && intent.rawPrompt === prompt && (
-          <div className="flex flex-col gap-3">
-            <div className="flex flex-wrap items-center justify-between gap-2">
+          <>
+            {/* A direct child of the column so it stays stuck on phones while the list scrolls
+                and Filters is always one tap away (SPEC 18). */}
+            <div className="bg-background/95 sticky top-14 z-20 -mx-4 -mb-3 flex flex-wrap items-center justify-between gap-2 px-4 py-2 backdrop-blur lg:static lg:mx-0 lg:bg-transparent lg:p-0 lg:backdrop-blur-none">
               <FiltersPanel />
               <SortSelect />
             </div>
             <FilterChips intent={intent} />
-          </div>
+          </>
         )}
 
         <div aria-live="polite" className="flex flex-col gap-4">
@@ -176,9 +184,78 @@ export function SearchView({ prompt }: { prompt: string | null }) {
             </ol>
           </section>
         ) : null}
+
+        {/* Sticky at the bottom of the screen while the list scrolls; rests after the last card. */}
+        {!desktop && results.length > 0 && (
+          <div className="sticky bottom-4 z-20 flex justify-center">
+            <Button
+              onClick={() => setMobileView("map")}
+              className="h-10 rounded-full px-4 shadow-lg"
+            >
+              <MapIcon aria-hidden data-icon="inline-start" />
+              {t("results.mobile.showMap")}
+            </Button>
+          </div>
+        )}
       </div>
-      {/* Desktop: a sticky map beside the list. Mobile gets a Map toggle (P1.35). */}
-      <ResultsMap className="sticky top-14 hidden h-[calc(100dvh-3.5rem)] border-l lg:block" />
+      {desktop ? (
+        <ResultsMap className="sticky top-14 h-[calc(100dvh-3.5rem)] border-l" />
+      ) : (
+        mobileView === "map" && (
+          <div className="fixed inset-x-0 top-14 bottom-0 z-30">
+            <ResultsMap className="size-full" />
+            <Button
+              onClick={() => setMobileView("list")}
+              className="absolute top-3 left-1/2 z-10 h-10 -translate-x-1/2 rounded-full px-4 shadow-lg"
+            >
+              <List aria-hidden data-icon="inline-start" />
+              {t("results.mobile.showList")}
+            </Button>
+            <MobileListingCard
+              result={results.find((r) => r.listing.id === selectedId)}
+              intent={intent}
+              now={now}
+              onClose={() => setSelected(null)}
+            />
+          </div>
+        )
+      )}
+    </div>
+  );
+}
+
+/** On a phone's map view, the tapped pin's card slides up from the bottom (SPEC 11.2). */
+function MobileListingCard({
+  result,
+  intent,
+  now,
+  onClose,
+}: {
+  result: SearchResultItem | undefined;
+  intent: SearchIntent | null;
+  now: number;
+  onClose: () => void;
+}) {
+  if (!result) return null;
+  return (
+    <div className="animate-in slide-in-from-bottom-4 absolute inset-x-0 bottom-0 z-10 max-h-[70%] overflow-y-auto p-3">
+      <div className="relative">
+        <Button
+          variant="secondary"
+          size="icon-sm"
+          aria-label={t("results.mobile.closeCard")}
+          onClick={onClose}
+          className="absolute -top-3 right-2 z-20 rounded-full shadow"
+        >
+          <X aria-hidden />
+        </Button>
+        <ResultCard
+          result={result}
+          targets={intent?.travelTargets ?? []}
+          safetyOn={intent?.safety.enabled ?? false}
+          now={now}
+        />
+      </div>
     </div>
   );
 }
