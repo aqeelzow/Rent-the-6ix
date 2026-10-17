@@ -17,7 +17,7 @@
 
 > Anything the whole team must know that isn't obvious from the checklist. Replace (don't accumulate) at each sync point.
 
-- **Setup after pulling:** install pnpm 12 with `npm install -g --allow-scripts=pnpm pnpm` (without the flag the global `pnpm` stays a stub and tools such as the shadcn CLI fail with `spawn ENOEXEC`). Then run `pnpm install` and `cp .env.example .env.local` **at the repo root**: one file serves the web app (loaded in `apps/web/next.config.ts`), the worker and scripts (`node --env-file-if-exists=../../.env.local`).
+- **Setup after pulling:** pnpm 10 or newer; the repo pins pnpm 10.34.7 and newer versions switch to it automatically. Run `pnpm install`, then create `.env.local` **at the repo root** with the variables in SPEC section 20 (`.env.example` is no longer in the repo): one file serves the web app (loaded in `apps/web/next.config.ts`), the worker and scripts (`node --env-file-if-exists=../../.env.local`).
 - **Checks before merging:** `pnpm typecheck && pnpm lint && pnpm test` run every package that has the script; `pnpm format` runs Prettier (Markdown docs are excluded). All green on `main`.
 - **Next.js 16.4:** read `apps/web/AGENTS.md` and `node_modules/next/dist/docs/` before using Next APIs. `params`/`searchParams` are Promises. Cache Components is **off**, so routes render per request and DB-backed GET routes are never prerendered at build.
 - **Shared package:** plain TypeScript, no build step. Import as `@rentthe6ix/shared/schemas`, `@rentthe6ix/shared/engine/<file>`, `@rentthe6ix/shared/fixtures`. Engine purity is enforced by ESLint in `packages/shared/engine/**`: no React, fetch, DB clients, AI SDKs or `Math.random`.
@@ -196,6 +196,7 @@ Task ids (e.g. `P2.4`) are shared by `PERSON_X.md`, commit messages (`P2.4 [C]: 
 ## Environment & deployment
 
 - **Production URL:** _(Vultr, record at P0.9)_
+- **Vercel:** project `az-e48c/rent-the-6ix` deploys `main`. Its Root Directory must be `apps/web` (`apps/web/vercel.json` pins the Next.js preset); with the repo root it fails with "No Output Directory named 'public'".
 - **Vultr instance:** _(region, plan, IP)_
 - **TigerData service:** _(region, service id; connection string in the team's password manager only)_
 - **Env vars set on the instance:** —
