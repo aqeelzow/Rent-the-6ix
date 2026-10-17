@@ -83,10 +83,7 @@ export function TravelFacts({
         <span className={carbon.kind === "figure" || carbon.kind === "carFree" ? "figures" : ""}>
           {carbon.kind === "carFree" && c("carFree")}
           {carbon.kind === "figure" &&
-            c("figure", {
-              co2e: formatCo2e(carbon.grams),
-              mode: t(`filters.modes.${carbon.mode}` as MessageKey),
-            })}
+            c("figure", { co2e: formatCo2e(carbon.grams), mode: t(`filters.modes.${carbon.mode}` as MessageKey) })}
           {carbon.kind === "transitUnknown" &&
             (carbon.driveGrams === null
               ? c("transitUnknown")
@@ -130,8 +127,8 @@ export function CarbonInfoButton({ className = "" }: { className?: string }) {
                   {factor.gramsPerKm === null
                     ? c("factorUnknown")
                     : c("factorValue", { grams: formatCount(factor.gramsPerKm) })}
-                </span>
-                . <span className="text-muted-foreground">{factor.basis}</span>{" "}
+                </span>.{" "}
+                <span className="text-muted-foreground">{factor.basis}</span>{" "}
                 {factor.sourceUrl && (
                   <a
                     href={factor.sourceUrl}
@@ -154,8 +151,10 @@ export function CarbonInfoButton({ className = "" }: { className?: string }) {
               </li>
             ))}
           </ul>
+
         </div>
       </DialogContent>
     </Dialog>
   );
 }
+

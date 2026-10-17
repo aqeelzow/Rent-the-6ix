@@ -1,10 +1,6 @@
 import { commuteCarbon, type CommuteCarbon } from "@rentthe6ix/shared/engine/carbon";
 import { searchFixture, travelIntent } from "@rentthe6ix/shared/fixtures";
-import {
-  TravelTargetSchema,
-  type TravelTarget,
-  type TravelTimeRow,
-} from "@rentthe6ix/shared/schemas";
+import { TravelTargetSchema, type TravelTarget, type TravelTimeRow } from "@rentthe6ix/shared/schemas";
 import { describe, expect, it } from "vitest";
 import type { SearchResultItem } from "@/lib/store/types";
 import {
@@ -60,19 +56,13 @@ const resultWith = (index: number, travel: TravelTimeRow[]): SearchResultItem =>
 describe("carbonSummary", () => {
   it("says a car-free commute needs no car, and stays quiet before anything is routed", () => {
     const listing = results[0]!.listing;
-    const carFree = commuteCarbon(
-      [walkTarget],
-      [row(listing, "campus", { mode: "walk", minutes: 9 })],
-    );
+    const carFree = commuteCarbon([walkTarget], [row(listing, "campus", { mode: "walk", minutes: 9 })]);
     expect(carbonSummary(carFree)).toEqual({ kind: "carFree" });
 
     expect(carbonSummary(commuteCarbon([walkTarget], []))).toEqual({ kind: "unrouted" });
     expect(
       carbonSummary(
-        commuteCarbon(
-          [walkTarget],
-          [row(listing, "campus", { method: "straight_line", minutes: null })],
-        ),
+        commuteCarbon([walkTarget], [row(listing, "campus", { method: "straight_line", minutes: null })]),
       ),
     ).toEqual({ kind: "unrouted" });
   });
@@ -130,15 +120,9 @@ describe("orderByCarbon", () => {
     // Four distinct listings, one per behaviour, all measured against the same driving target
     // except the walking one, which is the only car-free commute of the four.
     const walk = resultWith(0, [row(results[0]!.listing, "campus", { mode: "walk" })]);
-    const near = resultWith(1, [
-      row(results[1]!.listing, "work", { mode: "drive", distanceM: 2_000 }),
-    ]);
-    const far = resultWith(2, [
-      row(results[2]!.listing, "work", { mode: "drive", distanceM: 40_000 }),
-    ]);
-    const unknown = resultWith(3, [
-      row(results[3]!.listing, "work", { mode: "transit", distanceM: 6_000 }),
-    ]);
+    const near = resultWith(1, [row(results[1]!.listing, "work", { mode: "drive", distanceM: 2_000 })]);
+    const far = resultWith(2, [row(results[2]!.listing, "work", { mode: "drive", distanceM: 40_000 })]);
+    const unknown = resultWith(3, [row(results[3]!.listing, "work", { mode: "transit", distanceM: 6_000 })]);
     // Each listing is measured against the target whose mode its row answers, as the card does
     // with the intent's own targets.
     const plans = new Map([
@@ -169,9 +153,7 @@ describe("orderByCarbon", () => {
       [list[0]!.listing.id, [driveTarget]],
       [list[1]!.listing.id, [walkTarget]],
     ]);
-    orderByCarbon(list, (result) =>
-      commuteCarbon(plans.get(result.listing.id) ?? [], result.travel),
-    );
+    orderByCarbon(list, (result) => commuteCarbon(plans.get(result.listing.id) ?? [], result.travel));
     expect(list).toEqual(before);
   });
 });
@@ -222,11 +204,7 @@ describe("effectiveResultOrder", () => {
 
 describe("preferredAreaText", () => {
   it("names the place the renter used, and falls back to an unnamed area", () => {
-    const reference = {
-      label: "U of T",
-      point: { lat: 43.66, lng: -79.4 },
-      kind: "place" as const,
-    };
+    const reference = { label: "U of T", point: { lat: 43.66, lng: -79.4 }, kind: "place" as const };
     expect(preferredAreaText(1_240, reference)).toEqual({ distance: "1.2 km", place: "U of T" });
     expect(preferredAreaText(600, { ...reference, label: null })).toEqual({
       distance: "600 m",
