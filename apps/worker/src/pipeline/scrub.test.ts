@@ -12,6 +12,44 @@ describe("scrub", () => {
     expect(out).toContain("Ask for [name removed]");
   });
 
+  it("removes messaging IDs and @handles", () => {
+    const out = scrub("WeChat: rent_to416, WhatsApp ID - abc.123, follow @torontoflats");
+    expect(out).not.toMatch(/rent_to416|abc\.123|torontoflats/);
+    expect(out).toBe(
+      "WeChat [contact removed], WhatsApp [contact removed], follow [contact removed]",
+    );
+  });
+
+  it("removes names after introductions, titles and sign-offs", () => {
+    expect(scrub("Hi, my name is Priya Shah and I own the unit.")).toBe(
+      "Hi, my name is [name removed] and I own the unit.",
+    );
+    expect(scrub("I’m Daniel, a retired teacher.")).toBe("I’m [name removed], a retired teacher.");
+    expect(scrub("Viewings with Mrs. O'Brien on weekends")).toBe(
+      "Viewings with Mrs. [name removed] on weekends",
+    );
+    expect(scrub("Speak to Wei Zhang about parking")).toBe("Speak to [name removed] about parking");
+    expect(scrub("Bright unit. Thanks, Kevin")).toBe("Bright unit. Thanks, [name removed]");
+    expect(scrub("Regards, Ana Silva 416-555-0100")).toBe(
+      "Regards, [name removed] [phone removed]",
+    );
+    expect(scrub("Contact Agent John for a viewing")).toBe(
+      "Contact Agent [name removed] for a viewing",
+    );
+  });
+
+  it("leaves capitalized words that aren't names", () => {
+    for (const text of [
+      "Contact Us Today for a viewing",
+      "Call Now! Text Me anytime",
+      "Thanks, Toronto has never looked better from the 40th floor",
+      "I’m renting out a clean 1 bedroom",
+      "Close to Union Station and Queen West",
+      "Ask for Management on site",
+    ])
+      expect(scrub(text)).toBe(text);
+  });
+
   it("keeps prices and years", () => {
     expect(scrub("$2,450/month, built 2018, 2 bed")).toBe("$2,450/month, built 2018, 2 bed");
   });

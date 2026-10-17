@@ -1,23 +1,52 @@
 // Contact scrubbing and the 280-char excerpt (SPEC 8.4). Contact happens on the source site,
-// so emails, phone numbers, links and names after "ask for / contact / call" are removed.
+// so emails, phone numbers, links, messaging handles and personal names are removed.
+// Names are found by context (after "ask for", "my name is", "Mr.", a sign-off), never by a
+// name list, so a capitalized word that isn't in one of those spots is left alone.
 export const EXCERPT_MAX = 280;
 
 const EMAIL = /[\w.+-]+@[\w-]+(\.[\w-]+)+/g;
 // North American numbers in the usual spellings: 416-555-0199, (647) 555 0199, +1 437.555.0199.
 const PHONE = /(\+?1[\s.-]?)?\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}\b/g;
 const URL = /\bhttps?:\/\/\S+|\bwww\.\S+/gi;
-// Verb in either case, name capitalized (so "call today" is left alone).
-const NAME_AFTER =
-  /\b([Aa]sk for|[Cc]ontact|[Cc]all|[Tt]ext|[Ee]mail|[Mm]essage|[Ll]andlord|[Aa]gent|[Rr]ealtor)(:?\s+)([A-Z][a-z]+(\s+[A-Z][a-z]+)?)/g;
+// "WeChat: abc123", "WhatsApp ID - abc", "IG: @handle"; and bare @handles.
+const MESSAGING =
+  /\b(WeChat|WhatsApp|Telegram|Instagram|IG|Line|Kakao|Signal)(\s*(?:ID|id|handle))?\s*[:：-]\s*@?[\w.-]{3,}/gi;
+const HANDLE = /(^|\s)@[A-Za-z0-9_.]{3,}/g;
+
+// Capitalized words that follow "contact" / "call" etc. but aren't names ("Contact Us Today").
+const NOT_A_NAME =
+  "(?!(?:Us|Me|Now|Today|Tomorrow|Our|The|Your|For|To|Anytime|Any|Office|Management|Leasing|Property|Superintendent|Super|Info|Inquiries|Please|Directly|Here|Him|Her|Them|Owner|Landlord|Agent|Realtor|Mon|Tue|Wed|Thu|Fri|Sat|Sun|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday|Toronto)\\b)";
+// "Maria", "O'Brien", "Jean-Luc"; a lone capital letter is never a name.
+const NAME = `${NOT_A_NAME}[A-Z](?:[a-z]+|['’][A-Z][a-z]+)(?:-[A-Z][a-z]+)?`;
+const FULL_NAME = `${NAME}(?:\\s+${NAME})?`;
+
+const NAME_RULES: RegExp[] = [
+  // Verb in either case, name capitalized (so "call today" is left alone).
+  new RegExp(
+    `\\b((?:[Aa]sk for|[Cc]ontact(?: person)?|[Cc]all|[Tt]ext|[Ee]mail|[Mm]essage|[Ss]peak (?:to|with)|[Rr]each out to|[Ll]andlord|[Aa]gent|[Rr]ealtor|[Nn]ame)(?::?\\s+))(${FULL_NAME})`,
+    "g",
+  ),
+  new RegExp(`\\b((?:[Mm]y name is|I['’]m|I am)\\s+)(${FULL_NAME})(?=[\\s,.!;)]|$)`, "g"),
+  new RegExp(`\\b((?:Mr|Mrs|Ms|Miss|Dr)\\.?\\s+)(${FULL_NAME})`, "g"),
+  // A sign-off is only a sign-off at the end, or right before removed contact details.
+  new RegExp(
+    `\\b((?:Thanks|Thank you|Regards|Best regards|Kind regards|Cheers|Sincerely)[,!.]?\\s+)(${FULL_NAME})(?=\\s*(?:[-,.:]?\\s*\\[(?:phone|email) removed\\]|[.!]?\\s*$))`,
+    "g",
+  ),
+];
 
 export function scrub(text: string): string {
-  return text
+  let out = text
     .replace(EMAIL, "[email removed]")
     .replace(URL, "[link removed]")
+    .replace(MESSAGING, (_, app: string) => `${app} [contact removed]`)
+    .replace(HANDLE, (_, gap: string) => `${gap}[contact removed]`)
     .replace(PHONE, "[phone removed]")
-    .replace(NAME_AFTER, (_, verb: string, gap: string) => `${verb}${gap}[name removed]`)
     .replace(/\s+/g, " ")
     .trim();
+  for (const rule of NAME_RULES)
+    out = out.replace(rule, (_, lead: string) => `${lead}[name removed]`);
+  return out;
 }
 
 export function excerpt(text: string | null): string {

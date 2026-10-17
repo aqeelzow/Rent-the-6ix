@@ -8,9 +8,9 @@ Task ids match `PROGRESS.md`; task details are in `SPEC.md`.
 
 - **Current task:** none in progress
 - **Status:** in progress   <!-- not started | in progress | blocked | at sync point -->
-- **Next action:** P1.4 scrub (broader name heuristics + tests), then P2.1–P2.2 valuation (pure, testable without the DB). P1.5 geocode once D's Address Points are loaded.
+- **Next action:** P2.1–P2.2 valuation and price label (pure, testable without the DB). P1.5 geocode once D's Address Points are loaded.
 - **Blockers / needs from others:** B's `Listing` schema (P0.5; normalize uses a worker-local type until then), D's migrations (P0.8) for P1.6, D's Address Points and boundaries (P1.10, P1.11) for P1.5.
-- **Last updated:** 2026-10-16 (P1.3 normalize; CloakBrowser fetch layer, Zillow and Realtor.ca go)
+- **Last updated:** 2026-10-16 (P1.3 normalize, P1.4 scrub; CloakBrowser fetch layer, Zillow and Realtor.ca go)
 
 ## Handoff notes
 
@@ -21,7 +21,7 @@ Task ids match `PROGRESS.md`; task details are in `SPEC.md`.
 - **Working sources:** `kijiji`, `torontorentals`, `zillow`, `realtor_ca` (see `apps/worker/SOURCES.md`). `rentals_ca` is no longer blocked but no `/graphql` results response is captured; adapter needs a fresh look (low priority, `torontorentals` has the same data).
 - **Known source issues:** Realtor.ca's bounding box includes listings outside Toronto (Vaughan), which P1.5 drops. **Realtor.ca page 2+ fails** ("no results response"): the page number is only in the URL hash, so `page.goto` doesn't reload; needs an in-page navigation or a direct `PropertySearch_Post` call. (.NET-tick dates and unspaced postal codes are fixed: `ticksToIso` in the adapter, `postalCode()` in normalize.)
 - **Normalize (P1.3)** is `apps/worker/src/pipeline/normalize.ts`: `normalize(raw, now) → NormalizedListing | null` (null = rent outside $300–25,000). Output is a worker-local type matching SPEC 5 minus what geocode/upsert add (id, location, area ids, building, timestamps, status, dataStatus); it also carries `den`, `postalCode` and `sourceLocation` for geocoding. Swap to B's `Listing` schema when P0.5 lands. `ingest:once` now writes normalized rows and prints field coverage per source.
-- `pnpm ingest:once [--sources a,b] [--pages N]` writes scrubbed rows to git-ignored `apps/worker/.cache/ingest/*.json` until P1.6 upserts into TigerData. `scrub.ts` already does emails, phones, links and names after contact verbs (P1.4 still needs broader name heuristics).
+- `pnpm ingest:once [--sources a,b] [--pages N]` writes scrubbed rows to git-ignored `apps/worker/.cache/ingest/*.json` until P1.6 upserts into TigerData. `scrub.ts` (P1.4) removes emails, phones, links, messaging IDs (WeChat/WhatsApp/IG…, @handles) and names by context: after contact verbs, "my name is / I'm", Mr./Mrs./Dr., and a sign-off at the end or before a removed phone/email. No name list; a `NOT_A_NAME` stop list keeps "Contact Us Today" intact. 100 real Kijiji/Realtor.ca rows: 0 removals, 0 false positives (snippets rarely carry contact info; recheck when detail pages are fetched).
 - **Field coverage after normalize (2 pages each, 2026-10-16):** Kijiji 90 rows: unit type 59%, size 54%, AC 56%, parking/pets 56–57%, available 48%, year built 0%. torontorentals 347 rows: size 99%, year built 93%, pets 98%, AC/utilities/laundry/parking 0%, available 27%. Zillow 122 rows: baths 32%, size 30%, unit type 2%, nothing else. Realtor.ca 11 rows (1 page): beds and size 91%, unit type 100%, amenities 0%. Text rules add little: Kijiji only gives a truncated snippet, torontorentals no description, and Zillow/Realtor.ca index pages carry no amenity text. AC, utilities and year built (outside torontorentals) are the gaps: P4.10 or detail pages would close them.
 - **Store only `Listing` fields.** Excerpt ≤ 280 chars after scrubbing phone numbers, emails and personal names. No photos stored; thumbnail URL only if the source's terms allow linking.
 - **Snapshots and raw HTML fixtures are git-ignored** and stay on the Vultr instance and team machines (SPEC 8.5). Save small HTML fixtures per source for adapter tests (strip personal info from them too).
@@ -51,7 +51,7 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked · `[-]` 
 - [x] P1.1 First adapter (Kijiji or whichever is "go") + HTML fixture tests
 - [x] P1.2 Second adapter (torontorentals.com, Rentals.ca network; rentals.ca itself is blocked) + fixture tests
 - [x] P1.3 Normalize: rent, bedrooms (studio = 0, 1+den), bathrooms, unit type, size, year built, AC, tri-state amenities, availability, lease + tests
-- [ ] P1.4 Scrub phone numbers, emails, personal names; 280-char excerpt + tests
+- [x] P1.4 Scrub phone numbers, emails, personal names; 280-char excerpt + tests
 - [ ] P1.5 Geocode (Address Points via `pg_trgm`, street-level, area centroid), drop outside Toronto, neighbourhood/ward join, building match + RentSafeTO year-built fill
 - [ ] P1.6 Upsert listings + `listing_observations` rows; `stale` / `removed` by `lastSeenAt`
 - [ ] P1.7 First ingest: ≥ 300 real listings in TigerData; post field coverage in Handoff notes
