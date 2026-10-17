@@ -2,7 +2,7 @@
 
 import { Building2, ClipboardPaste, Trash2, X } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -19,6 +19,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { formatDate } from "@/lib/format/date";
 import { t, type MessageKey } from "@/lib/format/messages";
 import { formatCad, formatCount } from "@/lib/format/number";
+import { fetchListingDetail } from "@/lib/store/actions";
 import { clearMyData } from "@/lib/store/persist";
 import type { SavedListing, ShortlistEntry } from "@/lib/store/searchSlice";
 import { useAppStore } from "@/lib/store/store";
@@ -43,6 +44,17 @@ function facts(listing: SavedListing): string[] {
 
 function ShortlistItem({ entry }: { entry: ShortlistEntry }) {
   const remove = useAppStore((state) => state.removeFromShortlist);
+  const setSavedImage = useAppStore((state) => state.setSavedImage);
+  // Listings saved before the shortlist kept photos: look the photo up once and keep it.
+  const missingImage = entry.kind === "listing" && entry.saved.imageUrl === undefined;
+  useEffect(() => {
+    if (!missingImage) return;
+    const controller = new AbortController();
+    void fetchListingDetail(entry.id, null, { signal: controller.signal }).then((result) => {
+      if (result.ok) setSavedImage(entry.id, result.detail.listing.imageUrl ?? null);
+    });
+    return () => controller.abort();
+  }, [missingImage, entry.id, setSavedImage]);
   const listing = entry.kind === "listing" ? entry.saved : entry.listing;
   const details = facts(listing);
 

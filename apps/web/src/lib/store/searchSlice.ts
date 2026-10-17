@@ -97,6 +97,8 @@ export interface SearchSlice {
   toggleShortlist: (listing: Listing) => void;
   addPastedListing: (listing: Listing) => void;
   removeFromShortlist: (id: string) => void;
+  /** Fills in the photo link of a listing saved before shortlists kept it (null: none). */
+  setSavedImage: (id: string, imageUrl: string | null) => void;
   clearShortlist: () => void;
 
   setHoveredListingId: (id: string | null) => void;
@@ -227,6 +229,15 @@ export const createSearchSlice: StateCreator<SearchSlice, [], [], SearchSlice> =
 
   removeFromShortlist: (id) =>
     set({ shortlist: get().shortlist.filter((entry) => entry.id !== id) }),
+
+  setSavedImage: (id, imageUrl) =>
+    set({
+      shortlist: get().shortlist.map((entry) =>
+        entry.kind === "listing" && entry.id === id
+          ? { ...entry, saved: { ...entry.saved, imageUrl } }
+          : entry,
+      ),
+    }),
 
   clearShortlist: () => set({ shortlist: [] }),
 
