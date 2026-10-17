@@ -22,7 +22,11 @@
       "data": "Sources and methods",
       "status": "Status"
     },
-    "metaDescription": "Describe the rental you need. RentThe6ix searches Toronto listings, checks each price against similar homes, and shows the neighbourhood around it."
+    "metaDescription": "Describe the rental you need. RentThe6ix searches Toronto listings, checks each price against similar homes, and shows the neighbourhood around it.",
+    "theme": {
+      "toDark": "Switch to dark mode",
+      "toLight": "Switch to light mode"
+    }
   },
   "landing": {
     "tagline": "Toronto home finding, made easy",

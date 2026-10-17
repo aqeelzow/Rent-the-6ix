@@ -10,6 +10,7 @@ import type {
   Marker,
 } from "maplibre-gl";
 import { useEffect, useRef, useState } from "react";
+import { useTheme } from "@/lib/theme/theme";
 import { t, type MessageKey } from "@/lib/format/messages";
 import { appStore, useAppStore } from "@/lib/store/store";
 import {
@@ -25,9 +26,15 @@ import {
 
 // Basemap: MapTiler with a key, else OpenFreeMap (no key needed). SPEC 3.
 const MAPTILER_KEY = process.env.NEXT_PUBLIC_MAPTILER_KEY;
-const STYLE_URL = MAPTILER_KEY
-  ? `https://api.maptiler.com/maps/streets-v2/style.json?key=${MAPTILER_KEY}`
-  : "https://tiles.openfreemap.org/styles/positron";
+const STYLE_URLS = MAPTILER_KEY
+  ? {
+      light: `https://api.maptiler.com/maps/streets-v2/style.json?key=${MAPTILER_KEY}`,
+      dark: `https://api.maptiler.com/maps/streets-v2-dark/style.json?key=${MAPTILER_KEY}`,
+    }
+  : {
+      light: "https://tiles.openfreemap.org/styles/positron",
+      dark: "https://tiles.openfreemap.org/styles/dark",
+    };
 const TORONTO: [number, number] = [-79.383, 43.68];
 
 const bandColor: ExpressionSpecification = [
@@ -62,7 +69,10 @@ export function ResultsMap({ className = "" }: { className?: string }) {
   const hovered = useAppStore((s) => s.hoveredListingId);
   const selected = useAppStore((s) => s.selectedListingId);
 
-  // Create the map once. MapLibre touches `window`, so it's imported in the browser only.
+  const theme = useTheme();
+
+  // Create the map, again when the theme changes (the basemap and its layers are rebuilt).
+  // MapLibre touches `window`, so it's imported in the browser only.
   useEffect(() => {
     let cancelled = false;
     let map: MapLibreMap | null = null;
@@ -72,7 +82,7 @@ export function ResultsMap({ className = "" }: { className?: string }) {
         maplibregl.setWorkerUrl("/maplibre/maplibre-gl-worker.mjs");
         map = new maplibregl.Map({
           container: container.current,
-          style: STYLE_URL,
+          style: STYLE_URLS[theme],
           center: TORONTO,
           zoom: 10.5,
           maxBounds: MAP_MAX_BOUNDS,
@@ -99,8 +109,9 @@ export function ResultsMap({ className = "" }: { className?: string }) {
       cancelled = true;
       map?.remove();
       mapRef.current = null;
+      setReady(false);
     };
-  }, []);
+  }, [theme]);
 
   // New results: redraw and fit to listings and places.
   useEffect(() => {

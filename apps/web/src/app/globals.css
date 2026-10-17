@@ -2,7 +2,7 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
-/* Dark mode is not designed yet (SPEC 18: "if time"); the variant exists so shadcn classes compile. */
+/* Dark mode: `.dark` on <html> (set by the theme script in layout.tsx) swaps the tokens below. */
 @custom-variant dark (&:is(.dark *));
 
 /*
@@ -65,6 +65,57 @@
   --hero: #120f2e;
   --hero-foreground: #fbf6ec;
   --hero-muted: #b9b3dc;
+}
+
+/*
+ * Dark: the landing's night sky. Deep indigo surfaces, cream-white text, and every accent
+ * lifted in lightness so it keeps its contrast; tinted badges become dark fills with light text.
+ */
+.dark {
+  --background: oklch(0.17 0.035 285);
+  --foreground: oklch(0.95 0.01 270);
+  --card: oklch(0.215 0.04 285);
+  --card-foreground: oklch(0.95 0.01 270);
+  --popover: oklch(0.24 0.045 285);
+  --popover-foreground: oklch(0.95 0.01 270);
+  --muted: oklch(0.27 0.04 285);
+  --muted-foreground: oklch(0.75 0.03 275);
+  --secondary: oklch(0.27 0.04 285);
+  --secondary-foreground: oklch(0.95 0.01 270);
+  --accent: oklch(0.29 0.05 280);
+  --accent-foreground: oklch(0.95 0.01 270);
+  --border: oklch(0.32 0.04 285);
+  --input: oklch(0.45 0.045 280);
+
+  --primary: oklch(0.74 0.12 245);
+  --primary-foreground: oklch(0.18 0.04 270);
+  --ring: oklch(0.74 0.12 245);
+  --destructive: oklch(0.7 0.19 25);
+
+  --price-underpriced: oklch(0.32 0.07 155);
+  --price-underpriced-foreground: oklch(0.88 0.1 155);
+  --price-reasonable: oklch(0.32 0.03 270);
+  --price-reasonable-foreground: oklch(0.88 0.02 270);
+  --price-overpriced: oklch(0.34 0.07 70);
+  --price-overpriced-foreground: oklch(0.9 0.1 85);
+
+  --caveat-info: oklch(0.31 0.07 260);
+  --caveat-info-foreground: oklch(0.87 0.07 255);
+  --caveat-warning: oklch(0.34 0.07 70);
+  --caveat-warning-foreground: oklch(0.9 0.1 85);
+  --caveat-high: oklch(0.33 0.08 25);
+  --caveat-high-foreground: oklch(0.88 0.08 25);
+
+  --score-value: oklch(0.7 0.12 245);
+  --score-price: oklch(0.72 0.1 185);
+  --score-travel: oklch(0.6 0.15 295);
+  --score-home: oklch(0.78 0.13 70);
+  --score-safety: oklch(0.7 0.03 257);
+
+  /* The hero sits a step above the page so it still reads as a panel. */
+  --hero: #262058;
+  --hero-foreground: #fbf6ec;
+  --hero-muted: #c4bfe6;
 }
 
 @theme inline {

@@ -314,13 +314,13 @@ export function RangeBar({ low, high, rent }: { low: number; high: number; rent:
   const span = max - min || 1;
   const at = (v: number) => `${((v - min) / span) * 100}%`;
   return (
-    <div aria-hidden className="relative mt-1 h-2.5 rounded-full bg-black/10">
+    <div aria-hidden className="bg-foreground/10 relative mt-1 h-2.5 rounded-full">
       <span
         className="bg-foreground/35 absolute inset-y-0 rounded-full"
         style={{ left: at(low), width: `${((high - low) / span) * 100}%` }}
       />
       <span
-        className="bg-foreground absolute top-1/2 size-4 -translate-x-1/2 -translate-y-1/2 rounded-full ring-2 ring-white"
+        className="bg-foreground absolute top-1/2 size-4 -translate-x-1/2 -translate-y-1/2 ring-card rounded-full ring-2"
         style={{ left: at(rent) }}
       />
     </div>

@@ -5,6 +5,7 @@ import { ShortlistCount } from "@/components/shortlist/shortlist-count";
 import { t } from "@/lib/format/messages";
 import { MobileNav } from "./mobile-nav";
 import { navLinks } from "./nav-links";
+import { ThemeToggle } from "./theme-toggle";
 
 export function SiteHeader() {
   return (
@@ -38,6 +39,7 @@ export function SiteHeader() {
               {href === "/shortlist" && <ShortlistCount />}
             </Link>
           ))}
+          <ThemeToggle />
         </nav>
         <div className="flex items-center gap-1 md:hidden">
           {/* The shortlist stays one tap away on phones, not only inside the menu. */}
@@ -49,6 +51,7 @@ export function SiteHeader() {
             <span className="sr-only">{t("layout.nav.shortlist")}</span>
             <ShortlistCount />
           </Link>
+          <ThemeToggle />
           <MobileNav />
         </div>
       </div>
