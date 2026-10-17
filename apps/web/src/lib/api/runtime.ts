@@ -15,6 +15,8 @@ import { canBrief, templateBriefing, writeBriefing } from '../ai/briefing';
 import { loadBriefingFacts, cachedBriefing, cacheBriefing } from '../db/briefing';
 import { civicAreasLookup } from '../parse/civic-areas-db';
 import { addressPointsLookup } from '../parse/address-points';
+import { areaPointsLookup } from '../parse/areas';
+import { nearestAmenity } from '../db/pois';
 import { searchCandidates, routeCandidateContexts, SearchUnavailable, type SearchDependencies } from '../db/candidates';
 import { sqlSearchDependencies } from '../db/candidates-context';
 import { OtpClient } from '../geo/otp';
@@ -34,15 +36,27 @@ export const fixtureDependencies: SearchDependencies = {
     return { valuation, travel: [], safety: intent.safety.enabled && safety && listing.neighbourhoodId !== null ? { ...safety, areaId: listing.neighbourhoodId } : null, safetyScore: 80, caveats: listingCaveats };
   },
 };
+/** Shared across requests so a building's nearest grocery is looked up once, not per search. */
+const amenities = nearestAmenity();
 /** Travel times (P2.11): only when a router URL is configured; any failure degrades to labelled distance. */
 function withRouting(dependencies: SearchDependencies, otpUrl: string | undefined): SearchDependencies {
   if (!otpUrl) return dependencies;
-  return { ...dependencies, routeTimes: createRouteTimes(new OtpClient({ url: otpUrl })) };
+  return {
+    ...dependencies,
+    routeTimes: createRouteTimes(new OtpClient({ url: otpUrl }), {
+      destinationFor: (listing, target) => (target.category ? amenities(listing.location, target.category) : Promise.resolve(null)),
+    }),
+  };
 }
 type RuntimeOptions = { env?: Record<string, string | undefined>; parser?: ParseService; resolver?: DestinationResolver; dependencies?: SearchDependencies; jobs?: SearchJobs; identity?: (request: Request) => string; limiter?: IpLimiter; startLimiter?: IpLimiter; pollLimiter?: IpLimiter; explainProvider?: import('../ai/index').AIProvider };
 export function createRuntime(options: RuntimeOptions = {}) {
   const env = options.env ?? process.env;
-  const resolver = options.resolver ?? new DestinationResolver({ maptilerKey: env.NEXT_PUBLIC_MAPTILER_KEY, addressLookup: env.SEARCH_FIXTURES !== '1' && env.DATABASE_URL ? addressPointsLookup() : undefined });
+  const resolver = options.resolver ?? new DestinationResolver({
+    maptilerKey: env.NEXT_PUBLIC_MAPTILER_KEY,
+    addressLookup: env.SEARCH_FIXTURES !== '1' && env.DATABASE_URL ? addressPointsLookup() : undefined,
+    // Neighbourhood and ward names ("Liberty Village", "Scarborough") before geocoding.
+    areaLookup: env.SEARCH_FIXTURES !== '1' && env.DATABASE_URL ? areaPointsLookup() : undefined,
+  });
   const parser = options.parser ?? new ParseService({ provider: providerFromEnv(env), resolver, civicAreas: env.SEARCH_FIXTURES !== '1' && env.DATABASE_URL ? civicAreasLookup() : undefined, cacheNamespace: `${env.AI_PROVIDER}:${env.GEMINI_MODEL_FAST ?? env.GEMINI_MODEL}`, intentCache: env.SEARCH_FIXTURES !== '1' && env.DATABASE_URL && env.AI_PROVIDER === 'gemini' ? databaseIntentCache() : undefined });
   const explainer = new ExplanationService(options.explainProvider ?? providerFromEnv(env), `${env.AI_PROVIDER}:${env.GEMINI_MODEL_FAST ?? env.GEMINI_MODEL}`, env.SEARCH_FIXTURES !== '1' && env.DATABASE_URL && env.AI_PROVIDER === 'gemini' ? databaseExplanationCache() : undefined);
   const jobs = options.jobs ?? new SearchJobs();
@@ -81,7 +95,7 @@ export function createRuntime(options: RuntimeOptions = {}) {
     const travel = owner.travel.map(row => TravelTimeRowSchema.parse(row)).filter(row => row.listingId === id);
     for (const target of intent.travelTargets) if (target.resolved) for (const mode of targetModes(target)) if (!travel.some(row => row.targetId === target.id && row.mode === mode)) travel.push({ listingId: id, targetId: target.id, mode, minutes: null, distanceM: distanceM(listing.location, target.resolved), method: 'straight_line', poiId: null, computedAt: listing.lastSeenAt });
     const scoring = { ...owner, travel, safety: intent.safety.enabled ? owner.safety : null };
-    await routeCandidateContexts(deps, [listing], intent.travelTargets.filter(t => t.kind === 'place'), new Map([[id, scoring]]));
+    await routeCandidateContexts(deps, [listing], intent.travelTargets.filter(t => t.kind === 'place' || t.kind === 'amenity'), new Map([[id, scoring]]));
     const fixture = !deps.loadCandidates && !deps.loadListing && listing.dataStatus === 'demo';
     return DetailResponseSchema.parse({ listing, valuation: owner.valuation, travel: scoring.travel, safety: scoring.safety, matchScore: scoreListing(listing, intent, scoring), areas: fixture ? areas.filter(a => a.id === listing.neighbourhoodId || a.id === listing.wardId) : [], indicators: fixture ? detailFixture.indicators.filter(i => i.areaId === listing.neighbourhoodId) : [], duplicates: fixture ? deps.listings.filter(l => l.duplicateOf === id) : [], ...extras });
   };

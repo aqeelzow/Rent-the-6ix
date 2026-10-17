@@ -102,10 +102,33 @@ test("answers inside the budget even when the router never answers at all", asyn
   assert.ok(elapsed < 400, `returned after ${elapsed}ms, at or past the 400ms budget`);
 });
 
-test("skips amenity targets, which have no coordinates until the POI precompute", async () => {
+const grocery: TravelTarget = { id: "grocery", kind: "amenity", label: "Grocery", category: "grocery", mode: "walk", hard: false };
+
+test("leaves amenity targets unrouted when there is no destination to route to", async () => {
   const route = vi.fn(async () => ({ minutes: 5, distanceM: 500 }));
-  const grocery: TravelTarget = { id: "grocery", kind: "amenity", label: "Grocery", category: "grocery", mode: "walk", hard: false };
   const rows = await createRouteTimes({ route })([at(43.6395, -79.431)], [grocery], "walk", 3_000, signal());
+  assert.deepEqual(rows, []);
+  assert.equal(route.mock.calls.length, 0);
+});
+
+test("routes an amenity to each listing's own nearest shop, then reuses the answer", async () => {
+  const route = vi.fn(async () => ({ minutes: 4, distanceM: 300 }));
+  const destinationFor = vi.fn(async (listing: Listing) => ({ lat: Math.round(listing.location.lat * 100) / 100, lng: -79.43 }));
+  const routeTimes = createRouteTimes({ route }, { destinationFor });
+  const origins = [at(43.6395, -79.431, 0), at(43.7000, -79.3000, 1)];
+  const first = await routeTimes(origins, [grocery], "walk", 3_000, signal());
+  assert.equal(first.length, 2);
+  assert.ok(first.every((row) => row.method === "otp" && row.targetId === "grocery" && row.poiId === null));
+  assert.equal(destinationFor.mock.calls.length, 2, "each cell gets its own shop");
+  assert.equal(route.mock.calls.length, 2, "different shops are different trips");
+  const second = await routeTimes(origins, [grocery], "walk", 3_000, signal());
+  assert.equal(route.mock.calls.length, 2, "the routed minutes are cached per cell and shop");
+  assert.ok(second.every((row) => row.method === "otp"));
+});
+
+test("shows nothing rather than a distance when an amenity has no nearby shop", async () => {
+  const route = vi.fn(async () => ({ minutes: 4, distanceM: 300 }));
+  const rows = await createRouteTimes({ route }, { destinationFor: async () => null })([at(43.6395, -79.431)], [grocery], "walk", 3_000, signal());
   assert.deepEqual(rows, []);
   assert.equal(route.mock.calls.length, 0);
 });

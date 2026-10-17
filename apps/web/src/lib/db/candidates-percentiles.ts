@@ -11,7 +11,7 @@ export async function searchPercentileCandidates(input: SearchRequest, dependenc
   const request = SearchRequestSchema.parse(input), { intent } = request, selector = intent.numericExtreme;
   if (!selector) throw new Error('A numeric percentile selector is required');
   const exactTravel = selector.field === 'travel';
-  const routeTargets = exactTravel ? intent.travelTargets : intent.travelTargets.filter(target => target.hard && target.kind === 'place');
+  const routeTargets = exactTravel ? intent.travelTargets : intent.travelTargets.filter(target => target.hard && (target.kind === 'place' || target.kind === 'amenity'));
   const deadline = Math.min(Date.now() + engineConfig.percentileBudgetMs, execution.deadline ?? Infinity);
   const controller = new AbortController();
   const unavailable = (reason: 'timeout' | 'routing_incomplete'): SearchResponse => ({ status: 'unavailable', reason, message: reason === 'timeout' ? 'Exact travel percentile deadline elapsed or execution was cancelled' : 'Complete routed times are unavailable; no exact partial percentile is returned' });

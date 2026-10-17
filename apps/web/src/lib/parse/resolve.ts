@@ -2,7 +2,7 @@ import { z } from 'zod';
 import knownPlaces from './known_places.json';
 import { DestinationResolutionSchema, DestinationChoiceSchema, type DestinationResolution } from '../../../../../packages/shared/schemas/index';
 import { MemoryCache, inputHash, type Cache } from './cache';
-const places = z.array(z.object({ id: z.string(), label: z.string(), aliases: z.array(z.string()), group: z.string().optional(), lng: z.number(), lat: z.number() })).parse(knownPlaces);
+const places = z.array(z.object({ id: z.string(), label: z.string(), aliases: z.array(z.string()), group: z.string().optional(), primary: z.boolean().optional(), lng: z.number(), lat: z.number() })).parse(knownPlaces);
 export const normalizePlace = (query: string) => query.toLowerCase().replace(/[^a-z0-9 ]/g, '').replace(/\s+/g, ' ').trim();
 const choice = (p: typeof places[number]) => DestinationChoiceSchema.parse({ id: p.id, label: p.label, resolved: { lng: p.lng, lat: p.lat, source: 'known_place', representativePoint: true, label: p.label } });
 function knownResolution(normalized: string, query: string): DestinationResolution | undefined {
@@ -27,6 +27,11 @@ export class DestinationResolver {
     const work = async (): Promise<DestinationResolution> => {
       if (this.config.addressLookup) {
         try { const address = await this.config.addressLookup(query, controller.signal); if (address) { const parsed = DestinationResolutionSchema.parse({ ...address, query }); if (parsed.status !== 'unavailable') return parsed; } } catch { /* unavailable owner lookup falls through to geocoding */ }
+      }
+      // Area names ("Liberty Village", "Scarborough") are neither addresses nor full POIs; the
+      // City's neighbourhood/ward tables answer them with a labelled representative point.
+      if (this.config.areaLookup) {
+        try { const area = await this.config.areaLookup(query, controller.signal); if (area) { const parsed = DestinationResolutionSchema.parse({ ...area, query }); if (parsed.status !== 'unavailable') return parsed; } } catch { /* fall through to geocoding */ }
       }
       if (controller.signal.aborted) return unavailable('Destination lookup timed out.');
       if (!this.config.maptilerKey) return unavailable('Address Points unavailable or unmatched; geocoding is not configured. Choose a pin or provide an exact address.');

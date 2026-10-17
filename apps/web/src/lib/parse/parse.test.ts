@@ -96,9 +96,17 @@ test('explicit static sorts and both building-age directions survive basic parsi
 });
 test('known places ambiguity, representative labels and honest unknown business', async () => {
   const resolver = new DestinationResolver();
-  const broad = await resolver.resolve('University of Toronto'); assert.equal(broad.status, 'ambiguous');
-  const york = await resolver.resolve('York University'); assert.equal(york.status, 'ambiguous'); if (york.status === 'ambiguous') assert.equal(york.choices.length, 3);
+  // A bare university name takes its main campus, because choices left the target without a
+  // coordinate and every travel figure on the result cards blank.
+  const broad = await resolver.resolve('University of Toronto'); assert.equal(broad.status, 'resolved'); if (broad.status === 'resolved') assert.equal(broad.destination.id, 'uoft-st-george');
+  const york = await resolver.resolve('York University'); assert.equal(york.status, 'resolved'); if (york.status === 'resolved') assert.equal(york.destination.id, 'york-keele');
+  const campuses = await resolver.resolve('UofT'); assert.equal(campuses.status, 'resolved'); if (campuses.status === 'resolved') assert.equal(campuses.destination.id, 'uoft-st-george');
   const specific = await resolver.resolve('UofT St. George'); assert.equal(specific.status, 'resolved'); if (specific.status === 'resolved') assert.equal(specific.destination.resolved.representativePoint, true);
+  const scarborough = await resolver.resolve('UofT Scarborough'); assert.equal(scarborough.status, 'resolved'); if (scarborough.status === 'resolved') assert.equal(scarborough.destination.id, 'uoft-scarborough');
+  // The campus picker still exists for callers that want every campus offered.
+  const offered = new DestinationResolver({ preferPrimaryCampus: false });
+  const chosen = await offered.resolve('York University'); assert.equal(chosen.status, 'ambiguous'); if (chosen.status === 'ambiguous') assert.equal(chosen.choices.length, 3);
+  const offeredBroad = await offered.resolve('University of Toronto'); assert.equal(offeredBroad.status, 'ambiguous');
   for (const query of ['TD', 'TD Canada', 'TD at Bay and King', 'TD at Queen Street West']) assert.equal((await resolver.resolve(query)).status, 'unavailable');
 });
 test('verified TD Bay and Queen aliases resolve without guessing other branches', async () => {
