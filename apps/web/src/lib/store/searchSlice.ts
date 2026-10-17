@@ -13,6 +13,12 @@ export type SearchStatus = "idle" | "parsing" | "searching" | "ready" | "error";
 type CompletedSearch = Extract<SearchResponse, { status: "completed" }>;
 
 /**
+ * How the list on screen is ordered. "server" keeps B's ranking (the intent's own sort); the other
+ * two reorder the results already loaded, so switching them never costs another search.
+ */
+export type ResultOrder = "server" | "carbon" | "distance";
+
+/**
  * What the shortlist shows for a saved listing until it's opened again: the figures as they were
  * when it was saved. Kept separate from `Listing` so saved shortlists survive schema changes.
  */
@@ -47,6 +53,8 @@ export interface SearchSlice {
   notices: string[];
   /** "Hide listings that don't confirm my must-haves" (SPEC 7.1). */
   hideUnconfirmed: boolean;
+  /** The order shown in the results header; "server" is B's ranking for the intent's sort. */
+  resultOrder: ResultOrder;
   status: SearchStatus;
   /** When the current parse or search started (ms), for the "taking a while" message. */
   busySince: number | null;
@@ -70,6 +78,7 @@ export interface SearchSlice {
   /** For chip and filter edits. Callers re-run search afterwards; editing never calls Gemini. */
   updateIntent: (update: (intent: SearchIntent) => SearchIntent) => void;
   setHideUnconfirmed: (hide: boolean) => void;
+  setResultOrder: (order: ResultOrder) => void;
   /** Opens a saved or shared search as it was edited; nothing from an earlier parse is kept. */
   loadSearch: (intent: SearchIntent, hideUnconfirmed: boolean) => void;
   /** Marks a prompt as being read and returns its request id, to pass to `receiveParse`. */
@@ -100,6 +109,7 @@ export const createSearchSlice: StateCreator<SearchSlice, [], [], SearchSlice> =
   eligibleCount: 0,
   notices: [],
   hideUnconfirmed: false,
+  resultOrder: "server",
   status: "idle",
   busySince: null,
   error: null,
@@ -117,6 +127,8 @@ export const createSearchSlice: StateCreator<SearchSlice, [], [], SearchSlice> =
   },
 
   setHideUnconfirmed: (hideUnconfirmed) => set({ hideUnconfirmed }),
+
+  setResultOrder: (resultOrder) => set({ resultOrder }),
 
   loadSearch: (intent, hideUnconfirmed) =>
     set({

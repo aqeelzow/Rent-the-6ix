@@ -18,6 +18,7 @@ import {
   yearSpan,
   type TravelSummary,
 } from "./card-data";
+import { TravelFacts } from "./travel-facts";
 import { SafetyInfoButton } from "@/components/safety/safety-info";
 import { PriceBadge } from "./price-badge";
 import { ScoreBar } from "./score-bar";
@@ -67,12 +68,15 @@ function homeFacts(listing: SearchResultItem["listing"], acInSearch: boolean): s
 export function ResultCard({
   result,
   targets,
+  areas = [],
   safetyOn,
   acInSearch,
   now,
 }: {
   result: SearchResultItem;
   targets: SearchIntent["travelTargets"];
+  /** Area filters, so a "within X km" search still has a point to measure distance from. */
+  areas?: SearchIntent["areas"];
   safetyOn: boolean;
   /** The renter asked for air conditioning, as a must-have or a preference. */
   acInSearch: boolean;
@@ -173,6 +177,9 @@ export function ResultCard({
           })}
         </ul>
       )}
+
+      {/* Distance from the place the renter named, and what the trips emit (owner D). */}
+      <TravelFacts result={result} targets={targets} areas={areas} />
 
       {safetyOn && (
         <p className="text-muted-foreground figures flex items-start gap-2 text-sm">

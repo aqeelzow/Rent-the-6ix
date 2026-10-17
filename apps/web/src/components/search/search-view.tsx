@@ -2,16 +2,22 @@
 
 import { AlertCircle, ChevronRight, Info, List, LoaderCircle, MapIcon, X } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ResultsMap } from "@/components/map/results-map";
 import { ResultCard } from "@/components/results/result-card";
+import {
+  orderByCarbon,
+  orderByPreferredDistance,
+  preferredAreaReference,
+} from "@/components/results/travel-facts-data";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useMediaQuery } from "@/components/use-media-query";
 import { FilterChips } from "./filter-chips";
 import { FiltersPanel } from "./filters-panel";
 import { ShareSearch } from "./share-search";
 import { SortSelect } from "./sort-select";
+import { commuteCarbon } from "@rentthe6ix/shared/engine/carbon";
 import { t, type MessageKey } from "@/lib/format/messages";
 import { formatCount } from "@/lib/format/number";
 import { parseAndSearch, restoreSearch, runSearch } from "@/lib/store/actions";
@@ -73,10 +79,22 @@ export function SearchView({ prompt, shared }: { prompt: string | null; shared: 
   const [mobileView, setMobileView] = useState<"list" | "map">("list");
   const busySince = useAppStore((s) => s.busySince);
   const elapsed = useElapsedSeconds(busySince);
+  // "Closest to my area" and "lowest-carbon trips" reorder the results already on screen, so they
+  // never cost another search (a server-side sort is requested in PERSON_D.md for B to add).
+  const resultOrder = useAppStore((s) => s.resultOrder);
+  const ordered = useMemo(() => {
+    if (resultOrder === "carbon")
+      return orderByCarbon(results, (result) =>
+        commuteCarbon(intent?.travelTargets ?? [], result.travel),
+      );
+    if (resultOrder === "distance")
+      return orderByPreferredDistance(results, preferredAreaReference(intent));
+    return results;
+  }, [resultOrder, results, intent]);
   // Paging resets whenever a new set of results arrives.
-  const [paging, setPaging] = useState({ results, count: PAGE_SIZE });
-  const pageCount = paging.results === results ? paging.count : PAGE_SIZE;
-  const visibleCount = Math.min(results.length, pageCount);
+  const [paging, setPaging] = useState({ results: ordered, count: PAGE_SIZE });
+  const pageCount = paging.results === ordered ? paging.count : PAGE_SIZE;
+  const visibleCount = Math.min(ordered.length, pageCount);
   const selectedIndex = selectedId ? results.findIndex((r) => r.listing.id === selectedId) : -1;
   const selectedResult = selectedIndex >= 0 ? results[selectedIndex] : undefined;
   // A pin past "Show more" opens its card over the map instead of growing the list.
@@ -241,12 +259,20 @@ export function SearchView({ prompt, shared }: { prompt: string | null; shared: 
                 ))}
               </ul>
             )}
+            {resultOrder !== "server" && (
+              // Says what the order does to the listings nothing is known about, so "first" is
+              // never read as "every one of these is close" or "every one of these is clean".
+              <p className="text-muted-foreground text-xs">
+                {t(resultOrder === "carbon" ? "results.order.carbon" : "results.order.distance")}
+              </p>
+            )}
             <ol className={`flex flex-col gap-3 ${busy ? "opacity-60" : ""}`}>
-              {results.slice(0, visibleCount).map((result) => (
+              {ordered.slice(0, visibleCount).map((result) => (
                 <li key={result.listing.id}>
                   <ResultCard
                     result={result}
                     targets={intent?.travelTargets ?? []}
+                    areas={intent?.areas ?? []}
                     safetyOn={intent?.safety.enabled ?? false}
                     acInSearch={intent?.criteria.airConditioning !== undefined}
                     now={now}
@@ -258,7 +284,7 @@ export function SearchView({ prompt, shared }: { prompt: string | null; shared: 
               <Button
                 variant="outline"
                 className="self-center"
-                onClick={() => setPaging({ results, count: visibleCount + PAGE_SIZE })}
+                onClick={() => setPaging({ results: ordered, count: visibleCount + PAGE_SIZE })}
               >
                 {t("search.showMore", {
                   count: formatCount(Math.min(PAGE_SIZE, results.length - visibleCount)),
