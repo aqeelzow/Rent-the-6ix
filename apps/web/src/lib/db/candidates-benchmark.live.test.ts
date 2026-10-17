@@ -51,7 +51,9 @@ test.skipIf(process.env.RUN_LIVE_SEARCH_BENCHMARK !== '1')('live search and deta
       clearValuationCache();
       const withoutBenchmark = await listingContext(sql, listing, now, null);
       assert.deepEqual(withBenchmark.valuation.benchmark, benchmark);
-      assert.deepEqual({ ...withBenchmark.valuation, benchmark: null }, withoutBenchmark.valuation);
+      // Equal-distance SQL ties may reorder comparables; retain every comparable and scalar assertion.
+      const comparableOrder = (valuation: typeof withBenchmark.valuation) => ({ ...valuation, benchmark: null, comparables: [...valuation.comparables].sort((a, b) => a.listingId.localeCompare(b.listingId)) });
+      assert.deepEqual(comparableOrder(withBenchmark.valuation), comparableOrder(withoutBenchmark.valuation));
       assert.deepEqual(withBenchmark.caveats, withoutBenchmark.caveats);
       if (withBenchmark.valuation.status === 'ok') valued++;
       clearValuationCache();

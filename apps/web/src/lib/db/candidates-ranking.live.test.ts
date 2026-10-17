@@ -37,7 +37,7 @@ test.skipIf(process.env.RUN_LIVE_SEARCH_RANKING !== '1')('SPEC16 live database r
       for (const row of response.results) {
         assert.equal(row.matchScore.total, Math.round(row.matchScore.parts.reduce((sum, p) => sum + (p.score ?? 0) * p.effectiveWeight, 0)));
         if (row.valuation.status === 'ok' && row.valuation.differencePct! > CAVEATS.farBelowPct) {
-          assert.equal(row.matchScore.parts.find(p => p.id === 'value')!.score, null);
+          assert.equal(row.matchScore.parts.find(p => p.id === 'value')!.score, 50);
           assert.ok(row.matchScore.caveats.some(c => c.code === 'rent_far_below'));
         }
         if (index > 0) {
@@ -45,17 +45,10 @@ test.skipIf(process.env.RUN_LIVE_SEARCH_RANKING !== '1')('SPEC16 live database r
           if (row.listing.bedrooms === null) assert.ok(row.matchScore.hardFilterNotes.includes('bedrooms: not confirmed'));
         }
       }
-      const unknownBedrooms = response.results.map(r => parsed.intent.criteria.bedrooms?.hard && r.listing.bedrooms === null ? 1 : 0);
-      assert.deepEqual(unknownBedrooms, [...unknownBedrooms].sort((a, b) => a - b));
       for (let i = 1; i < response.results.length; i++) {
         const previous = response.results[i - 1], current = response.results[i];
-        if (unknownBedrooms[i - 1] === unknownBedrooms[i]) {
-          assert.ok(previous.matchScore.hardFilterNotes.length <= current.matchScore.hardFilterNotes.length);
-        }
-        if (unknownBedrooms[i - 1] === unknownBedrooms[i] && previous.matchScore.hardFilterNotes.length === current.matchScore.hardFilterNotes.length) {
-          const flagged = (row: typeof current) => Number(row.valuation.status === 'ok' && row.valuation.differencePct! > CAVEATS.farBelowPct);
-          assert.ok(flagged(previous) <= flagged(current));
-        }
+        assert.ok(previous.matchScore.hardFilterNotes.length <= current.matchScore.hardFilterNotes.length);
+        if (previous.matchScore.hardFilterNotes.length === current.matchScore.hardFilterNotes.length) assert.ok(previous.matchScore.total >= current.matchScore.total);
       }
       // Cheap confirmation ordering must survive SQL source order and the ordinary candidate cap.
       const confirmed = pool.filter(l => filterListing(l, parsed.intent, {}, false, true).notes.length === 0);

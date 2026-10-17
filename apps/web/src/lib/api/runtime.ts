@@ -13,6 +13,8 @@ import { civicAreasLookup } from '../parse/civic-areas-db';
 import { addressPointsLookup } from '../parse/address-points';
 import { searchCandidates, routeCandidateContexts, SearchUnavailable, type SearchDependencies } from '../db/candidates';
 import { sqlSearchDependencies } from '../db/candidates-context';
+import { OtpClient } from '../geo/otp';
+import { createRouteTimes } from '../geo/route-times';
 import { searchPercentileCandidates } from '../db/candidates-percentiles';
 import { SearchJobs } from './jobs';
 import { ApiError, jsonRoute } from './json-route';
@@ -28,13 +30,18 @@ export const fixtureDependencies: SearchDependencies = {
     return { valuation, travel: [], safety: intent.safety.enabled && safety && listing.neighbourhoodId !== null ? { ...safety, areaId: listing.neighbourhoodId } : null, safetyScore: 80, caveats: listingCaveats };
   },
 };
+/** Travel times (P2.11): only when a router URL is configured; any failure degrades to labelled distance. */
+function withRouting(dependencies: SearchDependencies, otpUrl: string | undefined): SearchDependencies {
+  if (!otpUrl) return dependencies;
+  return { ...dependencies, routeTimes: createRouteTimes(new OtpClient({ url: otpUrl })) };
+}
 type RuntimeOptions = { env?: Record<string, string | undefined>; parser?: ParseService; resolver?: DestinationResolver; dependencies?: SearchDependencies; jobs?: SearchJobs; identity?: (request: Request) => string; limiter?: IpLimiter; startLimiter?: IpLimiter; pollLimiter?: IpLimiter };
 export function createRuntime(options: RuntimeOptions = {}) {
   const env = options.env ?? process.env;
   const resolver = options.resolver ?? new DestinationResolver({ maptilerKey: env.NEXT_PUBLIC_MAPTILER_KEY, addressLookup: env.SEARCH_FIXTURES !== '1' && env.DATABASE_URL ? addressPointsLookup() : undefined });
   const parser = options.parser ?? new ParseService({ provider: providerFromEnv(env), resolver, civicAreas: env.SEARCH_FIXTURES !== '1' && env.DATABASE_URL ? civicAreasLookup() : undefined, cacheNamespace: `${env.AI_PROVIDER}:${env.GEMINI_MODEL_FAST ?? env.GEMINI_MODEL}`, intentCache: env.SEARCH_FIXTURES !== '1' && env.DATABASE_URL && env.AI_PROVIDER === 'gemini' ? databaseIntentCache() : undefined });
   const jobs = options.jobs ?? new SearchJobs();
-  const dependencies = options.dependencies ?? (env.SEARCH_FIXTURES === '1' ? fixtureDependencies : env.DATABASE_URL ? sqlSearchDependencies() : undefined);
+  const dependencies = options.dependencies ?? (env.SEARCH_FIXTURES === '1' ? fixtureDependencies : env.DATABASE_URL ? withRouting(sqlSearchDependencies(), env.OTP_URL) : undefined);
   // Vercel overwrites this header; other deployments need their own trusted identity callback.
   const identity = options.identity ?? ((request: Request) => {
     const ip = env.VERCEL === '1' ? request.headers.get('x-vercel-forwarded-for') : null;

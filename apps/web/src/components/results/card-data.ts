@@ -1,3 +1,4 @@
+import { t, type MessageKey } from "@/lib/format/messages";
 import type { SearchIntent, SearchResultItem } from "@/lib/store/types";
 
 // What a result card shows, computed from B's SearchResult. Pure, so the honest-label rules
@@ -118,4 +119,55 @@ export function yearSpan(years: number[]): string {
 /** Whole days between when a listing was last seen and now (never negative). */
 export function daysSince(iso: string, now: number): number {
   return Math.max(0, Math.floor((now - Date.parse(iso)) / 86_400_000));
+}
+
+const NOTE_SUFFIX = ": not confirmed";
+
+/** Engine field codes (`filters.ts`) → the words renters see. */
+const noteLabels: Record<string, MessageKey> = {
+  area: "results.notes.area",
+  rent: "results.notes.rent",
+  bedrooms: "results.notes.bedrooms",
+  bathrooms: "results.notes.bathrooms",
+  sizeSqft: "results.notes.size",
+  unitTypes: "results.notes.unitTypes",
+  buildingAge: "results.notes.buildingAge",
+  airConditioning: "results.notes.airConditioning",
+  petsAllowed: "results.notes.pets",
+  furnished: "results.notes.furnished",
+  parking: "results.notes.parking",
+  laundryInSuite: "results.notes.laundry",
+  utilitiesIncluded: "results.notes.utilities",
+  availableBy: "results.notes.availableBy",
+  leaseTerm: "results.notes.lease",
+  priceFairness: "results.notes.priceFairness",
+  safety: "results.notes.safety",
+};
+
+/**
+ * "airConditioning: not confirmed" → "Air conditioning not confirmed".
+ * A note that is already plain, or names a travel target ("Travel to UofT: not confirmed"),
+ * keeps its words and only drops the field-code form.
+ */
+export function plainHardFilterNote(note: string): string {
+  if (!note.endsWith(NOTE_SUFFIX)) return note;
+  const name = note.slice(0, -NOTE_SUFFIX.length);
+  const key = noteLabels[name];
+  return t("results.notes.notConfirmed", { label: key ? t(key) : name });
+}
+
+export type AcFact = "central" | "yes" | "not_stated";
+
+/**
+ * AC on a result card. Known AC always shows. Unknown shows "not stated" only when the
+ * renter asked for AC, so a blank field is never read as "no".
+ */
+export function acFact(
+  airConditioning: SearchResultItem["listing"]["airConditioning"],
+  acInSearch: boolean,
+): AcFact | null {
+  if (airConditioning === "central") return "central";
+  if (airConditioning === "yes") return "yes";
+  if (airConditioning === "unknown" && acInSearch) return "not_stated";
+  return null;
 }

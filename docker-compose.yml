@@ -20,6 +20,10 @@ services:
         NEXT_PUBLIC_MAPTILER_KEY: ${NEXT_PUBLIC_MAPTILER_KEY:-}
     restart: unless-stopped
     env_file: .env
+    environment:
+      # On-demand travel times (P2.11). The in-network name beats whatever .env says, and an
+      # unreachable router degrades to labelled straight-line distance instead of failing search.
+      OTP_URL: http://otp:8080
     # No host ports: Caddy reaches the app by service name on the compose network.
     expose:
       - "3000"

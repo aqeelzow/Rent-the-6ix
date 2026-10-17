@@ -1,38 +1,38 @@
 {
   "scope": "Read-only actual DB, direct owner C listingContext for the same 500 ordinary best-match couple candidates; no B cache; no HTTP endpoint latency claim",
-  "measuredAt": "2026-10-17T17:57:29.278Z",
-  "fixedValuationNow": "2026-10-17T17:57:10.688Z",
+  "measuredAt": "2026-10-17T19:18:18.988Z",
+  "fixedValuationNow": "2026-10-17T19:17:58.519Z",
   "databaseClient": "postgres max 2, default pipeline; owner queries/algorithms unchanged",
-  "cheapPoolCount": 2679,
+  "cheapPoolCount": 2899,
   "selection": "Same cheap hard filters and best-match confirmation/recency/rent ordering as ordinary candidate selection; hard travel is unknown and passes",
   "runs": [
     {
       "concurrency": 8,
       "count": 500,
-      "elapsedMs": 6203,
-      "processCpuMs": 1958,
+      "elapsedMs": 6406,
+      "processCpuMs": 2751,
       "sameResults": true
     },
     {
       "concurrency": 16,
       "count": 500,
-      "elapsedMs": 3241,
-      "processCpuMs": 1706,
-      "sameResults": true
+      "elapsedMs": 3703,
+      "processCpuMs": 2321,
+      "sameResults": false
     },
     {
       "concurrency": 32,
       "count": 500,
-      "elapsedMs": 2043,
-      "processCpuMs": 1750,
-      "sameResults": true
+      "elapsedMs": 2574,
+      "processCpuMs": 2266,
+      "sameResults": false
     },
     {
       "concurrency": 8,
       "count": 500,
-      "elapsedMs": 6011,
-      "processCpuMs": 1951,
-      "sameResults": true
+      "elapsedMs": 6243,
+      "processCpuMs": 2537,
+      "sameResults": false
     }
   ],
   "limits": [

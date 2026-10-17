@@ -13,6 +13,7 @@
       "label": "Main",
       "areas": "Explore neighbourhoods",
       "paste": "Paste a listing",
+      "shortlist": "Shortlist",
       "data": "About the data"
     },
     "footer": {
@@ -115,7 +116,13 @@
     "slowHint": "Searching thousands of listings can take a minute or two.",
     "showMore": "Show {count} more",
     "droppedOne": "1 request we couldn't use",
-    "droppedMany": "{count} requests we couldn't use"
+    "droppedMany": "{count} requests we couldn't use",
+    "share": {
+      "button": "Share search",
+      "copied": "Link copied. Anyone with it sees this search with your filters.",
+      "manual": "Copy this link to share the search:"
+    },
+    "lastSearch": "Continue your last search"
   },
   "status": {
     "title": "System status",
@@ -223,7 +230,9 @@
         "best_value": "best value",
         "shortest_trips": "shortest trips",
         "lowest_true_cost": "lowest true monthly cost",
-        "newest": "newest"
+        "newest": "newest",
+        "closest_area": "closest to my area",
+        "lowest_carbon": "lowest-carbon trips"
       },
       "extreme": "{direction} {percentage}% by {field}",
       "directions": {
@@ -336,6 +345,27 @@
     "built": "Built {year}",
     "acCentral": "Central air",
     "acYes": "AC",
+    "acNotStated": "AC not stated",
+    "notes": {
+      "notConfirmed": "{label} not confirmed",
+      "area": "Area",
+      "rent": "Rent",
+      "bedrooms": "Bedrooms",
+      "bathrooms": "Bathrooms",
+      "size": "Size",
+      "unitTypes": "Type of place",
+      "buildingAge": "Year built",
+      "airConditioning": "Air conditioning",
+      "pets": "Pets",
+      "furnished": "Furnished",
+      "parking": "Parking",
+      "laundry": "In-suite laundry",
+      "utilities": "Utilities",
+      "availableBy": "Available by",
+      "lease": "Lease",
+      "priceFairness": "Price compared with similar listings",
+      "safety": "Safety"
+    },
     "approx": "Approximate location",
     "price": {
       "underpriced": "Underpriced",
@@ -378,6 +408,7 @@
     "notConfirmed": "Not confirmed: {items}",
     "sources": {
       "kijiji": "Kijiji",
+      "torontorentals": "TorontoRentals.com",
       "rentals_ca": "Rentals.ca",
       "zillow": "Zillow",
       "realtor_ca": "Realtor.ca",
@@ -388,6 +419,10 @@
     "dataStatus": {
       "snapshot": "snapshot",
       "demo": "demo data"
+    },
+    "order": {
+      "carbon": "Lowest-carbon first: car-free trips, then the smallest drive figure. Listings with no routed trips are last, not counted as clean.",
+      "distance": "Closest first: straight-line distance from your area, not a travel time. Listings without a location are last."
     },
     "shortlistAdd": "Add {title} to shortlist",
     "shortlistRemove": "Remove {title} from shortlist",
@@ -588,6 +623,99 @@
       "rapid_transit_within_800m_pct": "Area within 800 m of rapid transit",
       "libraries": "Libraries",
       "parks_ha_per_1000": "Park space per 1,000 residents (ha)"
+    }
+  },
+  "shortlist": {
+    "title": "Your shortlist",
+    "intro": "Saved in this browser only. Nothing is sent to our server.",
+    "count": "{n} saved",
+    "empty": "Nothing saved yet. Tap the bookmark on any listing to keep it here.",
+    "startSearch": "Start a search",
+    "savedOn": "Saved {date}",
+    "pasted": "Pasted listing",
+    "asSaved": "Rents and details are shown as they were when you saved each listing. Open one to see its latest.",
+    "clear": {
+      "button": "Clear my data",
+      "title": "Clear my data?",
+      "body": "This removes your shortlist and your last search from this browser. It can’t be undone.",
+      "confirm": "Clear my data",
+      "cancel": "Cancel",
+      "done": "Your shortlist and last search were removed from this browser."
+    }
+  },
+  "areas": {
+    "mapPending": "The neighbourhood map is still being built. It will show one indicator at a time for the 158 neighbourhoods or 25 wards, with its source.",
+    "wardsTitle": "Ward pages",
+    "wardsIntro": "Each of Toronto’s 25 city wards has a page with official election information. Housing briefings are on the way.",
+    "ward": {
+      "title": "Ward {n}",
+      "intro": "One of Toronto’s 25 city wards. Figures describe the whole ward, not a street, a building or the people who live there.",
+      "briefingTitle": "Housing in your ward",
+      "briefingPending": "This briefing isn’t ready yet. It will be three short paragraphs on rents and affordability, housing stock and conditions, and growth and development, written only from the figures below. Every number in it is checked against those figures.",
+      "figuresTitle": "The figures behind it",
+      "figuresPending": "Ward figures aren’t loaded yet. Each one will show this ward, the city, the period it covers and its source."
+    },
+    "election": {
+      "title": "Municipal election: {date}",
+      "hours": "Voting places are open 10 a.m. to 8 p.m. on election day.",
+      "advanceUpcoming": "Advance voting: {dates}, 10 a.m. to 7 p.m.",
+      "advancePast": "Advance voting ran {dates}.",
+      "myVote": "Find where and when to vote (MyVote)",
+      "candidates": "Official candidate list",
+      "keyDates": "Key election dates",
+      "resultsTitle": "Municipal election results",
+      "results": "Official results from the City of Toronto",
+      "note": "From the City of Toronto’s election pages. RentThe6ix doesn’t summarize, compare or rank candidates or platforms."
+    }
+  },
+  "paste": {
+    "intro": "Found a place in a Facebook group, on Craigslist or on a building’s own site? Paste the ad or its link and we’ll check it the way we check our own listings: the rent against similar homes nearby, and how it fits your search.",
+    "tabText": "Paste the text",
+    "tabLink": "Paste a link",
+    "textLabel": "Listing text",
+    "textPlaceholder": "Paste the whole ad: rent, bedrooms, address and anything else it says.",
+    "textCount": "{n} of {max} characters",
+    "linkLabel": "Link to a public listing page",
+    "linkHelp": "Public pages only. We fetch the page once and don’t keep it.",
+    "linkInvalid": "Enter a full link starting with http:// or https://.",
+    "againstSearch": "It will be compared with your search: “{prompt}”.",
+    "noSearch": "You haven’t searched yet, so it won’t be compared with a search.",
+    "submit": "Check this listing",
+    "checking": "Checking…",
+    "privacy": "Pasted listings are never stored on our server. If you save one, it stays in this browser’s shortlist.",
+    "unavailableTitle": "Checking pasted listings isn’t available yet",
+    "unavailable": "This part of RentThe6ix is still being built. Nothing you pasted was stored.",
+    "save": "Save to shortlist",
+    "saved": "Saved to your shortlist",
+    "errors": {
+      "rate_limited": "Too many checks at once. Try again in {seconds} seconds.",
+      "service_unavailable": "Checking is busy right now. Try again in a minute.",
+      "network_error": "We couldn’t reach RentThe6ix. Check your connection and try again.",
+      "default": "Something went wrong checking this listing. Try again, or paste the text instead of a link."
+    }
+  },
+  "travel": {
+    "preferred": {
+      "distance": "{km} from {place} (straight line)",
+      "distanceArea": "{km} from your search area (straight line)"
+    },
+    "carbon": {
+      "carFree": "No car needed for your trips — no direct emissions",
+      "figure": "≈ {co2e} CO₂e per one-way trip by {mode}",
+      "transitUnknown": "Transit not counted (no published factor for Toronto)",
+      "transitUnknownDrive": "Transit not counted (no published factor) — ≈ {co2e} if you drove",
+      "unrouted": "Emissions need routed travel times — not estimated yet",
+      "open": "How carbon is counted",
+      "sortLabel": "Lowest-carbon trips first",
+      "sortHint": "Reorders the results on this page; the search itself is unchanged",
+      "title": "How we count travel carbon",
+      "what": "Direct operational emissions for the trips you asked about — the journey to your saved places, one way.",
+      "method": "Walking and cycling are counted as no direct emissions. Driving uses 2023 average Canadian gasoline-car fuel use with the US EPA combustion factor, at one occupant. Transit is left out because no per-passenger-kilometre figure is published for Toronto, and distances shown as straight-line are never converted into emissions. The yearly figure assumes {days} commute days, travelling both ways.",
+      "factorsTitle": "What each mode counts as",
+      "factorValue": "{grams} g CO₂e per km",
+      "factorUnknown": "not quantified",
+      "source": "source",
+      "caveatsTitle": "What this does not include"
     }
   }
 }

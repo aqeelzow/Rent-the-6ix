@@ -10,7 +10,8 @@ import { filterListing } from '../../../../../packages/shared/engine/filters';
 import { tieBreak } from '../../../../../packages/shared/engine/score';
 
 const canonical = (value: unknown): unknown => Array.isArray(value) ? value.map(canonical).sort((a,b) => JSON.stringify(a).localeCompare(JSON.stringify(b))) : value && typeof value === 'object' ? Object.fromEntries(Object.entries(value).sort(([a],[b])=>a.localeCompare(b)).map(([k,v])=>[k,canonical(v)])) : value;
-test('controlled actual 500-context cold bounded pipeline comparison', async () => {
+// Read-only real DB performance probe: RUN_LIVE_CONTEXT_PIPELINE=1 pnpm --filter web exec vitest run src/lib/db/pipeline-benchmark.live.test.ts
+test.skipIf(process.env.RUN_LIVE_CONTEXT_PIPELINE !== '1')('controlled actual 500-context cold bounded pipeline comparison', async () => {
  process.loadEnvFile('.env.local');
  const sql = postgres(process.env.DATABASE_URL!, {max:2,connect_timeout:5,onnotice:()=>{}});
  try {
@@ -19,7 +20,7 @@ test('controlled actual 500-context cold bounded pipeline comparison', async () 
   const deps=sqlSearchDependencies(()=>sql);
   const source=await deps.loadCandidates!(request);
   const pool=source.filter(l=>filterListing(l,parsed.intent,{},false,true).passes);
-  pool.sort((a,b)=>Number(a.bedrooms===null)-Number(b.bedrooms===null)||filterListing(a,parsed.intent,{},false,true).notes.length-filterListing(b,parsed.intent,{},false,true).notes.length||tieBreak(a,b));
+  pool.sort((a,b)=>filterListing(a,parsed.intent,{},false,true).notes.length-filterListing(b,parsed.intent,{},false,true).notes.length||tieBreak({listing:a},{listing:b}));
   const selected=pool.slice(0,500); assert.equal(selected.length,500);
   const now=new Date(); const runs=[]; let baseline='';
   for(const concurrency of [8,16,32,8]) {
@@ -30,7 +31,7 @@ test('controlled actual 500-context cold bounded pipeline comparison', async () 
    if(!baseline)baseline=digest;
    const row={concurrency,count:results.length,elapsedMs,processCpuMs:Math.round((cpuUsed.user+cpuUsed.system)/1000),sameResults:digest===baseline};runs.push(row);process.stdout.write(JSON.stringify(row)+'\n');
   }
-  const record={scope:'Read-only actual DB, direct owner C listingContext for the same 500 ordinary best-match couple candidates; no B cache; no HTTP endpoint latency claim',measuredAt:new Date().toISOString(),fixedValuationNow:now.toISOString(),databaseClient:'postgres max 2, default pipeline; owner queries/algorithms unchanged',cheapPoolCount:pool.length,selection:'Same cheap hard filters and best-match confirmation/recency/rent ordering as ordinary candidate selection; hard travel is unknown and passes',runs,limits:['Only the representative couple pool was measured; not every possible pool or concurrent deployment load','C valuation cache cleared before every pass; database buffers and network caches are not flushed','Result comparison canonicalizes array order to ignore equal-distance comparable ordering; semantic array order is not asserted','Direct owner timings exclude B request SQL, filtering, schema validation, scoring, response serialization and routing']};
+  const record={scope:'Read-only actual DB, direct owner C listingContext for the same 500 ordinary best-match couple candidates; no B cache; no HTTP endpoint latency claim',measuredAt:new Date().toISOString(),fixedValuationNow:now.toISOString(),databaseClient:'postgres max 2, default pipeline; owner queries/algorithms unchanged',cheapPoolCount:pool.length,selection:'Same cheap hard filters and best-match hard-confirmation/confirmed-field/recency/rent ordering as ordinary candidate selection; hard travel is unknown and passes',runs,limits:['Only the representative couple pool was measured; not every possible pool or concurrent deployment load','C valuation cache cleared before every pass; database buffers and network caches are not flushed','Result comparison canonicalizes array order to ignore equal-distance comparable ordering; semantic array order is not asserted','Direct owner timings exclude B request SQL, filtering, schema validation, scoring, response serialization and routing']};
   writeFileSync('../../apps/search/validation/rent-c-500-context-concurrency.json',JSON.stringify(record,null,2)+'\n');
   assert.ok(runs.every(r=>r.sameResults),'owner results changed');
  } finally {await sql.end({timeout:2});}

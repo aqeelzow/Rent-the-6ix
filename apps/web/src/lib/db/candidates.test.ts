@@ -102,7 +102,7 @@ test('best match keeps confirmed bedrooms ahead of unknowns before the 500 cap; 
   assert.equal(cheapest.results[0].listing.monthlyRentCad, 1001);
 });
 
-test('best match separates rent verification from scores, using confirmation and evidence before recency/cheapness', async () => {
+test('best match uses neutral outlier value and confirmed must-haves before score', async () => {
   const listings = pool.slice(0, 3).map((listing, i) => ({ ...listing, bedrooms: i === 2 ? null : 2, furnished: 'yes' as const, monthlyRentCad: i === 0 ? 400 : 2000 + i * 100 }));
   const intent = { ...baseIntent, criteria: { bedrooms: { value: { min: 2, max: 2 }, hard: true }, furnished: { value: true, hard: false } } };
   const withValue: SearchDependencies['enrich'] = async listing => {
@@ -112,8 +112,9 @@ test('best match separates rent verification from scores, using confirmation and
   };
   const result = await searchCandidates({ intent, hideUnconfirmed: false }, { listings, enrich: withValue });
   assert.deepEqual(result.results.map(r => r.listing.id), [listings[1].id, listings[0].id, listings[2].id]);
-  assert.ok(result.results.every(r => r.matchScore.total === 100));
-  assert.equal(result.results[1].matchScore.parts.find(p => p.id === 'value')!.score, null);
+  assert.equal(result.results[0].matchScore.total, 100);
+  assert.ok(result.results[1].matchScore.total < 100);
+  assert.equal(result.results[1].matchScore.parts.find(p => p.id === 'value')!.score, 50);
   const numeric = await searchCandidates({ intent: { ...intent, sortBy: 'lowest_rent' }, hideUnconfirmed: false }, { listings, enrich: withValue });
   assert.equal(numeric.results[0].listing.id, listings[0].id);
 });
@@ -126,31 +127,24 @@ test('best value applies C score guard before cap rather than selecting 500 outl
     return { valuation: { ...valuations[0], estimatedRentCad, differenceCad: estimatedRentCad - listing.monthlyRentCad, differencePct }, safety: null, travel: [] };
   } });
   assert.ok(result.results.slice(0, 20).every(r => r.listing.monthlyRentCad === 2000));
-  assert.ok(result.results.slice(20).every(r => r.matchScore.parts.find(p => p.id === 'value')!.score === null));
+  assert.ok(result.results.slice(20).every(r => r.matchScore.parts.find(p => p.id === 'value')!.score === 50));
 });
 
-test('best match uses unrounded scores and valuation evidence to resolve rounded 100 ties', async () => {
+test('rounded score ties use shared valuation confidence before rent', async () => {
   const listings = pool.slice(0, 2).map((listing, i) => ({ ...listing, monthlyRentCad: 2000 + i * 100 }));
-  const run = (differences: number[], counts = [8, 8]) => searchCandidates({ intent: baseIntent, hideUnconfirmed: false }, { listings, enrich: async listing => {
-    const index = listings.findIndex(row => row.id === listing.id), differencePct = differences[index];
-    const estimatedRentCad = listing.monthlyRentCad / (1 - differencePct / 100);
-    return { valuation: { ...valuations[0], estimatedRentCad, differenceCad: estimatedRentCad - listing.monthlyRentCad, differencePct, comparableCount: counts[index], effectiveCount: counts[index] }, travel: [], safety: null };
-  } });
-  const precise = await run([19.9, 19.99]);
-  assert.deepEqual(precise.results.map(r => r.matchScore.total), [100, 100]);
-  assert.equal(precise.results[0].listing.id, listings[1].id);
-  const evidence = await run([20, 20], [8, 12]);
-  assert.equal(evidence.results[0].listing.id, listings[1].id);
+  const result = await searchCandidates({ intent: baseIntent, hideUnconfirmed: false }, { listings, enrich: async listing => ({ valuation: { ...valuations[0], estimatedRentCad: listing.monthlyRentCad / .8, differenceCad: listing.monthlyRentCad / .8 - listing.monthlyRentCad, differencePct: 20, confidence: listing.id === listings[1].id ? 'high' : 'low' }, travel: [], safety: null }) });
+  assert.deepEqual(result.results.map(r => r.matchScore.total), [100, 100]);
+  assert.equal(result.results[0].listing.id, listings[1].id);
 });
 
-test('hard bedroom confirmation takes priority even when another hard field is unknown', async () => {
+test('all confirmed must-haves precede any unknown hard fields', async () => {
   const listings = [
     { ...pool[0], bedrooms: null, parking: 'yes' as const },
-    { ...pool[1], bedrooms: 2, parking: 'unknown' as const },
+    { ...pool[1], bedrooms: 2, parking: 'yes' as const },
   ];
   const result = await searchCandidates({ intent: { ...baseIntent, criteria: { bedrooms: { hard: true, value: { min: 2, max: 2 } }, parking: { hard: true, value: true } } }, hideUnconfirmed: false }, { listings, enrich });
   assert.equal(result.results[0].listing.id, listings[1].id);
-  assert.deepEqual(result.results[0].matchScore.hardFilterNotes, ['parking: not confirmed']);
+  assert.deepEqual(result.results[0].matchScore.hardFilterNotes, []);
   assert.deepEqual(result.results[1].matchScore.hardFilterNotes, ['bedrooms: not confirmed']);
 });
 

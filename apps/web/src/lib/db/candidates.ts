@@ -1,7 +1,7 @@
 import { ListingSchema, SearchRequestSchema, SearchResultSchema, TravelTimeRowSchema, type DetailResponse, type Listing, type SearchRequest, type SearchResult, type TravelTarget, type TravelTimeRow } from '../../../../../packages/shared/schemas/index';
-import { CAVEATS, engineConfig } from '../../../../../packages/shared/engine/config';
+import { engineConfig } from '../../../../../packages/shared/engine/config';
 import { filterListing, type FilterContext } from '../../../../../packages/shared/engine/filters';
-import { scoreListing, tieBreak, type ScoreContext } from '../../../../../packages/shared/engine/score';
+import { bestMatchOrder, scoreListing, tieBreak, type ScoreContext, type TieSide } from '../../../../../packages/shared/engine/score';
 import { distanceM, targetModes } from '../../../../../packages/shared/engine/travel';
 export type SearchDependencies = {
   // Fixture/detail pool; live search can inject the read-only SQL candidate loader.
@@ -42,17 +42,12 @@ export function tripMinutes(intent: SearchRequest['intent'], travel: TravelTimeR
   }
   return sum / intent.travelTargets.length;
 }
-const unknownBedrooms = (intent: SearchRequest['intent'], listing: Listing) => intent.criteria.bedrooms?.hard && listing.bedrooms === null ? 1 : 0;
-const weightedScore = (result: SearchResult) => result.matchScore.parts.reduce((sum, part) => sum + (part.score ?? 0) * part.effectiveWeight, 0);
-const evidenceWeight = (result: SearchResult) => result.matchScore.parts.reduce((sum, part) => sum + (part.score === null ? 0 : part.weight), 0);
-const needsRentVerification = (result: SearchResult) => result.valuation.status === 'ok' && result.valuation.differencePct! > CAVEATS.farBelowPct ? 1 : 0;
-// Renormalized 100s can hide missing facts or rent-verification caveats; best match prioritizes that evidence.
+const tieSide = (listing: Listing, valuation?: { status: string; confidence: TieSide['confidence'] }): TieSide => ({ listing, confidence: valuation?.confidence, valued: valuation?.status === 'ok' });
 export function compareResults(intent: SearchRequest['intent'], a: SearchResult, b: SearchResult): number {
-  const primary = intent.sortBy === 'lowest_rent' ? a.listing.monthlyRentCad - b.listing.monthlyRentCad : intent.sortBy === 'newest' ? Date.parse(b.listing.lastSeenAt) - Date.parse(a.listing.lastSeenAt) : intent.sortBy === 'best_value' ? part(b, 'value') - part(a, 'value') : intent.sortBy === 'shortest_trips' ? tripMinutes(intent, a.travel) - tripMinutes(intent, b.travel) :
-    unknownBedrooms(intent, a.listing) - unknownBedrooms(intent, b.listing) || a.matchScore.hardFilterNotes.length - b.matchScore.hardFilterNotes.length || needsRentVerification(a) - needsRentVerification(b) || weightedScore(b) - weightedScore(a) || evidenceWeight(b) - evidenceWeight(a) ||
-    (a.matchScore.parts.some(p => p.id === 'value' && p.effectiveWeight > 0) && b.matchScore.parts.some(p => p.id === 'value' && p.effectiveWeight > 0) ?
-      ['low', 'medium', 'high'].indexOf(b.valuation.confidence) - ['low', 'medium', 'high'].indexOf(a.valuation.confidence) || b.valuation.effectiveCount - a.valuation.effectiveCount : 0);
-  return (Number.isNaN(primary) ? 0 : primary) || tieBreak(a.listing, b.listing);
+  const left = tieSide(a.listing, a.valuation), right = tieSide(b.listing, b.valuation);
+  if (intent.sortBy === 'best_match') return bestMatchOrder({ total: a.matchScore.total, unconfirmed: a.matchScore.hardFilterNotes.length, tie: left }, { total: b.matchScore.total, unconfirmed: b.matchScore.hardFilterNotes.length, tie: right });
+  const primary = intent.sortBy === 'lowest_rent' ? a.listing.monthlyRentCad - b.listing.monthlyRentCad : intent.sortBy === 'newest' ? Date.parse(b.listing.lastSeenAt) - Date.parse(a.listing.lastSeenAt) : intent.sortBy === 'best_value' ? part(b, 'value') - part(a, 'value') : intent.sortBy === 'shortest_trips' ? tripMinutes(intent, a.travel) - tripMinutes(intent, b.travel) : b.matchScore.total - a.matchScore.total;
+  return (Number.isNaN(primary) ? 0 : primary) || tieBreak(left, right);
 }
 export async function searchCandidates(input: SearchRequest, dependencies: SearchDependencies) {
   const request = SearchRequestSchema.parse(input), { intent } = request;
@@ -61,9 +56,9 @@ export async function searchCandidates(input: SearchRequest, dependencies: Searc
   const source = dependencies.loadCandidates ? await dependencies.loadCandidates(request) : dependencies.listings;
   const pool = source.map(l => ListingSchema.parse(l)).filter(l => filterListing(l, intent, {}, request.hideUnconfirmed, true).passes);
   // Numeric listing sorts operate on the entire cheap-filtered pool before expensive enrichment.
-  if (intent.sortBy === 'lowest_rent' || intent.sortBy === 'newest') pool.sort((a, b) => intent.sortBy === 'lowest_rent' ? a.monthlyRentCad - b.monthlyRentCad || tieBreak(a, b) : tieBreak(a, b));
-  // Hard-field confirmation is cheap and must precede the cap, even if unknown listings arrived first.
-  if (intent.sortBy === 'best_match') pool.sort((a, b) => unknownBedrooms(intent, a) - unknownBedrooms(intent, b) || filterListing(a, intent, {}, false, true).notes.length - filterListing(b, intent, {}, false, true).notes.length || tieBreak(a, b));
+  if (intent.sortBy === 'lowest_rent' || intent.sortBy === 'newest') pool.sort((a, b) => intent.sortBy === 'lowest_rent' ? a.monthlyRentCad - b.monthlyRentCad || tieBreak(tieSide(a), tieSide(b)) : Date.parse(b.lastSeenAt) - Date.parse(a.lastSeenAt) || tieBreak(tieSide(a), tieSide(b)));
+  // Confirm hard listing facts before the ordinary candidate cap.
+  if (intent.sortBy === 'best_match') pool.sort((a, b) => filterListing(a, intent, {}, false, true).notes.length - filterListing(b, intent, {}, false, true).notes.length || tieBreak(tieSide(a), tieSide(b)));
   const contexts = new Map<string, ScoreContext>();
   const filterContexts = new Map<string, FilterContext>();
   const hardContextGate = intent.safety.enabled && intent.safety.hard || intent.travelTargets.some(t => t.hard);
@@ -80,7 +75,7 @@ export async function searchCandidates(input: SearchRequest, dependencies: Searc
       return eligibility.passes && !unresolved ? listing : null;
     });
     eligiblePool = filtered.filter((listing): listing is Listing => listing !== null);
-    if (intent.sortBy === 'best_match') eligiblePool.sort((a, b) => unknownBedrooms(intent, a) - unknownBedrooms(intent, b) || filterListing(a, intent, filterContexts.get(a.id)).notes.length - filterListing(b, intent, filterContexts.get(b.id)).notes.length || tieBreak(a, b));
+    if (intent.sortBy === 'best_match') eligiblePool.sort((a, b) => filterListing(a, intent, filterContexts.get(a.id)).notes.length - filterListing(b, intent, filterContexts.get(b.id)).notes.length || tieBreak(tieSide(a), tieSide(b)));
   }
   const contextPool = fullContextRequired ? eligiblePool : eligiblePool.slice(0, engineConfig.candidateLimit);
   const enriched = await mapCandidatePool(contextPool, async listing => {
