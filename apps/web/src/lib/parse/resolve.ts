@@ -7,7 +7,7 @@ const places = z.array(z.object({ id: z.string(), label: z.string(), aliases: z.
 export const normalizePlace = (query: string) => query.toLowerCase().replace(/[^a-z0-9 ]/g, '').replace(/\s+/g, ' ').trim();
 const choice = (p: typeof places[number]) => DestinationChoiceSchema.parse({ id: p.id, label: p.label, resolved: { lng: p.lng, lat: p.lat, source: 'known_place', representativePoint: true, label: p.label } });
 function knownResolution(normalized: string, query: string, preferPrimaryCampus: boolean): DestinationResolution | undefined {
-  const known = places.filter(p => p.aliases.some(a => normalizePlace(a) === normalized));
+  const known = places.filter(p => [...p.aliases, p.label, p.label.replace(/ representative point$/, '')].some(a => normalizePlace(a) === normalized));
   if (known.length === 1) return { status: 'resolved', query, destination: choice(known[0]) };
   const group = /^(university of toronto|uoft|u of t)$/.test(normalized) ? 'University of Toronto' : /^(york|york university)$/.test(normalized) ? 'York University' : undefined;
   if (group) {

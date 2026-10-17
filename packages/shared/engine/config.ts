@@ -4,7 +4,13 @@ export const engineConfig = {
   fairnessWeight: 45, safetyWeight: 15, priceOverrun: .15, sizeOverrun: .25,
   ageOverrunYears: 20, availabilityOverrunDays: 30,
   candidateLimit: 500, routingLimit: 100, routingBudgetMs: 3000, percentileBudgetMs: 120000,
-  distanceM: { walk: 800, bike: 3000, transit: 3000, drive: 6000 },
+  // Heuristic speeds, route detours and access/wait/parking overhead; not calibrated route times.
+  travelEstimate: {
+    walk: { speedKmh: 4.8, routeFactor: 1.25, overheadMinutes: 0 },
+    bike: { speedKmh: 15, routeFactor: 1.25, overheadMinutes: 1 },
+    drive: { speedKmh: 25, routeFactor: 1.35, overheadMinutes: 3 },
+    transit: { speedKmh: 18, routeFactor: 1.4, overheadMinutes: 8 },
+  },
   minutes: {
     quick: { walk: 10, bike: 10, transit: 15, drive: 10 },
     civic: { walk: 15, bike: 10, transit: 20, drive: 10 },

@@ -262,7 +262,7 @@ function StatTiles({
   const { valuation, listing } = result;
   const summary = priceSummary(valuation);
   const priced = valuation.status === "ok" && summary.label !== "unknown";
-  const first = travelTable(targets, result.travel)[0];
+  const first = travelTable(targets, result.travel, result.listing.location)[0];
   const trip = first?.modes.find((time) => time.mode === first.chosen[0]);
   const TripIcon = trip ? modeIcons[trip.mode] : null;
 
@@ -339,7 +339,7 @@ function StatTiles({
           <h2 className="truncate font-medium">{l("stats.commute", { place: first.label })}</h2>
           <p
             className={
-              trip.kind === "routed"
+              trip.kind === "estimated"
                 ? "figures text-5xl font-semibold tracking-tight"
                 : "text-lg font-medium"
             }

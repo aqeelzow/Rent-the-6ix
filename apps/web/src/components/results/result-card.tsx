@@ -2,7 +2,6 @@
 
 import { Bookmark, Building2, CircleHelp, ShieldQuestion } from "lucide-react";
 import Link from "next/link";
-import { travelAdvice } from "@rentthe6ix/shared/engine/travel";
 import { modeIcons } from "@/components/mode-icons";
 import { formatDaysAgo } from "@/lib/format/date";
 import { t, type MessageKey } from "@/lib/format/messages";
@@ -34,18 +33,11 @@ const caveatStyles = {
   high: "bg-caveat-high text-caveat-high-foreground",
 } as const;
 
-/** Honest travel labels (SPEC 7.4): minutes only when routed; straight-line is only km. */
+/** Every duration is labelled as a distance-based estimate. */
 function travelText(summary: TravelSummary): string {
-  if (summary.kind === "routed") {
+  if (summary.kind === "estimated") {
     return r(`travel.${summary.mode}`, {
       minutes: formatCount(summary.minutes),
-      target: summary.target,
-    });
-  }
-  if (summary.kind === "straight_line") {
-    // The distance itself decides the wording: a walk from here, or a trip that needs transport.
-    return r(travelAdvice(summary.distanceM) === "walkable" ? "travel.walkable" : "travel.transport", {
-      km: decimal.format(summary.distanceM / 1000),
       target: summary.target,
     });
   }
@@ -171,7 +163,7 @@ export function ResultCard({
             return (
               <li key={summary.target} className="flex items-start gap-2">
                 <Icon aria-hidden className="text-muted-foreground mt-0.5 size-4 shrink-0" />
-                <span className={summary.kind === "routed" ? "figures" : "text-muted-foreground"}>
+                <span className={summary.kind === "estimated" ? "figures" : "text-muted-foreground"}>
                   {travelText(summary)}
                 </span>
               </li>

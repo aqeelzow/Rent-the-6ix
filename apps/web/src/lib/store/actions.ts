@@ -114,7 +114,8 @@ export async function runSearch(options: ActionOptions = {}): Promise<void> {
   const sleep = options.sleep ?? ((ms) => new Promise((resolve) => setTimeout(resolve, ms)));
   const now = options.now ?? Date.now;
 
-  const { intent, hideUnconfirmed } = store.getState();
+  let { intent } = store.getState();
+  const { hideUnconfirmed } = store.getState();
   if (!intent) return;
   const requestId = store.getState().startSearch();
   const isCurrent = () => store.getState().searchRequestId === requestId;
@@ -122,6 +123,26 @@ export async function runSearch(options: ActionOptions = {}): Promise<void> {
   const controller = new AbortController();
   inFlight = controller;
   const { signal } = controller;
+
+  // Saved/shared searches can contain unresolved places from an earlier lookup failure.
+  const unresolved = intent.travelTargets.filter(target => target.kind === "place" && target.query && !target.resolved);
+  if (unresolved.length) {
+    const locations = await Promise.all(unresolved.map(async target => {
+      const response = await request(fetchFn, `/api/geo/resolve?q=${encodeURIComponent(target.query!)}`, { method: "GET", signal });
+      if (!response.ok) return null;
+      const resolution = DestinationResolutionSchema.safeParse(response.json);
+      return resolution.success ? { targetId: target.id, resolution: resolution.data } : null;
+    }));
+    if (!isCurrent()) return;
+    const destinations = locations.filter(location => location !== null);
+    if (destinations.length) {
+      intent = { ...intent, travelTargets: intent.travelTargets.map(target => {
+        const resolution = destinations.find(destination => destination.targetId === target.id)?.resolution;
+        return resolution?.status === "resolved" ? { ...target, label: resolution.destination.label, resolved: resolution.destination.resolved } : target;
+      }) };
+      store.setState({ intent, destinations: [...store.getState().destinations.filter(destination => !destinations.some(current => current.targetId === destination.targetId)), ...destinations] });
+    }
+  }
 
   let response = await request(fetchFn, "/api/listings/search", {
     method: "POST",

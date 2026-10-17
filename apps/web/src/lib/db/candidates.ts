@@ -2,7 +2,7 @@ import { ListingSchema, SearchRequestSchema, SearchResultSchema, TravelTimeRowSc
 import { engineConfig } from '../../../../../packages/shared/engine/config';
 import { filterListing, type FilterContext } from '../../../../../packages/shared/engine/filters';
 import { bestMatchOrder, scoreListing, tieBreak, type ScoreContext, type TieSide } from '../../../../../packages/shared/engine/score';
-import { distanceM, targetModes } from '../../../../../packages/shared/engine/travel';
+import { distanceM, targetModes, targetDistanceM, estimateTravelMinutes } from '../../../../../packages/shared/engine/travel';
 export type SearchDependencies = {
   // Fixture/detail pool; live search can inject the read-only SQL candidate loader.
   listings: readonly Listing[];
@@ -36,16 +36,16 @@ export async function mapCandidatePool<T>(listings: readonly Listing[], operatio
 }
 const part = (result: SearchResult, id: 'value') => result.matchScore.parts.find(p => p.id === id)?.score ?? -Infinity;
 /**
- * Mean distance to the search's targets, the figure `shortest_trips` orders by. An unmeasured
+ * Mean estimated time to the search's targets, the figure `shortest_trips` orders by. An unmeasured
  * listing returns Infinity, so "nothing is known about this one" never sorts as if it were close.
  */
-export function tripDistanceM(intent: SearchRequest['intent'], travel: TravelTimeRow[]): number {
+export function tripMinutes(intent: SearchRequest['intent'], travel: TravelTimeRow[], origin: Listing['location']): number {
   if (!intent.travelTargets.length) return Infinity;
   let sum = 0;
   for (const target of intent.travelTargets) {
-    const rows = travel.filter(r => r.targetId === target.id && targetModes(target).includes(r.mode));
-    if (!rows.length) return Infinity;
-    sum += Math.min(...rows.map(r => r.distanceM));
+    const metres = targetDistanceM(target, travel, origin);
+    if (metres === null) return Infinity;
+    sum += Math.min(...targetModes(target).map(mode => estimateTravelMinutes(metres, mode)));
   }
   return sum / intent.travelTargets.length;
 }
@@ -53,7 +53,7 @@ const tieSide = (listing: Listing, valuation?: { status: string; confidence: Tie
 export function compareResults(intent: SearchRequest['intent'], a: SearchResult, b: SearchResult): number {
   const left = tieSide(a.listing, a.valuation), right = tieSide(b.listing, b.valuation);
   if (intent.sortBy === 'best_match') return bestMatchOrder({ total: a.matchScore.total, unconfirmed: a.matchScore.hardFilterNotes.length, tie: left }, { total: b.matchScore.total, unconfirmed: b.matchScore.hardFilterNotes.length, tie: right });
-  const primary = intent.sortBy === 'lowest_rent' ? a.listing.monthlyRentCad - b.listing.monthlyRentCad : intent.sortBy === 'newest' ? Date.parse(b.listing.lastSeenAt) - Date.parse(a.listing.lastSeenAt) : intent.sortBy === 'best_value' ? part(b, 'value') - part(a, 'value') : intent.sortBy === 'shortest_trips' ? tripDistanceM(intent, a.travel) - tripDistanceM(intent, b.travel) : b.matchScore.total - a.matchScore.total;
+  const primary = intent.sortBy === 'lowest_rent' ? a.listing.monthlyRentCad - b.listing.monthlyRentCad : intent.sortBy === 'newest' ? Date.parse(b.listing.lastSeenAt) - Date.parse(a.listing.lastSeenAt) : intent.sortBy === 'best_value' ? part(b, 'value') - part(a, 'value') : intent.sortBy === 'shortest_trips' ? tripMinutes(intent, a.travel, a.listing.location) - tripMinutes(intent, b.travel, b.listing.location) : b.matchScore.total - a.matchScore.total;
   return (Number.isNaN(primary) ? 0 : primary) || tieBreak(left, right);
 }
 /**
@@ -109,7 +109,7 @@ export async function searchCandidates(input: SearchRequest, dependencies: Searc
       const eligibility = filterListing(listing, intent, context);
       // Travel is answered by distance further down, so a travel gate that is still open here is not
       // a reason to hide a listing the way an unknown bedroom count is.
-      const unresolved = request.hideUnconfirmed && eligibility.notes.some(note => !note.startsWith('Travel to '));
+      const unresolved = request.hideUnconfirmed && eligibility.notes.some(note => !note.startsWith('Location for '));
       return eligibility.passes && !unresolved ? listing : null;
     });
     eligiblePool = filtered.filter((listing): listing is Listing => listing !== null);
@@ -145,7 +145,7 @@ export async function searchCandidates(input: SearchRequest, dependencies: Searc
     return [SearchResultSchema.parse({ ...result, travel: context.travel, matchScore: scoreListing(result.listing, intent, context) })];
   }).sort((a, b) => compareResults(intent, a, b));
   const eligibleCount = fullContextRequired || filterContexts.size ? pool.filter(listing => filterListing(listing, intent, contexts.get(listing.id) ?? filterContexts.get(listing.id), request.hideUnconfirmed).passes).length : pool.length - (candidates.length - results.length);
-  return { results, eligibleCount, notices: [dependencies.loadCandidates ? 'Unconfirmed fields and unrouted travel times remain unknown' : 'Fixture-backed application pool; live SQL and owner integrations pending'] };
+  return { results, eligibleCount, notices: ['Travel times are distance-based estimates, without live traffic or timetables.'] };
 }
 
 /**

@@ -63,18 +63,18 @@ describe("travelTable", () => {
     ]);
     expect(campus!.chosen).toEqual(["bike", "walk"]);
     expect(campus!.modes).toEqual([
-      { mode: "transit", kind: "routed", minutes: 14 },
-      { mode: "drive", kind: "missing" },
-      { mode: "walk", kind: "missing" },
-      { mode: "bike", kind: "straight_line", distanceM: 900 },
+      { mode: "transit", kind: "estimated", minutes: 13 },
+      { mode: "drive", kind: "estimated", minutes: 6 },
+      { mode: "walk", kind: "estimated", minutes: 15 },
+      { mode: "bike", kind: "estimated", minutes: 6 },
     ]);
   });
 
-  it("never turns a straight-line row into minutes", () => {
+  it("estimates all modes from a straight-line distance", () => {
     const [campus] = travelTable(travelIntent.travelTargets, [row({ mode: "walk" })]);
     const walk = campus!.modes.find((m) => m.mode === "walk")!;
-    expect(walk.kind).toBe("straight_line");
-    expect(walk).not.toHaveProperty("minutes");
+    expect(walk.kind).toBe("estimated");
+    expect(walk).toHaveProperty("minutes", 15);
   });
 });
 

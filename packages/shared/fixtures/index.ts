@@ -57,7 +57,7 @@ function result(listing: Listing, i: number, withSafety = false): SearchResult {
   const weighted = parts.map(p => ({ ...p, effectiveWeight: p.score === null ? 0 : p.weight / sum, evidence: p.score === null ? [] : ['Synthetic illustrative evidence'] }));
   return { listing, valuation, travel: [{ listingId: listing.id, targetId: 'campus', mode: 'bike', distanceM: 600, poiId: null, computedAt: fixtureTimestamp, method: i % 2 ? 'otp' : 'straight_line', minutes: i % 2 ? 8 : null }],
     safety: withSafety && listing.neighbourhoodId ? { areaId: listing.neighbourhoodId, rate: 700, relativeRate: .8, byType: { assault: 700 }, years: [2023, 2024, 2025], caveats: safetyCaveats } : null,
-    matchScore: MatchScoreSchema.parse({ total: Math.round(weighted.reduce((n, p) => n + (p.score ?? 0) * p.effectiveWeight, 0)), parts: weighted, hardFilterNotes: i % 2 ? [] : ['Travel time: not confirmed'], caveats: [caveat] }),
+    matchScore: MatchScoreSchema.parse({ total: Math.round(weighted.reduce((n, p) => n + (p.score ?? 0) * p.effectiveWeight, 0)), parts: weighted, hardFilterNotes: [], caveats: [caveat] }),
   };
 }
 export const searchFixture = SearchResponseSchema.parse({ status: 'completed', results: sampleListings.map((l, i) => result(l, i)), eligibleCount: 50, notices: ['Synthetic fixture; not live listings'] });

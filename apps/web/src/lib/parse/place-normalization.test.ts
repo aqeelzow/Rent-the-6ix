@@ -38,6 +38,18 @@ test('CN Tower resolves to a map pin without ambiguous geocoder attractions', as
   }
 });
 
+test('canonical campus labels and bare UofT resolve to the same known point without a geocoder', async () => {
+  const resolver = new DestinationResolver();
+  for (const query of ['uoft', 'UofT St. George campus', 'UofT St. George campus representative point']) {
+    const result = await resolver.resolve(query);
+    assert.equal(result.status, 'resolved');
+    if (result.status === 'resolved') assert.equal(result.destination.id, 'uoft-st-george');
+  }
+  const specific = await resolver.resolve('UofT Scarborough campus');
+  assert.equal(specific.status, 'resolved');
+  if (specific.status === 'resolved') assert.equal(specific.destination.id, 'uoft-scarborough');
+});
+
 test('Gemini normalization reaches geocoding while original evidence survives and model coordinates are discarded', async () => {
   const parser = new ParseService({
     provider: new GeminiProvider({ apiKey: 'test', model: 'test', fetch: async () => Response.json({ candidates: [{ content: { parts: [{ text: JSON.stringify(interpretation()) }] } }] }) }),

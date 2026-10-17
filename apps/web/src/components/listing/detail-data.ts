@@ -2,6 +2,7 @@ import { formatDate } from "@/lib/format/date";
 import { t, type MessageKey } from "@/lib/format/messages";
 import { formatCount } from "@/lib/format/number";
 import type { SearchIntent, SearchResultItem } from "@/lib/store/types";
+import { estimateTravelMinutes, targetDistanceM } from "@rentthe6ix/shared/engine/travel";
 
 // What the listing detail page shows (SPEC 11.3), from B's SearchResult / DetailResponse.
 // Pure, so the honest-label rules are tested: unknown is "Not stated", never "no".
@@ -120,8 +121,7 @@ export function homeFields(listing: Listing): HomeField[] {
 }
 
 export type ModeTime =
-  | { mode: Mode; kind: "routed"; minutes: number }
-  | { mode: Mode; kind: "straight_line"; distanceM: number }
+  | { mode: Mode; kind: "estimated"; minutes: number }
   | { mode: Mode; kind: "missing" };
 
 export type TargetTravel = {
@@ -133,20 +133,16 @@ export type TargetTravel = {
 };
 
 /**
- * Each travel target with its time in all four modes (SPEC 7.4): routed minutes when OTP gave
- * one, else straight-line distance (never minutes), else missing.
+ * Each travel target with distance-based estimates in all four modes.
  */
-export function travelTable(targets: SearchIntent["travelTargets"], rows: Row[]): TargetTravel[] {
+export function travelTable(targets: SearchIntent["travelTargets"], rows: Row[], origin?: SearchResultItem["listing"]["location"]): TargetTravel[] {
   return targets.map((target) => ({
     id: target.id,
     label: target.label,
     chosen: [target.mode, ...(target.alternativeModes ?? [])],
     modes: MODES.map((mode): ModeTime => {
-      const forMode = rows.filter((row) => row.targetId === target.id && row.mode === mode);
-      const routed = forMode.find((row) => row.method === "otp" && row.minutes !== null);
-      if (routed) return { mode, kind: "routed", minutes: Math.round(routed.minutes!) };
-      const line = forMode.find((row) => row.method === "straight_line");
-      if (line) return { mode, kind: "straight_line", distanceM: line.distanceM };
+      const metres = targetDistanceM(target, rows, origin);
+      if (metres !== null) return { mode, kind: "estimated", minutes: estimateTravelMinutes(metres, mode) };
       return { mode, kind: "missing" };
     }),
   }));

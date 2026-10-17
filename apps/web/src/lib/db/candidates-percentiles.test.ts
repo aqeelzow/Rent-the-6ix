@@ -35,8 +35,8 @@ test('scalar full eligible pool before cap and full hard enriched filters before
   assert.equal(all.status, 'completed'); if (all.status !== 'completed') return;
   assert.equal(all.results.length, 520); assert.equal(all.results[0].listing.id, pool[519].id);
   const safety = safetySearchFixture.status === 'completed' ? safetySearchFixture.results[0].safety! : null!;
-  const gated = await execute({ ...scalar, criteria: { priceFairness: { value: ['underpriced'], hard: true } }, safety: { enabled: true, hard: true }, travelTargets: travelIntent.travelTargets }, {
-    listings: sampleListings, enrich: async (listing) => ({ valuation: { ...(listing.id === sampleListings[0].id ? valuations[2] : valuations[0]), estimatedRentCad: listing.monthlyRentCad / (listing.id === sampleListings[0].id ? 1.15 : .85), differenceCad: listing.monthlyRentCad / (listing.id === sampleListings[0].id ? 1.15 : .85) - listing.monthlyRentCad }, safety: { ...safety, areaId: listing.neighbourhoodId!, relativeRate: listing.id === sampleListings[1].id ? 2 : .5 }, travel: (await router([listing], travelIntent.travelTargets, 'walk', 100, new AbortController().signal)).map(row => ({ ...row, minutes: listing.id === sampleListings[2].id ? 30 : 5 })) }),
+  const gated = await execute({ ...scalar, criteria: { priceFairness: { value: ['underpriced'], hard: true } }, safety: { enabled: true, hard: true }, travelTargets: travelIntent.travelTargets.map(target => ({ ...target, resolved: undefined })) }, {
+    listings: sampleListings, enrich: async (listing) => ({ valuation: { ...(listing.id === sampleListings[0].id ? valuations[2] : valuations[0]), estimatedRentCad: listing.monthlyRentCad / (listing.id === sampleListings[0].id ? 1.15 : .85), differenceCad: listing.monthlyRentCad / (listing.id === sampleListings[0].id ? 1.15 : .85) - listing.monthlyRentCad }, safety: { ...safety, areaId: listing.neighbourhoodId!, relativeRate: listing.id === sampleListings[1].id ? 2 : .5 }, travel: (await router([listing], travelIntent.travelTargets, 'walk', 100, new AbortController().signal)).map(row => ({ ...row, distanceM: listing.id === sampleListings[2].id ? 5000 : 100 })) }),
   }, true);
   assert.equal(gated.status, 'completed'); if (gated.status !== 'completed') return;
   assert.equal(gated.eligibleCount, 5); assert.equal(gated.results.length, 5);
@@ -65,16 +65,14 @@ test('scalar hard unknowns remain noted unless hidden', async () => {
   assert.equal(visible.status, 'completed'); assert.equal(hidden.status, 'completed');
   if (visible.status === 'completed' && hidden.status === 'completed') { assert.equal(visible.results.length, 7); assert.equal(hidden.results.length, 5); assert.equal(visible.results[0].matchScore.hardFilterNotes.length, 1); }
 });
-test('exact travel uses minimum OR mode, independent AND targets, all routes before selection', async () => {
-  const targets = [...exact.travelTargets, { ...exact.travelTargets[0], id: 'work' }];
-  const calls: number[] = [];
-  const response = await execute({ ...exact, travelTargets: targets }, { listings: sampleListings, enrich, routeTimes: async (origins, requested, mode, budget, signal) => {
-    calls.push(origins.length);
-    return (await router(origins, requested, mode, budget, signal)).map(row => ({ ...row, minutes: row.targetId === 'work' && row.listingId === sampleListings[0].id ? 40 : row.targetId === 'campus' && row.listingId === sampleListings[7].id && row.mode === 'walk' ? 1 : row.minutes }));
-  } });
-  assert.deepEqual(calls, [8, 8]); assert.equal(response.status, 'completed'); if (response.status !== 'completed') return;
-  assert.equal(response.eligibleCount, 7); assert.equal(response.results.length, 1); assert.equal(response.results[0].listing.id, sampleListings[7].id);
-  assert.equal(response.results[0].travel.length, 4); assert.equal(response.results[0].matchScore.parts.length, 5);
+test('travel percentile uses estimated OR modes and independent AND targets over the full pool', async () => {
+  const targets = [...exact.travelTargets, { ...exact.travelTargets[0], id: 'work', mode: 'walk' as const, alternativeModes: undefined, resolved: { lng: -79.4, lat: 43.661, source: 'known_place' as const } }];
+  const listings = sampleListings.map((listing, index) => ({ ...listing, location: { lng: -79.4, lat: index === 7 ? 43.67 : 43.66 + index * 0.0005 } }));
+  let enriched = 0;
+  const response = await execute({ ...exact, travelTargets: targets }, { listings, enrich: async (...args) => { enriched++; return enrich(...args); } });
+  assert.equal(enriched, 8); assert.equal(response.status, 'completed'); if (response.status !== 'completed') return;
+  assert.equal(response.eligibleCount, 7); assert.equal(response.results.length, 1); assert.equal(response.results[0].listing.id, sampleListings[0].id);
+  assert.equal(response.results[0].travel.length, 3); assert.equal(response.results[0].matchScore.parts.length, 5);
 });
 test('travel full pool exceeds500 and100; no incomplete partial exact selection', async () => {
   const pool: Listing[] = Array.from({ length: 520 }, (_, i) => ({ ...sampleListings[1], id: `00000000-0000-4000-8000-${String(i + 1).padStart(12, '0')}` }));
@@ -118,12 +116,11 @@ test('exact travel without a router ranks the whole pool by distance and retains
   assert.equal(empty.status, 'completed'); if (empty.status === 'completed') { assert.equal(empty.eligibleCount, 0); assert.deepEqual(empty.results, []); }
 });
 
-test('scalar hard-place hide confirms through full-pool routing before percentile selection', async () => {
-  let routed = 0;
-  const result = await execute({ ...travelIntent, numericExtreme: selector }, { listings: sampleListings, enrich, routeTimes: async (...args) => { routed = args[0].length; return router(...args); } }, true);
+test('scalar hard-place hide uses full-pool distance estimates before percentile selection', async () => {
+  const listings = sampleListings.map(listing => ({ ...listing, location: { lng: -79.4, lat: 43.66 } }));
+  const result = await execute({ ...travelIntent, numericExtreme: selector }, { listings, enrich }, true);
   assert.equal(result.status, 'completed');
   if (result.status === 'completed') { assert.equal(result.results.length, 8); assert.equal(result.eligibleCount, 8); }
-  assert.equal(routed, 8);
   // A router that never answers leaves the straight-line distances, and 4 of the 8 fixture listings
   // are inside the 10-minute budget, so the search still answers rather than returning nothing.
   const failed = await execute({ ...travelIntent, numericExtreme: selector }, { listings: sampleListings, enrich, routingBudgetMs: 5, routeTimes: () => new Promise<never>(() => {}) }, true);

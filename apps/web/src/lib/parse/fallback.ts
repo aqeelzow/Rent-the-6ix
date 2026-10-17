@@ -94,8 +94,8 @@ export function fallbackParse(rawPrompt: string, now = new Date(), catalogue: Ci
   const globalTime = placeContext.match(/(?:within|under|no (?:longer|more) than|at most)?\s*(\d+)\s*(?:minutes?|mins?)\b/i);
   const addTarget = (query: string, phrase: string, category?: TravelTarget['category'], localText = phrase) => {
     const existing = intent.travelTargets.find(t => t.query?.toLowerCase() === query.toLowerCase() || category && t.category === category);
-    const selectedModes = modes(localText); const targetModes = selectedModes.length ? selectedModes : category ? ['walk' as const] : globalModes.length ? globalModes : ['transit' as const];
     const time = localText.match(/(\d+)\s*(?:minutes?|mins?)/i) ?? (!category && placeCount <= 1 ? globalTime : null);
+    const selectedModes = modes(localText); const targetModes = selectedModes.length ? selectedModes : category ? ['walk' as const] : globalModes.length ? globalModes : time ? ['walk' as const] : ['transit' as const];
     if (existing) { if (time) { existing.mode = targetModes[0]; existing.alternativeModes = targetModes.length > 1 ? targetModes.slice(1) : undefined; existing.maxMinutes = Number(time[1]); existing.hard = hard(time[0]); source(`travelTargets.${existing.id}`, localText.trim()); } return; }
     const id = `target-${intent.travelTargets.length + 1}`;
     intent.travelTargets.push({ id, kind: category ? 'amenity' : 'place', label: query, ...(category ? { category, ...(category === 'school' ? { schoolLevel: 'any' as const } : {}) } : { query }), mode: targetModes[0], ...(targetModes.length > 1 ? { alternativeModes: targetModes.slice(1) } : {}), ...(time ? { maxMinutes: Number(time[1]) } : {}), hard: time ? hard(time[0]) : false }); source(`travelTargets.${id}`, phrase);
@@ -110,7 +110,7 @@ export function fallbackParse(rawPrompt: string, now = new Date(), catalogue: Ci
     for (const m of rawPrompt.matchAll(re)) { if (category === 'rapid_transit' && /by\s*$/i.test(rawPrompt.slice(0, m.index))) continue; const before = rawPrompt.slice(0, m.index); const clause = before.slice(Math.max(before.lastIndexOf(','), before.lastIndexOf(';'), before.lastIndexOf(' and ')) + 1) + m[0]; addTarget(m[0], m[0], category, clause); }
   }
   // Street abbreviations keep their dots; sentence ends and separately timed destinations stop capture.
-  for (const m of rawPrompt.matchAll(/(\d+\s*(?:minutes?|mins?)\s+(?:by\s+)?(?:transit|drive|walk|bike|car|walking|biking)\s+to\s+)((?:(?!\s+and\s+\d+\s*(?:minutes?|mins?)\b)(?:\b(?:st|ave|rd|blvd|dr|cres|ct|pl|hwy)\.(?=\s+\w)|[^,;.!?]))+)/gi)) {
+  for (const m of rawPrompt.matchAll(/(\d+\s*(?:minutes?|mins?)\s+(?:(?:by\s+)?(?:transit|drive|walk|bike|car|walking|biking)\s+)?(?:to|of|from)\s+)((?:(?!\s+and\s+\d+\s*(?:minutes?|mins?)\b)(?:\b(?:st|ave|rd|blvd|dr|cres|ct|pl|hwy)\.(?=\s+\w)|[^,;.!?]))+)/gi)) {
     const amenity = /^(?:(?:a|the|nearest)\s+)?(supermarkets?|grocer(?:y|ies)|public schools?|schools?|parks?|subway|librar(?:y|ies)|pharmac(?:y|ies)|clinics?)\b/i.exec(m[2].trim());
     const category: TravelTarget['category'] | undefined = amenity ? /supermarket|grocer/i.test(amenity[1]) ? 'grocery' : /school/i.test(amenity[1]) ? 'school' : /park/i.test(amenity[1]) ? 'park' : /subway/i.test(amenity[1]) ? 'rapid_transit' : /librar/i.test(amenity[1]) ? 'library' : /pharmac/i.test(amenity[1]) ? 'pharmacy' : 'clinic' : undefined;
     if (category || !intent.travelTargets.some(t => t.query && m[2].toLowerCase().includes(t.query.toLowerCase()))) addTarget(m[2].trim(), m[0], category, m[0]);
