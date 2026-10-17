@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { emptyRawListing, type RawListing } from "../sources/types.ts";
-import { normalize, postalCode, unitTypeFrom } from "./normalize.ts";
+import { isBasementUnit, normalize, postalCode, unitTypeFrom } from "./normalize.ts";
 
 const NOW = new Date("2026-10-16T12:00:00Z");
 
@@ -282,5 +282,40 @@ describe("normalize: text, address and location", () => {
       "2026-10-16T02:03:53.000Z",
     );
     expect(norm({ postedAt: "639278012357830000" }).postedAt).toBeNull();
+  });
+});
+
+describe("isBasementUnit", () => {
+  it("reads the unit prefix sources put before the address", () => {
+    for (const title of [
+      "BSMT - 24 FINTONA AVENUE, Toronto (Guildwood), Ontario M1E1V3",
+      "LOWER - 40 RIPPLETON ROAD, Toronto (Banbury-Don Mills), Ontario",
+      "LOWER LEVEL - 39 CHARTWELL ROAD, Toronto",
+      "LOWER #2 - 12 ARKLEY CRESCENT, Toronto",
+      "90 BILLINGTON (LOWER) CRESCENT, Toronto",
+      "1 bed at BSMT - 31 CHAMBERLAIN AVENUE",
+      "1 bedroom fully furnished basement apartment for rent",
+      "BSMT A - 10 GREEN MANOR CRESCENT, Vaughan",
+      "41 Dalton Rd - BSMT",
+      "Bsmt apartment in a house near Dufferin",
+    ]) {
+      expect(isBasementUnit(title), title).toBe(true);
+    }
+    for (const title of [
+      "MAIN + BASEMENT - 1333 DUPONT STREET, Toronto",
+      "Detached house with finished basement",
+      "UPPER - 113 Example Ave, Toronto",
+      "Lower Penthouse with lake views",
+      "FIRST FLOOR & BASEMENT - 24 KEWBEACH AVENUE, Toronto",
+      "2+2 Bedroom house large yard basement 2 kitchens 2 bath move now",
+    ]) {
+      expect(isBasementUnit(title), title).toBe(false);
+    }
+  });
+
+  it("wins over the source's house type", () => {
+    const l = norm({ title: "BSMT - 24 FINTONA AVENUE, Toronto", unitType: "House" });
+    expect(l.unitType).toBe("basement");
+    expect(l.fieldEvidence.unitType).toBe("parsed_from_text");
   });
 });

@@ -30,6 +30,7 @@ interface ListingFields {
   bedrooms: number | null;
   bathrooms: number | null;
   sqft: number | null;
+  year_built: number | null;
   utilities_included: Utilities;
   parking: Tri;
   furnished: Tri;
@@ -51,6 +52,7 @@ function subjectOf(row: ListingFields): ValuationSubject {
     bedrooms: row.bedrooms,
     bathrooms: row.bathrooms,
     sqft: row.sqft,
+    yearBuilt: row.year_built,
     utilitiesIncluded: row.utilities_included,
     parking: row.parking,
     furnished: row.furnished,
@@ -71,7 +73,7 @@ export function candidateOf(row: CandidateRow): ComparableCandidate {
 // Unknown amenities are stored as NULL by older rows; the engine treats both as 'unknown'.
 const FIELDS = (t: string) => `
   ${t}.id, ${t}.monthly_rent_cad, ${t}.unit_type, ${t}.bedrooms, ${t}.bathrooms::float8 AS bathrooms,
-  ${t}.sqft, coalesce(${t}.utilities_included, 'unknown') AS utilities_included,
+  ${t}.sqft, ${t}.year_built, coalesce(${t}.utilities_included, 'unknown') AS utilities_included,
   coalesce(${t}.parking, 'unknown') AS parking, coalesce(${t}.furnished, 'unknown') AS furnished,
   coalesce(${t}.laundry_in_suite, 'unknown') AS laundry_in_suite`;
 

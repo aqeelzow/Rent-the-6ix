@@ -100,9 +100,13 @@ export function normalize(raw: RawListing, now = new Date()): NormalizedListing 
 
   const beds = pick("bedrooms", validBeds(raw.bedrooms), () => bedroomsFromText(text));
   // A title that says "room for rent" wins: Kijiji files rooms under the house's own type.
+  // Likewise "BSMT - 24 Fintona Ave": Realtor.ca files a basement unit as the whole house.
+  const structuredType = unitTypeFrom(raw.unitType);
   const unitType = isRoomListing(raw.title)
     ? ((evidence.unitType = "parsed_from_text"), "room" as const)
-    : pick("unitType", unitTypeFrom(raw.unitType), () => unitTypeFrom(raw.title.toLowerCase()));
+    : structuredType !== "condo" && isBasementUnit(raw.title, raw.address)
+      ? ((evidence.unitType = "parsed_from_text"), "basement" as const)
+      : pick("unitType", structuredType, () => unitTypeFrom(raw.title.toLowerCase()));
   if (unitType !== "room" && !raw.rentIsPerRoom && rent < MIN_WHOLE_UNIT_RENT) return null;
   const yearBuilt = pick("yearBuilt", validYear(raw.yearBuilt, now), () =>
     yearBuiltFromText(text, listingYear, now),
@@ -207,6 +211,31 @@ export function isRoomListing(title: string): boolean {
 }
 
 /** Source wording or a title → UnitType. Order matters: "basement apartment" is a basement. */
+/**
+ * The unit is a basement: "BSMT - 24 Fintona Ave", "LOWER - 40 Rippleton Rd", "90 Billington
+ * (LOWER) Cres", "basement apartment for rent". Not "Main + Basement" (the whole house) or a house
+ * "with finished basement". Title and address only: descriptions mention basements of houses.
+ */
+export function isBasementUnit(title: string, address: string | null = null): boolean {
+  const text = `${title}\n${address ?? ""}`;
+  if (
+    /\b(?:main|upper|ground|first|second)(?: floor| level)?\s*(?:\+|&|and)\s*(?:basement|bsmt|bsmnt|lower)\b|\b(?:whole|entire|detached) house\b|\bwith (?:a )?(?:finished |separate )?basement\b|\b(?:no|not a?) basement\b|\babove[- ]ground\b/i.test(
+      text,
+    )
+  ) {
+    return false;
+  }
+  // The unit prefix before an address: "BSMT - 24 Fintona", "LOWER #2 - 12 Arkley", "(LOWER)".
+  const prefixed =
+    /\b(?:basement|bsmt|bsmnt|lower(?: level| unit| floor)?)\s*(?:#?\s*\w{1,3}\s*)?(?:-|\))|\((?:lower|bsmt|basement)\)|- (?:bsmt|basement)\b/i;
+  if (prefixed.test(text)) return true;
+  if (/\b(?:basement|bsmt|bsmnt)\s+(?:apartment|apt|unit|suite|studio|flat)\b/i.test(title))
+    return true;
+  // Free text: a house title mentioning its basement ("house, large yard, basement") is the house.
+  if (/\bhouse\b/i.test(title)) return false;
+  return /\b(?:basement|bsmt|bsmnt)\b/i.test(text);
+}
+
 export function unitTypeFrom(value: string | null): UnitType | null {
   if (!value) return null;
   const v = value.toLowerCase();

@@ -36,6 +36,18 @@ export const VALUATION = {
   recencyFloor: 0.5,
   /** Similarity weight = 1 − perBathroom × |Δbathrooms| − sqftPenalty (if sizes differ > sqftTolerance). */
   similarity: { perBathroom: 0.15, sqftPenalty: 0.1, sqftTolerance: 0.25 },
+  /**
+   * Building type and age, as weight multipliers; unknown on either side → 1. A basement vs an
+   * above-ground unit; year built within sameEraYears → sameEraBoost, apart by more than
+   * differentEraYears → differentEra.
+   */
+  buildingSimilarity: {
+    basementMismatch: 0.3,
+    sameEraYears: 10,
+    sameEraBoost: 1.5,
+    differentEraYears: 30,
+    differentEra: 0.5,
+  },
   /** One building's floor plans count as at most this many comparables (weight and counts). */
   maxPerBuilding: 2,
   /** Bathrooms may differ by at most this much. */
