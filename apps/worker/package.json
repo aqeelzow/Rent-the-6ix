@@ -1,0 +1,27 @@
+{
+  "name": "worker",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "lint": "eslint .",
+    "test": "vitest run --passWithNoTests",
+    "start": "node --env-file-if-exists=../../.env.local src/index.ts",
+    "ingest:once": "node --env-file-if-exists=../../.env.local src/ingest.ts",
+    "browser:install": "cloakbrowser install"
+  },
+  "dependencies": {
+    "@rentthe6ix/shared": "workspace:*",
+    "cloakbrowser": "^0.6.3",
+    "playwright-core": "^1.64.1"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.5",
+    "@types/node": "^24.19.2",
+    "eslint": "^9.39.5",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.71.2",
+    "vitest": "^5.0.5"
+  }
+}

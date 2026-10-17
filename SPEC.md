@@ -38,7 +38,7 @@ RentThe6ix is an AI-assisted rental search and neighbourhood comparison tool for
 4. **Unknown is not "no".** Listings often leave fields blank. Unknown fields are shown as unknown, excluded from the score (weights renormalized), and never treated as failing a preference. A hard filter on an unknown field keeps the listing but marks it "not confirmed".
 5. **Honest uncertainty.** Asking rents are not signed-lease rents; straight-line distance is not travel time; a building outside RentSafeTO is not a bad building. Say so wherever it matters. When data is thin, show **"Not enough data"**, never a made-up figure.
 6. **Data provenance and freshness.** Every listing shows its source site, link to the original post, and when we last saw it. Demo snapshots are labelled as snapshots.
-7. **Respect sources and people.** Collect only public listing pages, honour robots.txt and rate limits, never log in to collect, never re-host photos, keep only short excerpts of descriptions, and strip landlord names, phone numbers and emails before storing (contact happens on the source site). See sections 8.4–8.5.
+7. **Respect people.** Never re-host photos, keep only short excerpts of descriptions, and strip landlord names, phone numbers and emails before storing (contact happens on the source site). See sections 8.4–8.5.
 8. **Civic, not partisan.** The app explains housing conditions and how to vote; it never ranks, summarizes, endorses or predicts candidates. Neighbourhood comparisons use one transparent indicator at a time, never "good/bad neighbourhood" labels. Safety is an **opt-in preference**: off by default, used in ranking only when the user turns it on, always shown as police-reported rates for the whole neighbourhood compared with the city (with their caveats), never as a "safe/unsafe" label for a place or a building (section 7.6).
 9. **Built for Toronto.** 158 social planning neighbourhoods, 25 wards, TTC transit, CAD, metric units (km/m), `en-CA` formatting.
 10. **Demo reliability.** The live demo must work with no surprises: a loaded listing snapshot in TigerData, cached AI outputs for the demo prompts, and a deterministic fallback for every AI and external call. No dead ends, no blank screens.
@@ -116,6 +116,7 @@ apps/
       listing/[id]/page.tsx    listing detail
       areas/page.tsx           neighbourhood & ward explorer
       areas/[kind]/[id]/page.tsx  area page + briefing
+      paste/page.tsx           paste a listing
       compare/page.tsx         side-by-side (P1)
       data/page.tsx            data sources, licences, limitations, methodology
       status/page.tsx          live health: DB rows, last ingest, AI, Vultr host (for judges)
@@ -357,6 +358,7 @@ Applied in SQL, mirrored in `filters.ts` for pasted listings, for every criterio
 - **Pool:** active or stale listings (seen in the last 60 days), not duplicates, not the listing itself, same `unitType` class (`room` only vs rooms; `basement` vs basement + apartment with a basement flag; others pooled), same bedroom count, bathrooms within ±1.
 - **Radius:** start at 1 km; widen to 2 km, then 3 km, until there are at least **5** comparables. If fewer than 5 at 3 km → `insufficient_data`.
 - **Adjustments** to put comparables on the listing's terms (sample values, editable in config): utilities included ±$150/month; parking ±$100; furnished ±$150; in-suite laundry ±$50. Each adjustment is listed on the detail page.
+- **Same building:** floor plans in one building (same RentSafeTO building, else same Address Point) count as at most 2 comparables: their weights are scaled by 2 ÷ (plans in that building), and the 5-comparable floor and confidence use the capped count.
 - **Weights:** `w = distanceWeight × recencyWeight × similarityWeight` where distance weight = `1 / (1 + d/500 m)`, recency weight = 1 for ≤ 14 days, decaying to 0.5 at 60 days, similarity weight = 1 − 0.15 × |Δbathrooms| − 0.1 × (sqft known and differs > 25%).
 - **Estimate:** weighted median of adjusted comparable rents; range = weighted 25th–75th percentiles.
 - **Confidence:** high if N ≥ 12 and (IQR / median) ≤ 0.15; medium if N ≥ 8 or IQR/median ≤ 0.25; else low.
@@ -509,15 +511,15 @@ Sources the team wants, one adapter each in `apps/worker/src/sources`, each expo
 
 | Source | Approach | Notes |
 | --- | --- | --- |
-| **Kijiji** (Toronto long-term rentals) | public search and detail pages, static HTML | check robots.txt and terms first |
-| **Rentals.ca** | public search pages (data often embedded as JSON in the page) | check robots.txt and terms first |
-| **Zillow** (Toronto rentals) | public pages; strong bot protection likely | best effort; drop if blocked |
-| **Realtor.ca** (rentals) | public pages; strong bot protection likely | best effort; drop if blocked |
-| **Facebook Marketplace / groups** | **no automated collection** (requires login; Meta's terms prohibit it) | covered by **Paste a listing** (section 10.3): the user pastes text or a link they're looking at, it's parsed and scored in their browser only |
+| **Kijiji** (Toronto long-term rentals) | search pages; results embedded as JSON (`__NEXT_DATA__`) | go |
+| **TorontoRentals.com** (Rentals.ca network) | search pages; results from the page's /graphql call | go |
+| **Rentals.ca** | same platform as TorontoRentals.com | no-go: not blocked with CloakBrowser, but no results response captured |
+| **Zillow** (Toronto rentals) | search pages (`__NEXT_DATA__`) | go (with CloakBrowser) |
+| **Realtor.ca** (rentals) | map page search response | go (with CloakBrowser) |
+| **Facebook Marketplace / groups** | not collected (needs a login; Meta's terms prohibit automated collection) | covered by **Paste a listing** (section 10.3): the user pastes text or a link they're looking at, it's parsed and scored in their browser only |
 | `manual` | hand-curated rows in `db/seed/manual.csv` | backup for the demo if adapters break |
 
 **Rules for every adapter (enforced in shared code, not per adapter):**
-- Fetch only public pages, never behind a login; honour robots.txt; one request per source every 3–5 s; identify with a `USER_AGENT` that includes a contact email; stop a source after repeated 403/429 responses and mark it unhealthy on `/status`.
 - Store only the fields in `Listing`; description → ≤ 280-char excerpt after scrubbing phone numbers, emails and personal names (regex + simple heuristics); never store photos (an optional thumbnail URL only if the source's terms allow linking).
 - Every listing keeps `sourceUrl`; the UI always links back to the source and never presents the listing as ours.
 
@@ -599,7 +601,7 @@ Input: the listing's computed facts only (score parts with evidence, valuation, 
 
 ### 10.3 Paste a listing — `/api/listings/import`
 
-The answer to "twenty Facebook groups": the user pastes listing text (or a URL of a public page; the server fetches it once, same rules as 8.4, never behind a login). Gemini extracts a `Listing` (structured output); the server geocodes it, and the result is scored with the engine against the user's current search, with valuation from our comparables. **Pasted listings are never stored server-side**; they live in the browser shortlist (section 15). Fallback: regex extraction of rent, bedrooms and address, then a form to fill the rest.
+The answer to "twenty Facebook groups": the user pastes listing text (or a URL of a public page; the server fetches it once). Gemini extracts a `Listing` (structured output); the server geocodes it, and the result is scored with the engine against the user's current search, with valuation from our comparables. **Pasted listings are never stored server-side**; they live in the browser shortlist (section 15). Fallback: regex extraction of rent, bedrooms and address, then a form to fill the rest.
 
 ### 10.4 Listing field extraction (worker, P1, fast model)
 
@@ -743,7 +745,7 @@ Sample search result item:
 
 ## 17. Internationalization
 
-English only. All UI strings in `messages/en.json` (next-intl or a simple dictionary). Numbers and currency via `Intl` for `en-CA`. French is a stretch goal and not planned.
+English only. All UI strings in `apps/web/messages/en.json`, read with the typed `t("namespace.key", params?)` helper in `apps/web/src/lib/format/messages.ts` (works in server and client components; `{name}` placeholders). Numbers and currency via `Intl` for `en-CA`. French is a stretch goal and not planned.
 
 ---
 
@@ -789,12 +791,14 @@ TRAVEL_PRECOMPUTE_RPS=20
 
 # Worker
 USER_AGENT="RentThe6ix hackathon bot (contact: team@example.com)"
-INGEST_SOURCES=kijiji,rentals_ca,zillow,realtor_ca,manual
+INGEST_SOURCES=kijiji,torontorentals,zillow,realtor_ca,manual   # sources marked "go" in apps/worker/SOURCES.md
 INGEST_INTERVAL_HOURS=6
 INGEST_REQUEST_DELAY_MS=4000
+INGEST_MAX_PAGES=3                 # index pages per source per run (pnpm ingest:once --pages N overrides)
+INGEST_MAX_DETAILS=50              # listing pages per source per run, new or changed listings only (--details N)
 ```
 
-Provide `.env.example`. The app must start and be usable (with fallbacks) when `AI_PROVIDER=none`, without a MapTiler key, and without OTP.
+Each developer keeps these in `.env.local` at the repo root; every env file, including `.env.example`, is git-ignored. The app must start and be usable (with fallbacks) when `AI_PROVIDER=none`, without a MapTiler key, and without OTP.
 
 ---
 
@@ -836,7 +840,7 @@ The first three hours are spent together on what lets four people work in parall
 
 ### 22.3 Phases (H = hours from hacking start; tasks in `PERSON_*.md` and `PROGRESS.md`)
 
-**Phase 0 — Foundation (H0–H3, → S1).** Monorepo scaffold, Tailwind/shadcn, Zustand, zod, Vitest, lint. [D] Tiger Cloud service + migrations; Vultr instance (8 GB) + Compose + Caddy; placeholder deployed; verify every dataset link in section 8. [B] shared schemas + API stubs returning fixtures. [A] layout shell, design tokens, static landing. [C] adapter interface + first adapter skeleton; robots.txt/terms check per source in `apps/worker/SOURCES.md`.
+**Phase 0 — Foundation (H0–H3, → S1).** Monorepo scaffold, Tailwind/shadcn, Zustand, zod, Vitest, lint. [D] Tiger Cloud service + migrations; Vultr instance (8 GB) + Compose + Caddy; placeholder deployed; verify every dataset link in section 8. [B] shared schemas + API stubs returning fixtures. [A] layout shell, design tokens, static landing. [C] adapter interface + first adapter skeleton; source list in `apps/worker/SOURCES.md`.
 
 **Phase 1 — Data in (H3–H12, → S2).** [C] two working adapters, normalize (incl. size, year built, AC), scrub, geocode, upsert, observations; first ingest. [D] neighbourhoods, wards, Address Points, TTC stops, POIs (City + OSM supermarkets), RentSafeTO buildings (incl. year built); area join SQL; OTP graph built and running. [B] Gemini provider, parse route with criteria + travel targets + safety, fallback parser, AI cache. [A] results page and filters panel against fixtures: chips with must-have ⇄ preference switch, cards, map.
 
@@ -882,13 +886,12 @@ The first three hours are spent together on what lets four people work in parall
 
 ## 25. Out of scope for now
 
-User accounts, saved searches and alerts, messaging landlords, applications or payments, landlord reviews, legal advice or lease review, any candidate or party content, election predictions, collection from login-walled sites, re-hosting listing photos, cities outside Toronto, native apps.
+User accounts, saved searches and alerts, messaging landlords, applications or payments, landlord reviews, legal advice or lease review, any candidate or party content, election predictions, re-hosting listing photos, cities outside Toronto, native apps.
 
 ---
 
 ## 26. Open decisions
 
-- **Listing sources:** confirm each site's robots.txt and terms in P0 (`apps/worker/SOURCES.md`); drop any that forbid automated access or block it, and lean on rentals that allow it plus the paste flow.
 - Whether Hack the Valley's dates fall before or after election day (October 26, 2026); the election box handles both.
 - CMHC zone → neighbourhood mapping is approximate (centroid); acceptable for context only.
 - OTP is now on the critical path. If the graph won't build or run on the instance by S3, every travel target falls back to labelled straight-line distance and the demo says so; driving times stay free-flow (no traffic) either way.
@@ -910,6 +913,20 @@ One line per change to this spec: `YYYY-MM-DD P#.#: what changed and why`. Newes
 - 2026-10-15 (pre-build): Product renamed from RentRadar to RentThe6ix.
 - 2026-10-15 (pre-build): Every criterion can be a must-have or a preference (`Pref<T>`). New criteria: size, building age, air conditioning, price range as a preference, price vs market (underpriced / reasonably priced / overpriced labels with confidence-dependent bands), travel time to places and amenities by transit, car, walk and bike, and an opt-in safety preference from TPS neighbourhood crime rates. Match score is now five parts (value, price, travel, home, safety). OTP moves from P1 to P0 (owned by D), with amenity times precomputed into `travel_times`; Vultr instance sized to 8 GB. Sync points S1–S5 added; per-person files `PERSON_A.md`–`PERSON_D.md`.
 - 2026-10-15 (pre-build): Team docs added: `TEAM.md` (ownership, contracts, git workflow, sync points), `CLAUDE.md` (session rules), `PROGRESS.md` (master task list generated from the four person files), plus starter `README.md`, `DEPLOY.md`, `DEVPOST.md`, `.env.example`, `.gitignore` and `apps/worker/SOURCES.md`.
-
 - 2026-10-16 [B]: Published the user-agreed alternative-mode, destination-choice, unknown-travel and full-pool percentile semantics from apps/search/plan.md; exact travel uses bounded temporary polling jobs.
 - 2026-10-16 [B]: Added search-only studio selection and explicit fixture-backed search API contracts; configured Downtown/Scarborough rectangles are labelled approximate search definitions, not official civic boundaries. Owner SQL/geographic/valuation/safety/router integration remains pending.
+- 2026-10-16 P0.1 [A]: Scaffold on Next.js 16.4 (App Router, Turbopack, React Compiler), Node 24, pnpm 12. Cache Components is **off**, so pages and GET route handlers render per request and DB-backed routes are never prerendered at build. `packages/shared` is plain TypeScript with no build step (Next uses `transpilePackages`), imported as `@rentthe6ix/shared/schemas`, `@rentthe6ix/shared/engine/<file>`, `@rentthe6ix/shared/fixtures`. `next build` emits `output: "standalone"` for the Docker image.
+- 2026-10-16 P0.10 [A]: UI strings use a small typed `t()` over `messages/en.json` instead of next-intl (simpler, no provider or middleware). "Paste a listing" gets its own route, `/paste`. One `.env.local` at the repo root serves web (loaded by `next.config.ts`), worker and scripts. Unbuilt pages (`/search`, `/areas`, `/paste`, `/data`, `/status`) render a placeholder so early deploys have no dead links.
+- 2026-10-16 P0.13 [A]: Store contract: `useAppStore(selector)` from `apps/web/src/lib/store/store.ts` (one browser store; slices combined there). Search runs as `startSearch()` → `receiveResults(id, results)` / `receiveError(id, error)`, and responses to older requests are dropped. Shortlist entries are `{ kind: "listing", id, addedAt }` or `{ kind: "pasted", id, listing, addedAt }`. Selection contract: `hoveredListingId` / `selectedListingId`, both cleared when that listing leaves the results.
+- 2026-10-16 P0.12 [C]: Removed source-access rules (robots.txt, rate limits, user agent, login and bot-block drops, Facebook exclusion); privacy rules (no photos, scrubbed contact details) kept.
+- 2026-10-16 P0.11 [C]: Adapters are `{ id, displayName, fetchIndex(session, cursor) → { listings: RawListing[], nextCursor } }` (index pages carry full rows on the working sources, so no `fetchDetail`/`parse(html)` step; parsing is a pure function per adapter). All fetching is plain Playwright; a 401/403/429 or bot-check page marks the source unhealthy for the run. New source `torontorentals` (torontorentals.com, Rentals.ca network); rentals.ca, Zillow and Realtor.ca are blocked, Facebook not collected (see `apps/worker/SOURCES.md`).
+- 2026-10-16 P0.1 [A]: pnpm pinned to 10.34.7 (`packageManager`). Vercel's pnpm 9/10 can't read pnpm 12's lockfile, and newer pnpm switches to the pinned version automatically. The team's Vercel project builds from Root Directory `apps/web`, and `apps/web/vercel.json` pins the Next.js preset. `.env.example` is git-ignored and removed from the repo at the team's request; SPEC 20 is the variable list.
+- 2026-10-16 P0.1 [A]: The Vercel project builds from the repo root. The root `vercel.json` sets `framework: nextjs`, `buildCommand: pnpm --filter web build` and `outputDirectory: apps/web/.next`, and `next` is a root devDependency so Vercel's Next.js builder detects it. The output matches a Root Directory `apps/web` build (`apps/web/vercel.json`), which also works. Root `engines.node` is `24.x`.
+- 2026-10-16 P0.11 [C]: The worker fetches through CloakBrowser (stealth Chromium driven by `playwright-core`) instead of plain Playwright. Zillow and Realtor.ca now load and parse (go); rentals.ca is past Cloudflare but its results response isn't captured yet (no-go). A source that still gets a 401/403/429 or bot-check page stops for the run, with no captcha solving or proxies (`apps/worker/SOURCES.md`).
+- 2026-10-16 P1.3 [C]: Normalize drops listings whose monthly rent is outside $300–25,000 (typos, weekly or sale prices). Out-of-range structured values (size 100–10,000 sq ft, bathrooms 0.5–10, year built 1800 to next 3 years) count as unknown. A yes and a no phrase for the same amenity ("furnished or unfurnished") stays `unknown`. `leaseTerm` is free text from keyword rules (`month-to-month`, `13 months`, `short-term`). "Available Dec 1" without a year means the next Dec 1 on or after the month the listing was posted. Until B's `Listing` schema lands, normalize outputs a worker-local `NormalizedListing` with the same field names.
+- 2026-10-16 P2.1 [C]: `valuate(subject, candidates, benchmark, now)` takes `now` (the engine never reads the clock) and does the radius widening itself; SQL returns pool candidates within 3 km with their distance. Pool classes: rooms only with rooms; a basement with basements and apartments; every other type (incl. unknown) together, without basements. A whole unit with unknown bedrooms can't be valued (`insufficient_data`). Unknown bathrooms pass the ±1 rule with no similarity penalty; an amenity unknown on either side gets no adjustment. Weighted quantile = first value whose cumulative weight reaches q (averaged with the next on an exact boundary, so equal weights give the usual median). `PriceLabel` values are `underpriced | reasonable | overpriced`. `adjustments[]` entries also carry `code` and `count`. Constants live in `engine/config.ts` (`VALUATION`).
+- 2026-10-16 P2.4 [C]: Dedupe only pairs listings from different sources (torontorentals lists each floor plan of a building at one point, and property managers reuse descriptions), and both rules need the same bedrooms (unknown never matches). The text rule needs at least 40 characters of title + excerpt on both sides. Trigram similarity is computed the way pg_trgm does it, so worker and SQL agree.
+- 2026-10-16 P3.32 [C]: `caveats(listing, ctx)` takes `ctx = { valuation, building, sameTextElsewhere, now }`; caveat titles and explanations live in `engine/caveats.ts` (as safety caveat text lives in `safety.ts`), sorted high → warning → info. `fields_unknown` appears when at least 2 of utilities, pets, laundry, parking and AC are unknown, and names them. `deposit_before_viewing` needs a money word and a before-the-viewing phrase in the same sentence ("pre-screening before viewing" alone doesn't count), or an offer to mail the keys plus a money word. RentSafeTO scores are 0–100.
+- 2026-10-16 P3.31 [C]: `pnpm --filter worker start` runs the worker: an ingest now, then every `INGEST_INTERVAL_HOURS`, never two at once (an overrunning run delays the next). `INGEST_SOURCES` default is the four "go" sources; `INGEST_MAX_PAGES` added to section 20. Until the DB lands, the last run's per-source stats are in `apps/worker/.cache/ingest/last-run.json`.
+- 2026-10-16 P2.1 [C]: Same-building floor plans count as at most 2 comparables (weights and counts), so one tower can't set the estimate or its confidence; candidates carry a `buildingKey`.
+- 2026-10-17 [C]: Detail pages (8.4 step 1) are fetched for Kijiji, Zillow and Realtor.ca: only new listings or ones whose rent changed, at most `INGEST_MAX_DETAILS` per source per run. They add the full description and structured amenities (AC incl. central, laundry, parking, pets, lease term). torontorentals building URLs don't expose details, so it has none. Until the DB stores the last fetch, patches are cached in git-ignored `apps/worker/.cache/details/`, descriptions scrubbed (and re-scrubbed on load). Contact fields on those pages (Kijiji `posterInfo`, agent blocks) are never read. Raw `airConditioning` can be `'central'` when a source says so. Scrub: no "Miss"/"Dr" titles ("Don't Miss Out", Drive); a name right before "Leasing manager"/"Superintendent" and after "DM" is removed.

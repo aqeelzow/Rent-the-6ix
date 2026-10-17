@@ -6,15 +6,27 @@ Task ids match `PROGRESS.md`; task details are in `SPEC.md`.
 
 ## Current state
 
-- **Current task:** none in progress
-- **Status:** not started   <!-- not started | in progress | blocked | at sync point -->
-- **Next action:** P0.1 scaffold, then P0.13 store + selection contract, merged to `main` as early as possible so B and the others can build on it.
-- **Blockers / needs from others:** none yet. Build against B's fixtures (P0.6) until live routes land.
-- **Last updated:** 2026-10-15 (file created from SPEC)
+- **Current task:** none in progress (S1 items done)
+- **Status:** at sync point
+- **Branch:** P0.1–P0.13 merged to `main` (2026-10-16)
+- **Next action:** once B's schemas and fixtures (P0.5–P0.6) are on `main`: swap `src/lib/store/types.ts` to re-export B's types, then P1.30 (landing calls `/api/search/parse`).
+- **Blockers / needs from others:** P1.30+ need B's schemas and fixtures (P0.5–P0.6).
+- **Last updated:** 2026-10-16
 
 ## Handoff notes
 
 > Where an unfinished task stopped, gotchas, things to verify. Replace each session.
+
+**Session 2026-10-16 (P0 foundation):**
+- **Next.js 16.4 differs from older versions.** Read `apps/web/AGENTS.md` and `node_modules/next/dist/docs/` before using Next APIs. `params`/`searchParams` are Promises; use the global `PageProps<"/route">` / `LayoutProps<"/">` types. Cache Components is off (SPEC change log P0.1).
+- **pnpm is pinned to 10.34.7** (`packageManager`) because Vercel's pnpm 9/10 can't read a pnpm 12 lockfile. A global pnpm 12 hands off to 10.34.7 automatically; never commit a lockfile that starts with a `---` document (that's the pnpm 11+ format). If a global pnpm 12 is installed without `--allow-scripts=pnpm`, it stays a shell stub and the shadcn CLI fails with `spawn ENOEXEC`.
+- **Vercel** (`az-e48c/rent-the-6ix`) builds from the repo root with the "Other" preset. The root `vercel.json` forces the Next.js preset and points at `apps/web/.next`, and `next` is a root devDependency only so Vercel's Next.js builder detects it. If the Root Directory is ever set to `apps/web`, `apps/web/vercel.json` covers that case. Reproduce a Vercel build locally with `npx vercel build` after writing a `.vercel/project.json` with the project's settings (`.vercel/` is git-ignored).
+- **shadcn:** run `pnpm dlx shadcn@4.21.0 add <name>` from `apps/web` (Radix base, nova preset). `cn` comes from the `cn` package. Already added: badge, button, card, checkbox, dialog, drawer, input, label, popover, scroll-area, select, separator, sheet, skeleton, slider, switch, tabs, textarea, toggle, toggle-group, tooltip.
+- **Strings:** `t("ns.key", params?)` from `@/lib/format/messages` is typed against `messages/en.json`. A dynamic key needs `as MessageKey`.
+- **Store types are placeholders** (`src/lib/store/types.ts`). Swap them to B's schema types as soon as P0.5 lands.
+- **Footer is on every page** (root layout). The full-height list + map on `/search` may need a route group without the footer (P1.33–P1.34).
+- **Screenshots at 375 px:** Playwright with `channel: "chrome"` works. Headless Chrome's `--window-size` can't go below about 500 px, so don't use it for mobile checks.
+- **To fix at P5.3:** the shadcn Sheet/Dialog close buttons have a hard-coded sr-only "Close"; move it to `common.close`.
 
 - **Labels are part of the contract, not decoration.** Every travel figure shows its mode and method: "14 min TTC (weekday 8:30 am)", "8 min driving, no traffic", or "1.1 km straight-line" when OTP didn't return a time. Never show minutes for a straight-line fallback (SPEC 7.4).
 - **Price badge** reads "Underpriced" / "Reasonably priced" / "Overpriced" / "Not enough data", always with the number under it and "compared with asking rents for similar listings, not signed leases" on tap (SPEC 7.2).
@@ -30,6 +42,7 @@ Task ids match `PROGRESS.md`; task details are in `SPEC.md`.
 
 - **To B:** fixtures by S1 that include sizes, years built, AC, all five score parts (some `null`), price labels of each kind, travel times with both `otp` and `straight_line` methods, and one listing with safety on.
 - **To D:** the `/status` and `/data` content as data (JSON from routes); I build the pages.
+- **To D:** `DEPLOY.md` step 2 still says `cp .env.example .env`, but `.env.example` is no longer in the repo; point it at SPEC 20 instead. Vercel builds from the repo root via the root `vercel.json` (see Handoff notes).
 - **To C:** one or two real listings with full fields early (any source) so the detail page can be checked against reality, not just fixtures.
 
 ---
@@ -39,11 +52,11 @@ Task ids match `PROGRESS.md`; task details are in `SPEC.md`.
 Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked · `[-]` dropped. **Core** = needed for the demo. **Stretch** = drop first if behind.
 
 ### Before S1 (H0–H3) — Foundation · Core
-- [ ] P0.1 Monorepo scaffold: pnpm workspaces (`apps/web`, `apps/worker`, `packages/shared`), Next.js App Router, TypeScript strict — **merge first, everyone waits on it**
-- [ ] P0.2 Tailwind + shadcn/ui + Public Sans + design tokens (light; dark if time), tabular numerals utility
-- [ ] P0.3 Zustand, Vitest, ESLint, Prettier; root scripts `typecheck`, `lint`, `test`
-- [ ] P0.10 Layout shell, static landing page; check the starter `README.md` and `.env.example` still match the scaffold
-- [ ] P0.13 `searchSlice.ts` (intent, results, shortlist) + selection contract (`hoveredListingId`, `selectedListingId`) — merge early
+- [x] P0.1 Monorepo scaffold: pnpm workspaces (`apps/web`, `apps/worker`, `packages/shared`), Next.js App Router, TypeScript strict — **merge first, everyone waits on it**
+- [x] P0.2 Tailwind + shadcn/ui + Public Sans + design tokens (light; dark if time), tabular numerals utility
+- [x] P0.3 Zustand, Vitest, ESLint, Prettier; root scripts `typecheck`, `lint`, `test`
+- [x] P0.10 Layout shell, static landing page; check the starter `README.md` and `.env.example` still match the scaffold
+- [x] P0.13 `searchSlice.ts` (intent, results, shortlist) + selection contract (`hoveredListingId`, `selectedListingId`) — merge early
 
 ### S1 → S2 (H3–H12) — Search UI on fixtures · Core
 - [ ] P1.30 Landing: prompt box, 3 example chips (student, couple, family), "Explore neighbourhoods", "Paste a listing"; calls B's `/api/search/parse` (fixture until live)
@@ -94,9 +107,11 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked · `[-]` 
 
 | Feature | Key files | Notes |
 | --- | --- | --- |
-| Layout shell, tokens | `apps/web/src/app/layout.tsx`, `src/app/globals.css`, `src/components/ui/*` | shadcn components |
-| Store | `apps/web/src/lib/store/searchSlice.ts` (+ test) | intent, results, shortlist, selection |
-| Landing | `src/app/page.tsx`, `src/components/search/prompt-box.tsx` | |
+| Layout shell, tokens | `apps/web/src/app/layout.tsx`, `src/app/globals.css`, `src/components/ui/*` | shadcn (Radix base, nova preset); tokens `price-*`, `caveat-*`, `score-*`; `figures` utility for numbers; light only |
+| Store | `apps/web/src/lib/store/searchSlice.ts` (+ test), `store.ts`, `types.ts` | intent, results (stale responses dropped), shortlist, selection; `types.ts` = placeholders until B's schemas |
+| Layout shell | `src/components/layout/*` (header, mobile menu, footer, page placeholder) | nav links in `nav-links.ts` |
+| Strings | `apps/web/messages/en.json`, `src/lib/format/messages.ts` (+ test) | typed `t("ns.key", params?)` |
+| Landing | `src/app/page.tsx`, `src/components/search/prompt-box.tsx` | P0.10: static GET form to `/search?q=`; P1.30 wires parse |
 | Chips & filters | `src/components/search/filter-chips.tsx`, `filters-panel.tsx` | no Gemini call on edit |
 | Results | `src/app/search/page.tsx`, `src/components/results/*`, `src/components/map/results-map.tsx` | |
 | Listing detail | `src/app/listing/[id]/page.tsx`, `src/components/listing/*` | |

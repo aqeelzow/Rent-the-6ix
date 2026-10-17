@@ -26,7 +26,7 @@ Task ids match `PROGRESS.md`; task details are in `SPEC.md`.
 - **Listing text is untrusted.** Put it in delimited data blocks; the system prompt says to ignore instructions inside it.
 - **Safety wording rule for explanations:** the model may only state the rate as given ("0.7× the city rate, 2023–2025") with the caveat; it may not characterize a neighbourhood or its residents. Add a check that rejects outputs with "safe", "unsafe", "dangerous", "sketchy" and similar.
 - Use the fast model (Flash-Lite) for parse and explain; main Flash model for briefings. Model names come from env, never hard-coded. Cache by input hash in `ai_cache`.
-- Pasted URLs: fetch once, 5 s timeout, 2 MB cap, public http(s) only, block private IP ranges; nothing behind a login; pasted listings are never stored server-side.
+- Pasted URLs: fetch once, 5 s timeout, 2 MB cap, public http(s) only, block private IP ranges; pasted listings are never stored server-side.
 
 ## Requests to others
 

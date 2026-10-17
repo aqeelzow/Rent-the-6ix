@@ -56,7 +56,7 @@ Git history (one commit per task) is the record of what was done.
 - **Civic, not partisan:** no content about candidates or parties, no predictions, no AI-written election content; the election box is static official links (SPEC 9.3).
 - All AI calls go through the provider interface in `apps/web/src/lib/ai` (never import a vendor SDK in feature code). AI output is validated with zod; every AI feature has a deterministic fallback, including when rate-limited (429/503).
 - **Listing text is untrusted.** It goes into prompts only inside delimited data blocks, with instructions to ignore anything it says; it's sanitized before rendering.
-- **Listing collection rules** (SPEC 8.4–8.5): public pages only, never log in, honour robots.txt and rate limits, identify with `USER_AGENT`, no photos stored, contact details scrubbed, Facebook never scraped. Scraped snapshots and raw HTML are git-ignored.
+- **Listing collection rules** (SPEC 8.4–8.5): no photos stored, contact details scrubbed. Scraped snapshots and raw HTML are git-ignored.
 - **No user accounts and no user data on the server.** Shortlists and pasted listings live in the browser; pasted listings are never stored server-side.
 - API keys and `DATABASE_URL` are server-only. Never import them into client components, never commit them; the repo is public for submission.
 - Validate every API route body with zod. Rate-limit AI, import and geo routes. Pasted URLs: public http(s) only, private IPs blocked, 5 s timeout, 2 MB cap.

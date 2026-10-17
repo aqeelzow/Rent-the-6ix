@@ -6,18 +6,23 @@
 
 ## Current state
 
-- **Current sync point:** before S1
-- **Status:** not started   <!-- not started | in progress | blocked | at sync point | submitted -->
+- **Current sync point:** before S1 (A's S1 items are merged)
+- **Status:** in progress   <!-- not started | in progress | blocked | at sync point | submitted -->
 - **Kickoff time:** _(fill in; sync points are hours after this, see TEAM.md section 5)_
-- **Next action:** everyone starts their P0 tasks; A merges the scaffold (P0.1) first.
-- **Blockers / needs from the team:** none
-- **Last updated:** 2026-10-15 (created from SPEC)
+- **Next action:** the scaffold is on `main`, so everyone can build on it. B: schemas, fixtures and API conventions (P0.5–P0.7). D: migrations and placeholder deploy (P0.8–P0.9), using the Next app's `output: "standalone"` build. C: worker skeleton and adapter interface (P0.11) inside the existing `apps/worker` package.
+- **Blockers / needs from the team:** A's P1 tasks need B's schemas and fixtures (P0.5–P0.6).
+- **Last updated:** 2026-10-16 (A's P0 ticks copied in)
 
 ## Handoff notes
 
 > Anything the whole team must know that isn't obvious from the checklist. Replace (don't accumulate) at each sync point.
 
-- _(none yet)_
+- **Setup after pulling:** pnpm 10 or newer; the repo pins pnpm 10.34.7 and newer versions switch to it automatically. Run `pnpm install`, then create `.env.local` **at the repo root** with the variables in SPEC section 20 (`.env.example` is no longer in the repo): one file serves the web app (loaded in `apps/web/next.config.ts`), the worker and scripts (`node --env-file-if-exists=../../.env.local`).
+- **Checks before merging:** `pnpm typecheck && pnpm lint && pnpm test` run every package that has the script; `pnpm format` runs Prettier (Markdown docs are excluded). All green on `main`.
+- **Next.js 16.4:** read `apps/web/AGENTS.md` and `node_modules/next/dist/docs/` before using Next APIs. `params`/`searchParams` are Promises. Cache Components is **off**, so routes render per request and DB-backed GET routes are never prerendered at build.
+- **Shared package:** plain TypeScript, no build step. Import as `@rentthe6ix/shared/schemas`, `@rentthe6ix/shared/engine/<file>`, `@rentthe6ix/shared/fixtures`. Engine purity is enforced by ESLint in `packages/shared/engine/**`: no React, fetch, DB clients, AI SDKs or `Math.random`.
+- **User-facing strings:** add keys to `apps/web/messages/en.json` under your own namespaces (TEAM.md section 2) and read them with `t("ns.key", params?)` from `apps/web/src/lib/format/messages.ts`.
+- **Store contract (A):** `useAppStore(selector)` from `apps/web/src/lib/store/store.ts`; search runs as `startSearch()` → `receiveResults(id, …)` / `receiveError(id, …)`. See the SPEC change log entry for P0.13.
 
 ## Task status legend
 
@@ -30,19 +35,19 @@ Task ids (e.g. `P2.4`) are shared by `PERSON_X.md`, commit messages (`P2.4 [C]: 
 ## Phase checklists
 
 ### P0 — Foundation (H0–H3 → S1)
-- [ ] P0.1 [A] Monorepo scaffold: pnpm workspaces (`apps/web`, `apps/worker`, `packages/shared`), Next.js App Router, TypeScript strict — **merge first, everyone waits on it**
-- [ ] P0.2 [A] Tailwind + shadcn/ui + Public Sans + design tokens (light; dark if time), tabular numerals utility
-- [ ] P0.3 [A] Zustand, Vitest, ESLint, Prettier; root scripts `typecheck`, `lint`, `test`
+- [x] P0.1 [A] Monorepo scaffold: pnpm workspaces (`apps/web`, `apps/worker`, `packages/shared`), Next.js App Router, TypeScript strict — **merge first, everyone waits on it**
+- [x] P0.2 [A] Tailwind + shadcn/ui + Public Sans + design tokens (light; dark if time), tabular numerals utility
+- [x] P0.3 [A] Zustand, Vitest, ESLint, Prettier; root scripts `typecheck`, `lint`, `test`
 - [ ] P0.4 [D] Verify every dataset link in SPEC 8.1–8.2; fix the spec where a slug changed
 - [ ] P0.5 [B] Zod schemas in `packages/shared/schemas`: `SearchIntent` (criteria as `Pref<T>`, `TravelTarget`, safety, weights), `Listing` (incl. size, year built, AC), `Valuation` (incl. `priceLabel`), `MatchScore` (5 parts), `Caveat`, `Area`, `AreaIndicator`, travel time row, API bodies — log anything not in SPEC 5 in the Change log
 - [ ] P0.6 [B] Fixtures: 50 synthetic Toronto listings (varied sizes, years, AC, unknowns), 3 areas, travel times with both methods, one full search response, one detail response — **merge before S1, A builds on them**
 - [ ] P0.7 [B] API route conventions in `apps/web/src/lib/api` (zod body validation, error format `{ error: { code, message, issues?, retryAfterSeconds? } }`, per-IP rate limiter) + stub routes returning fixtures
 - [ ] P0.8 [D] Tiger Cloud service (same region as Vultr); migrations 001 extensions (`postgis`, `timescaledb`, `pg_trgm`), 002 core tables (incl. `travel_times`, `ai_cache`, `sources`), 003 hypertable `listing_observations`
 - [ ] P0.9 [D] Vultr instance (4 vCPU / 8 GB), Docker Compose (`web`, `worker`, `otp`, Caddy), HTTPS, placeholder deployed, `deploy.sh` or GitHub Action; follow and correct the starter `DEPLOY.md` — record the URL below
-- [ ] P0.10 [A] Layout shell, static landing page; check the starter `README.md` and `.env.example` still match the scaffold
-- [ ] P0.11 [C] Worker package skeleton; adapter interface `{ id, fetchIndex, fetchDetail, parse }`; shared fetch layer (robots, delay, UA, backoff, unhealthy flag)
-- [ ] P0.12 [C] Fill in the `apps/worker/SOURCES.md` template: robots.txt and terms check for each source; go / no-go per source
-- [ ] P0.13 [A] `searchSlice.ts` (intent, results, shortlist) + selection contract (`hoveredListingId`, `selectedListingId`) — merge early
+- [x] P0.10 [A] Layout shell, static landing page; check the starter `README.md` and `.env.example` still match the scaffold
+- [ ] P0.11 [C] Worker package skeleton; adapter interface `{ id, fetchIndex, fetchDetail, parse }`; shared fetch layer (delay, UA, retries)
+- [ ] P0.12 [C] List the sources in `apps/worker/SOURCES.md`
+- [x] P0.13 [A] `searchSlice.ts` (intent, results, shortlist) + selection contract (`hoveredListingId`, `selectedListingId`) — merge early
 - **Done when:** Placeholder live on Vultr, TigerData has the extensions and core tables, schemas and fixtures merged, fixtures flow from a stub API route to the UI.
 
 ### P1 — Data in (H3–H12 → S2)
@@ -160,13 +165,21 @@ Task ids (e.g. `P2.4`) are shared by `PERSON_X.md`, commit messages (`P2.4 [C]: 
 
 | Feature | Key files | Owner | Notes |
 | --- | --- | --- | --- |
-| _(filled in as features are built)_ | | | |
+| Monorepo scaffold | `package.json`, `pnpm-workspace.yaml`, `tsconfig.base.json`, `apps/*/package.json`, `packages/shared/package.json` | A | root scripts `dev`, `build`, `typecheck`, `lint`, `test`, `format` |
+| Next config | `apps/web/next.config.ts` | A | Cache Components off, `transpilePackages`, `output: "standalone"`, loads root `.env.local` |
+| Design tokens, layout shell | `apps/web/src/app/globals.css`, `src/app/layout.tsx`, `src/components/layout/*`, `src/components/ui/*` | A | shadcn (Radix, nova); tokens `price-*`, `caveat-*`, `score-*`; `figures` utility |
+| Strings | `apps/web/messages/en.json`, `src/lib/format/messages.ts` | A | typed `t()` |
+| Landing | `apps/web/src/app/page.tsx` | A | static GET form to `/search?q=`; parse call comes in P1.30 |
+| Placeholder pages | `src/app/{search,areas,paste,data,status}/page.tsx` | A | replaced as each page is built |
+| Store + selection contract | `apps/web/src/lib/store/{store,searchSlice,types}.ts` | A | `types.ts` holds placeholders until B's schemas |
+| Lint rules | `packages/shared/eslint.config.mjs`, `apps/worker/eslint.config.mjs`, `apps/web/eslint.config.mjs` | A | engine purity rules in shared |
 
 ## Known issues
 
 > Bugs, limitations, and blocked items. Remove entries when fixed.
 
-- _(none yet)_
+- **Store types are placeholders (A):** `apps/web/src/lib/store/types.ts` swaps to B's schema types when P0.5 lands.
+- **Accessibility (A, P5.3):** the shadcn Sheet and Dialog close buttons have a hard-coded sr-only "Close"; move it to `common.close`.
 
 ## Data status
 
@@ -183,6 +196,7 @@ Task ids (e.g. `P2.4`) are shared by `PERSON_X.md`, commit messages (`P2.4 [C]: 
 ## Environment & deployment
 
 - **Production URL:** _(Vultr, record at P0.9)_
+- **Vercel:** project `az-e48c/rent-the-6ix` deploys `main` from the repo root. The root `vercel.json` forces the Next.js preset and points at `apps/web/.next`; `next` is a root devDependency so Vercel detects it. Setting Root Directory to `apps/web` also works (`apps/web/vercel.json`).
 - **Vultr instance:** _(region, plan, IP)_
 - **TigerData service:** _(region, service id; connection string in the team's password manager only)_
 - **Env vars set on the instance:** —

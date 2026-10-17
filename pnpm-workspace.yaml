@@ -1,0 +1,9 @@
+packages:
+  - apps/*
+  - packages/*
+
+# Packages allowed to run install scripts (pnpm 10). sharp is used by next/image.
+onlyBuiltDependencies:
+  - sharp
+ignoredBuiltDependencies:
+  - unrs-resolver

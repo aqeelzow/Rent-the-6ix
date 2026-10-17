@@ -45,7 +45,7 @@ _(Faster search; a clear "underpriced / reasonably priced / overpriced" check wi
 - Driving times assume no traffic; straight-line distance is never shown as minutes.
 - Safety is opt-in, neighbourhood-level, relative to the city, with TPS caveats; never "safe/unsafe".
 - No candidate or party content; election info is official links only.
-- Listing collection: public pages only, robots.txt honoured, no photos or contact details stored, Facebook never scraped (paste instead).
+- Listing collection: no photos or contact details stored.
 
 ## Challenges / what we learned / what's next
 
