@@ -4,6 +4,7 @@ import { addressPointsLookup, addressPointsStatement } from './address-points';
 import { DestinationResolver } from './resolve';
 import { createRuntime } from '../api/runtime';
 import { getClient } from '../db';
+import { normalizeAddress } from '../../../../worker/src/civic/lib/address';
 vi.mock('../db', () => ({ getClient: vi.fn(() => null) }));
 const sample = [
   { id: 'city-1', address_full: '100 Queen St W', lng: -79.384, lat: 43.653 },
@@ -13,16 +14,16 @@ const signal = () => new AbortController().signal;
 test('small Address Points sample uses bound exact-address SQL and validates all row output', async () => {
   let bound: string[] = [];
   const lookup = addressPointsLookup(() => ({ unsafe: async (statement, parameters) => {
-    assert.equal(statement, addressPointsStatement); assert.match(statement, /ST_X\(location::geometry\)/); assert.match(statement, /LIMIT 21/);
+    assert.equal(statement, addressPointsStatement); assert.match(statement, /ST_X\(location::geometry\)/); assert.match(statement, /LIMIT 21/); assert.match(statement, /WHERE address_norm = \$1/); assert.doesNotMatch(statement, /regexp_replace/);
     bound = parameters;
-    return sample.filter(row => row.address_full.toLowerCase() === parameters[0]);
+    return sample.filter(row => normalizeAddress(row.address_full) === parameters[0]);
   } }));
-  const result = await lookup(' 100  QUEEN St W ', signal());
+  const result = await lookup(' Unit 4 - 100  QUEEN Street West ', signal());
   assert.equal(result?.status, 'resolved');
   if (result?.status === 'resolved') { assert.equal(result.destination.id, 'city-1'); assert.equal(result.destination.resolved.source, 'address_points'); }
-  assert.deepEqual(bound, ['100 queen st w']);
+  assert.deepEqual(bound, ['100 QUEEN ST W']);
   assert.equal(await lookup("100 Queen St W'; SELECT 1 --", signal()), undefined);
-  assert.deepEqual(bound, ["100 queen st w'; select 1 --"]);
+  assert.deepEqual(bound, ["100 QUEEN ST W SELECT 1"]);
   for (const rows of [[], [{ ...sample[0], lat: 91 }], [{ ...sample[0], id: '' }], [{ ...sample[0], lng: '-79' }], [sample[1]], [sample[0], sample[0]], Array.from({ length: 21 }, (_, i) => ({ ...sample[0], id: String(i) }))]) {
     assert.equal(await addressPointsLookup(() => ({ unsafe: async () => rows }))('100 Queen St W', signal()), undefined);
   }

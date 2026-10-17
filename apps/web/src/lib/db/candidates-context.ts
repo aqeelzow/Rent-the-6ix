@@ -4,6 +4,7 @@ import type { ScoreContext } from '../../../../../packages/shared/engine/score';
 import { listingContext } from './valuation';
 import { CaveatSchema, ValuationSchema, type Listing, type SearchIntent } from '../../../../../packages/shared/schemas/index';
 import { SearchUnavailable, type SearchDependencies } from './candidates';
+import { sqlDetailLoader } from './candidates-detail';
 import { sqlCandidateLoader, sqlListingLoader } from './candidates-sql';
 import { crimeTableSource, safetyForListing, type CrimeTable } from './safety';
 
@@ -20,7 +21,10 @@ export function sqlSearchDependencies(client: typeof getClient = getClient, crim
   return {
     listings: [],
     loadListing: sqlListingLoader(client),
+    loadDetail: sqlDetailLoader(client),
     loadCandidates: sqlCandidateLoader(client),
+    // No stored travel adapter is published yet; both stages explicitly expose unknown time.
+    filterContext: async (listing, intent) => ({ travel: [], safety: intent.safety.enabled ? safetyForListing(await crimeTable().catch(() => null), listing.neighbourhoodId).safety : null }),
     enrich: async (listing, intent, signal) => {
       let abort: (() => void) | undefined;
       try {

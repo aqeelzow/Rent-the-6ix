@@ -1,0 +1,20 @@
+{
+  "checkedAt": "2026-10-17T19:23:57Z",
+  "feature": "P1.21 full structured-provider diagnosis",
+  "model": "gemini-3.5-flash-lite",
+  "promptExample": "local cheapest Downtown acceptance example",
+  "requestSource": "Exact ParseService generateStructured options and GeminiProvider serialized first-attempt body",
+  "database": "Actual read-only civic catalogue: 158 neighbourhoods and 25 wards",
+  "requestBytes": 27821,
+  "schema": "Unmodified z.toJSONSchema(SearchIntentSchema), responseMimeType application/json",
+  "diagnosticDeadlineMs": 12000,
+  "productionFastDeadlineMs": 3000,
+  "actualRequests": 1,
+  "httpStatus": 429,
+  "elapsedMs": 221,
+  "providerErrorCode": "RESOURCE_EXHAUSTED",
+  "candidatePartCount": 0,
+  "validParse": false,
+  "conclusion": "Current quota prevents full-parser acceptance. No output exists to validate JSON schema or grounding; schema compatibility and successful-parse latency remain unproven.",
+  "changes": "No production code, guard, provider configuration, database data or credentials changed. No retry after quota response."
+}

@@ -1,0 +1,477 @@
+{
+  "upstreamMain": "bbad7ae",
+  "safety": {
+    "liveReadOnly": true,
+    "passed": true,
+    "populationRows": 0,
+    "denominator": "owner-caveated equal neighbourhood mean"
+  },
+  "addressPoints": {
+    "liveReadOnly": true,
+    "passed": true,
+    "index": "address_points_trgm_idx"
+  },
+  "staticDetail": {
+    "liveReadOnly": true,
+    "passed": true,
+    "areas": true,
+    "building": true,
+    "duplicates": true,
+    "crimeOptIn": true
+  },
+  "providers": {
+    "gemini": {
+      "status": 503,
+      "code": "UNAVAILABLE",
+      "successfulAIParse": false
+    },
+    "maptiler": {
+      "status": 200,
+      "resolverAcceptance": true
+    },
+    "fastModel": {
+      "model": "gemini-3.5-flash-lite",
+      "minimalJSONStatus": 200,
+      "minimalJSONElapsedMs": 663,
+      "fullAcceptance": false,
+      "fallbacks": 6,
+      "timeouts": 3,
+      "http503": 3,
+      "deadlineMs": 3000
+    }
+  },
+  "benchmarks": {
+    "liveRows": 11,
+    "affordabilityImplemented": false
+  },
+  "finalGates": {
+    "workspaceTestsPassed": 362,
+    "shared": 66,
+    "web": 195,
+    "worker": 101,
+    "liveTestsSkippedByDefault": 9,
+    "typecheck": "passed",
+    "lint": "passed",
+    "productionBuild": "passed",
+    "newMainUIFocusedLint": "passed",
+    "productionHttp": "passed",
+    "deployment": "not checked",
+    "liveGeminiAllSix": "failed (3 HTTP503, 3 timeouts; all fallback semantics passed)"
+  },
+  "rankingAfterEligibilityStage": [
+    {
+      "demo": 1,
+      "database": "live (read-only)",
+      "parser": "fallback",
+      "eligible": 1628,
+      "valuationCalls": 500,
+      "returned": 500,
+      "elapsedMs": 5153,
+      "top6": [
+        {
+          "rent": 600,
+          "bedrooms": null,
+          "unitType": "room",
+          "score": 100,
+          "unknownHardFields": 0,
+          "value": 100,
+          "confidence": "high",
+          "effectiveCount": 15
+        },
+        {
+          "rent": 500,
+          "bedrooms": null,
+          "unitType": "room",
+          "score": 100,
+          "unknownHardFields": 0,
+          "value": 100,
+          "confidence": "high",
+          "effectiveCount": 13
+        },
+        {
+          "rent": 650,
+          "bedrooms": null,
+          "unitType": "room",
+          "score": 100,
+          "unknownHardFields": 0,
+          "value": 100,
+          "confidence": "high",
+          "effectiveCount": 13
+        },
+        {
+          "rent": 600,
+          "bedrooms": null,
+          "unitType": "room",
+          "score": 100,
+          "unknownHardFields": 0,
+          "value": 100,
+          "confidence": "medium",
+          "effectiveCount": 46
+        },
+        {
+          "rent": 700,
+          "bedrooms": null,
+          "unitType": "room",
+          "score": 100,
+          "unknownHardFields": 0,
+          "value": 100,
+          "confidence": "medium",
+          "effectiveCount": 46
+        },
+        {
+          "rent": 800,
+          "bedrooms": 2,
+          "unitType": "room",
+          "score": 100,
+          "unknownHardFields": 0,
+          "value": 100,
+          "confidence": "medium",
+          "effectiveCount": 45
+        }
+      ]
+    },
+    {
+      "demo": 2,
+      "database": "live (read-only)",
+      "parser": "fallback",
+      "eligible": 2679,
+      "valuationCalls": 500,
+      "returned": 500,
+      "elapsedMs": 6722,
+      "top6": [
+        {
+          "rent": 2300,
+          "bedrooms": 2,
+          "unitType": null,
+          "score": 100,
+          "unknownHardFields": 1,
+          "value": 100,
+          "confidence": "medium",
+          "effectiveCount": 219
+        },
+        {
+          "rent": 1929,
+          "bedrooms": 2,
+          "unitType": "apartment",
+          "score": 100,
+          "unknownHardFields": 1,
+          "value": 100,
+          "confidence": "medium",
+          "effectiveCount": 161
+        },
+        {
+          "rent": 2350,
+          "bedrooms": 2,
+          "unitType": null,
+          "score": 100,
+          "unknownHardFields": 1,
+          "value": 100,
+          "confidence": "medium",
+          "effectiveCount": 64
+        },
+        {
+          "rent": 2500,
+          "bedrooms": 2,
+          "unitType": null,
+          "score": 100,
+          "unknownHardFields": 1,
+          "value": 100,
+          "confidence": "medium",
+          "effectiveCount": 55
+        },
+        {
+          "rent": 2300,
+          "bedrooms": 2,
+          "unitType": "apartment",
+          "score": 100,
+          "unknownHardFields": 1,
+          "value": 100,
+          "confidence": "medium",
+          "effectiveCount": 51
+        },
+        {
+          "rent": 2100,
+          "bedrooms": 2,
+          "unitType": null,
+          "score": 100,
+          "unknownHardFields": 1,
+          "value": 100,
+          "confidence": "medium",
+          "effectiveCount": 50
+        }
+      ]
+    },
+    {
+      "demo": 3,
+      "database": "live (read-only)",
+      "parser": "fallback",
+      "eligible": 317,
+      "valuationCalls": 317,
+      "returned": 317,
+      "elapsedMs": 2856,
+      "top6": [
+        {
+          "rent": 2100,
+          "bedrooms": 3,
+          "unitType": "apartment",
+          "score": 100,
+          "unknownHardFields": 0,
+          "value": 100,
+          "confidence": "medium",
+          "effectiveCount": 8
+        },
+        {
+          "rent": 1800,
+          "bedrooms": 3,
+          "unitType": "basement",
+          "score": 100,
+          "unknownHardFields": 0,
+          "value": 100,
+          "confidence": "medium",
+          "effectiveCount": 5
+        },
+        {
+          "rent": 2000,
+          "bedrooms": 3,
+          "unitType": "basement",
+          "score": 92,
+          "unknownHardFields": 0,
+          "value": 91.75,
+          "confidence": "medium",
+          "effectiveCount": 10
+        },
+        {
+          "rent": 2480,
+          "bedrooms": 3,
+          "unitType": null,
+          "score": 86,
+          "unknownHardFields": 0,
+          "value": 86.25,
+          "confidence": "medium",
+          "effectiveCount": 11
+        },
+        {
+          "rent": 2400,
+          "bedrooms": 3,
+          "unitType": "house",
+          "score": 86,
+          "unknownHardFields": 0,
+          "value": 85.75,
+          "confidence": "high",
+          "effectiveCount": 34
+        },
+        {
+          "rent": 1900,
+          "bedrooms": 3,
+          "unitType": "basement",
+          "score": 84,
+          "unknownHardFields": 0,
+          "value": 84,
+          "confidence": "low",
+          "effectiveCount": 6
+        }
+      ]
+    }
+  ],
+  "civicParsing": {
+    "liveReadOnly": true,
+    "neighbourhoods": 158,
+    "wards": 25,
+    "annexID": "095",
+    "ward1ID": "01",
+    "boundCandidateFiltersVerified": true
+  },
+  "tdKnownPlace": {
+    "liveReadOnly": true,
+    "addressPointID": "8067834",
+    "verified": true
+  },
+  "rankingBeforeEligibilityStage": [
+    {
+      "demo": 1,
+      "eligible": 1628,
+      "returned": 500,
+      "elapsedMs": 5406
+    },
+    {
+      "demo": 2,
+      "eligible": 2679,
+      "returned": 500,
+      "elapsedMs": 30017
+    },
+    {
+      "demo": 3,
+      "eligible": 317,
+      "returned": 317,
+      "elapsedMs": 2752
+    }
+  ],
+  "finalDatabaseAcceptance": {
+    "files": 6,
+    "testsPassed": 8,
+    "readOnlyExceptOwnCacheRows": true,
+    "cacheProbeOwnRowsCleaned": true
+  },
+  "nativeProductionHttp": {
+    "parser": "fallback",
+    "eligible": 171,
+    "returned": 171,
+    "percentile": 10,
+    "liveDetail": true,
+    "overlappingSearches": true,
+    "staticSizeAgeTypeAc": true,
+    "compoundPromptParsing": true,
+    "hardFairness": true,
+    "liveSafety": true,
+    "asyncJobs": true,
+    "broadMissingRouter": true,
+    "measurements": [
+      {
+        "path": "/api/search/parse",
+        "ms": 594,
+        "status": 200
+      },
+      {
+        "path": "/api/search/parse",
+        "ms": 25,
+        "status": 200
+      },
+      {
+        "path": "/api/search/parse",
+        "ms": 12,
+        "status": 200
+      },
+      {
+        "path": "/api/search/parse",
+        "ms": 8,
+        "status": 200
+      },
+      {
+        "path": "/api/search/parse",
+        "ms": 13,
+        "status": 200
+      },
+      {
+        "path": "/api/search/parse",
+        "ms": 11,
+        "status": 200
+      },
+      {
+        "path": "/api/search/parse",
+        "ms": 9,
+        "status": 200
+      },
+      {
+        "path": "/api/listings/search",
+        "ms": 3767,
+        "status": 200
+      },
+      {
+        "path": "/api/listings/search",
+        "ms": 492,
+        "status": 200
+      },
+      {
+        "path": "/api/listings/search",
+        "ms": 104,
+        "status": 200
+      },
+      {
+        "path": "/api/listings/:id",
+        "ms": 136,
+        "status": 200
+      },
+      {
+        "path": "/api/listings/:id",
+        "ms": 44,
+        "status": 404
+      },
+      {
+        "path": "/api/listings/search",
+        "ms": 5,
+        "status": 422
+      },
+      {
+        "path": "/api/listings/search",
+        "ms": 52,
+        "status": 200
+      },
+      {
+        "path": "/api/listings/search",
+        "ms": 57,
+        "status": 200
+      },
+      {
+        "path": "/api/listings/search",
+        "ms": 137,
+        "status": 200
+      },
+      {
+        "path": "/api/listings/search",
+        "ms": 47,
+        "status": 200
+      },
+      {
+        "path": "/api/listings/search",
+        "ms": 95,
+        "status": 200
+      },
+      {
+        "path": "/api/listings/search",
+        "ms": 51,
+        "status": 200
+      },
+      {
+        "path": "/api/listings/search",
+        "ms": 5,
+        "status": 200
+      },
+      {
+        "path": "/api/listings/search/jobs/:token",
+        "ms": 7,
+        "status": 200
+      },
+      {
+        "path": "/api/listings/search/jobs/:token",
+        "ms": 4,
+        "status": 200
+      },
+      {
+        "path": "/api/listings/search/jobs/:token",
+        "ms": 3,
+        "status": 410
+      },
+      {
+        "path": "/api/listings/search",
+        "ms": 4,
+        "status": 200
+      },
+      {
+        "path": "/api/listings/search/jobs/:token",
+        "ms": 3,
+        "status": 200
+      },
+      {
+        "path": "/api/listings/search/jobs/:token",
+        "ms": 28,
+        "status": 200
+      },
+      {
+        "path": "/api/listings/search/jobs/:token",
+        "ms": 38,
+        "status": 200
+      },
+      {
+        "path": "/api/listings/search/jobs/:token",
+        "ms": 893,
+        "status": 200
+      },
+      {
+        "path": "/api/listings/search/jobs/:token",
+        "ms": 9,
+        "status": 410
+      }
+    ],
+    "interpretationProvider": "none (explicit deterministic fallback; Gemini assessed separately)"
+  }
+}

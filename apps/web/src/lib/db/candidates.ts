@@ -1,14 +1,17 @@
-import { ListingSchema, SearchRequestSchema, SearchResultSchema, TravelTimeRowSchema, type Listing, type SearchRequest, type SearchResult, type TravelTarget, type TravelTimeRow } from '../../../../../packages/shared/schemas/index';
+import { ListingSchema, SearchRequestSchema, SearchResultSchema, TravelTimeRowSchema, type DetailResponse, type Listing, type SearchRequest, type SearchResult, type TravelTarget, type TravelTimeRow } from '../../../../../packages/shared/schemas/index';
 import { engineConfig } from '../../../../../packages/shared/engine/config';
-import { filterListing } from '../../../../../packages/shared/engine/filters';
-import { bestMatchOrder, scoreListing, tieBreak, valueScore, type ScoreContext, type TieSide } from '../../../../../packages/shared/engine/score';
+import { filterListing, type FilterContext } from '../../../../../packages/shared/engine/filters';
+import { bestMatchOrder, scoreListing, tieBreak, type ScoreContext, type TieSide } from '../../../../../packages/shared/engine/score';
 import { distanceM, targetModes } from '../../../../../packages/shared/engine/travel';
 export type SearchDependencies = {
   // Fixture/detail pool; live search can inject the read-only SQL candidate loader.
   listings: readonly Listing[];
   loadListing?: (id: string) => Promise<Listing | null>;
+  loadDetail?: (listing: Listing, intent: SearchRequest['intent']) => Promise<Pick<DetailResponse, 'areas' | 'indicators' | 'duplicates' | 'building'>>;
   loadCandidates?: (request: SearchRequest, signal?: AbortSignal) => Promise<readonly Listing[]>;
-  // Full-pool hard gates/numeric ordering also use the owner context.
+  // Same safety/stored-travel facts as enrich, without valuation; omit when those facts require enrich.
+  filterContext?: (listing: Listing, intent: SearchRequest['intent']) => Promise<FilterContext>;
+  // Full-pool fairness/numeric ordering also use the owner context.
   enrich: (listing: Listing, intent: SearchRequest['intent'], signal?: AbortSignal) => Promise<ScoreContext>;
   // Draft adapter contract; not a claim about D's actual exports.
   routeTimes?: (origins: Listing[], targets: TravelTarget[], mode: TravelTimeRow['mode'], budgetMs: number, signal: AbortSignal) => Promise<TravelTimeRow[]>;
@@ -54,10 +57,27 @@ export async function searchCandidates(input: SearchRequest, dependencies: Searc
   const pool = source.map(l => ListingSchema.parse(l)).filter(l => filterListing(l, intent, {}, request.hideUnconfirmed, true).passes);
   // Numeric listing sorts operate on the entire cheap-filtered pool before expensive enrichment.
   if (intent.sortBy === 'lowest_rent' || intent.sortBy === 'newest') pool.sort((a, b) => intent.sortBy === 'lowest_rent' ? a.monthlyRentCad - b.monthlyRentCad || tieBreak(tieSide(a), tieSide(b)) : Date.parse(b.lastSeenAt) - Date.parse(a.lastSeenAt) || tieBreak(tieSide(a), tieSide(b)));
+  // Confirm hard listing facts before the ordinary candidate cap.
+  if (intent.sortBy === 'best_match') pool.sort((a, b) => filterListing(a, intent, {}, false, true).notes.length - filterListing(b, intent, {}, false, true).notes.length || tieBreak(tieSide(a), tieSide(b)));
   const contexts = new Map<string, ScoreContext>();
-  // Fairness/safety hard filters must be known before taking the numeric candidate cap.
-  const fullContextRequired = intent.sortBy === 'best_value' || intent.sortBy === 'shortest_trips' || intent.criteria.priceFairness?.hard || intent.safety.hard || intent.travelTargets.some(t => t.hard);
-  const contextPool = fullContextRequired ? pool : pool.slice(0, engineConfig.candidateLimit);
+  const filterContexts = new Map<string, FilterContext>();
+  const hardContextGate = intent.safety.enabled && intent.safety.hard || intent.travelTargets.some(t => t.hard);
+  const fullContextRequired = intent.sortBy === 'best_value' || intent.sortBy === 'shortest_trips' || intent.criteria.priceFairness?.hard || hardContextGate && !dependencies.filterContext;
+  let eligiblePool = pool;
+  if (hardContextGate && !fullContextRequired && dependencies.filterContext) {
+    const filtered = await mapCandidatePool(pool, async listing => {
+      const owner = await dependencies.filterContext!(listing, intent);
+      const context = { ...owner, travel: owner.travel?.map(row => TravelTimeRowSchema.parse(row)).filter(row => row.listingId === listing.id) };
+      filterContexts.set(listing.id, context);
+      const eligibility = filterListing(listing, intent, context);
+      // Only place travel can become confirmed in the later routing phase.
+      const unresolved = request.hideUnconfirmed && eligibility.notes.some(note => !dependencies.routeTimes || !intent.travelTargets.some(target => target.kind === 'place' && target.resolved && note === `Travel to ${target.label}: not confirmed`));
+      return eligibility.passes && !unresolved ? listing : null;
+    });
+    eligiblePool = filtered.filter((listing): listing is Listing => listing !== null);
+    if (intent.sortBy === 'best_match') eligiblePool.sort((a, b) => filterListing(a, intent, filterContexts.get(a.id)).notes.length - filterListing(b, intent, filterContexts.get(b.id)).notes.length || tieBreak(tieSide(a), tieSide(b)));
+  }
+  const contextPool = fullContextRequired ? eligiblePool : eligiblePool.slice(0, engineConfig.candidateLimit);
   const enriched = await mapCandidatePool(contextPool, async listing => {
       const owner = await dependencies.enrich(listing, intent);
       const travel = owner.travel.map(row => TravelTimeRowSchema.parse(row)).filter(row => row.listingId === listing.id);
@@ -69,17 +89,10 @@ export async function searchCandidates(input: SearchRequest, dependencies: Searc
       return filterListing(listing, intent, context).passes ? listing : null;
   });
   const eligible = enriched.filter((listing): listing is Listing => listing !== null);
-  if (intent.sortBy === 'best_value' || intent.sortBy === 'shortest_trips') {
-    const key = (listing: Listing) => {
-      const context = contexts.get(listing.id)!;
-      return intent.sortBy === 'best_value' ? valueScore(context.valuation) ?? -Infinity : -tripMinutes(intent, context.travel);
-    };
-    eligible.sort((a, b) => (key(b) - key(a) || tieBreak(tieSide(a, contexts.get(a.id)!.valuation), tieSide(b, contexts.get(b.id)!.valuation))));
-  }
-  const candidates = eligible.slice(0, engineConfig.candidateLimit).map(listing => {
+  const candidates = eligible.map(listing => {
     const context = contexts.get(listing.id)!;
     return SearchResultSchema.parse({ listing, valuation: context.valuation, safety: context.safety, travel: context.travel, matchScore: scoreListing(listing, intent, context) });
-  }).sort((a, b) => compareResults(intent, a, b));
+  }).sort((a, b) => compareResults(intent, a, b)).slice(0, engineConfig.candidateLimit);
   // Amenities are routable too: `routeTimes` resolves each listing's nearest POI of that category.
   const targets = intent.travelTargets.filter(t => t.kind === 'place' || t.kind === 'amenity');
   await routeCandidateContexts(dependencies, candidates.slice(0, engineConfig.routingLimit).map(r => r.listing), targets, contexts);
@@ -88,7 +101,7 @@ export async function searchCandidates(input: SearchRequest, dependencies: Searc
     if (!filterListing(result.listing, intent, context, request.hideUnconfirmed).passes) return [];
     return [SearchResultSchema.parse({ ...result, travel: context.travel, matchScore: scoreListing(result.listing, intent, context) })];
   }).sort((a, b) => compareResults(intent, a, b));
-  const eligibleCount = fullContextRequired ? pool.filter(listing => filterListing(listing, intent, contexts.get(listing.id)!, request.hideUnconfirmed).passes).length : pool.length - (candidates.length - results.length);
+  const eligibleCount = fullContextRequired || filterContexts.size ? pool.filter(listing => filterListing(listing, intent, contexts.get(listing.id) ?? filterContexts.get(listing.id), request.hideUnconfirmed).passes).length : pool.length - (candidates.length - results.length);
   return { results, eligibleCount, notices: [dependencies.loadCandidates ? 'Unconfirmed fields and unrouted travel times remain unknown' : 'Fixture-backed application pool; live SQL and owner integrations pending'] };
 }
 

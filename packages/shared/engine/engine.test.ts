@@ -133,3 +133,13 @@ test('hard safety keeps neighbourhoods at or below the renter\'s limit, else the
   assert.equal(SearchIntentSchema.safeParse(hard(0.8)).success, true);
   assert.equal(SearchIntentSchema.safeParse(hard(0)).success, false);
 });
+
+test('Rent verification threshold keeps a neutral value without dropping the caveat or breaking totals', () => {
+  for (const differencePct of [20, 30, 30.01, 55]) {
+    const caveat = { code: 'rent_far_below', severity: 'warning' as const, title: 'Check the asking rent', explanation: 'More than 30% below comparable asking rents.' };
+    const score = scoreListing(listing, intent({ furnished: { value: true, hard: false } }), { ...context, valuation: { ...valuations[0], differencePct }, caveats: [caveat] });
+    assert.equal(score.parts.find(p => p.id === 'value')!.score, differencePct <= 30 ? 100 : 50);
+    assert.deepEqual(score.caveats, [caveat]);
+    assert.equal(score.total, Math.round(score.parts.reduce((sum, p) => sum + (p.score ?? 0) * p.effectiveWeight, 0)));
+  }
+});
