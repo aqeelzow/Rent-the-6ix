@@ -1,10 +1,11 @@
 import {
+  DestinationResolutionSchema,
   ErrorResponseSchema,
   ParseResponseSchema,
   SearchResponseSchema,
 } from "@rentthe6ix/shared/schemas";
 import { appStore, type createAppStore } from "./store";
-import type { ApiError } from "./types";
+import type { ApiError, DestinationResolution } from "./types";
 
 // Browser-side calls to B's routes (SPEC 13). Responses are validated with B's schemas before they
 // reach the store; a response that doesn't match is treated as an error, never shown half-parsed.
@@ -133,4 +134,19 @@ export async function runSearch(options: ActionOptions = {}): Promise<void> {
     if (!isCurrent()) return;
     response = await request(fetchFn, result.pollUrl, { method: "GET" });
   }
+}
+
+/** Looks up a place with B's resolver: resolved, ambiguous (choices) or unavailable. */
+export async function resolveDestination(
+  query: string,
+  options: Pick<ActionOptions, "fetch"> = {},
+): Promise<{ ok: true; resolution: DestinationResolution } | { ok: false; error: ApiError }> {
+  const response = await request(
+    options.fetch ?? fetch,
+    `/api/geo/resolve?q=${encodeURIComponent(query)}`,
+    { method: "GET" },
+  );
+  if (!response.ok) return response;
+  const parsed = DestinationResolutionSchema.safeParse(response.json);
+  return parsed.success ? { ok: true, resolution: parsed.data } : { ok: false, error: unexpected };
 }

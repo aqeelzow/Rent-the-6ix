@@ -144,7 +144,7 @@ function HardSwitch({ chip, onChange }: { chip: Chip; onChange: (hard: boolean) 
   );
 }
 
-function TravelEditor({
+export function TravelEditor({
   target,
   onModes,
   onMinutes,

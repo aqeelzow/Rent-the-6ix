@@ -1,6 +1,6 @@
 import { baseIntent, searchFixture } from "@rentthe6ix/shared/fixtures";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { parseAndSearch, runSearch } from "./actions";
+import { parseAndSearch, resolveDestination, runSearch } from "./actions";
 import { createAppStore } from "./store";
 
 const token = "a".repeat(43);
@@ -169,5 +169,41 @@ describe("runSearch", () => {
     await runSearch(options(fetch));
     expect(calls).toHaveLength(0);
     expect(store.getState().status).toBe("idle");
+  });
+});
+
+describe("resolveDestination", () => {
+  it("returns the resolver's answer, URL-encoding the query", async () => {
+    const ambiguous = {
+      status: "ambiguous",
+      query: "University of Toronto",
+      choices: [
+        {
+          id: "stg",
+          label: "St. George",
+          resolved: { lng: -79.39, lat: 43.66, source: "known_place" },
+        },
+        {
+          id: "utsc",
+          label: "Scarborough",
+          resolved: { lng: -79.18, lat: 43.78, source: "known_place" },
+        },
+      ],
+    };
+    const { fetch, calls } = fakeFetch({ body: ambiguous });
+    const result = await resolveDestination("University of Toronto", { fetch });
+    expect(calls[0]?.url).toBe("/api/geo/resolve?q=University%20of%20Toronto");
+    expect(result).toEqual({ ok: true, resolution: ambiguous });
+  });
+
+  it("reports errors", async () => {
+    const { fetch } = fakeFetch({
+      status: 503,
+      body: { error: { code: "service_unavailable", message: "x" } },
+    });
+    expect(await resolveDestination("x", { fetch })).toMatchObject({
+      ok: false,
+      error: { code: "service_unavailable" },
+    });
   });
 });

@@ -6,6 +6,8 @@ import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { FilterChips } from "./filter-chips";
+import { FiltersPanel } from "./filters-panel";
+import { SortSelect } from "./sort-select";
 import { t, type MessageKey } from "@/lib/format/messages";
 import { formatCad, formatCount } from "@/lib/format/number";
 import { parseAndSearch, runSearch } from "@/lib/store/actions";
@@ -79,7 +81,15 @@ export function SearchView({ prompt }: { prompt: string | null }) {
         <p className="mt-1">{prompt}</p>
       </section>
 
-      {intent && intent.rawPrompt === prompt && <FilterChips intent={intent} />}
+      {intent && intent.rawPrompt === prompt && (
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <FiltersPanel />
+            <SortSelect />
+          </div>
+          <FilterChips intent={intent} />
+        </div>
+      )}
 
       <div aria-live="polite" className="flex flex-col gap-4">
         {busy && (

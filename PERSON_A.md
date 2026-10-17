@@ -6,12 +6,12 @@ Task ids match `PROGRESS.md`; task details are in `SPEC.md`.
 
 ## Current state
 
-- **Current task:** P1.32 filters panel
+- **Current task:** P1.33 results cards
 - **Status:** in progress
-- **Branch:** `a/P1.30-landing-parse` (P1.30 + P1.31 done, not merged yet)
-- **Next action:** P1.32 filters panel (SPEC 11.2): a sheet on mobile, a side panel on desktop. Reuse the edit helpers in `src/components/search/chips.ts`; every change calls `updateIntent()` then `runSearch()`. Add the "Hide listings that don't confirm my must-haves" toggle (`setHideUnconfirmed`).
+- **Branch:** `a/P1.30-landing-parse` (P1.30–P1.32 done, not merged yet)
+- **Next action:** P1.33 result cards (SPEC 11.2) in `src/components/results/`. They replace the interim `ResultRow` in `search-view.tsx`. Each card shows the price badge with % and the "not signed leases" note, a segmented score bar from `matchScore.parts` (null parts hidden, bars sum to total), the first two travel targets (minutes only for `method: otp`, otherwise "km straight-line"), size/year/AC, the top caveat, source plus "seen N days ago", "Also on" and a shortlist button. Cards set `hoveredListingId` on hover.
 - **Blockers / needs from others:** none. Run the dev server with `SEARCH_FIXTURES=1`.
-- **Last updated:** 2026-10-17 (P1.31 done: editable chips; must-have/preference/default styles, source phrase, switch, travel modes and minutes, remove; edits re-search without parsing)
+- **Last updated:** 2026-10-17 (P1.32 done: Filters panel with every criterion, must-have switches, places via the resolver with "which one?", amenities, safety opt-in, hide-unconfirmed toggle, sort select; draft → Show results)
 
 ## Handoff notes
 
@@ -70,8 +70,8 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked · `[-]` 
 ### S1 → S2 (H3–H12) — Search UI on fixtures · Core
 - [x] P1.30 Landing: prompt box, 3 example chips (student, couple, family), "Explore neighbourhoods", "Paste a listing"; calls B's `/api/search/parse` (fixture until live)
 - [x] P1.31 Filter chips: must-have/preference/default styles, source phrase, must-have ⇄ preference switch, remove, "dropped requests" notice
-- [~] P1.32 Filters panel (SPEC 11.2): Price (range, price vs market), Home (rooms, size, unit type, building age, AC, pets, furnished, parking, laundry, utilities, availability, lease), Getting around (add place or amenity, mode, minutes), Safety (switch + explanation), Area; each with must-have/preference
-- [ ] P1.33 Results cards (SPEC 11.2): price badge, segmented score bar, travel targets with mode icon, size/year/AC, top caveat, source + freshness, "Also on", shortlist button
+- [x] P1.32 Filters panel (SPEC 11.2): Price (range, price vs market), Home (rooms, size, unit type, building age, AC, pets, furnished, parking, laundry, utilities, availability, lease), Getting around (add place or amenity, mode, minutes), Safety (switch + explanation), Area; each with must-have/preference
+- [~] P1.33 Results cards (SPEC 11.2): price badge, segmented score bar, travel targets with mode icon, size/year/AC, top caveat, source + freshness, "Also on", shortlist button
 - [ ] P1.34 Results map (MapLibre): clustered pins coloured by score band, approximate circles, place pins, synced hover/select with the list
 - [ ] P1.35 Mobile: list with sticky Map toggle, bottom sheet on pin tap, filters as a sheet
 
@@ -123,7 +123,7 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked · `[-]` 
 | Landing | `src/app/page.tsx`, `src/components/search/prompt-box.tsx` | next/form GET to `/search?q=`; Enter submits, Shift+Enter adds a line |
 | Search flow | `src/app/search/page.tsx`, `src/components/search/search-view.tsx`, `src/lib/store/actions.ts` (+ test) | parse → search → poll; states: parsing, searching, error + retry, ready; interim result rows until P1.33 |
 | Number formats | `src/lib/format/number.ts` (+ test) | `formatCad`, `formatCount` (en-CA) |
-| Chips & filters | `src/components/search/chips.ts` (+ test), `filter-chips.tsx`, `filters-panel.tsx` | `buildChips(intent)`, `setChipHard`, `removeChip`, `setTargetModes`, `setTargetMinutes`; edits keep the intent valid under B's schema and never call the parser |
+| Chips & filters | `src/components/search/chips.ts` (+ test), `filter-chips.tsx`, `filters.ts` (+ test), `filter-fields.tsx`, `filters-panel.tsx`, `sort-select.tsx` | `buildChips(intent)`, `setChipHard`, `removeChip`, `setTargetModes`, `setTargetMinutes`; edits keep the intent valid under B's schema and never call the parser |
 | Results | `src/app/search/page.tsx`, `src/components/results/*`, `src/components/map/results-map.tsx` | |
 | Listing detail | `src/app/listing/[id]/page.tsx`, `src/components/listing/*` | |
 | Explorer | `src/app/areas/*`, `src/components/areas/*` | |
