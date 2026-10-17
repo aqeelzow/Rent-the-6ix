@@ -123,6 +123,7 @@ describe("listingContext", () => {
   it("flags a price drop from the first observation", async () => {
     const sql = fakeSql(five(), [
       {
+        deposit: true,
         asking_rent_cad: listing.monthlyRentCad + 200,
         observed_at: new Date("2026-10-01T00:00:00Z"),
       },
@@ -131,6 +132,12 @@ describe("listingContext", () => {
     expect(caveats.find((c) => c.code === "price_dropped")?.explanation).toContain(
       "since 2026-10-01",
     );
+  });
+
+  it("passes the scam flag stored at ingest to the caveats", async () => {
+    const sql = fakeSql(five(), [{ deposit: true, asking_rent_cad: null, observed_at: null }]);
+    const { caveats } = await listingContext(sql, listing, NOW);
+    expect(caveats[0].code).toBe("deposit_before_viewing");
   });
 
   it("reads the RentSafeTO building for the low-score caveat", async () => {

@@ -110,6 +110,11 @@ describe("caveats", () => {
     );
   });
 
+  it("deposit_before_viewing from the flag stored at ingest, even when the excerpt is clean", () => {
+    expect(codes({ depositBeforeViewing: true })).toEqual(["deposit_before_viewing"]);
+    expect(codes({ depositBeforeViewing: false })).toEqual([]);
+  });
+
   it("orders most severe first", () => {
     expect(
       codes(

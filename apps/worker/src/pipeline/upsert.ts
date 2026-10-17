@@ -37,6 +37,25 @@ export interface ListingRow {
   first_seen_at: string;
   last_seen_at: string;
   field_evidence: Record<string, string>;
+  den: boolean;
+  deposit_before_viewing: boolean;
+}
+
+/** Columns from migration 005; written only once the database has them. */
+const OPTIONAL_COLUMNS = ["den", "deposit_before_viewing"] as const;
+const present = new WeakMap<Sql, Promise<(typeof OPTIONAL_COLUMNS)[number][]>>();
+
+function optionalColumns(sql: Sql) {
+  let columns = present.get(sql);
+  if (!columns) {
+    columns = sql<{ column_name: (typeof OPTIONAL_COLUMNS)[number] }[]>`
+      SELECT column_name FROM information_schema.columns
+      WHERE table_name = 'listings' AND column_name IN ${sql(OPTIONAL_COLUMNS)}`.then((rows) =>
+      rows.map((r) => r.column_name),
+    );
+    present.set(sql, columns);
+  }
+  return columns;
 }
 
 const COLUMNS = [
@@ -100,6 +119,8 @@ export function toRow(l: NormalizedListing, observedAt: string): ListingRow | nu
     first_seen_at: observedAt,
     last_seen_at: observedAt,
     field_evidence: l.fieldEvidence,
+    den: l.den,
+    deposit_before_viewing: l.depositBeforeViewing,
   };
 }
 
@@ -116,11 +137,15 @@ export async function upsertListings(
   observedAt: string,
 ): Promise<UpsertResult> {
   const rows = listings.map((l) => toRow(l, observedAt)).filter((r) => r !== null);
+  const optional = await optionalColumns(sql);
+  const columns = [...COLUMNS, ...optional];
+  // Fixed identifiers from OPTIONAL_COLUMNS, so plain SQL text is safe (and empty when absent).
+  const setOptional = sql.unsafe(optional.map((c) => `, ${c} = excluded.${c}`).join(""));
   for (let i = 0; i < rows.length; i += BATCH) {
     const batch = rows.slice(i, i + BATCH);
     await sql.begin(async (tx) => {
       const written = await tx<{ id: string; source: string; monthly_rent_cad: number }[]>`
-        INSERT INTO listings ${tx(batch, COLUMNS)}
+        INSERT INTO listings ${tx(batch, columns)}
         ON CONFLICT (source, source_listing_id) DO UPDATE SET
           source_url = excluded.source_url,
           title = excluded.title,
@@ -152,7 +177,7 @@ export async function upsertListings(
           last_seen_at = GREATEST(listings.last_seen_at, excluded.last_seen_at),
           status = 'active',
           updated_at = now(),
-          field_evidence = excluded.field_evidence
+          field_evidence = excluded.field_evidence ${setOptional}
         RETURNING id, source, monthly_rent_cad`;
       const observations = written.map((w) => ({
         listing_id: w.id,

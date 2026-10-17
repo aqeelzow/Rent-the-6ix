@@ -243,6 +243,16 @@ describe("normalize: text rules fill the gaps", () => {
   });
 });
 
+describe("normalize: scam indicator from the full description", () => {
+  it("flags money before a viewing even past the 280-char excerpt", () => {
+    const long = `${"Bright unit with lots of light. ".repeat(12)}E-transfer the deposit before viewing.`;
+    const out = norm({ description: long });
+    expect(out.excerpt).not.toMatch(/deposit/);
+    expect(out.depositBeforeViewing).toBe(true);
+    expect(norm({ description: "Deposit due at lease signing." }).depositBeforeViewing).toBe(false);
+  });
+});
+
 describe("normalize: text, address and location", () => {
   it("scrubs the title and cuts the excerpt", () => {
     const out = norm({ title: "1 bed, call 416-555-0199", description: "x ".repeat(400) });

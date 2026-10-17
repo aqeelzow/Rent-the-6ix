@@ -182,29 +182,41 @@ export async function listingContext(
     valuation = valuate(listing, candidates, benchmark, now);
     remember(key, now, valuation);
   }
-  // Pasted listings have no observations; the query just returns nothing.
-  const [first] = await sql<{ asking_rent_cad: number; observed_at: Date }[]>`
-    SELECT asking_rent_cad, observed_at FROM listing_observations
-    WHERE listing_id = ${listing.id} ORDER BY observed_at LIMIT 1`;
+  // The first observation and the scam flag stored at ingest; both absent for pasted listings.
+  // to_jsonb keeps this working before migration 005 adds deposit_before_viewing.
+  const [stored] = await sql<
+    { deposit: boolean | null; asking_rent_cad: number | null; observed_at: Date | null }[]
+  >`
+    SELECT (to_jsonb(l) ->> 'deposit_before_viewing')::boolean AS deposit,
+      o.asking_rent_cad, o.observed_at
+    FROM (SELECT 1) one
+    LEFT JOIN listings l ON l.id = ${listing.id}
+    LEFT JOIN LATERAL (
+      SELECT asking_rent_cad, observed_at FROM listing_observations
+      WHERE listing_id = ${listing.id} ORDER BY observed_at LIMIT 1) o ON true`;
   const [building] = listing.buildingId
     ? await sql<{ latest_score: string | null; score_date: Date | null }[]>`
         SELECT latest_score, score_date FROM buildings WHERE id = ${listing.buildingId}`
     : [];
   return {
     valuation,
-    caveats: caveats(listing, {
-      valuation,
-      building: building
-        ? {
-            latestScore: building.latest_score === null ? null : Number(building.latest_score),
-            scoreDate: building.score_date?.toISOString().slice(0, 10) ?? null,
-          }
-        : null,
-      sameTextElsewhere: 0,
-      firstSeen: first
-        ? { rentCad: first.asking_rent_cad, at: first.observed_at.toISOString() }
-        : null,
-      now,
-    }),
+    caveats: caveats(
+      { ...listing, depositBeforeViewing: stored?.deposit ?? false },
+      {
+        valuation,
+        building: building
+          ? {
+              latestScore: building.latest_score === null ? null : Number(building.latest_score),
+              scoreDate: building.score_date?.toISOString().slice(0, 10) ?? null,
+            }
+          : null,
+        sameTextElsewhere: 0,
+        firstSeen:
+          stored?.asking_rent_cad && stored.observed_at
+            ? { rentCad: stored.asking_rent_cad, at: stored.observed_at.toISOString() }
+            : null,
+        now,
+      },
+    ),
   };
 }
