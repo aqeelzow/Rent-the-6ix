@@ -1,4 +1,4 @@
-import { test } from 'vitest';
+import { test, vi } from 'vitest';
 import assert from 'node:assert/strict';
 import { z } from 'zod';
 import { parseInstruction } from './instruction';
@@ -36,12 +36,61 @@ test('home bounds, preferences, booleans, age, source evidence and safety remain
 });
 test('percentiles, minima, travel selectors, independent destinations and clarification', () => {
   assert.deepEqual(fallbackParse('bottom 5% rent min 12 results').numericExtreme, { field:'rent', direction:'min', percentage:5, minimumCount:12 });
+  for (const prompt of ['bottom 5% rent minimum 100 results', 'bottom 5% rent min 10 results', 'rent under 5%']) {
+    assert.equal(fallbackParse(prompt).criteria.rent, undefined, prompt);
+  }
+  assert.equal(fallbackParse('bottom 5% rent minimum 100 results').numericExtreme?.minimumCount, 100);
   assert.equal(fallbackParse('top 5% largest').numericExtreme?.field, 'sizeSqft');
   assert.equal(fallbackParse('top 5% shortest travel to Union Station by bike').numericExtreme?.targetId, 'target-1');
   const multiple = fallbackParse('bottom 5% rent and top 10% size'); assert.equal(multiple.numericExtreme, undefined); assert.equal(multiple.droppedRequests.length, 2);
   assert.ok(fallbackParse('bottom 5%').droppedRequests.length); assert.ok(fallbackParse('spacious').droppedRequests.length);
   const independent = fallbackParse('10 min walk to Union Station and 20 min bike to Eaton Centre'); assert.equal(independent.travelTargets.length, 2); assert.equal(independent.travelTargets[0].maxMinutes, 10); assert.equal(independent.travelTargets[0].alternativeModes,undefined); assert.equal(independent.travelTargets[1].maxMinutes, 20); assert.equal(independent.travelTargets[1].mode, 'bike');
   assert.deepEqual(fallbackParse('rent at least $1,800').criteria.rent?.value, { min: 1800 });
+});
+test('rent parsing skips earlier bedroom, size and travel quantities', async () => {
+  const service = new ParseService({ provider: new NoneProvider() });
+  for (const prompt of [
+    'At least 2 bedrooms, under $3000',
+    'Budget for at least 2-bedroom apartments, under $3000',
+    'At least 800 sqft and under $3000',
+    'Under 30 years old and under $3000',
+    'Within 15 minutes walk to Union Station and under $3000',
+  ]) {
+    const { intent } = await service.parse({ prompt }, 'rent-order-test');
+    assert.deepEqual(intent.criteria.rent?.value, { max: 3000 }, prompt);
+    assert.equal(intent.fieldSources['criteria.rent'].phrase, 'under $3000');
+  }
+  for (const prompt of [
+    '2-3 bedrooms, $2000-$3000',
+    '700-900 sqft, rent 2000-3000',
+    'Budget for 2-3 bedrooms, $2000-$3000',
+  ]) assert.deepEqual(fallbackParse(prompt).criteria.rent?.value, { min: 2000, max: 3000 }, prompt);
+  for (const prompt of ['Budget 2 bedrooms', 'Budget for at least 2 bedrooms', 'Budget for 700-900 sqft']) {
+    assert.equal(fallbackParse(prompt).criteria.rent, undefined, prompt);
+  }
+});
+test('explicit static sorts and both building-age directions survive basic parsing', () => {
+  const now = new Date('2026-10-17');
+  for (const phrase of ['at most', 'maximum', 'under', 'no more than']) {
+    assert.deepEqual(fallbackParse(`Apartments ${phrase} 20 years old`, now).criteria.buildingAge?.value, { builtAfter: 2006 });
+  }
+  for (const phrase of ['at least', 'minimum', 'over', 'older than', 'no less than']) {
+    assert.deepEqual(fallbackParse(`Apartments ${phrase} 20 years old`, now).criteria.buildingAge?.value, { builtBefore: 2006 });
+  }
+  const preference = fallbackParse('Apartments, ideally at least 20 years old', now);
+  assert.equal(preference.criteria.buildingAge?.hard, false);
+  assert.equal(preference.fieldSources['criteria.buildingAge'].phrase, 'at least 20 years old');
+  assert.equal(fallbackParse('Apartments at least 300 years old', now).droppedRequests.length, 1);
+  assert.equal(fallbackParse('best value apartments').sortBy, 'best_value');
+  for (const phrase of ['newest listings', 'latest listings', 'most recently listed', 'newest first']) {
+    const intent = fallbackParse(`${phrase} under $2500`);
+    assert.equal(intent.sortBy, 'newest');
+    assert.equal(intent.fieldSources.sortBy.phrase, phrase);
+    assert.equal(intent.criteria.buildingAge, undefined);
+  }
+  const building = fallbackParse('top 5% newest apartments');
+  assert.equal(building.numericExtreme?.field, 'buildingAge');
+  assert.equal(building.sortBy, 'best_match');
 });
 test('known places ambiguity, representative labels and honest unknown business', async () => {
   const resolver = new DestinationResolver();
@@ -72,6 +121,30 @@ test('Gemini busy never retries, timeout bounds full retry and text uses main mo
   let calls = 0; const provider = new GeminiProvider({ apiKey:'test',model:'test',deadlineMs:15,fetch:async () => { calls++; if (calls === 1) return geminiResponse({invalid:true}); return new Promise(() => {}); } });
   await assert.rejects(provider.generateStructured({system:'test',prompt:'test',schema:z.object({ok:z.boolean()})}), (e: unknown) => e instanceof AIUnavailable && e.reason === 'timeout'); assert.equal(calls,2);
   const text = new GeminiProvider({ apiKey:'test',model:'main',fastModel:'fast',fetch:async url => { assert.match(String(url), /main/); return Response.json({candidates:[{content:{parts:[{text:'hello'}]}}]}); } }); assert.equal(await text.generateText({system:'test',prompt:'test'}),'hello');
+});
+test('Gemini fast requests cap the shared retry deadline at three seconds and respect shorter budgets', async () => {
+  vi.useFakeTimers();
+  try {
+    for (const [fast, deadlineMs, budget] of [[true, undefined, 3000], [true, 12000, 3000], [true, 500, 500], [false, undefined, 12000], [false, 1500, 1500]] as const) {
+      let calls = 0;
+      let signal: AbortSignal | undefined;
+      const provider = new GeminiProvider({ apiKey: 'test', model: 'configured', deadlineMs, fetch: async (_url, opts) => {
+        calls++;
+        signal = opts?.signal as AbortSignal;
+        if (calls === 1) { await new Promise(resolve => setTimeout(resolve, 100)); return geminiResponse({ invalid: true }); }
+        return new Promise(() => {});
+      } });
+      const rejected = assert.rejects(provider.generateStructured({ system: 'test', prompt: 'test', schema: z.object({ ok: z.boolean() }), fast }), (error: unknown) => error instanceof AIUnavailable && error.reason === 'timeout');
+      await vi.advanceTimersByTimeAsync(100);
+      assert.equal(calls, 2);
+      await vi.advanceTimersByTimeAsync(budget - 101);
+      assert.equal(signal?.aborted, false);
+      await vi.advanceTimersByTimeAsync(1);
+      await rejected;
+      assert.equal(signal?.aborted, true);
+      assert.equal(calls, 2);
+    }
+  } finally { vi.useRealTimers(); }
 });
 test('hash cache is bounded/expiring/copy isolated and per-IP limits cannot evict around quota', () => {
   let time = 1000; const cache = new MemoryCache<{value:number}>(1,100,() => time); cache.set('a',{value:1}); const a = cache.get('a')!; a.value=9; assert.equal(cache.get('a')?.value,1); cache.set('b',{value:2}); assert.equal(cache.get('a'),undefined); time+=101; assert.equal(cache.get('b'),undefined);
@@ -157,4 +230,11 @@ test('known hard travel bounds cannot be softened, omitted or widened by AI', as
   const result = await service.parse({ prompt: preferred }, 'ip');
   assert.equal(result.parser, 'gemini');
   assert.equal(result.intent.travelTargets[0].hard, false);
+});
+
+test('plain monthly budgets parse without currency signs and do not consume home or travel bounds', () => {
+  assert.deepEqual(fallbackParse('2 bedrooms under 2500').criteria.rent, { value: { max: 2500 }, hard: true });
+  assert.deepEqual(fallbackParse('budget of 2000, 1 bedroom').criteria.rent?.value, { max: 2000 });
+  assert.deepEqual(fallbackParse('maximum rent: 1800').criteria.rent?.value, { max: 1800 });
+  for (const prompt of ['under 800 sqft', 'at least 2 bedrooms', 'under 10 minutes walk to Union Station', 'built after 2000']) assert.equal(fallbackParse(prompt).criteria.rent, undefined);
 });

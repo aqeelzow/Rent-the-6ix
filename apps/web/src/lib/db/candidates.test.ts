@@ -59,3 +59,16 @@ test('hide removes unknown cheap home fields before cap and counts full eligible
   assert.equal(result.results.length, 20); assert.equal(result.eligibleCount, 20);
   assert.ok(result.results.every(r => r.listing.bedrooms === 2));
 });
+
+test('enrichment overlaps two reads and preserves input order for tied listings', async () => {
+  let active = 0, peak = 0;
+  const listings = pool.slice(0, 6).map(listing => ({ ...listing, monthlyRentCad: 2000 }));
+  const result = await searchCandidates(request, { listings, enrich: async (...args) => {
+    active++; peak = Math.max(peak, active);
+    await new Promise(resolve => setTimeout(resolve, args[0].id === listings[0].id ? 5 : 0));
+    active--;
+    return enrich(...args);
+  } });
+  assert.equal(peak, 2);
+  assert.deepEqual(result.results.map(row => row.listing.id), listings.map(listing => listing.id));
+});

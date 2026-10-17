@@ -23,10 +23,12 @@ export async function searchPercentileCandidates(input: SearchRequest, dependenc
     // Routing can change cached hard travel results; defer those gates until every route is known.
     const beforeRouting = { ...intent, travelTargets: intent.travelTargets.filter(target => !routeTargets.includes(target)) };
     const source = dependencies.loadCandidates ? await dependencies.loadCandidates(request, controller.signal) : dependencies.listings;
-    for (const raw of source) {
+    const selectBeforeEnrichment = !exactTravel && !intent.criteria.priceFairness?.hard && !intent.safety.hard && !intent.travelTargets.some(target => target.hard);
+    const cheapPool = source.map(raw => ListingSchema.parse(raw)).filter(listing => filterListing(listing, beforeRouting, {}, request.hideUnconfirmed, true).passes);
+    // Scalar values cannot change during enrichment when no hard gate needs owner context.
+    const contextPool = selectBeforeEnrichment ? selectPercentile(cheapPool, selector, execution.referenceYear) : cheapPool;
+    for (const listing of contextPool) {
       if (controller.signal.aborted) return unavailable('timeout');
-      const listing = ListingSchema.parse(raw);
-      if (!filterListing(listing, beforeRouting, {}, request.hideUnconfirmed, true).passes) continue;
       const owner = await dependencies.enrich(listing, intent, controller.signal);
       if (controller.signal.aborted) return unavailable('timeout');
       const travel = owner.travel.map(row => TravelTimeRowSchema.parse(row)).filter(row => row.listingId === listing.id);
@@ -68,14 +70,14 @@ export async function searchPercentileCandidates(input: SearchRequest, dependenc
     }
     const filtered = eligible.filter(listing => filterListing(listing, intent, contexts.get(listing.id)!, request.hideUnconfirmed).passes);
     const target = intent.travelTargets.find(target => target.id === selector.targetId);
-    const selected = selectPercentile(filtered, selector, execution.referenceYear, listing => {
+    const selected = selectBeforeEnrichment ? filtered : selectPercentile(filtered, selector, execution.referenceYear, listing => {
       const times = contexts.get(listing.id)!.travel.filter(row => row.targetId === target?.id && targetModes(target!).includes(row.mode) && row.method === 'otp' && row.minutes !== null).map(row => row.minutes!);
       return times.length ? Math.min(...times) : null;
     });
     return SearchResponseSchema.parse({ status: 'completed', results: selected.map(listing => {
       const context = contexts.get(listing.id)!;
       return { listing, valuation: context.valuation, safety: context.safety, travel: context.travel, matchScore: scoreListing(listing, intent, context) };
-    }), eligibleCount: filtered.length, notices: [dependencies.loadCandidates ? 'Unconfirmed fields and unrouted travel times remain unknown' : 'Fixture-backed full eligible pool; live owner integrations pending'] });
+    }), eligibleCount: selectBeforeEnrichment ? cheapPool.length : filtered.length, notices: [dependencies.loadCandidates ? 'Unconfirmed fields and unrouted travel times remain unknown' : 'Fixture-backed full eligible pool; live owner integrations pending'] });
   };
   if (!exactTravel) return work();
   if (execution.signal?.aborted || Date.now() >= deadline) return unavailable('timeout');

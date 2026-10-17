@@ -1,0 +1,119 @@
+{
+  "parser": "fallback",
+  "eligible": 183,
+  "returned": 183,
+  "percentile": 10,
+  "liveDetail": true,
+  "overlappingSearches": true,
+  "staticSizeAgeTypeAc": true,
+  "compoundPromptParsing": true,
+  "hardFairness": true,
+  "asyncJobs": true,
+  "measurements": [
+    {
+      "path": "/api/search/parse",
+      "ms": 3397,
+      "status": 200
+    },
+    {
+      "path": "/api/search/parse",
+      "ms": 3074,
+      "status": 200
+    },
+    {
+      "path": "/api/search/parse",
+      "ms": 3063,
+      "status": 200
+    },
+    {
+      "path": "/api/search/parse",
+      "ms": 3031,
+      "status": 200
+    },
+    {
+      "path": "/api/search/parse",
+      "ms": 3012,
+      "status": 200
+    },
+    {
+      "path": "/api/search/parse",
+      "ms": 3008,
+      "status": 200
+    },
+    {
+      "path": "/api/search/parse",
+      "ms": 130,
+      "status": 200
+    },
+    {
+      "path": "/api/listings/search",
+      "ms": 10778,
+      "status": 200
+    },
+    {
+      "path": "/api/listings/search",
+      "ms": 695,
+      "status": 200
+    },
+    {
+      "path": "/api/listings/search",
+      "ms": 154,
+      "status": 200
+    },
+    {
+      "path": "/api/listings/:id",
+      "ms": 56,
+      "status": 200
+    },
+    {
+      "path": "/api/listings/:id",
+      "ms": 45,
+      "status": 404
+    },
+    {
+      "path": "/api/listings/search",
+      "ms": 6,
+      "status": 422
+    },
+    {
+      "path": "/api/listings/search",
+      "ms": 65,
+      "status": 200
+    },
+    {
+      "path": "/api/listings/search",
+      "ms": 70,
+      "status": 200
+    },
+    {
+      "path": "/api/listings/search",
+      "ms": 144,
+      "status": 200
+    },
+    {
+      "path": "/api/listings/search",
+      "ms": 48,
+      "status": 200
+    },
+    {
+      "path": "/api/listings/search",
+      "ms": 9,
+      "status": 200
+    },
+    {
+      "path": "/api/listings/search/jobs/:token",
+      "ms": 8,
+      "status": 200
+    },
+    {
+      "path": "/api/listings/search/jobs/:token",
+      "ms": 6,
+      "status": 200
+    },
+    {
+      "path": "/api/listings/search/jobs/:token",
+      "ms": 4,
+      "status": 410
+    }
+  ]
+}
