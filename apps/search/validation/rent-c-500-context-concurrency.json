@@ -40,5 +40,10 @@
     "C valuation cache cleared before every pass; database buffers and network caches are not flushed",
     "Result comparison canonicalizes array order to ignore equal-distance comparable ordering; semantic array order is not asserted",
     "Direct owner timings exclude B request SQL, filtering, schema validation, scoring, response serialization and routing"
-  ]
+  ],
+  "comparisonClassification": {
+    "snapshotControl": "None: each owner query used the ordinary pooled client outside a repeatable-read transaction.",
+    "cause": "Unclassified: changing database facts during active ingest and query nondeterminism were not distinguished.",
+    "followup": "rent-c-context-snapshot.json verifies a separate 24-subject fixed-snapshot sample; it does not prove equivalence for this entire pool."
+  }
 }
