@@ -26,6 +26,7 @@ import {
 import { normalize, type NormalizedListing } from "./normalize.ts";
 import { scrub } from "./scrub.ts";
 import { dedupeStored } from "./dedupe-store.ts";
+import { geocodeStored } from "./geocode.ts";
 import {
   aiText,
   extractFields,
@@ -186,6 +187,11 @@ export async function runIngest(options: IngestOptions): Promise<IngestResult> {
   if (db) {
     try {
       console.log(`freshness: ${await markFreshness(db, new Date())} listings changed status`);
+      // Before dedupe: geocoded points make the 50 m rule exact.
+      const geo = await geocodeStored(db);
+      console.log(
+        `geocode: ${geo.exact + geo.fuzzy} of ${geo.candidates} matched to Address Points (${geo.fuzzy} fuzzy); ${geo.areaJoined} area joins, ${geo.outsideToronto} outside Toronto dropped, ${geo.buildings} RentSafeTO buildings`,
+      );
       const dedupe = await dedupeStored(db);
       console.log(`dedupe: ${dedupe.duplicates} of ${dedupe.listings} listings are duplicates`);
     } finally {
