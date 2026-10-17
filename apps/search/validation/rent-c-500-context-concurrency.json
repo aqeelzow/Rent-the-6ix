@@ -1,0 +1,44 @@
+{
+  "scope": "Read-only actual DB, direct owner C listingContext for the same 500 ordinary best-match couple candidates; no B cache; no HTTP endpoint latency claim",
+  "measuredAt": "2026-10-17T17:57:29.278Z",
+  "fixedValuationNow": "2026-10-17T17:57:10.688Z",
+  "databaseClient": "postgres max 2, default pipeline; owner queries/algorithms unchanged",
+  "cheapPoolCount": 2679,
+  "selection": "Same cheap hard filters and best-match confirmation/recency/rent ordering as ordinary candidate selection; hard travel is unknown and passes",
+  "runs": [
+    {
+      "concurrency": 8,
+      "count": 500,
+      "elapsedMs": 6203,
+      "processCpuMs": 1958,
+      "sameResults": true
+    },
+    {
+      "concurrency": 16,
+      "count": 500,
+      "elapsedMs": 3241,
+      "processCpuMs": 1706,
+      "sameResults": true
+    },
+    {
+      "concurrency": 32,
+      "count": 500,
+      "elapsedMs": 2043,
+      "processCpuMs": 1750,
+      "sameResults": true
+    },
+    {
+      "concurrency": 8,
+      "count": 500,
+      "elapsedMs": 6011,
+      "processCpuMs": 1951,
+      "sameResults": true
+    }
+  ],
+  "limits": [
+    "Only the representative couple pool was measured; not every possible pool or concurrent deployment load",
+    "C valuation cache cleared before every pass; database buffers and network caches are not flushed",
+    "Result comparison canonicalizes array order to ignore equal-distance comparable ordering; semantic array order is not asserted",
+    "Direct owner timings exclude B request SQL, filtering, schema validation, scoring, response serialization and routing"
+  ]
+}
