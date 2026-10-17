@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildingSimilarity,
   inPool,
   priceLabel,
   valuate,
@@ -158,6 +159,35 @@ describe("adjustments", () => {
   });
 });
 
+describe("building similarity", () => {
+  const cand = (extra: object) => ({ ...comps([2000])[0], ...extra });
+  it("weights basements against above-ground units and far-apart building ages down", () => {
+    const basement = { ...subject, unitType: "basement" as const };
+    expect(buildingSimilarity(basement, cand({ unitType: "house" }))).toBe(0.3);
+    expect(buildingSimilarity(basement, cand({ unitType: "basement" }))).toBe(1);
+    expect(buildingSimilarity(basement, cand({ unitType: null }))).toBe(1);
+    const tower = { ...subject, yearBuilt: 2022 };
+    expect(buildingSimilarity(tower, cand({ yearBuilt: 2019 }))).toBe(1.5);
+    expect(buildingSimilarity(tower, cand({ yearBuilt: 1965 }))).toBe(0.5);
+    expect(buildingSimilarity(tower, cand({ yearBuilt: 2000 }))).toBe(1);
+    expect(buildingSimilarity(tower, cand({ yearBuilt: null }))).toBe(1);
+  });
+
+  it("a basement is valued mostly from basements", () => {
+    const basement = { ...subject, unitType: "basement" as const };
+    const v = valuate(
+      basement,
+      [
+        ...comps([1600, 1600, 1600], { unitType: "basement" }),
+        ...comps([2600, 2600, 2600], { unitType: "apartment" }),
+      ],
+      null,
+      NOW,
+    );
+    expect(v.estimatedRentCad).toBe(1600);
+  });
+});
+
 describe("weights and the estimate", () => {
   it("weighted quantiles: equal weights give the usual median; weight pulls it", () => {
     const even = [1, 2, 3, 4].map((value) => ({ value, weight: 1 }));
@@ -209,7 +239,7 @@ describe("weights and the estimate", () => {
       priceLabel: "reasonable",
     });
     expect(v.method).toBe(
-      "Weighted median of 5 comparable 1-bedroom listings within 1 km, seen in the last 60 days, adjusted to this listing's utilities, parking, furniture and laundry.",
+      "Weighted median of 5 comparable 1-bedroom listings within 1 km, seen in the last 60 days, adjusted to this listing's utilities, parking, furniture and laundry; comparables of the same building type and age count more.",
     );
   });
 });

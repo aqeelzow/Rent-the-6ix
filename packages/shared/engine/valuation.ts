@@ -20,6 +20,8 @@ export interface ValuationSubject {
   bedrooms: number | null;
   bathrooms: number | null;
   sqft: number | null;
+  /** Optional: weights comparables of a similar age (SPEC 7.2). */
+  yearBuilt?: number | null;
   utilitiesIncluded: Utilities;
   parking: Tri;
   furnished: Tri;
@@ -172,7 +174,7 @@ export function valuate(
     confidence,
     comparables: comparables.sort((a, b) => b.weight - a.weight || a.distanceM - b.distanceM),
     adjustments: [...adjustments.values()],
-    method: `Weighted median of ${comparables.length} comparable ${poolLabel(subject)} within ${km(radiusM)}, seen in the last ${C.windowDays} days, adjusted to this listing's utilities, parking, furniture and laundry.${chosen.length > effective ? ` Floor plans in one building count as at most ${C.maxPerBuilding} comparables.` : ""}`,
+    method: `Weighted median of ${comparables.length} comparable ${poolLabel(subject)} within ${km(radiusM)}, seen in the last ${C.windowDays} days, adjusted to this listing's utilities, parking, furniture and laundry; comparables of the same building type and age count more.${chosen.length > effective ? ` Floor plans in one building count as at most ${C.maxPerBuilding} comparables.` : ""}`,
   };
 }
 
@@ -286,7 +288,29 @@ function weightOf(subject: ValuationSubject, c: ComparableCandidate, now: Date):
     Math.abs(c.sqft - subject.sqft) / subject.sqft > C.similarity.sqftTolerance
   )
     similarity -= C.similarity.sqftPenalty;
-  return distance * Math.max(recency, C.recencyFloor) * similarity;
+  return distance * Math.max(recency, C.recencyFloor) * similarity * buildingSimilarity(subject, c);
+}
+
+/**
+ * Same kind of building counts more: a basement is a weak comparable for an above-ground unit
+ * (and the reverse), and a 2022 tower for a 1965 one. Unknown type or age on either side → 1.
+ */
+export function buildingSimilarity(subject: ValuationSubject, c: ComparableCandidate): number {
+  const B = C.buildingSimilarity;
+  let factor = 1;
+  if (
+    subject.unitType &&
+    c.unitType &&
+    (subject.unitType === "basement") !== (c.unitType === "basement")
+  ) {
+    factor *= B.basementMismatch;
+  }
+  if (subject.yearBuilt != null && c.yearBuilt != null) {
+    const apart = Math.abs(subject.yearBuilt - c.yearBuilt);
+    if (apart <= B.sameEraYears) factor *= B.sameEraBoost;
+    else if (apart > B.differentEraYears) factor *= B.differentEra;
+  }
+  return factor;
 }
 
 function ageDays(iso: string, now: Date): number {
