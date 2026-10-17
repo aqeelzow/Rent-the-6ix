@@ -140,7 +140,37 @@
     "neighbourhoods": "Neighbourhoods",
     "wards": "Wards",
     "notLoaded": "Not loaded",
-    "comingSoon": "Other system checks will appear here as those services are connected."
+    "comingSoon": "Other system checks will appear here as those services are connected.",
+    "listingSources": {
+      "title": "Listing sources",
+      "intro": "The worker collects listings from each site on a schedule. A site that blocks it is skipped until the next run: we never solve captchas or use proxies.",
+      "loadFailed": "Source health couldn't be read from the database.",
+      "none": "No listings collected yet.",
+      "never": "Never",
+      "lastRun": "Last run",
+      "lastOk": "Last successful run",
+      "newestSeen": "Newest listing seen",
+      "listings": "Active / stale listings",
+      "activeStale": "{active} / {stale}",
+      "lastRunCounts": "Last run",
+      "collectedStored": "{collected} collected, {stored} stored",
+      "state": {
+        "ok": "Working",
+        "no_runs": "No runs recorded",
+        "stale": "Behind",
+        "empty": "No listings found",
+        "blocked": "Blocked",
+        "failed": "Failed"
+      },
+      "explain": {
+        "ok": "",
+        "no_runs": "The worker hasn't recorded a run for this site yet; its listings come from earlier runs.",
+        "stale": "No listing from this site has been seen for more than {hours} hours. Its listings stay searchable and are marked stale after 8 days unseen.",
+        "empty": "The last run finished but found no listings, which usually means the site changed its pages.",
+        "blocked": "The site blocked the worker on its last run, so it stopped there. Listings already collected stay searchable and are marked stale after 8 days unseen.",
+        "failed": "The last run stopped with an error. Listings already collected stay searchable."
+      }
+    }
   },
   "filters": {
     "label": "Your filters",
@@ -412,6 +442,7 @@
       "rentals_ca": "Rentals.ca",
       "zillow": "Zillow",
       "realtor_ca": "Realtor.ca",
+      "torontorentals": "TorontoRentals",
       "manual": "Hand-checked",
       "pasted": "Pasted by you"
     },
@@ -470,16 +501,16 @@
     "perMonth": "/month",
     "perRoom": "/month per room",
     "viewOnSource": "View on {source}",
-    "sourceNote": "Contact the landlord and apply on the source site; RentThe6ix doesn't host listings.",
-    "seen": "Last seen {when}",
-    "listedSince": "first seen {date}",
+    "sourceNote": "Contact and apply on {source}.",
+    "seen": "Seen {when}",
+    "listedSince": "Listed since {date}",
     "dataStatus": {
       "live": "Live listing",
       "snapshot": "Snapshot of {date}",
       "demo": "Demo data"
     },
     "alsoOn": "Also on: ",
-    "approxAddress": "Exact address not shown by the source",
+    "approxAddress": "Exact address not shown",
     "sections": {
       "why": "Why it ranks here",
       "rent": "Rent check",
@@ -488,37 +519,29 @@
       "safety": "Safety",
       "building": "Building",
       "area": "The area",
-      "check": "Things to check",
-      "unconfirmed": "Must-haves we couldn't confirm"
+      "check": "Things to check"
     },
     "why": {
-      "total": "{total} out of 100",
-      "part": "{score}/100 × {weight}%",
-      "points": "{points} points",
-      "omitted": "Not scored for this search: {parts}. They count once you ask for them or the data exists.",
-      "sum": "The parts add up to the total."
+      "part": "Scored {score}/100, weighted {weight}%",
+      "points": "{points} pts",
+      "omitted": "Not scored for this search: {parts}."
     },
     "rent": {
-      "estimate": "Estimated rent for similar homes",
-      "range": "Typical range",
-      "difference": "This listing",
-      "below": "{amount} ({percent}%) below the estimate",
-      "above": "{amount} ({percent}%) above the estimate",
-      "inLine": "In line with the estimate",
-      "basis": "Based on {count} similar listings within {km} km, seen in the last {days} days. {confidence}.",
-      "thin": "Not enough data: {count} similar listings within {km} km (at least 5 are needed for a price label).",
-      "asking": "Compared with asking rents for similar listings, not signed leases.",
-      "comparables": "Similar listings",
+      "thin": "Only {count} similar listings nearby; 5 are needed to compare.",
+      "asking": "Compared with asking rents, not signed leases.",
+      "comparables": "Show the {count} closest similar listings",
       "colRent": "Rent",
       "colAdjusted": "On this listing's terms",
       "colDistance": "Distance",
       "colSeen": "Last seen",
       "view": "View",
-      "adjustments": "Adjustments to compare like with like",
+      "adjustments": "Adjusted to match this listing",
       "benchmark": "Benchmark",
       "benchmarkValue": "{label}: {value} ({period})",
-      "benchmarkNone": "City-wide benchmark (Statistics Canada, CMHC) isn't loaded yet.",
-      "mapNote": "A map of these listings needs their locations, which aren't available yet."
+      "benchmarkNone": "The city-wide benchmark from Statistics Canada and CMHC isn't loaded yet.",
+      "chipCount": "{count} similar listings",
+      "chipRadius": "within {km} km",
+      "chipDays": "last {days} days"
     },
     "fields": {
       "bedrooms": "Bedrooms",
@@ -579,7 +602,7 @@
       "routedDrive": "{minutes} min, no traffic",
       "straightLine": "{km} km straight-line",
       "missing": "Not available",
-      "note": "Transit uses TTC schedules for a weekday at 8:30 am. Driving assumes no traffic. Straight-line distance is shown where a travel time isn't available yet, never as minutes."
+      "note": "Transit: weekday 8:30 am. Driving: no traffic. Straight-line distance is never shown as minutes."
     },
     "safety": {
       "rate": "Police-reported major crime here: {rate}× the city rate ({years} average, Toronto Police Service).",
@@ -594,16 +617,17 @@
       }
     },
     "building": {
-      "none": "No RentSafeTO record is available for this building yet. The City's RentSafeTO program covers apartment buildings with 3 or more storeys and 10 or more units; houses and smaller buildings aren't evaluated."
+      "none": "No RentSafeTO record for this building yet. RentSafeTO covers apartment buildings with 3+ storeys and 10+ units."
     },
     "area": {
-      "none": "Neighbourhood facts (renters, rent burden, transit, development nearby) aren't loaded yet.",
+      "none": "Neighbourhood facts like renter share, rent burden and transit aren't loaded yet.",
       "indicator": "{value} {unit}",
       "source": "{period} · source: {source}",
       "sample": "based on {n}"
     },
     "check": {
-      "none": "Nothing flagged."
+      "none": "Nothing flagged.",
+      "unconfirmed": "Must-have not confirmed"
     },
     "explanation": "In plain words",
     "indicators": {
@@ -623,6 +647,38 @@
       "rapid_transit_within_800m_pct": "Area within 800 m of rapid transit",
       "libraries": "Libraries",
       "parks_ha_per_1000": "Park space per 1,000 residents (ha)"
+    },
+    "photoAlt": "Photo of this listing, shown from {source}",
+    "chart": {
+      "priceAria": "Chart: this listing at {rent} compared with {count} similar listings, adjusted to its terms.",
+      "estimate": "Estimate {value}",
+      "comparableTip": "{adjusted} on this listing's terms (asks {rent}), {km} km away",
+      "thisListing": "This listing {value}",
+      "similar": "Similar listings",
+      "range": "Typical range",
+      "rangeValue": "Typical range {low}–{high}"
+    },
+    "stats": {
+      "score": "Match score",
+      "scoreOutOf": "out of 100",
+      "price": "Price check",
+      "commute": "To {place}",
+      "commuteNone": "No places added",
+      "commuteHint": "Add a place in Filters to see travel times.",
+      "below": "{amount} below",
+      "above": "{amount} above",
+      "inLine": "In line",
+      "vsEstimate": "Estimate for similar homes: {value}",
+      "typical": "typical range",
+      "priceNone": "Not enough similar listings nearby to compare."
+    },
+    "home": {
+      "notStated": "{count} details not stated",
+      "askLandlord": "Ask the landlord about these before you apply."
+    },
+    "missing": {
+      "title": "{count} sections not available yet",
+      "aria": "Not available yet"
     }
   },
   "shortlist": {

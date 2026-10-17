@@ -82,7 +82,7 @@ Implementation defaults: unstated criteria impose no constraints; household size
 - Build against fixtures until those services are available, then verify live integration.
 - Check official provider documentation and current library APIs during implementation.
 - Exact travel percentiles may exceed two minutes and must report unavailability honestly.
-- Current implementation changes are validated in `/tmp/rent-search-current` and preserved under `patches/`; canonical app/shared/root writes are outside this session’s permitted paths. Older temporary worktree references below are historical.
+- Current implementation is validated in `/tmp/rent-search-mvp` on `b/search-plan-completion`; canonical app/shared/root writes are outside this session’s permitted paths. Older temporary worktree and patch references below are historical.
 
 ## Progress
 
@@ -251,3 +251,8 @@ An earlier external-map-enabled desktop attempt passed cards/filters/choices but
 ActualDB acceptance:24 active canonical co-located subjects, six each room/studio/two-bedroom/three-plus; three cold C-cache-cleared passes at fixed valuation time each returned24 successful estimates,24 benchmarks and930 comparable entries. Canonicalized full valuation/caveat/benchmark/adjustment/comparable values and membership matched in all passes; no differing fields. Pass timings1.334s/1.128s/1.116s, entire transaction4.578s. Evidence: `validation/rent-c-context-snapshot.json`; earlier500 artifact retains measured results with corrected unknown-cause classification. Default tests skip both DB probes and write no artifacts. This isolates mutable data for this sample only: it neither proves all500/equal-distance/cutoff cases deterministic nor measures concurrent throughput or endpoint performance. C cold/full-pool performance, representative full-pool result-equivalence and the original under2s search target remain open. No concurrency tuning, owner query/algorithm/config change, PERSON_B/import or frontend edit.
 
 Feature18 checks: opt-in live snapshot test1 passed/500-pool probe skipped; default run2 skipped, web TypeScript, focused ESLint and whitespace checks pass.
+
+
+2026-10-17 — Sequential feature19 reconciles main f53fc69 (PR29 listing dashboard and PR30 C ingestion/source health/benchmarks) with the B search branch. Merge completed without conflicts; the already integrated StatCan owner commit was retained without duplicate implementation. Latest owner dashboard, source-health section, neutral-value explanation, thumbnail ingestion and worker scheduling/deployment definitions are unchanged. No import work, extra PERSON_B edits, owner algorithm fixes or deployment changes.
+
+Verification: workspace typecheck and lint, 456 default tests (91 shared/258 web/107 worker;13 web live-only skips), fresh web production build, and three separate opt-in read-only database checks for benchmark search/detail identity, official static-detail facts and safety opt-in/hard limits all pass. The prior feature17 rendered evidence applies to the older dashboard, not this newly merged view; fresh desktop/mobile/map/dashboard acceptance remains open. Source review confirms building details still unconditionally enter the dashboard's unavailable section even when B supplies building data. Provider quota, cold latency, live OTP/amenity precompute and branch rollout/affinity remain open. The integration subagent started the clean merge, then hit its usage limit; parent completed verification and documentation.

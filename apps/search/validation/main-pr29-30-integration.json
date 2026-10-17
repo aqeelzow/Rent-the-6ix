@@ -1,0 +1,32 @@
+{
+  "checkedAt": "2026-10-17T19:39:59.101580+00:00",
+  "main": "f53fc69d37ef552bd5ed033b79f8e0c35914ac78",
+  "scope": "Sequential feature19 integration, no deployment or new browser acceptance",
+  "mergeConflicts": false,
+  "checks": {
+    "workspaceTypecheck": "passed",
+    "workspaceLint": "passed",
+    "workspaceTests": {
+      "passed": 456,
+      "shared": 91,
+      "web": 258,
+      "worker": 107,
+      "liveOnlySkipped": 13
+    },
+    "productionBuild": "passed",
+    "readOnlyLiveDatabase": {
+      "passed": 3,
+      "checks": [
+        "benchmark search/detail identity",
+        "static detail civic/building/duplicates",
+        "safety opt-in and hard limits"
+      ]
+    }
+  },
+  "limits": [
+    "Prior browser evidence predates PR29 dashboard; fresh rendered acceptance remains open",
+    "Building rendering remains an owner A follow-up",
+    "No live Gemini, OTP, amenity precompute, cold-latency or branch rollout/affinity acceptance",
+    "Subagent started integration but hit usage limit; parent completed checks"
+  ]
+}

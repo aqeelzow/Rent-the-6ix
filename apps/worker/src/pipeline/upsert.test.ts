@@ -42,6 +42,12 @@ describe("toRow", () => {
     });
   });
 
+  it("stores the thumbnail link, or null", () => {
+    const thumb = "https://media.kijiji.ca/a.jpg";
+    expect(toRow({ ...listing, imageUrl: thumb }, "2026-10-17T00:00:00Z")!.image_url).toBe(thumb);
+    expect(toRow(listing, "2026-10-17T00:00:00Z")!.image_url).toBeNull();
+  });
+
   it("skips listings without coordinates (location is required)", () => {
     expect(toRow({ ...listing, sourceLocation: null }, "2026-10-17T00:00:00Z")).toBeNull();
   });

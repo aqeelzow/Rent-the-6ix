@@ -34,6 +34,7 @@ export interface ListingRow {
   pets_allowed: string;
   available_from: string | null;
   lease_term: string | null;
+  image_url: string | null;
   first_seen_at: string;
   last_seen_at: string;
   field_evidence: Record<string, string>;
@@ -126,6 +127,7 @@ const COLUMNS = [
   "pets_allowed",
   "available_from",
   "lease_term",
+  "image_url",
   "first_seen_at",
   "last_seen_at",
   "field_evidence",
@@ -159,6 +161,7 @@ export function toRow(l: NormalizedListing, observedAt: string): ListingRow | nu
     pets_allowed: l.petsAllowed,
     available_from: l.availableFrom,
     lease_term: l.leaseTerm,
+    image_url: l.imageUrl,
     first_seen_at: observedAt,
     last_seen_at: observedAt,
     field_evidence: l.fieldEvidence,
@@ -198,6 +201,8 @@ export async function upsertListings(
         INSERT INTO listings ${tx(batch, columns)}
         ON CONFLICT (source, source_listing_id) DO UPDATE SET
           source_url = excluded.source_url,
+          -- A run that doesn't see the thumbnail keeps the stored one.
+          image_url = coalesce(excluded.image_url, listings.image_url),
           title = excluded.title,
           excerpt = excluded.excerpt,
           monthly_rent_cad = excluded.monthly_rent_cad,

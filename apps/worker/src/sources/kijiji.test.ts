@@ -116,6 +116,19 @@ describe("parseKijiji", () => {
     );
   });
 
+  it("takes the cover photo's https link, never anything else", () => {
+    const withPhotos = {
+      ...listing,
+      imageUrls: ["https://media.kijiji.ca/a.jpg", "https://media.kijiji.ca/b.jpg"],
+    };
+    expect(parseKijiji(page([withPhotos])).listings[0].imageUrl).toBe(
+      "https://media.kijiji.ca/a.jpg",
+    );
+    expect(parseKijiji(page([listing])).listings[0].imageUrl).toBeNull();
+    const unsafe = { ...listing, imageUrls: ["javascript:alert(1)"] };
+    expect(parseKijiji(page([unsafe])).listings[0].imageUrl).toBeNull();
+  });
+
   it("fails loudly when the page layout changes", () => {
     expect(() => parseKijiji("<html></html>")).toThrow(/__NEXT_DATA__/);
   });

@@ -22,6 +22,21 @@ const norm = (overrides: Partial<RawListing> = {}) => {
   return out;
 };
 
+describe("normalize: thumbnail", () => {
+  it("keeps https links only", () => {
+    expect(norm({ imageUrl: "https://cdn.realtor.ca/listing/med/1.jpg" }).imageUrl).toBe(
+      "https://cdn.realtor.ca/listing/med/1.jpg",
+    );
+    for (const imageUrl of [
+      "http://x.ca/a.jpg",
+      "javascript:alert(1)",
+      "data:image/png;base64,AA",
+      "/a.jpg",
+    ])
+      expect(norm({ imageUrl }).imageUrl, imageUrl).toBeNull();
+  });
+});
+
 describe("normalize: rent", () => {
   it("drops listings with no plausible monthly rent", () => {
     expect(normalize(raw({ monthlyRentCad: 0 }), NOW)).toBeNull();

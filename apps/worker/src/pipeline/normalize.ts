@@ -4,7 +4,7 @@
 // Location, area ids, building match, timestamps and status are added by geocode/upsert (P1.5–P1.6).
 // TODO(P0.5): switch these types to B's `Listing` schema in packages/shared/schemas when it lands.
 import { asksForMoneyBeforeViewing } from "@rentthe6ix/shared/engine/scam";
-import type { RawListing, SourceId, TriState } from "../sources/types.ts";
+import { httpsUrl, type RawListing, type SourceId, type TriState } from "../sources/types.ts";
 import { excerpt, scrub } from "./scrub.ts";
 
 export type UnitType = "apartment" | "condo" | "basement" | "house" | "townhouse" | "room";
@@ -45,6 +45,8 @@ export interface NormalizedListing {
   postalCode: string | null;
   sourceLocation: { lng: number; lat: number } | null;
   postedAt: string | null;
+  /** Source thumbnail, hot-linked only (never fetched or stored). */
+  imageUrl: string | null;
   /** Scam indicator from the full description (the excerpt is too short to catch it). */
   depositBeforeViewing: boolean;
   fieldEvidence: Partial<Record<EvidenceField, Evidence>>;
@@ -156,6 +158,7 @@ export function normalize(raw: RawListing, now = new Date()): NormalizedListing 
         ? { lng: raw.lng, lat: raw.lat }
         : null,
     postedAt: posted,
+    imageUrl: httpsUrl(raw.imageUrl),
     depositBeforeViewing: asksForMoneyBeforeViewing(`${raw.title}\n${raw.description ?? ""}`),
     fieldEvidence: evidence,
   };
