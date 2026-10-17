@@ -504,9 +504,9 @@ Sources the team wants, one adapter each in `apps/worker/src/sources`, each expo
 | --- | --- | --- |
 | **Kijiji** (Toronto long-term rentals) | search pages; results embedded as JSON (`__NEXT_DATA__`) | go |
 | **TorontoRentals.com** (Rentals.ca network) | search pages; results from the page's /graphql call | go |
-| **Rentals.ca** | same platform as TorontoRentals.com | blocked (Cloudflare 403) |
-| **Zillow** (Toronto rentals) | search pages (`__NEXT_DATA__`) | blocked (captcha 403); parser unverified |
-| **Realtor.ca** (rentals) | map page search response | blocked (403); parser unverified |
+| **Rentals.ca** | same platform as TorontoRentals.com | no-go: not blocked with CloakBrowser, but no results response captured |
+| **Zillow** (Toronto rentals) | search pages (`__NEXT_DATA__`) | go (with CloakBrowser) |
+| **Realtor.ca** (rentals) | map page search response | go (with CloakBrowser) |
 | **Facebook Marketplace / groups** | not collected (needs a login; Meta's terms prohibit automated collection) | covered by **Paste a listing** (section 10.3): the user pastes text or a link they're looking at, it's parsed and scored in their browser only |
 | `manual` | hand-curated rows in `db/seed/manual.csv` | backup for the demo if adapters break |
 
@@ -906,3 +906,4 @@ One line per change to this spec: `YYYY-MM-DD P#.#: what changed and why`. Newes
 - 2026-10-16 P0.11 [C]: Adapters are `{ id, displayName, fetchIndex(session, cursor) → { listings: RawListing[], nextCursor } }` (index pages carry full rows on the working sources, so no `fetchDetail`/`parse(html)` step; parsing is a pure function per adapter). All fetching is plain Playwright; a 401/403/429 or bot-check page marks the source unhealthy for the run. New source `torontorentals` (torontorentals.com, Rentals.ca network); rentals.ca, Zillow and Realtor.ca are blocked, Facebook not collected (see `apps/worker/SOURCES.md`).
 - 2026-10-16 P0.1 [A]: pnpm pinned to 10.34.7 (`packageManager`). Vercel's pnpm 9/10 can't read pnpm 12's lockfile, and newer pnpm switches to the pinned version automatically. The team's Vercel project builds from Root Directory `apps/web`, and `apps/web/vercel.json` pins the Next.js preset. `.env.example` is git-ignored and removed from the repo at the team's request; SPEC 20 is the variable list.
 - 2026-10-16 P0.1 [A]: The Vercel project builds from the repo root. The root `vercel.json` sets `framework: nextjs`, `buildCommand: pnpm --filter web build` and `outputDirectory: apps/web/.next`, and `next` is a root devDependency so Vercel's Next.js builder detects it. The output matches a Root Directory `apps/web` build (`apps/web/vercel.json`), which also works. Root `engines.node` is `24.x`.
+- 2026-10-16 P0.11 [C]: The worker fetches through CloakBrowser (stealth Chromium driven by `playwright-core`) instead of plain Playwright. Zillow and Realtor.ca now load and parse (go); rentals.ca is past Cloudflare but its results response isn't captured yet (no-go). A source that still gets a 401/403/429 or bot-check page stops for the run, with no captcha solving or proxies (`apps/worker/SOURCES.md`).
