@@ -83,6 +83,26 @@ function ordinalWords(n: number): string | null {
   return n % 10 === 0 ? TENTHS[n / 10] : `${TENS[Math.floor(n / 10)]} ${ONES[n % 10]}`;
 }
 
+// Other municipalities that aren't also Toronto street or neighbourhood names (Niagara, Maple Leaf,
+// Concord CityPlace, Markham Rd, Kingston Rd and Hamilton St are all in Toronto).
+const OTHER_CITIES =
+  "waterloo|kitchener|guelph|burlington|oakville|mississauga|brampton|vaughan|woodbridge|richmond hill|newmarket|aurora|ajax|whitby|oshawa|barrie|ottawa|montreal|niagara falls|st\\.? catharines|peterborough|stouffville";
+const STREET_WORDS =
+  "st|street|rd|road|ave|avenue|dr|drive|blvd|boulevard|cres|crescent|crt|court|way|pkwy|lane|ln|sq|square|gate|trail|terrace|place|pl|circle|cir|heights|park|line|mall";
+const OTHER_CITY = new RegExp(
+  `(?<!\\b(?:near|to|from|of|by|and|border|close to|minutes?|min|mins)\\s)(?<![&/]\\s?)\\b(?:${OTHER_CITIES})\\b(?!\\s+(?:${STREET_WORDS})\\b)(?!\\s*[&/]|\\s+and\\s)`,
+  "i",
+);
+
+/**
+ * The title or address places the listing in another city ("Waterloo Finished Basement",
+ * "81 Townsgate Dr, Vaughan"); not "near Mississauga", "Mississauga Rd" or "Vaughan/Steeles".
+ * Only used for listings without an Address Point: a match proves the address is in Toronto.
+ */
+export function namesOtherCity(title: string, address: string | null = null): boolean {
+  return OTHER_CITY.test(title) || (address !== null && OTHER_CITY.test(address));
+}
+
 export interface NormalizedAddress {
   /** "89", "28A". */
   number: string;
@@ -133,6 +153,8 @@ export interface GeocodeResult {
   areaJoined: number;
   /** Listings outside every ward, deleted (0 until wards are loaded). */
   outsideToronto: number;
+  /** Unmatched listings whose title or address names another city, deleted. */
+  otherCity: number;
   /** Listings matched to a RentSafeTO building (0 until buildings are loaded). */
   buildings: number;
 }
@@ -162,6 +184,7 @@ export async function geocodeStored(
     fuzzy: 0,
     areaJoined: 0,
     outsideToronto: 0,
+    otherCity: 0,
     buildings: 0,
   };
 
@@ -254,12 +277,25 @@ export async function geocodeStored(
     result.outsideToronto = (
       await sql`
         DELETE FROM listings l
-        WHERE NOT EXISTS (SELECT 1 FROM wards w WHERE ST_Covers(w.geometry, l.location::geometry))
+        WHERE l.address_point_id IS NULL -- an Address Point is in Toronto by definition
+          AND NOT EXISTS (SELECT 1 FROM wards w WHERE ST_Covers(w.geometry, l.location::geometry))
           -- A Toronto address whose street-level point lands just offshore or over the line stays.
           AND NOT (l.address_text ~* '\\mtoronto\\M' AND l.address_text !~* '\\m(vaughan|markham|mississauga|richmond hill|pickering|brampton|thornhill)\\M'
             AND EXISTS (SELECT 1 FROM wards w WHERE ST_DWithin(w.geometry::geography, l.location, ${EDGE_M})))`
     ).count;
   }
+  // A point inside Toronto with an address elsewhere: the source placed it imprecisely.
+  const unmatched = await sql<{ id: string; title: string; address_text: string | null }[]>`
+    SELECT id, title, address_text FROM listings WHERE address_point_id IS NULL`;
+  const elsewhere = unmatched
+    .filter((r) => namesOtherCity(r.title, r.address_text))
+    .map((r) => r.id);
+  for (let i = 0; i < elsewhere.length; i += WRITE_BATCH) {
+    result.otherCity += (
+      await sql`DELETE FROM listings WHERE id IN ${sql(elsewhere.slice(i, i + WRITE_BATCH))}`
+    ).count;
+  }
+
   if (buildings) {
     result.buildings = (
       await sql`
@@ -269,7 +305,11 @@ export async function geocodeStored(
           year_built_source = CASE WHEN b.year_built IS NOT NULL THEN 'rentsafeto'
             ELSE l.year_built_source END,
           updated_at = now()
-        FROM buildings b
+        -- A few Address Points have two RentSafeTO registrations: always take the same one.
+        FROM (
+          SELECT DISTINCT ON (address_point_id) * FROM buildings
+          WHERE address_point_id IS NOT NULL ORDER BY address_point_id, id
+        ) b
         WHERE b.address_point_id = l.address_point_id AND l.building_id IS DISTINCT FROM b.id`
     ).count;
   }

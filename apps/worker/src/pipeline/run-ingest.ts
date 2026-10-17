@@ -190,7 +190,7 @@ export async function runIngest(options: IngestOptions): Promise<IngestResult> {
       // Before dedupe: geocoded points make the 50 m rule exact.
       const geo = await geocodeStored(db);
       console.log(
-        `geocode: ${geo.exact + geo.fuzzy} of ${geo.candidates} matched to Address Points (${geo.fuzzy} fuzzy); ${geo.areaJoined} area joins, ${geo.outsideToronto} outside Toronto dropped, ${geo.buildings} RentSafeTO buildings`,
+        `geocode: ${geo.exact + geo.fuzzy} of ${geo.candidates} matched to Address Points (${geo.fuzzy} fuzzy); ${geo.areaJoined} area joins, ${geo.outsideToronto} outside Toronto and ${geo.otherCity} naming another city dropped, ${geo.buildings} RentSafeTO buildings`,
       );
       const dedupe = await dedupeStored(db);
       console.log(`dedupe: ${dedupe.duplicates} of ${dedupe.listings} listings are duplicates`);

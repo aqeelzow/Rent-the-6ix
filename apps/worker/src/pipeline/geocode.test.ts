@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { normalizeAddress } from "./geocode.ts";
+import { namesOtherCity, normalizeAddress } from "./geocode.ts";
 
 const norm = (text: string) => normalizeAddress(text)?.norm ?? null;
 
@@ -42,5 +42,29 @@ describe("normalizeAddress", () => {
     expect(normalizeAddress("Sheppard Ave E, Toronto, M2K 3E5")).toBeNull();
     expect(normalizeAddress("Scarborough, ON M1E 2V9")).toBeNull();
     expect(normalizeAddress(null)).toBeNull();
+  });
+});
+
+describe("namesOtherCity", () => {
+  it("finds listings placed in another city", () => {
+    expect(namesOtherCity("Waterloo Finished Basement for rent - $750")).toBe(true);
+    expect(namesOtherCity("1+1 apartment for rent in Square One Mississauga")).toBe(true);
+    expect(
+      namesOtherCity("814 - 11 TOWNSGATE DRIVE", "- 11 TOWNSGATE DRIVE, Vaughan (Crestwood)"),
+    ).toBe(true);
+  });
+
+  it("ignores Toronto places with city names and nearby mentions", () => {
+    for (const title of [
+      "1407 - 75 EAST LIBERTY STREET, Toronto (Niagara), Ontario",
+      "529 - 3 CONCORD CITYPLACE WAY Toronto (Waterfront Communities)",
+      "3 Bedroom House in Markham & Lawrance",
+      "renovated one bedroom, kingston and woodbine",
+      "Basement near Mississauga border, Etobicoke",
+      "Room at Mississauga Rd and Dundas",
+      "2 bed at Vaughan/Steeles",
+    ]) {
+      expect(namesOtherCity(title), title).toBe(false);
+    }
   });
 });
