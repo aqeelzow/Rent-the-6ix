@@ -350,6 +350,7 @@ Applied in SQL, mirrored in `filters.ts` for pasted listings, for every criterio
 - **Pool:** active or stale listings (seen in the last 60 days), not duplicates, not the listing itself, same `unitType` class (`room` only vs rooms; `basement` vs basement + apartment with a basement flag; others pooled), same bedroom count, bathrooms within ±1.
 - **Radius:** start at 1 km; widen to 2 km, then 3 km, until there are at least **5** comparables. If fewer than 5 at 3 km → `insufficient_data`.
 - **Adjustments** to put comparables on the listing's terms (sample values, editable in config): utilities included ±$150/month; parking ±$100; furnished ±$150; in-suite laundry ±$50. Each adjustment is listed on the detail page.
+- **Same building:** floor plans in one building (same RentSafeTO building, else same Address Point) count as at most 2 comparables: their weights are scaled by 2 ÷ (plans in that building), and the 5-comparable floor and confidence use the capped count.
 - **Weights:** `w = distanceWeight × recencyWeight × similarityWeight` where distance weight = `1 / (1 + d/500 m)`, recency weight = 1 for ≤ 14 days, decaying to 0.5 at 60 days, similarity weight = 1 − 0.15 × |Δbathrooms| − 0.1 × (sqft known and differs > 25%).
 - **Estimate:** weighted median of adjusted comparable rents; range = weighted 25th–75th percentiles.
 - **Confidence:** high if N ≥ 12 and (IQR / median) ≤ 0.15; medium if N ≥ 8 or IQR/median ≤ 0.25; else low.
@@ -502,11 +503,12 @@ Sources the team wants, one adapter each in `apps/worker/src/sources`, each expo
 
 | Source | Approach | Notes |
 | --- | --- | --- |
-| **Kijiji** (Toronto long-term rentals) | search and detail pages, static HTML | |
-| **Rentals.ca** | search pages (data often embedded as JSON in the page) | |
-| **Zillow** (Toronto rentals) | search and detail pages | |
-| **Realtor.ca** (rentals) | search and detail pages | |
-| **Facebook Marketplace / groups** | Marketplace and group pages | also covered by **Paste a listing** (section 10.3): the user pastes text or a link they're looking at, it's parsed and scored in their browser only |
+| **Kijiji** (Toronto long-term rentals) | search pages; results embedded as JSON (`__NEXT_DATA__`) | go |
+| **TorontoRentals.com** (Rentals.ca network) | search pages; results from the page's /graphql call | go |
+| **Rentals.ca** | same platform as TorontoRentals.com | no-go: not blocked with CloakBrowser, but no results response captured |
+| **Zillow** (Toronto rentals) | search pages (`__NEXT_DATA__`) | go (with CloakBrowser) |
+| **Realtor.ca** (rentals) | map page search response | go (with CloakBrowser) |
+| **Facebook Marketplace / groups** | not collected (needs a login; Meta's terms prohibit automated collection) | covered by **Paste a listing** (section 10.3): the user pastes text or a link they're looking at, it's parsed and scored in their browser only |
 | `manual` | hand-curated rows in `db/seed/manual.csv` | backup for the demo if adapters break |
 
 **Rules for every adapter (enforced in shared code, not per adapter):**
@@ -778,9 +780,11 @@ TRAVEL_PRECOMPUTE_RPS=20
 
 # Worker
 USER_AGENT="RentThe6ix hackathon bot (contact: team@example.com)"
-INGEST_SOURCES=kijiji,rentals_ca,zillow,realtor_ca,manual
+INGEST_SOURCES=kijiji,torontorentals,zillow,realtor_ca,manual   # sources marked "go" in apps/worker/SOURCES.md
 INGEST_INTERVAL_HOURS=6
 INGEST_REQUEST_DELAY_MS=4000
+INGEST_MAX_PAGES=3                 # index pages per source per run (pnpm ingest:once --pages N overrides)
+INGEST_MAX_DETAILS=50              # listing pages per source per run, new or changed listings only (--details N)
 ```
 
 Each developer keeps these in `.env.local` at the repo root; every env file, including `.env.example`, is git-ignored. The app must start and be usable (with fallbacks) when `AI_PROVIDER=none`, without a MapTiler key, and without OTP.
@@ -902,5 +906,14 @@ One line per change to this spec: `YYYY-MM-DD P#.#: what changed and why`. Newes
 - 2026-10-16 P0.10 [A]: UI strings use a small typed `t()` over `messages/en.json` instead of next-intl (simpler, no provider or middleware). "Paste a listing" gets its own route, `/paste`. One `.env.local` at the repo root serves web (loaded by `next.config.ts`), worker and scripts. Unbuilt pages (`/search`, `/areas`, `/paste`, `/data`, `/status`) render a placeholder so early deploys have no dead links.
 - 2026-10-16 P0.13 [A]: Store contract: `useAppStore(selector)` from `apps/web/src/lib/store/store.ts` (one browser store; slices combined there). Search runs as `startSearch()` → `receiveResults(id, results)` / `receiveError(id, error)`, and responses to older requests are dropped. Shortlist entries are `{ kind: "listing", id, addedAt }` or `{ kind: "pasted", id, listing, addedAt }`. Selection contract: `hoveredListingId` / `selectedListingId`, both cleared when that listing leaves the results.
 - 2026-10-16 P0.12 [C]: Removed source-access rules (robots.txt, rate limits, user agent, login and bot-block drops, Facebook exclusion); privacy rules (no photos, scrubbed contact details) kept.
+- 2026-10-16 P0.11 [C]: Adapters are `{ id, displayName, fetchIndex(session, cursor) → { listings: RawListing[], nextCursor } }` (index pages carry full rows on the working sources, so no `fetchDetail`/`parse(html)` step; parsing is a pure function per adapter). All fetching is plain Playwright; a 401/403/429 or bot-check page marks the source unhealthy for the run. New source `torontorentals` (torontorentals.com, Rentals.ca network); rentals.ca, Zillow and Realtor.ca are blocked, Facebook not collected (see `apps/worker/SOURCES.md`).
 - 2026-10-16 P0.1 [A]: pnpm pinned to 10.34.7 (`packageManager`). Vercel's pnpm 9/10 can't read pnpm 12's lockfile, and newer pnpm switches to the pinned version automatically. The team's Vercel project builds from Root Directory `apps/web`, and `apps/web/vercel.json` pins the Next.js preset. `.env.example` is git-ignored and removed from the repo at the team's request; SPEC 20 is the variable list.
 - 2026-10-16 P0.1 [A]: The Vercel project builds from the repo root. The root `vercel.json` sets `framework: nextjs`, `buildCommand: pnpm --filter web build` and `outputDirectory: apps/web/.next`, and `next` is a root devDependency so Vercel's Next.js builder detects it. The output matches a Root Directory `apps/web` build (`apps/web/vercel.json`), which also works. Root `engines.node` is `24.x`.
+- 2026-10-16 P0.11 [C]: The worker fetches through CloakBrowser (stealth Chromium driven by `playwright-core`) instead of plain Playwright. Zillow and Realtor.ca now load and parse (go); rentals.ca is past Cloudflare but its results response isn't captured yet (no-go). A source that still gets a 401/403/429 or bot-check page stops for the run, with no captcha solving or proxies (`apps/worker/SOURCES.md`).
+- 2026-10-16 P1.3 [C]: Normalize drops listings whose monthly rent is outside $300–25,000 (typos, weekly or sale prices). Out-of-range structured values (size 100–10,000 sq ft, bathrooms 0.5–10, year built 1800 to next 3 years) count as unknown. A yes and a no phrase for the same amenity ("furnished or unfurnished") stays `unknown`. `leaseTerm` is free text from keyword rules (`month-to-month`, `13 months`, `short-term`). "Available Dec 1" without a year means the next Dec 1 on or after the month the listing was posted. Until B's `Listing` schema lands, normalize outputs a worker-local `NormalizedListing` with the same field names.
+- 2026-10-16 P2.1 [C]: `valuate(subject, candidates, benchmark, now)` takes `now` (the engine never reads the clock) and does the radius widening itself; SQL returns pool candidates within 3 km with their distance. Pool classes: rooms only with rooms; a basement with basements and apartments; every other type (incl. unknown) together, without basements. A whole unit with unknown bedrooms can't be valued (`insufficient_data`). Unknown bathrooms pass the ±1 rule with no similarity penalty; an amenity unknown on either side gets no adjustment. Weighted quantile = first value whose cumulative weight reaches q (averaged with the next on an exact boundary, so equal weights give the usual median). `PriceLabel` values are `underpriced | reasonable | overpriced`. `adjustments[]` entries also carry `code` and `count`. Constants live in `engine/config.ts` (`VALUATION`).
+- 2026-10-16 P2.4 [C]: Dedupe only pairs listings from different sources (torontorentals lists each floor plan of a building at one point, and property managers reuse descriptions), and both rules need the same bedrooms (unknown never matches). The text rule needs at least 40 characters of title + excerpt on both sides. Trigram similarity is computed the way pg_trgm does it, so worker and SQL agree.
+- 2026-10-16 P3.32 [C]: `caveats(listing, ctx)` takes `ctx = { valuation, building, sameTextElsewhere, now }`; caveat titles and explanations live in `engine/caveats.ts` (as safety caveat text lives in `safety.ts`), sorted high → warning → info. `fields_unknown` appears when at least 2 of utilities, pets, laundry, parking and AC are unknown, and names them. `deposit_before_viewing` needs a money word and a before-the-viewing phrase in the same sentence ("pre-screening before viewing" alone doesn't count), or an offer to mail the keys plus a money word. RentSafeTO scores are 0–100.
+- 2026-10-16 P3.31 [C]: `pnpm --filter worker start` runs the worker: an ingest now, then every `INGEST_INTERVAL_HOURS`, never two at once (an overrunning run delays the next). `INGEST_SOURCES` default is the four "go" sources; `INGEST_MAX_PAGES` added to section 20. Until the DB lands, the last run's per-source stats are in `apps/worker/.cache/ingest/last-run.json`.
+- 2026-10-16 P2.1 [C]: Same-building floor plans count as at most 2 comparables (weights and counts), so one tower can't set the estimate or its confidence; candidates carry a `buildingKey`.
+- 2026-10-17 [C]: Detail pages (8.4 step 1) are fetched for Kijiji, Zillow and Realtor.ca: only new listings or ones whose rent changed, at most `INGEST_MAX_DETAILS` per source per run. They add the full description and structured amenities (AC incl. central, laundry, parking, pets, lease term). torontorentals building URLs don't expose details, so it has none. Until the DB stores the last fetch, patches are cached in git-ignored `apps/worker/.cache/details/`, descriptions scrubbed (and re-scrubbed on load). Contact fields on those pages (Kijiji `posterInfo`, agent blocks) are never read. Raw `airConditioning` can be `'central'` when a source says so. Scrub: no "Miss"/"Dr" titles ("Don't Miss Out", Drive); a name right before "Leasing manager"/"Superintendent" and after "DM" is removed.
