@@ -327,11 +327,10 @@ export function RangeBar({ low, high, rent }: { low: number; high: number; rent:
 }
 
 export function modeTimeText(time: ModeTime): string {
-  if (time.kind === "routed") {
-    return l(time.mode === "drive" ? "travel.routedDrive" : "travel.routed", {
+  if (time.kind === "estimated") {
+    return l("travel.estimated", {
       minutes: formatCount(time.minutes),
     });
   }
-  if (time.kind === "straight_line") return l("travel.straightLine", { km: km(time.distanceM) });
   return l("travel.missing");
 }

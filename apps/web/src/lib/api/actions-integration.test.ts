@@ -1,9 +1,12 @@
 import { expect, test } from 'vitest';
 import { baseIntent, sampleListings, travelIntent } from '@rentthe6ix/shared/fixtures';
 import { DetailResponseSchema } from '@rentthe6ix/shared/schemas';
-import { parseAndSearch, resolveDestination, runSearch } from '../store/actions';
+import { parseAndSearch, resolveDestination, restoreSearch, runSearch } from '../store/actions';
+import { placePins } from '../../components/map/map-data';
+import { travelSummaries } from '../../components/results/card-data';
 import { createAppStore } from '../store/store';
 import { createRuntime, fixtureDependencies } from './runtime';
+import { DestinationResolver, ParseService } from '../parse';
 
 function bridge(api: ReturnType<typeof createRuntime>) {
   const paths: string[] = [];
@@ -20,8 +23,47 @@ function bridge(api: ReturnType<typeof createRuntime>) {
   return { fetch: fetcher, paths };
 }
 
+test('a saved unresolved UofT search regains its pin and time estimates without reparsing edited filters', async () => {
+  const api = createRuntime({ env: {}, dependencies: fixtureDependencies });
+  const store = createAppStore();
+  const transport = bridge(api);
+  const intent = { ...baseIntent, rawPrompt: 'near uoft', criteria: { rent: { value: { max: 5000 }, hard: true } }, travelTargets: [{ id: 'campus', kind: 'place' as const, label: 'UofT St. George campus', query: 'uoft', mode: 'walk' as const, maxMinutes: 60, hard: true }] };
+  try {
+    await restoreSearch({ intent, hideUnconfirmed: false }, { store, ...transport });
+    expect(transport.paths).toEqual(['/api/geo/resolve', '/api/listings/search']);
+    const state = store.getState();
+    expect(state.status).toBe('ready');
+    expect(state.intent?.criteria).toEqual(intent.criteria);
+    expect(state.intent?.travelTargets[0].resolved).toMatchObject({ lng: -79.3957, lat: 43.6629, source: 'known_place' });
+    expect(placePins(state.intent!.travelTargets)).toHaveLength(1);
+    expect(state.results.length).toBeGreaterThan(0);
+    expect(travelSummaries(state.results[0], state.intent!.travelTargets)[0].kind).toBe('estimated');
+    expect(state.results.every(result => !result.matchScore.hardFilterNotes.some(note => note.startsWith('Location for ')))).toBe(true);
+  } finally { api.jobs.dispose(); }
+});
+
+test('within ten minutes of an arbitrary place is a strict walking cutoff even without Gemini', async () => {
+  const destination = { lng: -79.3743315, lat: 43.6618956 };
+  const listings = sampleListings.slice(0, 4).map((listing, index) => ({ ...listing, location: { lng: destination.lng, lat: destination.lat + [0, 640, 641, 5000][index] / 6371000 * 180 / Math.PI } }));
+  const resolver = new DestinationResolver({ maptilerKey: 'mock', fetch: async () => Response.json({ features: [{ id: 'allan-gardens', place_name: 'Allan Gardens', relevance: 1, center: [destination.lng, destination.lat] }] }) });
+  const api = createRuntime({ env: {}, parser: new ParseService({ resolver }), dependencies: { ...fixtureDependencies, listings } });
+  const store = createAppStore();
+  try {
+    await parseAndSearch('within 10 minutes of allan gardens', { store, ...bridge(api) });
+    const state = store.getState();
+    expect(state.status).toBe('ready');
+    expect(state.intent?.travelTargets[0]).toMatchObject({ query: 'allan gardens', mode: 'walk', maxMinutes: 10, hard: true });
+    expect(state.results.map(result => result.listing.id).sort()).toEqual(listings.slice(0, 2).map(listing => listing.id).sort());
+    expect(state.results.every(result => {
+      const summary = travelSummaries(result, state.intent!.travelTargets)[0];
+      return summary.kind === 'estimated' && summary.minutes <= 10;
+    })).toBe(true);
+  } finally { api.jobs.dispose(); }
+});
+
 test('actual A actions consume B responses and retain nested listing selection and destination choices', async () => {
-  const api = createRuntime({ env: { SEARCH_FIXTURES: '1', AI_PROVIDER: 'none' } });
+  // This test covers the campus-choice flow, so it opts out of the default "main campus" answer.
+  const api = createRuntime({ env: { SEARCH_FIXTURES: '1', AI_PROVIDER: 'none' }, resolver: new DestinationResolver({ preferPrimaryCampus: false }) });
   const store = createAppStore();
   const transport = bridge(api);
   try {
@@ -49,13 +91,11 @@ test('actual A actions consume B responses and retain nested listing selection a
   } finally { api.jobs.dispose(); }
 });
 
-test('actual A polling consumes a real B exact-travel job and keeps its nested selection', async () => {
-  const api = createRuntime({ env: {}, dependencies: { ...fixtureDependencies,
-    routeTimes: async (origins, targets, mode) => origins.flatMap(listing => targets.map(target => ({ listingId: listing.id, targetId: target.id, mode, minutes: 5, distanceM: 100, method: 'otp', poiId: null, computedAt: listing.lastSeenAt }))),
-  } });
+test('actual polling consumes an estimated-travel job and keeps its nested selection', async () => {
+  const api = createRuntime({ env: {}, dependencies: fixtureDependencies });
   const transport = bridge(api);
   const store = createAppStore();
-  store.getState().setIntent({ ...travelIntent, numericExtreme: { field: 'travel', targetId: travelIntent.travelTargets[0].id, direction: 'min', percentage: 10, minimumCount: 10 } });
+  store.getState().setIntent({ ...travelIntent, travelTargets: travelIntent.travelTargets.map(target => ({ ...target, hard: false })), numericExtreme: { field: 'travel', targetId: travelIntent.travelTargets[0].id, direction: 'min', percentage: 10, minimumCount: 10 } });
   store.getState().setSelectedListingId(sampleListings[0].id);
   try {
     await runSearch({ store, ...transport, sleep: () => new Promise(resolve => setTimeout(resolve, 0)) });

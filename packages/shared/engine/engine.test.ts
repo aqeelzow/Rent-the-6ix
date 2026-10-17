@@ -46,13 +46,15 @@ test('studio virtual choice, rooms excluded unless explicitly requested', () => 
   assert.equal(filterListing(room, intent({ bedrooms: { value: { min: 2 }, hard: true } })).passes, false);
   assert.equal(filterListing(room, intent({ bedrooms: { value: { min: 2 }, hard: true }, unitTypes: { value: ['room', 'studio'], hard: true } })).passes, true);
 });
-test('alternative modes OR, destinations AND, unknown fallback never confirms minutes', () => {
+test('alternative modes OR, destinations AND, estimated time confirms against its budget', () => {
   const target = travelIntent.travelTargets[0];
   assert.equal(evaluateTarget(target, [row('bike', 20), row('walk', 8)]).state, 'pass');
-  assert.equal(evaluateTarget(target, [row('bike', 20), row('walk', 30)]).state, 'fail');
-  assert.equal(evaluateTarget(target, [row('bike', 20), row('walk', null)]).state, 'unknown');
+  assert.equal(evaluateTarget(target, [{ ...row('bike', 20), distanceM: 5000 }, { ...row('walk', 30), distanceM: 5000 }]).state, 'fail');
+  assert.equal(evaluateTarget({ ...target, alternativeModes: undefined, mode: 'walk' }, [row('walk', null)]).state, 'fail');
+  assert.equal(evaluateTarget(target, [row('bike', 20), { ...row('walk', null), distanceM: 400 }]).state, 'pass');
+  assert.equal(evaluateTarget(target, [row('bike', 20)]).state, 'pass');
   assert.equal(travelScore([target], [row('bike', 15), row('walk', 10)]), 100);
-  const i = { ...travelIntent, travelTargets: [target, { ...target, id: 'work', label: 'Work' }] };
+  const i = { ...travelIntent, travelTargets: [target, { ...target, id: 'work', label: 'Work', resolved: { lng: -79.7, lat: 43.9, source: 'known_place' as const } }] };
   assert.equal(filterListing(listing, i, { travel: [row('walk', 8), row('bike', 20, 'work'), row('walk', 30, 'work')] }).passes, false);
   assert.equal(defaultMinutes({ ...target, maxMinutes: undefined }, 'walk'), 20);
   assert.equal(defaultMinutes({ ...target, kind: 'amenity', category: 'grocery' }, 'transit'), 15);
@@ -74,11 +76,12 @@ test('five parts, exact value/price formulas, renormalization, safety off', () =
   assert.equal(enabled.total, 80); assert.equal(enabled.parts[4].weight, 15); MatchScoreSchema.parse(enabled);
 });
 
-test('travel evidence labels distance and driving free flow', () => {
-  const t = { ...travelIntent.travelTargets[0], mode: 'drive' as const, alternativeModes: undefined };
+test('travel evidence labels estimated minutes and their straight-line distance', () => {
+  const t = { ...travelIntent.travelTargets[0], mode: 'drive' as const, alternativeModes: undefined, resolved: undefined };
   const score = scoreListing(listing, { ...baseIntent, travelTargets: [t] }, { ...context, travel: [row('drive', null)] });
   const evidence = score.parts.find(p => p.id === 'travel')!.evidence.join(' ');
-  assert.ok(evidence.includes('1000 m straight-line')); assert.ok(evidence.includes('driving, no traffic')); assert.ok(!evidence.includes('null minutes'));
+  assert.ok(evidence.includes('1000 m straight-line distance')); assert.ok(evidence.includes('budget'));
+  assert.ok(evidence.includes('estimated 7 minutes') && !evidence.includes('null'));
 });
 
 test('missing civic IDs stay unconfirmed through geographic OR and hide gates', () => {

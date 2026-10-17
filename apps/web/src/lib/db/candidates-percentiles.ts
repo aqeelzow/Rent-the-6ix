@@ -1,8 +1,8 @@
 import { ListingSchema, SearchRequestSchema, SearchResponseSchema, TravelTimeRowSchema, type SearchRequest, type SearchResponse, type Listing } from '../../../../../packages/shared/schemas/index';
 import { filterListing } from '../../../../../packages/shared/engine/filters';
 import { scoreListing, selectPercentile, type ScoreContext } from '../../../../../packages/shared/engine/score';
-import { distanceM, targetModes } from '../../../../../packages/shared/engine/travel';
-import { mapCandidatePool, type SearchDependencies } from './candidates';
+import { distanceM, targetModes, targetDistanceM, estimateTravelMinutes } from '../../../../../packages/shared/engine/travel';
+import { fillAmenityDistances, fillDistanceRows, mapCandidatePool, type SearchDependencies } from './candidates';
 import { engineConfig } from '../../../../../packages/shared/engine/config';
 
 export type PercentileExecution = { referenceYear: number; deadline?: number; signal?: AbortSignal };
@@ -11,7 +11,7 @@ export async function searchPercentileCandidates(input: SearchRequest, dependenc
   const request = SearchRequestSchema.parse(input), { intent } = request, selector = intent.numericExtreme;
   if (!selector) throw new Error('A numeric percentile selector is required');
   const exactTravel = selector.field === 'travel';
-  const routeTargets = exactTravel ? intent.travelTargets : intent.travelTargets.filter(target => target.hard && target.kind === 'place');
+  const routeTargets = exactTravel ? intent.travelTargets : intent.travelTargets.filter(target => target.hard && (target.kind === 'place' || target.kind === 'amenity'));
   const deadline = Math.min(Date.now() + engineConfig.percentileBudgetMs, execution.deadline ?? Infinity);
   const controller = new AbortController();
   const unavailable = (reason: 'timeout' | 'routing_incomplete'): SearchResponse => ({ status: 'unavailable', reason, message: reason === 'timeout' ? 'Exact travel percentile deadline elapsed or execution was cancelled' : 'Complete routed times are unavailable; no exact partial percentile is returned' });
@@ -24,7 +24,7 @@ export async function searchPercentileCandidates(input: SearchRequest, dependenc
     const source = dependencies.loadCandidates ? await dependencies.loadCandidates(request, controller.signal) : dependencies.listings;
     const selectBeforeEnrichment = !exactTravel && !intent.criteria.priceFairness?.hard && !intent.safety.hard && !intent.travelTargets.some(target => target.hard);
     const cheapPool = source.map(raw => ListingSchema.parse(raw)).filter(listing => filterListing(listing, beforeRouting, {}, request.hideUnconfirmed, true).passes);
-    if (exactTravel && cheapPool.length && !dependencies.routeTimes) return unavailable('routing_incomplete');
+    // A travel percentile ranks the full pool by estimated time from distance, without a router.
     // Scalar values cannot change during enrichment when no hard gate needs owner context.
     const contextPool = selectBeforeEnrichment ? selectPercentile(cheapPool, selector, execution.referenceYear) : cheapPool;
     const enriched = await mapCandidatePool(contextPool, async listing => {
@@ -42,8 +42,8 @@ export async function searchPercentileCandidates(input: SearchRequest, dependenc
     });
     if (controller.signal.aborted) return unavailable('timeout');
     const eligible = enriched.filter((listing): listing is Listing => listing !== null);
-    if (routeTargets.length && eligible.length && (dependencies.routeTimes || exactTravel)) {
-      if (!dependencies.routeTimes) return unavailable('routing_incomplete');
+    await fillDistanceRows(eligible, routeTargets, contexts);
+    if (routeTargets.length && eligible.length && dependencies.routeTimes) {
       const routingDeadline = exactTravel ? deadline : Date.now() + Math.min(engineConfig.routingBudgetMs, Math.max(0, dependencies.routingBudgetMs ?? engineConfig.routingBudgetMs));
       let routingTimer: ReturnType<typeof setTimeout> | undefined;
       try {
@@ -70,16 +70,19 @@ export async function searchPercentileCandidates(input: SearchRequest, dependenc
       finally { clearTimeout(routingTimer); }
       if (exactTravel && (controller.signal.aborted || Date.now() >= deadline)) return unavailable('timeout');
     }
+    // Amenity targets have no point of their own, so every eligible listing gets a distance for them.
+    await fillAmenityDistances(dependencies, eligible, routeTargets, contexts);
     const filtered = eligible.filter(listing => filterListing(listing, intent, contexts.get(listing.id)!, request.hideUnconfirmed).passes);
     const target = intent.travelTargets.find(target => target.id === selector.targetId);
     const selected = selectBeforeEnrichment ? filtered : selectPercentile(filtered, selector, execution.referenceYear, listing => {
-      const times = contexts.get(listing.id)!.travel.filter(row => row.targetId === target?.id && targetModes(target!).includes(row.mode) && row.method === 'otp' && row.minutes !== null).map(row => row.minutes!);
-      return times.length ? Math.min(...times) : null;
+      if (!target) return null;
+      const metres = targetDistanceM(target, contexts.get(listing.id)!.travel, listing.location);
+      return metres === null ? null : Math.min(...targetModes(target).map(mode => estimateTravelMinutes(metres, mode)));
     });
     return SearchResponseSchema.parse({ status: 'completed', results: selected.map(listing => {
       const context = contexts.get(listing.id)!;
       return { listing, valuation: context.valuation, safety: context.safety, travel: context.travel, matchScore: scoreListing(listing, intent, context) };
-    }), eligibleCount: selectBeforeEnrichment ? cheapPool.length : filtered.length, notices: [dependencies.loadCandidates ? 'Unconfirmed fields and unrouted travel times remain unknown' : 'Fixture-backed full eligible pool; live owner integrations pending'] });
+    }), eligibleCount: selectBeforeEnrichment ? cheapPool.length : filtered.length, notices: ['Travel times are distance-based estimates, without live traffic or timetables.'] });
   };
   if (!exactTravel) return work();
   if (execution.signal?.aborted || Date.now() >= deadline) return unavailable('timeout');

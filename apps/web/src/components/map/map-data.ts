@@ -1,5 +1,10 @@
 import type { FeatureCollection, Point, Polygon } from "geojson";
-import { distanceM } from "@rentthe6ix/shared/engine/travel";
+import {
+  distanceM,
+  estimateTravelMinutes,
+  targetDistanceM,
+  targetModes,
+} from "@rentthe6ix/shared/engine/travel";
 import type { SearchIntent, SearchResultItem } from "@/lib/store/types";
 
 // GeoJSON for the results map (SPEC 12). Pure, so it's tested without a browser.
@@ -44,8 +49,6 @@ type Position = [number, number];
 type Props = { id: string; band: ScoreBand; total: number };
 export type PointCollection = FeatureCollection<Point, Props>;
 export type AreaCollection = FeatureCollection<Polygon, Props>;
-type SearchAreaProps = { id: string; label: string };
-export type SearchAreaCollection = FeatureCollection<Polygon, SearchAreaProps>;
 
 /** A circle of `radiusM` metres around a point, as a closed polygon ring. */
 export function circlePolygon(
@@ -101,41 +104,6 @@ export function resultsToGeoJSON(results: SearchResultItem[]): {
   return { points, areas };
 }
 
-/** Configured general-area filters are approximate rectangles, shown separately from listing areas. */
-export function searchAreasToGeoJSON(areas: SearchIntent["areas"]): SearchAreaCollection {
-  return {
-    type: "FeatureCollection",
-    features: areas.flatMap((area) => {
-      if (area.kind !== "configured") return [];
-      const [west, south, east, north] = area.bounds;
-      return [
-        {
-          type: "Feature" as const,
-          properties: {
-            id: area.id,
-            label: area.label.replace(
-              " approximate configured search boundary (not an official boundary)",
-              " (approx.)",
-            ),
-          },
-          geometry: {
-            type: "Polygon" as const,
-            coordinates: [
-              [
-                [west, south],
-                [east, south],
-                [east, north],
-                [west, north],
-                [west, south],
-              ],
-            ],
-          },
-        },
-      ];
-    }),
-  };
-}
-
 /** Places the renter wants to reach that have coordinates, for destination pins. */
 export function placePins(targets: SearchIntent["travelTargets"]) {
   return targets.flatMap((target) =>
@@ -171,19 +139,19 @@ export function allAtSamePlace(results: SearchResultItem[], ids: string[]): bool
 }
 
 /**
- * From the selected listing to each place the renter named: the quickest routed time over the
- * renter's modes, else a straight-line distance (from the travel rows, else computed). A
- * straight-line route never carries minutes (SPEC 7.4).
+ * From the selected listing to each place the renter named: the distance between them and the
+ * fastest estimated time over the renter's modes, from the same engine estimate used for
+ * filtering and scoring.
  */
 export type RouteToPlace = {
   id: string;
   label: string;
   from: [number, number];
   to: [number, number];
-} & (
-  | { kind: "routed"; mode: SearchIntent["travelTargets"][number]["mode"]; minutes: number }
-  | { kind: "straight_line"; distanceM: number }
-);
+  mode: SearchIntent["travelTargets"][number]["mode"];
+  minutes: number;
+  distanceM: number;
+};
 
 export function routesToPlaces(
   result: SearchResultItem,
@@ -192,28 +160,18 @@ export function routesToPlaces(
   const { location } = result.listing;
   return targets.flatMap((target): RouteToPlace[] => {
     if (target.kind !== "place" || !target.resolved) return [];
-    const base = {
-      id: target.id,
-      label: target.label,
-      from: [location.lng, location.lat] as [number, number],
-      to: [target.resolved.lng, target.resolved.lat] as [number, number],
-    };
-    const modes = [target.mode, ...(target.alternativeModes ?? [])];
-    const rows = result.travel.filter(
-      (row) => row.targetId === target.id && modes.includes(row.mode),
-    );
-    const routed = rows
-      .filter((row) => row.method === "otp" && row.minutes !== null)
-      .sort((a, b) => a.minutes! - b.minutes!)[0];
-    if (routed) {
-      return [{ ...base, kind: "routed", mode: routed.mode, minutes: Math.round(routed.minutes!) }];
-    }
-    const line = rows.find((row) => row.method === "straight_line");
+    const metres = targetDistanceM(target, result.travel, location) ?? 0;
+    const fastest = targetModes(target)
+      .map((mode) => ({ mode, minutes: estimateTravelMinutes(metres, mode) }))
+      .sort((a, b) => a.minutes - b.minutes)[0]!;
     return [
       {
-        ...base,
-        kind: "straight_line",
-        distanceM: line?.distanceM ?? distanceM(location, target.resolved),
+        id: target.id,
+        label: target.label,
+        from: [location.lng, location.lat],
+        to: [target.resolved.lng, target.resolved.lat],
+        ...fastest,
+        distanceM: metres,
       },
     ];
   });
@@ -226,7 +184,6 @@ export function routesToPlaces(
 export function boundsOf(
   results: SearchResultItem[],
   places: { lng: number; lat: number }[],
-  searchAreas: SearchIntent["areas"] = [],
 ): [number, number, number, number] | null {
   const boxes = [
     ...results
@@ -237,14 +194,6 @@ export function boundsOf(
         return { ...listing.location, radiusM };
       }),
     ...places.filter(inRegion).map((place) => ({ ...place, radiusM: 0 })),
-    ...searchAreas.flatMap((area) => {
-      if (area.kind !== "configured") return [];
-      const [west, south, east, north] = area.bounds;
-      return [
-        { lng: west, lat: south, radiusM: 0 },
-        { lng: east, lat: north, radiusM: 0 },
-      ].filter(inRegion);
-    }),
   ];
   if (!boxes.length) return null;
   let [west, south, east, north] = [Infinity, Infinity, -Infinity, -Infinity];

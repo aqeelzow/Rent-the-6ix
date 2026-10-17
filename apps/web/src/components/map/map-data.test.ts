@@ -105,37 +105,17 @@ describe("routesToPlaces", () => {
     kind: "place",
     label: "UofT",
     mode: "transit",
+    alternativeModes: ["walk"],
     resolved: { lng: -79.395, lat: 43.663 },
   };
-  const result = (travel: unknown[]) =>
-    ({ listing, travel }) as unknown as Parameters<typeof routesToPlaces>[0];
-  const targets = [target] as unknown as Parameters<typeof routesToPlaces>[1];
+  const result = { listing, travel: [] } as unknown as Parameters<typeof routesToPlaces>[0];
 
-  it("uses the quickest routed time when there is one", () => {
-    const rows = [
-      { targetId: "uoft", mode: "transit", method: "otp", minutes: 14.4, distanceM: 900 },
-      { targetId: "uoft", mode: "transit", method: "straight_line", minutes: null, distanceM: 700 },
-    ];
-    expect(routesToPlaces(result(rows), targets)[0]).toMatchObject({
-      kind: "routed",
-      mode: "transit",
-      minutes: 14,
-    });
-  });
-
-  it("falls back to straight-line distance, never minutes", () => {
-    const rows = [
-      { targetId: "uoft", mode: "transit", method: "straight_line", minutes: null, distanceM: 700 },
-    ];
-    const route = routesToPlaces(result(rows), targets)[0]!;
-    expect(route).toMatchObject({ kind: "straight_line", distanceM: 700 });
-    expect(route).not.toHaveProperty("minutes");
-  });
-
-  it("measures the distance itself when there are no travel rows", () => {
-    const route = routesToPlaces(result([]), targets)[0]!;
-    expect(route.kind).toBe("straight_line");
-    expect(route.kind === "straight_line" && route.distanceM).toBeGreaterThan(400);
+  it("gives the distance and the fastest estimated time over the renter's modes", () => {
+    const targets = [target] as unknown as Parameters<typeof routesToPlaces>[1];
+    const route = routesToPlaces(result, targets)[0]!;
+    expect(route.distanceM).toBeGreaterThan(400);
+    expect(["transit", "walk"]).toContain(route.mode);
+    expect(route.minutes).toBeGreaterThan(0);
   });
 
   it("skips amenities and places without coordinates", () => {
@@ -143,7 +123,7 @@ describe("routesToPlaces", () => {
       { ...target, id: "a", kind: "amenity" },
       { ...target, id: "b", resolved: undefined },
     ] as unknown as Parameters<typeof routesToPlaces>[1];
-    expect(routesToPlaces(result([]), others)).toEqual([]);
+    expect(routesToPlaces(result, others)).toEqual([]);
   });
 });
 

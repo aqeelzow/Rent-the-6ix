@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { kijijiPageUrl, parseKijiji, wholeUnitTitle } from "./kijiji.ts";
+import { kijijiPageUrl, kijijiPhoto, parseKijiji, wholeUnitTitle } from "./kijiji.ts";
 
 // Same shape as Kijiji's __NEXT_DATA__ (checked 2026-10-16); values are made up.
 function page(listings: object[], extraHtml = "") {
@@ -125,6 +125,12 @@ describe("parseKijiji", () => {
       "https://media.kijiji.ca/a.jpg",
     );
     expect(parseKijiji(page([listing])).listings[0].imageUrl).toBeNull();
+    // Search pages ask for 200 px; the same photo at 960 px.
+    expect(
+      kijijiPhoto(
+        "https://media.kijiji.ca/api/v1/ca-prod-dealer-ads/images/43/x?rule=kijijica-200-jpg",
+      ),
+    ).toBe("https://media.kijiji.ca/api/v1/ca-prod-dealer-ads/images/43/x?rule=kijijica-960-jpg");
     const unsafe = { ...listing, imageUrls: ["javascript:alert(1)"] };
     expect(parseKijiji(page([unsafe])).listings[0].imageUrl).toBeNull();
   });

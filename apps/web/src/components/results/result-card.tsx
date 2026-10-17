@@ -44,17 +44,11 @@ const caveatStyles = {
   high: "bg-caveat-high text-caveat-high-foreground",
 } as const;
 
-/** Honest travel labels (SPEC 7.4): minutes only when routed; straight-line is only km. */
+/** Every duration is labelled as a distance-based estimate. */
 function travelText(summary: TravelSummary): string {
-  if (summary.kind === "routed") {
+  if (summary.kind === "estimated") {
     return r(`travel.${summary.mode}`, {
       minutes: formatCount(summary.minutes),
-      target: summary.target,
-    });
-  }
-  if (summary.kind === "straight_line") {
-    return r("travel.straightLine", {
-      km: decimal.format(summary.distanceM / 1000),
       target: summary.target,
     });
   }
@@ -202,7 +196,7 @@ export function ResultCard({
                   return (
                     <li key={summary.target} className="flex items-start gap-2">
                       <Icon aria-hidden className="mt-0.5 size-4 shrink-0 opacity-70" />
-                      <span className={summary.kind === "routed" ? "figures" : "opacity-80"}>
+                      <span className={summary.kind === "estimated" ? "figures" : "opacity-80"}>
                         {travelText(summary)}
                       </span>
                     </li>

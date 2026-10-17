@@ -27,8 +27,9 @@ export function filterListing(listing: Listing, intent: SearchIntent, context: F
     // The renter's limit from the safety slider, else D's default (the city rate).
     if (intent.safety.enabled && intent.safety.hard) check('safety', context.safety?.relativeRate == null ? null : context.safety.relativeRate <= (intent.safety.maxRelativeRate ?? SAFETY.hardMaxRelativeRate));
     for (const target of intent.travelTargets) if (target.hard) {
-      const state = evaluateTarget(target, context.travel ?? []).state;
-      check(`Travel to ${target.label}`, state === 'unknown' ? null : state === 'pass');
+      const state = evaluateTarget(target, context.travel ?? [], listing.location).state;
+      if (state === 'unknown') notes.push(`Location for ${target.label}: unavailable`);
+      else if (state === 'fail') passes = false;
     }
   }
   return { passes: passes && (!hideUnconfirmed || !notes.length), notes };

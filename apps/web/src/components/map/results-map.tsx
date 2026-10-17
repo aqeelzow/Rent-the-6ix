@@ -26,7 +26,6 @@ import {
   listingsAtSamePlace,
   resultsToGeoJSON,
   routesToPlaces,
-  searchAreasToGeoJSON,
   type RouteToPlace,
   type ScoreBand,
 } from "./map-data";
@@ -55,21 +54,17 @@ const bandColor: ExpressionSpecification = [
 ];
 
 /**
- * Results map (SPEC 12): clustered pins, listing uncertainty circles, configured search areas and
+ * Results map (SPEC 12): clustered pins, listing uncertainty circles and
  * place pins. Hover and select are shared with the list through the store.
  */
 /** The highlighted listing's ring: a warm orange no score band or place pin uses. */
 const ACTIVE_COLOR = "#e8590c";
 
-/** The trip on a route line: minutes only when routed; otherwise straight-line km (SPEC 7.4). */
+/** The trip on a route line: an estimate from distance, so it says so, with the distance. */
 function routeLabel(route: RouteToPlace): string {
-  if (route.kind === "routed") {
-    return t(route.mode === "drive" ? "results.map.routeDrive" : "results.map.routeMinutes", {
-      minutes: route.minutes,
-      mode: t(`filters.modes.${route.mode}` as MessageKey),
-    });
-  }
-  return t("results.map.routeKm", {
+  return t("results.map.routeEstimate", {
+    minutes: route.minutes,
+    mode: t(`filters.modes.${route.mode}` as MessageKey),
     km: new Intl.NumberFormat("en-CA", { maximumFractionDigits: 1 }).format(route.distanceM / 1000),
   });
 }
@@ -90,7 +85,6 @@ export function ResultsMap({ className = "" }: { className?: string }) {
   const [failed, setFailed] = useState(false);
   const results = useAppStore((s) => s.results);
   const targets = useAppStore((s) => s.intent?.travelTargets);
-  const searchAreas = useAppStore((s) => s.intent?.areas);
   const hovered = useAppStore((s) => s.hoveredListingId);
   const selected = useAppStore((s) => s.selectedListingId);
 
@@ -143,10 +137,8 @@ export function ResultsMap({ className = "" }: { className?: string }) {
     const map = mapRef.current;
     if (!ready || !map) return;
     const { points, areas: approximateAreas } = resultsToGeoJSON(results);
-    const queryAreas = searchAreasToGeoJSON(searchAreas ?? []);
     (map.getSource("listings") as GeoJSONSource | undefined)?.setData(points);
     (map.getSource("approx") as GeoJSONSource | undefined)?.setData(approximateAreas);
-    (map.getSource("search-area") as GeoJSONSource | undefined)?.setData(queryAreas);
 
     const places = placePins(targets ?? []);
     void import("maplibre-gl").then((maplibregl) => {
@@ -213,9 +205,9 @@ export function ResultsMap({ className = "" }: { className?: string }) {
       });
     });
 
-    const bounds = boundsOf(results, places, searchAreas ?? []);
+    const bounds = boundsOf(results, places);
     if (bounds) map.fitBounds(bounds, { padding: 48, maxZoom: 15, duration: 0 });
-  }, [ready, results, targets, searchAreas]);
+  }, [ready, results, targets]);
 
   // Hovering a card in the list zooms the map to that listing, after a short pause so scrolling
   // past cards doesn't swing the map around; leaving the list returns to the view from before.
@@ -387,27 +379,6 @@ function addLayers(map: MapLibreMap) {
     clusterMaxZoom: 14,
   });
   map.addSource("approx", { type: "geojson", data: empty });
-  map.addSource("search-area", { type: "geojson", data: empty });
-
-  map.addLayer({
-    id: "search-area-fill",
-    type: "fill",
-    source: "search-area",
-    paint: { "fill-color": "#795bbf", "fill-opacity": 0.08 },
-  });
-  map.addLayer({
-    id: "search-area-line",
-    type: "line",
-    source: "search-area",
-    paint: { "line-color": "#795bbf", "line-width": 2, "line-dasharray": [2, 1] },
-  });
-  map.addLayer({
-    id: "search-area-label",
-    type: "symbol",
-    source: "search-area",
-    layout: { "text-field": ["get", "label"], "text-size": 12, "text-allow-overlap": true },
-    paint: { "text-color": "#553c9a", "text-halo-color": "#ffffff", "text-halo-width": 1.5 },
-  });
 
   map.addLayer({
     id: "approx-fill",
@@ -658,13 +629,6 @@ function Legend() {
         {t("results.map.place")}
       </p>
       <p className="text-muted-foreground">{t("results.map.approx")}</p>
-      <p className="flex items-center gap-1.5">
-        <span
-          aria-hidden
-          className="size-3 border border-dashed border-[#795bbf] bg-[#795bbf]/10"
-        />
-        {t("results.map.searchArea")}
-      </p>
     </div>
   );
 }

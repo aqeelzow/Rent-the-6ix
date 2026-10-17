@@ -32,40 +32,63 @@ test('full pool numeric order precedes cap; cheap filters precede enrichment', a
   assert.equal(calls, 2);
   await assert.rejects(searchCandidates({ ...request, intent: { ...request.intent, sortBy: 'lowest_true_cost' } }, { listings: pool, enrich }), SearchUnavailable);
 });
-test('routing only top100; numeric sort survives rescore; hide waits for routing', async () => {
+test('distance decides the hard travel gate; routing still covers only the top100', async () => {
   let routed = 0;
+  // Inside the 10-minute walk-or-bike budget, so the gate is a decision the distance pass can make.
+  const near = pool.map((listing, i) => ({ ...listing, location: { lng: -79.401 - (i % 20) * 0.0002, lat: 43.6605 } }));
   const result = await searchCandidates({ intent: { ...travelIntent, sortBy: 'lowest_rent' }, hideUnconfirmed: true }, {
-    listings: pool, enrich,
+    listings: near, enrich,
     routeTimes: async (origins, targets, mode) => {
       routed = Math.max(routed, origins.length);
       return origins.flatMap(l => targets.map(t => ({ listingId: l.id, targetId: t.id, mode, distanceM: 100, minutes: 5, method: 'otp' as const, computedAt: l.lastSeenAt, poiId: null })));
     },
   });
-  assert.equal(routed, 100); assert.equal(result.results.length, 100); assert.equal(result.eligibleCount, 100);
+  assert.equal(routed, 100); assert.equal(result.results.length, 500); assert.equal(result.eligibleCount, 520);
   assert.equal(result.results[0].listing.monthlyRentCad, 1001);
   assert.equal(result.results[99].listing.monthlyRentCad, 1100);
 });
-test('one shared deadline across modes, late routing ignored, failure retains unknown', async () => {
+test('amenity targets the router never reached still carry a labelled distance', async () => {
+  const row = (listing: Listing, method: 'otp' | 'straight_line', minutes: number | null) => ({ listingId: listing.id, targetId: 'grocery', mode: 'walk' as const, distanceM: 300, minutes, method, computedAt: listing.lastSeenAt, poiId: null });
+  const intent = { ...baseIntent, sortBy: 'lowest_rent' as const, travelTargets: [{ id: 'grocery', kind: 'amenity' as const, label: 'Groceries', category: 'grocery' as const, mode: 'walk' as const, hard: false }] };
+  const result = await searchCandidates({ intent, hideUnconfirmed: false }, {
+    listings: pool.slice(0, 5), enrich,
+    // Answer for two listings only, as a spent routing budget does.
+    routeTimes: async (origins, targets, mode) => origins.slice(0, 2).flatMap(listing => targets.map(target => ({ ...row(listing, 'otp', 6), targetId: target.id, mode }))),
+    amenityDistances: async (listings, targets) => listings.flatMap(listing => targets.flatMap(target => ({ ...row(listing, 'straight_line', null), targetId: target.id }))),
+  });
+  const methods = result.results.map(item => item.travel.find(t => t.targetId === 'grocery')?.method);
+  assert.equal(result.results.length, 5);
+  assert.equal(methods.filter(method => method === 'otp').length, 2, 'the routed answers stay as they are');
+  assert.equal(methods.filter(method => method === 'straight_line').length, 3, 'the rest get a distance, never minutes');
+  assert.ok(result.results.every(item => item.travel.length === 1), 'no duplicate rows per target and mode');
+});
+
+test('one shared deadline across modes, late routing ignored, distance survives a routing failure', async () => {
   const budgets: number[] = [];
   let resolveLate: (rows: TravelTimeRow[]) => void = () => {};
   const late = new Promise<TravelTimeRow[]>(resolve => { resolveLate = resolve; });
+  const near = sampleListings.map(listing => ({ ...listing, location: { lng: -79.401, lat: 43.6605 } }));
   const started = Date.now();
-  const result = await searchCandidates({ intent: travelIntent, hideUnconfirmed: false }, { listings: sampleListings, enrich, routingBudgetMs: 20, routeTimes: async (_l, _t, _m, budget, signal) => { budgets.push(budget); assert.equal(signal.aborted, false); return late; } });
+  const result = await searchCandidates({ intent: travelIntent, hideUnconfirmed: false }, { listings: near, enrich, routingBudgetMs: 20, routeTimes: async (_l, _t, _m, budget, signal) => { budgets.push(budget); assert.equal(signal.aborted, false); return late; } });
   assert.equal(budgets.length, 2); assert.ok(budgets.every(b => b <= 20)); assert.ok(Date.now() - started < 300);
-  assert.ok(result.results.every(r => r.travel.every(t => t.minutes === null)));
-  assert.ok(result.results.every(r => r.matchScore.hardFilterNotes.length === 1));
+  // The late answer never arrives, so every row is still the straight-line distance it started as.
+  assert.ok(result.results.every(r => r.travel.every(t => t.minutes === null && t.method === 'straight_line')));
+  assert.ok(result.results.every(r => r.matchScore.hardFilterNotes.length === 0));
   resolveLate([]);
-  const failed = await searchCandidates({ intent: travelIntent, hideUnconfirmed: true }, { listings: sampleListings, enrich, routeTimes: async () => { throw Error('unavailable'); } });
-  assert.equal(failed.results.length, 0);
+  const failed = await searchCandidates({ intent: travelIntent, hideUnconfirmed: true }, { listings: near, enrich, routeTimes: async () => { throw Error('unavailable'); } });
+  // A router that fails cannot take the figure away: the distance still answers the target.
+  assert.equal(failed.results.length, near.length);
+  assert.ok(failed.results.every(r => r.travel.every(t => t.method === 'straight_line' && t.minutes === null)));
 });
-test('ordinary best-match enriches only500; shortest trips sorts actual times before cap', async () => {
+test('ordinary best-match enriches only500; shortest trips sorts by distance before the cap', async () => {
   let calls = 0;
   const ordinary = await searchCandidates({ intent: baseIntent, hideUnconfirmed: false }, { listings: pool, enrich: async (...args) => { calls++; return enrich(...args); } });
   assert.equal(calls, 500); assert.equal(ordinary.results.length, 500);
-  const result = await searchCandidates({ intent: { ...travelIntent, sortBy: 'shortest_trips' }, hideUnconfirmed: false }, {
-    listings: pool, enrich: async listing => ({ valuation: valuations[3], safety: null, travel: [{ listingId: listing.id, targetId: 'campus', mode: 'bike', minutes: listing.id === pool[519].id ? 5 : 10, method: 'otp', distanceM: 100, computedAt: listing.lastSeenAt, poiId: null }] }),
-  });
-  assert.equal(result.results.length, 500); assert.equal(result.results[0].listing.id, pool[519].id);
+  // Two distance bands inside the 10-minute budget: ~97 m and ~1.4 km from the same target.
+  const spaced = pool.map((listing, i) => ({ ...listing, location: i === 519 ? { lng: -79.4012, lat: 43.66 } : { lng: -79.4173, lat: 43.66 } }));
+  const result = await searchCandidates({ intent: { ...travelIntent, sortBy: 'shortest_trips' }, hideUnconfirmed: false }, { listings: spaced, enrich });
+  assert.equal(result.results.length, 500); assert.equal(result.results[0].listing.id, spaced[519].id);
+  assert.ok(result.results[0].travel.every(t => t.method === 'straight_line' && t.minutes === null));
 });
 
 test('hide removes unknown cheap home fields before cap and counts full eligible pool', async () => {
@@ -149,7 +172,7 @@ test('all confirmed must-haves precede any unknown hard fields', async () => {
 });
 
 test('eligibility context filters full pool before500 while bounding valuation and preserving hide/routing counts', async () => {
-  const listings = Array.from({ length: 620 }, (_, i) => ({ ...pool[i % pool.length], id: `00000000-0000-4000-8000-${String(i + 1).padStart(12, '0')}`, monthlyRentCad: 1000 + i }));
+  const listings = Array.from({ length: 620 }, (_, i) => ({ ...pool[i % pool.length], id: `00000000-0000-4000-8000-${String(i + 1).padStart(12, '0')}`, monthlyRentCad: 1000 + i, location: i < 100 ? { lng: -79.6, lat: 43.8 } : { lng: -79.401, lat: 43.6605 } }));
   const intent = { ...travelIntent, sortBy: 'lowest_rent' as const };
   let valuationsCalled = 0, filtersCalled = 0, routed = 0;
   const travel = (listing: Listing): TravelTimeRow[] => intent.travelTargets.flatMap(target => [target.mode, ...target.alternativeModes ?? []].map(mode => ({ listingId: listing.id, targetId: target.id, mode, minutes: listing.monthlyRentCad < 1100 ? 1000 : null, method: listing.monthlyRentCad < 1100 ? 'otp' : 'straight_line', distanceM: 100, computedAt: listing.lastSeenAt, poiId: null })));
@@ -166,12 +189,15 @@ test('eligibility context filters full pool before500 while bounding valuation a
   valuationsCalled = filtersCalled = 0;
   const hidden = await searchCandidates({ intent, hideUnconfirmed: true }, deps);
   assert.equal(filtersCalled, 620); assert.equal(valuationsCalled, 500);
-  assert.equal(hidden.eligibleCount, 100); assert.equal(hidden.results.length, 100);
+  // Distance estimates confirm the nearby 520 listings; the first 100 are too far away.
+  assert.equal(hidden.eligibleCount, 520); assert.equal(hidden.results.length, 500);
   const unrouted = await searchCandidates({ intent, hideUnconfirmed: true }, { ...deps, routeTimes: undefined });
-  assert.equal(unrouted.eligibleCount, 0); assert.equal(unrouted.results.length, 0);
+  assert.equal(unrouted.eligibleCount, 520); assert.equal(unrouted.results.length, 500);
   valuationsCalled = 0;
-  const unresolved = await searchCandidates({ intent: { ...intent, travelTargets: intent.travelTargets.map(target => ({ ...target, resolved: undefined })) }, hideUnconfirmed: true }, { ...deps, filterContext: async () => ({ travel: [] }) });
-  assert.equal(valuationsCalled, 0); assert.equal(unresolved.results.length, 0);
+  const unresolved = await searchCandidates({ intent: { ...intent, travelTargets: intent.travelTargets.map(target => ({ ...target, resolved: undefined })) }, hideUnconfirmed: true }, { ...deps, routeTimes: undefined, enrich: async () => { valuationsCalled++; return { valuation: valuations[3], travel: [], safety: null }; }, filterContext: async () => ({ travel: [] }) });
+  // A target with no point of its own and no row supplied for it cannot be answered, so the distance
+  // pass has nothing to measure and hiding drops every enriched listing.
+  assert.equal(valuationsCalled, 500); assert.equal(unresolved.results.length, 0);
 });
 
 test('valuation ordering/fairness retain full contexts and cross-listing eligibility travel cannot confirm', async () => {
@@ -198,16 +224,19 @@ test('hard safety eligibility rejects known failures across full pool before val
   assert.equal(response.results[0].listing.monthlyRentCad, 1001);
 });
 
-test('hide filters unknown hard safety/travel before cap while retaining later confirmed matches', async () => {
+test('hide filters unknown hard safety before cap; a hard travel gate is decided by distance, not hidden', async () => {
   const safety = safetySearchFixture.status === 'completed' ? safetySearchFixture.results[0].safety! : null!;
-  const listings = pool.map(listing => ({ ...listing, neighbourhoodId: safety.areaId }));
+  const listings = pool.map(listing => ({ ...listing, neighbourhoodId: safety.areaId, location: { lng: -79.401, lat: 43.6605 } }));
   const confirmed = (listing: Listing) => listing.monthlyRentCad > 1500;
   let calls = 0;
   const travel = (listing: Listing): TravelTimeRow[] => confirmed(listing) ? travelIntent.travelTargets.flatMap(target => [target.mode, ...target.alternativeModes ?? []].map(mode => ({ listingId: listing.id, targetId: target.id, mode, minutes: 5, method: 'otp', distanceM: 100, computedAt: listing.lastSeenAt, poiId: null }))) : [];
   const deps: SearchDependencies = { listings, filterContext: async listing => ({ safety: confirmed(listing) ? safety : null, travel: travel(listing) }), enrich: async listing => { calls++; return { valuation: valuations[3], safety: confirmed(listing) ? safety : null, travel: travel(listing) }; } };
-  const timed = await searchCandidates({ intent: { ...travelIntent, sortBy: 'lowest_rent' }, hideUnconfirmed: true }, deps);
-  assert.equal(calls, 20); assert.equal(timed.results.length, 20); assert.equal(timed.eligibleCount, 20);
-  calls = 0;
   const safe = await searchCandidates({ intent: { ...baseIntent, sortBy: 'lowest_rent', safety: { enabled: true, hard: true, maxRelativeRate: 5 } }, hideUnconfirmed: true }, { ...deps, routeTimes: async () => [] });
   assert.equal(calls, 20); assert.equal(safe.results.length, 20); assert.equal(safe.eligibleCount, 20);
+  // Travel never counts as an unconfirmed fact any more: distance always answers it, so all 500
+  // enriched listings survive the gate instead of being hidden.
+  calls = 0;
+  const timed = await searchCandidates({ intent: { ...travelIntent, sortBy: 'lowest_rent' }, hideUnconfirmed: true }, { listings, enrich: async (...args) => { calls++; return enrich(...args); }, routeTimes: async () => [] });
+  // The hard travel gate needs a full context, so all 520 are enriched and the cap trims the response.
+  assert.equal(calls, 520); assert.equal(timed.results.length, 500); assert.equal(timed.eligibleCount, 520);
 });

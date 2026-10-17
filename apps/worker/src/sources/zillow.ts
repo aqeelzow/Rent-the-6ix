@@ -49,7 +49,7 @@ export function parseZillow(html: string): { listings: RawListing[]; totalPages:
       postalCode: r.addressZipcode ?? null,
       lat: r.latLong?.latitude ?? null,
       lng: r.latLong?.longitude ?? null,
-      imageUrl: httpsUrl(r.imgSrc),
+      imageUrl: zillowPhoto(httpsUrl(r.imgSrc)),
     };
     if (r.units?.length) {
       // A building card: one row per unit type, priced "from".
@@ -78,6 +78,14 @@ export function parseZillow(html: string): { listings: RawListing[]; totalPages:
     }
   }
   return { listings, totalPages: state?.cat1?.searchList?.totalPages ?? null };
+}
+
+/**
+ * Zillow names each photo size with a suffix; search cards use `-p_e` (about 600 px wide).
+ * `-cc_ft_960` is the same photo at 960 px (checked 2026-10-17).
+ */
+export function zillowPhoto(url: string | null): string | null {
+  return url?.replace(/-[a-z0-9_]+\.(jpg|webp)$/, "-cc_ft_960.$1") ?? null;
 }
 
 function money(text: string | undefined): number | null {

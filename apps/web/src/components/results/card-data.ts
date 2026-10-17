@@ -1,8 +1,8 @@
 import { t, type MessageKey } from "@/lib/format/messages";
 import type { SearchIntent, SearchResultItem } from "@/lib/store/types";
+import { estimateTravelMinutes, targetDistanceM, targetModes } from "@rentthe6ix/shared/engine/travel";
 
-// What a result card shows, computed from B's SearchResult. Pure, so the honest-label rules
-// (CLAUDE.md) are tested here: straight-line distance is never minutes, thin data is never a label.
+// Result presentation uses the same distance-based time estimates as filtering and scoring.
 
 type Target = SearchIntent["travelTargets"][number];
 type Row = SearchResultItem["travel"][number];
@@ -11,45 +11,20 @@ type Caveat = SearchResultItem["matchScore"]["caveats"][number];
 type Part = SearchResultItem["matchScore"]["parts"][number];
 
 export type TravelSummary =
-  | { kind: "routed"; target: string; mode: Mode; minutes: number }
-  | { kind: "straight_line"; target: string; mode: Mode; distanceM: number }
+  | { kind: "estimated"; target: string; mode: Mode; minutes: number; distanceM: number }
   | { kind: "missing"; target: string; mode: Mode };
 
-/** The first travel targets, each with its best routed time, else its straight-line distance. */
+/** The first travel targets, each with its fastest estimated time among the requested modes. */
 export function travelSummaries(
   result: SearchResultItem,
   targets: Target[],
   limit = 2,
 ): TravelSummary[] {
   return targets.slice(0, limit).map((target) => {
-    const modes: Mode[] = [target.mode, ...(target.alternativeModes ?? [])];
-    const rows = result.travel.filter(
-      (row) => row.targetId === target.id && modes.includes(row.mode),
-    );
-    const routed = rows
-      .filter(
-        (row): row is Row & { minutes: number } => row.method === "otp" && row.minutes !== null,
-      )
-      .sort((a, b) => a.minutes - b.minutes)[0];
-    if (routed) {
-      return {
-        kind: "routed",
-        target: target.label,
-        mode: routed.mode,
-        minutes: Math.round(routed.minutes),
-      };
-    }
-    const line = rows
-      .filter((row) => row.method === "straight_line")
-      .sort((a, b) => a.distanceM - b.distanceM)[0];
-    if (line)
-      return {
-        kind: "straight_line",
-        target: target.label,
-        mode: line.mode,
-        distanceM: line.distanceM,
-      };
-    return { kind: "missing", target: target.label, mode: target.mode };
+    const metres = targetDistanceM(target, result.travel, result.listing.location);
+    if (metres === null) return { kind: "missing", target: target.label, mode: target.mode };
+    const fastest = targetModes(target).map(mode => ({ mode, minutes: estimateTravelMinutes(metres, mode) })).sort((a, b) => a.minutes - b.minutes)[0]!;
+    return { kind: "estimated", target: target.label, ...fastest, distanceM: metres };
   });
 }
 
@@ -146,8 +121,7 @@ const noteLabels: Record<string, MessageKey> = {
 
 /**
  * "airConditioning: not confirmed" → "Air conditioning not confirmed".
- * A note that is already plain, or names a travel target ("Travel to UofT: not confirmed"),
- * keeps its words and only drops the field-code form.
+ * Other notes keep their words and only drop the field-code form.
  */
 export function plainHardFilterNote(note: string): string {
   if (!note.endsWith(NOTE_SUFFIX)) return note;

@@ -23,7 +23,6 @@ import {
 import { t, type MessageKey } from "@/lib/format/messages";
 import { formatCount } from "@/lib/format/number";
 import type { SearchIntent, SearchResultItem } from "@/lib/store/types";
-import { travelSummaries } from "./card-data";
 import { carbonSummary, formatCo2e, preferredAreaText } from "./travel-facts-data";
 
 const c = (key: string, params?: Record<string, string | number>) =>
@@ -53,17 +52,12 @@ export function TravelFacts({
     distanceToPreferredArea({ location: result.listing.location }, reference),
     reference,
   );
-  // The card's own travel line already prints the straight-line kilometres when a trip could not
-  // be routed, so this line stays quiet then instead of repeating the same number twice.
-  const alreadyShown = travelSummaries(result, targets).some(
-    (summary) => summary.kind === "straight_line" && summary.target === reference?.label,
-  );
   const carbon = carbonSummary(commuteCarbon(targets, result.travel));
   const ModeIcon = carbon.kind === "figure" ? modeIcons[carbon.mode] : null;
 
   return (
     <div className={`text-muted-foreground flex flex-col gap-1 text-sm ${className}`}>
-      {distance && !alreadyShown && (
+      {distance && (
         <p className="figures flex items-start gap-2">
           <MapPin aria-hidden className="mt-0.5 size-4 shrink-0" />
           <span>
@@ -74,7 +68,8 @@ export function TravelFacts({
         </p>
       )}
 
-      <p className="flex items-start gap-2">
+      {/* Time estimates do not establish the routed distance needed for carbon figures. */}
+      {carbon.kind !== "unrouted" && <p className="flex items-start gap-2">
         {ModeIcon ? (
           <ModeIcon aria-hidden className="mt-0.5 size-4 shrink-0" />
         ) : (
@@ -88,9 +83,8 @@ export function TravelFacts({
             (carbon.driveGrams === null
               ? c("transitUnknown")
               : c("transitUnknownDrive", { co2e: formatCo2e(carbon.driveGrams) }))}
-          {carbon.kind === "unrouted" && c("unrouted")}
         </span>
-      </p>
+      </p>}
       <CarbonInfoButton className="self-start text-xs" />
     </div>
   );

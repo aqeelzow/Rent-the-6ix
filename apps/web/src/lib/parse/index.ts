@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import { ParseRequestSchema, ParseResponseSchema, SearchIntentSchema, type ParseResponse, type SearchIntent } from '../../../../../packages/shared/schemas/index';
 import { AIUnavailable, NoneProvider, type AIProvider } from '../ai/index';
 import { cleanAIIntent } from './clean';
@@ -8,6 +9,7 @@ import { parseInstruction } from './instruction';
 import { fallbackParse, configuredAreas } from './fallback';
 import { DestinationResolver } from './resolve';
 import { MemoryCache, IpLimiter, inputHash, type Cache } from './cache';
+import { targetModes } from '../../../../../packages/shared/engine/travel';
 export { fallbackParse, configuredAreas } from './fallback';
 export { DestinationResolver } from './resolve';
 export { IpLimiter, RateLimitError, MemoryCache } from './cache';
@@ -33,9 +35,13 @@ export class ParseService {
         if (basic.droppedRequests.some(request => request.reason === 'Area name is ambiguous; specify neighbourhood or ward.')) throw new AIUnavailable('invalid');
         if (basic.areas.some(required => !intent.areas.some(actual => JSON.stringify(actual) === JSON.stringify(required)))) throw new AIUnavailable('invalid');
         const requiredTravel = basic.travelTargets.filter(t => t.hard && t.maxMinutes !== undefined);
-        if (requiredTravel.some(required => !intent.travelTargets.some(actual => actual.kind === required.kind && (required.kind === 'place' ? actual.query?.toLowerCase() === required.query?.toLowerCase() : actual.category === required.category) && actual.hard && actual.maxMinutes === required.maxMinutes))) throw new AIUnavailable('invalid');
+        if (requiredTravel.some(required => !intent.travelTargets.some(actual => actual.kind === required.kind && (required.kind === 'place' ? actual.query?.toLowerCase() === required.query?.toLowerCase() : actual.category === required.category) && actual.hard && actual.maxMinutes === required.maxMinutes && targetModes(actual).length === targetModes(required).length && targetModes(actual).every(mode => targetModes(required).includes(mode))))) throw new AIUnavailable('invalid');
         parser = 'gemini';
       } catch (error) {
+        console.warn('[search.parse] Gemini parse fell back', {
+          reason: error instanceof AIUnavailable ? error.reason : error instanceof z.ZodError ? 'schema_validation' : 'parse_validation',
+          status: error instanceof AIUnavailable && error.reason === 'busy' ? error.status : undefined,
+        });
         intent = fallbackParse(prompt, this.options.now?.(), catalogue);
         notice = [notice, error instanceof AIUnavailable && error.reason === 'busy' ? 'AI busy, used basic search.' : 'Used basic search; review the interpreted filters.'].filter(Boolean).join(' ');
       }
@@ -43,8 +49,11 @@ export class ParseService {
     }
     const resolver = this.options.resolver ?? new DestinationResolver();
     const destinations = await Promise.all(intent.travelTargets.filter(t => t.kind === 'place' && t.query).map(async target => {
-      const resolution = await resolver.resolve(target.query!);
-      if (resolution.status === 'resolved') target.resolved = resolution.destination.resolved;
+      const resolution = await resolver.resolve(target.query!, target.normalizedQuery);
+      if (resolution.status === 'resolved') {
+        target.resolved = resolution.destination.resolved;
+        if (target.normalizedQuery) target.label = resolution.destination.label;
+      }
       else delete target.resolved;
       return { targetId: target.id, resolution };
     }));

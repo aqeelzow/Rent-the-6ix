@@ -96,9 +96,17 @@ test('explicit static sorts and both building-age directions survive basic parsi
 });
 test('known places ambiguity, representative labels and honest unknown business', async () => {
   const resolver = new DestinationResolver();
-  const broad = await resolver.resolve('University of Toronto'); assert.equal(broad.status, 'ambiguous');
-  const york = await resolver.resolve('York University'); assert.equal(york.status, 'ambiguous'); if (york.status === 'ambiguous') assert.equal(york.choices.length, 3);
+  // A bare university name takes its main campus, because choices left the target without a
+  // coordinate and every travel figure on the result cards blank.
+  const broad = await resolver.resolve('University of Toronto'); assert.equal(broad.status, 'resolved'); if (broad.status === 'resolved') assert.equal(broad.destination.id, 'uoft-st-george');
+  const york = await resolver.resolve('York University'); assert.equal(york.status, 'resolved'); if (york.status === 'resolved') assert.equal(york.destination.id, 'york-keele');
+  const campuses = await resolver.resolve('UofT'); assert.equal(campuses.status, 'resolved'); if (campuses.status === 'resolved') assert.equal(campuses.destination.id, 'uoft-st-george');
   const specific = await resolver.resolve('UofT St. George'); assert.equal(specific.status, 'resolved'); if (specific.status === 'resolved') assert.equal(specific.destination.resolved.representativePoint, true);
+  const scarborough = await resolver.resolve('UofT Scarborough'); assert.equal(scarborough.status, 'resolved'); if (scarborough.status === 'resolved') assert.equal(scarborough.destination.id, 'uoft-scarborough');
+  // The campus picker still exists for callers that want every campus offered.
+  const offered = new DestinationResolver({ preferPrimaryCampus: false });
+  const chosen = await offered.resolve('York University'); assert.equal(chosen.status, 'ambiguous'); if (chosen.status === 'ambiguous') assert.equal(chosen.choices.length, 3);
+  const offeredBroad = await offered.resolve('University of Toronto'); assert.equal(offeredBroad.status, 'ambiguous');
   for (const query of ['TD', 'TD Canada', 'TD at Bay and King', 'TD at Queen Street West']) assert.equal((await resolver.resolve(query)).status, 'unavailable');
 });
 test('verified TD Bay and Queen aliases resolve without guessing other branches', async () => {
@@ -142,10 +150,10 @@ test('Gemini busy never retries, timeout bounds full retry and text uses main mo
   await assert.rejects(provider.generateStructured({system:'test',prompt:'test',schema:z.object({ok:z.boolean()})}), (e: unknown) => e instanceof AIUnavailable && e.reason === 'timeout'); assert.equal(calls,2);
   const text = new GeminiProvider({ apiKey:'test',model:'main',fastModel:'fast',fetch:async url => { assert.match(String(url), /main/); return Response.json({candidates:[{content:{parts:[{text:'hello'}]}}]}); } }); assert.equal(await text.generateText({system:'test',prompt:'test'}),'hello');
 });
-test('Gemini fast requests cap the shared retry deadline at three seconds and respect shorter budgets', async () => {
+test('Gemini fast requests cap the shared retry deadline at ten seconds and respect shorter budgets', async () => {
   vi.useFakeTimers();
   try {
-    for (const [fast, deadlineMs, budget] of [[true, undefined, 3000], [true, 12000, 3000], [true, 500, 500], [false, undefined, 12000], [false, 1500, 1500]] as const) {
+    for (const [fast, deadlineMs, budget] of [[true, undefined, 10000], [true, 12000, 10000], [true, 500, 500], [false, undefined, 12000], [false, 1500, 1500]] as const) {
       let calls = 0;
       let signal: AbortSignal | undefined;
       const provider = new GeminiProvider({ apiKey: 'test', model: 'configured', deadlineMs, fetch: async (_url, opts) => {
@@ -220,7 +228,7 @@ test('AI source contract uses target IDs and missing travel evidence falls back 
 });
 
 
-test('MapTiler partial or missing relevance cannot become a destination choice', async () => {
+test('MapTiler weak or missing relevance cannot become a destination choice', async () => {
   const partial = { id: 'wrong', place_name: 'Unrelated landform', place_type: ['major_landform'], center: [-79.4,43.7] };
   const features = [partial, { ...partial, id: 'partial', relevance: 0.554815 }];
   const resolver = new DestinationResolver({ maptilerKey: 'test', fetch: async () => Response.json({ features }) });
@@ -250,6 +258,30 @@ test('known hard travel bounds cannot be softened, omitted or widened by AI', as
   const result = await service.parse({ prompt: preferred }, 'ip');
   assert.equal(result.parser, 'gemini');
   assert.equal(result.intent.travelTargets[0].hard, false);
+});
+
+test('arbitrary mode-less travel bounds remain strict when AI softens, widens or changes the mode', async () => {
+  const prompt = 'within 10 minutes of allan gardens';
+  const fallback = fallbackParse(prompt);
+  assert.equal(fallback.travelTargets.length, 1);
+  assert.equal(fallback.travelTargets[0].query, 'allan gardens');
+  assert.equal(fallback.travelTargets[0].mode, 'walk');
+  assert.equal(fallback.travelTargets[0].maxMinutes, 10);
+  assert.equal(fallback.travelTargets[0].hard, true);
+  const resolver = new DestinationResolver({ maptilerKey: 'mock', fetch: async () => Response.json({ features: [] }) });
+  for (const change of ['soften', 'omit', 'widen', 'mode'] as const) {
+    const intent = structuredClone(fallback);
+    if (change === 'soften') intent.travelTargets[0].hard = false;
+    if (change === 'omit') intent.travelTargets = [];
+    if (change === 'widen') intent.travelTargets[0].maxMinutes = 20;
+    if (change === 'mode') intent.travelTargets[0].mode = 'drive';
+    const service = new ParseService({ resolver, provider: { generateStructured: async <T>() => intent as T, generateText: async () => '' } });
+    const result = await service.parse({ prompt }, 'strict-arbitrary-time');
+    assert.equal(result.parser, 'fallback');
+    assert.equal(result.intent.travelTargets[0].mode, 'walk');
+    assert.equal(result.intent.travelTargets[0].maxMinutes, 10);
+    assert.equal(result.intent.travelTargets[0].hard, true);
+  }
 });
 
 test('plain monthly budgets parse without currency signs and do not consume home or travel bounds', () => {
