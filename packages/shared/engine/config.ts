@@ -33,3 +33,15 @@ export const VALUATION = {
   /** Price label band in percent, by confidence. Low confidence gets the wider band. */
   labelBandPct: { high: 10, medium: 10, low: 15 },
 } as const;
+
+/** Caveats (SPEC 7.7). Owner: C. */
+export const CAVEATS = {
+  /** rent_far_below: listed more than this many percent below the comparable estimate. */
+  farBelowPct: 30,
+  /** stale: not seen for this many days (status 'stale' starts at day 8). */
+  staleDays: 8,
+  /** fields_unknown: shown when at least this many of utilities, pets, laundry, parking, AC are unknown. */
+  minUnknownFields: 2,
+  /** rentsafeto_low: below the City's threshold for yearly evaluation. */
+  rentSafeToLowScore: 66,
+} as const;
