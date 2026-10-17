@@ -1,0 +1,381 @@
+/*
+ * Landing parallax. ScrollScenes sets --p (0–1) on each [data-scene]; everything here derives
+ * motion from it. Scenes are tall sections with a sticky full-screen stage.
+ */
+.landing {
+  --l-far: #2b2560;
+  --l-mid: #1d1846;
+  --l-near: #120f2e;
+  --l-glow: #f6a75a;
+  --streetcar: #da291c;
+  --mist: #e4ecf6;
+  --ink: #120f2e;
+  --ink-soft: #4a4670;
+  --display: var(--font-display), var(--font-sans);
+}
+
+/* On the landing the header floats over the night sky and scrolls away with it. */
+body:has(.landing) > header {
+  position: absolute;
+  inset-inline: 0;
+  background: transparent;
+  border: 0;
+  backdrop-filter: none;
+  color: #fff4e2;
+}
+body:has(.landing) > header nav a {
+  color: rgb(255 244 226 / 0.8);
+}
+body:has(.landing) > header nav a:hover,
+body:has(.landing) > header button:hover {
+  color: #fff4e2;
+  background: rgb(255 255 255 / 0.1);
+}
+body:has(.landing) > header a > span[aria-hidden] {
+  background: var(--l-glow);
+  color: var(--l-near);
+}
+body:has(.landing) > footer {
+  background: var(--mist);
+}
+
+.scene {
+  position: relative;
+  background: var(--l-near);
+}
+.scene-stage {
+  position: sticky;
+  top: 0;
+  height: 100svh;
+  overflow: hidden;
+}
+
+/* ---------- Hero ---------- */
+.scene-hero {
+  height: 170svh;
+}
+.hero-sky {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(#0d0a24 0%, #231c55 42%, #5b3a78 66%, #c9715a 86%, #f2a25c 100%);
+}
+.hero-sky::after {
+  content: "";
+  position: absolute;
+  inset: 0 0 45% 0;
+  background-image:
+    radial-gradient(1.5px 1.5px at 8% 22%, #fff 50%, transparent 51%),
+    radial-gradient(1px 1px at 17% 64%, #fff 50%, transparent 51%),
+    radial-gradient(1.5px 1.5px at 27% 12%, #fff 50%, transparent 51%),
+    radial-gradient(1px 1px at 36% 44%, #fff 50%, transparent 51%),
+    radial-gradient(1px 1px at 47% 8%, #fff 50%, transparent 51%),
+    radial-gradient(1.5px 1.5px at 58% 30%, #fff 50%, transparent 51%),
+    radial-gradient(1px 1px at 66% 70%, #fff 50%, transparent 51%),
+    radial-gradient(1px 1px at 74% 16%, #fff 50%, transparent 51%),
+    radial-gradient(1.5px 1.5px at 83% 48%, #fff 50%, transparent 51%),
+    radial-gradient(1px 1px at 92% 26%, #fff 50%, transparent 51%),
+    radial-gradient(1px 1px at 96% 78%, #fff 50%, transparent 51%);
+  opacity: 0.7;
+  transform: translate3d(0, calc(var(--p, 0) * -6svh), 0);
+}
+.layer {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  will-change: transform;
+}
+.layer-far {
+  height: 64svh;
+  transform: translate3d(0, calc(var(--p, 0) * -14svh), 0);
+}
+.layer-mid {
+  height: 36svh;
+  transform: translate3d(0, calc(var(--p, 0) * -48svh), 0);
+}
+.layer-near {
+  position: absolute;
+  left: 0;
+  top: 76svh;
+  width: 100%;
+  will-change: transform;
+  transform: translate3d(0, calc(var(--p, 0) * -100svh), 0);
+}
+.layer-near-street {
+  display: block;
+  width: 100%;
+  height: 24svh;
+}
+.layer-near-fill {
+  height: 110svh;
+  margin-top: -1px;
+  background: var(--l-near);
+}
+
+.hero-mark {
+  position: absolute;
+  inset-inline: 0;
+  top: 22svh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  will-change: transform, opacity;
+  transform: translate3d(0, calc(var(--p, 0) * -28svh), 0) scale(calc(1 + var(--p, 0) * 0.15));
+  opacity: calc(1 - var(--p, 0) * 1.4);
+}
+.hero-tagline {
+  margin-bottom: 1rem;
+  padding-inline: 16px;
+  color: #e9ddfb;
+  font-size: clamp(1.05rem, 1.7vw, 1.4rem);
+  font-weight: 500;
+}
+.wordmark {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  color: #fff4e2;
+  font-family: var(--display);
+  line-height: 0.8;
+  text-transform: uppercase;
+}
+.wordmark-top {
+  font-size: clamp(2.25rem, 6.5vw, 6rem);
+  margin-bottom: 0.18em;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+}
+.wordmark-big {
+  font-size: min(40vw, 44svh);
+  font-weight: 900;
+  letter-spacing: -0.01em;
+  text-shadow: 0 0 80px rgb(242 162 92 / 0.35);
+}
+@media (min-width: 768px) {
+  .hero-mark {
+    top: 12svh;
+  }
+}
+
+.scroll-cue {
+  position: absolute;
+  bottom: 3svh;
+  left: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  color: #fff4e2;
+  font-size: 0.8rem;
+  letter-spacing: 0.08em;
+  transform: translateX(-50%);
+  opacity: calc(1 - var(--p, 0) * 8);
+}
+.scroll-cue span {
+  width: 1px;
+  height: 40px;
+  background: linear-gradient(#fff4e2, transparent);
+  transform-origin: top;
+  animation: cue 1.8s ease-in-out infinite;
+}
+@keyframes cue {
+  0% {
+    transform: scaleY(0);
+  }
+  50% {
+    transform: scaleY(1);
+  }
+  100% {
+    transform: scaleY(1);
+    opacity: 0;
+  }
+}
+
+/* ---------- Say it ---------- */
+.scene-say {
+  --type: clamp(0, calc((var(--p, 0) - 0.04) / 0.38), 1);
+  --hl: clamp(0, calc((var(--p, 0) - 0.44) / 0.1), 1);
+  --c: clamp(0, calc((var(--p, 0) - 0.56) / 0.26), 1);
+  height: 210svh;
+  color: #f4eeff;
+}
+.say-title {
+  position: absolute;
+  top: 13svh;
+  inset-inline: 16px;
+  text-align: center;
+  font-family: var(--display);
+  font-size: clamp(2rem, 5.5vw, 4.5rem);
+  font-weight: 700;
+  line-height: 1;
+  opacity: calc(1 - var(--c) * 1.5);
+  transform: translate3d(0, calc(var(--c) * -10svh), 0);
+}
+.say-prompt {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: min(92vw, 17ch);
+  font-family: var(--display);
+  font-size: clamp(2.4rem, 6.4vw, 5.5rem);
+  font-weight: 600;
+  line-height: 1.02;
+  text-align: center;
+  will-change: transform, opacity;
+  transform: translate3d(-50%, calc(-50% - var(--c) * 30svh), 0) scale(calc(1 - var(--c) * 0.3));
+  opacity: calc(1 - var(--c) * 0.92);
+}
+.ch {
+  opacity: clamp(0, calc((var(--type) - var(--t)) * 40), 1);
+}
+.phrase {
+  background-image: linear-gradient(var(--l-glow), var(--l-glow));
+  background-repeat: no-repeat;
+  background-position: 0 95%;
+  background-size: calc(var(--hl) * 100%) 0.09em;
+}
+.say-chips {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.chip {
+  position: absolute;
+  left: clamp(28%, var(--x), 72%);
+  top: var(--y);
+  padding: 0.45em 1.1em;
+  border: 2px solid var(--l-glow);
+  border-radius: 999px;
+  color: var(--l-glow);
+  font-size: clamp(1rem, 2.1vw, 1.6rem);
+  font-weight: 600;
+  white-space: nowrap;
+  will-change: transform, opacity;
+  transform: translate(-50%, -50%) translate3d(0, calc((1 - var(--c)) * var(--d) * 32svh), 0)
+    scale(calc(1 + (1 - var(--c)) * var(--d) * 0.6));
+  opacity: var(--c);
+}
+.chip-must {
+  background: var(--l-glow);
+  color: var(--l-near);
+}
+@media (min-width: 768px) {
+  .chip {
+    left: var(--x);
+  }
+}
+.say-caption {
+  position: absolute;
+  bottom: 9svh;
+  left: 50%;
+  width: min(calc(100vw - 32px), 44ch);
+  color: #cfc4ec;
+  font-size: clamp(1rem, 1.4vw, 1.2rem);
+  text-align: center;
+  transform: translateX(-50%);
+  opacity: clamp(0, calc((var(--c) - 0.6) * 3), 1);
+}
+
+/* ---------- Streetcar into morning ---------- */
+.scene-ride {
+  --car: 160vw;
+  --w: clamp(0, calc(var(--p, 0) / 0.85), 1);
+  height: 150svh;
+}
+@media (min-width: 768px) {
+  .scene-ride {
+    --car: 78vw;
+  }
+}
+.ride-morning {
+  position: absolute;
+  inset: 0;
+  background: var(--mist);
+  clip-path: inset(0 0 0 max(0px, calc((1 - var(--w)) * (100vw + var(--car)) - var(--car) * 0.5)));
+}
+.wire {
+  position: absolute;
+  inset-inline: 0;
+  top: calc(50svh - var(--car) * 0.104);
+  height: 2px;
+  background: #4a4380;
+  opacity: calc(1 - var(--w));
+}
+.streetcar {
+  position: absolute;
+  z-index: 2;
+  top: 50svh;
+  left: 0;
+  width: var(--car);
+  will-change: transform;
+  transform: translate3d(calc(100vw - var(--w) * (100vw + var(--car))), -50%, 0);
+}
+
+/* ---------- Skip to search ---------- */
+html:has(.landing) {
+  scroll-behavior: smooth;
+}
+.jump {
+  position: fixed;
+  z-index: 30;
+  right: 16px;
+  bottom: 16px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.7rem 1.1rem;
+  border-radius: 999px;
+  background: var(--l-glow);
+  color: var(--l-near);
+  font-weight: 600;
+  box-shadow: 0 6px 24px rgb(18 15 46 / 0.35);
+  transition:
+    opacity 0.2s,
+    transform 0.2s;
+}
+.jump:hover {
+  background: #ffb874;
+}
+.jump:focus-visible {
+  outline: 3px solid #fff4e2;
+  outline-offset: 3px;
+}
+.landing[data-at-start] .jump {
+  opacity: 0;
+  transform: translateY(12px);
+  pointer-events: none;
+}
+
+/* ---------- Start ---------- */
+.landing-start {
+  scroll-margin-top: 0;
+  background: var(--mist);
+  color: var(--ink);
+}
+.start-title {
+  font-family: var(--display);
+  font-size: clamp(2.75rem, 7vw, 5.5rem);
+  font-weight: 800;
+  line-height: 0.95;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scene-hero {
+    height: 100svh;
+  }
+  .scene-say {
+    height: auto;
+  }
+  .scene-say .scene-stage {
+    position: relative;
+    height: auto;
+    min-height: 100svh;
+  }
+  .scene-ride {
+    display: none;
+  }
+  .scroll-cue span {
+    animation: none;
+  }
+}
