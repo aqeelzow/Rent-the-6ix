@@ -2,6 +2,7 @@ import {
   DestinationResolutionSchema,
   DetailResponseSchema,
   ErrorResponseSchema,
+  NearbyResponseSchema,
   ParseResponseSchema,
   SearchResponseSchema,
   SearchResultSchema,
@@ -12,6 +13,7 @@ import type {
   ApiError,
   DestinationResolution,
   DetailResponse,
+  NearbyResponse,
   SearchIntent,
   SearchResultItem,
 } from "./types";
@@ -251,6 +253,21 @@ export async function importPastedListing(
   return parsed.success
     ? { ok: true, result: parsed.data.result }
     : { ok: false, error: unexpected };
+}
+
+/** D's nearest places by category and nearest TTC stops for one listing (straight-line, P2.16). */
+export async function fetchNearby(
+  id: string,
+  options: Pick<ActionOptions, "fetch"> & { signal?: AbortSignal } = {},
+): Promise<{ ok: true; nearby: NearbyResponse } | { ok: false; error: ApiError }> {
+  const response = await request(
+    options.fetch ?? fetch,
+    `/api/listings/${encodeURIComponent(id)}/nearby`,
+    { method: "GET", signal: options.signal },
+  );
+  if (!response.ok) return response;
+  const parsed = NearbyResponseSchema.safeParse(response.json);
+  return parsed.success ? { ok: true, nearby: parsed.data } : { ok: false, error: unexpected };
 }
 
 /** Loads one listing with B's detail route: valuation, travel, areas, indicators, duplicates. */

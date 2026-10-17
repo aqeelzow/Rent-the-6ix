@@ -551,7 +551,8 @@
       "check": "Things to check",
       "homeFacts": "Home",
       "amenities": "Amenities",
-      "terms": "Other info"
+      "terms": "Other info",
+      "nearby": "Nearby"
     },
     "why": {
       "part": "Scored {score}/100, weighted {weight}%",
@@ -723,7 +724,41 @@
       "title": "{count} sections not available yet",
       "aria": "Not available yet"
     },
-    "toDetails": "See the details"
+    "toDetails": "See the details",
+    "nearby": {
+      "categories": {
+        "grocery": "Groceries",
+        "pharmacy": "Pharmacies",
+        "park": "Parks",
+        "school": "Schools",
+        "library": "Libraries",
+        "clinic": "Clinics and doctors",
+        "community_centre": "Community centres",
+        "university": "Colleges and universities",
+        "stop": "More TTC stops"
+      },
+      "school": {
+        "elementary": "elementary",
+        "secondary": "secondary"
+      },
+      "note": "Straight-line distances, not walking or transit routes. Travel times are under Getting around.",
+      "approximate": "This listing's exact address isn't public, so distances are approximate.",
+      "unavailable": "Nearby places aren't available right now.",
+      "nearest": {
+        "grocery": "Grocery",
+        "pharmacy": "Pharmacy",
+        "park": "Park",
+        "school": "School",
+        "library": "Library",
+        "clinic": "Clinic or doctor",
+        "community_centre": "Community centre",
+        "university": "College",
+        "stop": "TTC stop",
+        "rapid": "Subway or rail"
+      },
+      "more": "Show more nearby",
+      "tileNote": "Straight-line distance from the listing."
+    }
   },
   "shortlist": {
     "title": "Your shortlist",

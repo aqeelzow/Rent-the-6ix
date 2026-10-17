@@ -5,6 +5,7 @@ export type {
   DestinationResolution,
   DetailResponse,
   Listing,
+  NearbyResponse,
   ParseResponse,
   SearchIntent,
   SearchResponse,
