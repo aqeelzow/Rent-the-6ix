@@ -106,7 +106,8 @@ Implementation defaults: unstated criteria impose no constraints; household size
   - [x] Stage authoritative read-only SQL candidate loader and simulate ordinary/percentile API consumption before enrichment/caps.
   - [x] Compose C’s actual listingContext query/cache through SQL search; validate with small simulated DB data.
   - [x] Connect published D safety and place-routing adapters; verify safety against live SQL and routing fallback/partial coverage with controlled published adapters.
-  - [ ] Meet representative live SQL/C cold-performance targets and verify live OTP/amenity precompute.
+  - [ ] Verify live OTP/amenity precompute and end-to-end routing behavior.
+  - [ ] **Deferred by user:** optimize P2.24 cold-search latency; keep current measured latency documented and resume optimization only when asked.
 - [ ] Integrate percentile searches with owner routing.
   - [x] Implement and verify scalar/full-pool exact executors and bounded async jobs.
   - [ ] Verify complete live D routing and real latency.
