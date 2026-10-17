@@ -20,7 +20,7 @@ Task ids match `PROGRESS.md`; task details are in `SPEC.md`.
 **Session 2026-10-16 (P0 foundation):**
 - **Next.js 16.4 differs from older versions.** Read `apps/web/AGENTS.md` and `node_modules/next/dist/docs/` before using Next APIs. `params`/`searchParams` are Promises; use the global `PageProps<"/route">` / `LayoutProps<"/">` types. Cache Components is off (SPEC change log P0.1).
 - **pnpm is pinned to 10.34.7** (`packageManager`) because Vercel's pnpm 9/10 can't read a pnpm 12 lockfile. A global pnpm 12 hands off to 10.34.7 automatically; never commit a lockfile that starts with a `---` document (that's the pnpm 11+ format). If a global pnpm 12 is installed without `--allow-scripts=pnpm`, it stays a shell stub and the shadcn CLI fails with `spawn ENOEXEC`.
-- **Vercel:** the project (`az-e48c/rent-the-6ix`) must use Root Directory `apps/web`; `apps/web/vercel.json` pins the Next.js preset. With the repo root as Root Directory the build fails ("No Output Directory named 'public'"). Check locally with `vercel build` (see the SPEC change log).
+- **Vercel** (`az-e48c/rent-the-6ix`) builds from the repo root with the "Other" preset. The root `vercel.json` forces the Next.js preset and points at `apps/web/.next`, and `next` is a root devDependency only so Vercel's Next.js builder detects it. If the Root Directory is ever set to `apps/web`, `apps/web/vercel.json` covers that case. Reproduce a Vercel build locally with `npx vercel build` after writing a `.vercel/project.json` with the project's settings (`.vercel/` is git-ignored).
 - **shadcn:** run `pnpm dlx shadcn@4.21.0 add <name>` from `apps/web` (Radix base, nova preset). `cn` comes from the `cn` package. Already added: badge, button, card, checkbox, dialog, drawer, input, label, popover, scroll-area, select, separator, sheet, skeleton, slider, switch, tabs, textarea, toggle, toggle-group, tooltip.
 - **Strings:** `t("ns.key", params?)` from `@/lib/format/messages` is typed against `messages/en.json`. A dynamic key needs `as MessageKey`.
 - **Store types are placeholders** (`src/lib/store/types.ts`). Swap them to B's schema types as soon as P0.5 lands.
@@ -42,7 +42,7 @@ Task ids match `PROGRESS.md`; task details are in `SPEC.md`.
 
 - **To B:** fixtures by S1 that include sizes, years built, AC, all five score parts (some `null`), price labels of each kind, travel times with both `otp` and `straight_line` methods, and one listing with safety on.
 - **To D:** the `/status` and `/data` content as data (JSON from routes); I build the pages.
-- **To D:** `DEPLOY.md` step 2 still says `cp .env.example .env`, but `.env.example` is no longer in the repo; point it at SPEC 20 instead. Vercel needs Root Directory `apps/web` (see Handoff notes).
+- **To D:** `DEPLOY.md` step 2 still says `cp .env.example .env`, but `.env.example` is no longer in the repo; point it at SPEC 20 instead. Vercel builds from the repo root via the root `vercel.json` (see Handoff notes).
 - **To C:** one or two real listings with full fields early (any source) so the detail page can be checked against reality, not just fixtures.
 
 ---

@@ -196,7 +196,7 @@ Task ids (e.g. `P2.4`) are shared by `PERSON_X.md`, commit messages (`P2.4 [C]: 
 ## Environment & deployment
 
 - **Production URL:** _(Vultr, record at P0.9)_
-- **Vercel:** project `az-e48c/rent-the-6ix` deploys `main`. Its Root Directory must be `apps/web` (`apps/web/vercel.json` pins the Next.js preset); with the repo root it fails with "No Output Directory named 'public'".
+- **Vercel:** project `az-e48c/rent-the-6ix` deploys `main` from the repo root. The root `vercel.json` forces the Next.js preset and points at `apps/web/.next`; `next` is a root devDependency so Vercel detects it. Setting Root Directory to `apps/web` also works (`apps/web/vercel.json`).
 - **Vultr instance:** _(region, plan, IP)_
 - **TigerData service:** _(region, service id; connection string in the team's password manager only)_
 - **Env vars set on the instance:** —
