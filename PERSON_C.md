@@ -39,7 +39,6 @@ Task ids match `PROGRESS.md`; task details are in `SPEC.md`.
 Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked · `[-]` dropped. **Core** = needed for the demo. **Stretch** = drop first if behind.
 
 ### Before S1 (H0–H3) — Rules first · Core
-- [ ] P0.12 Fill in the `apps/worker/SOURCES.md` template: robots.txt and terms check for each source; go / no-go per source
 - [ ] P0.11 Worker package skeleton; adapter interface `{ id, fetchIndex, fetchDetail, parse }`; shared fetch layer (robots, delay, UA, backoff, unhealthy flag)
 
 ### S1 → S2 (H3–H12) — Data in · Core
