@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 import type { SearchResultItem } from "@/lib/store/types";
 import {
   carbonSummary,
+  effectiveResultOrder,
   formatCo2e,
   formatDistance,
   orderByCarbon,
@@ -185,6 +186,19 @@ describe("orderByPreferredDistance", () => {
   it("leaves the list as it was when there is no place to measure from", () => {
     const list = [at(0, 43.7, -79.4), at(1, 43.661, -79.4)];
     expect(orderByPreferredDistance(list, null)).toEqual(list);
+  });
+});
+
+describe("effectiveResultOrder", () => {
+  it("falls back to the server's ranking when a local order has nothing to measure", () => {
+    const unrouted = [resultWith(0, []), resultWith(1, [])];
+    // Walk and bike trips count as routed, so a car-free commute is still comparable.
+    const routed = [resultWith(0, [row(results[0]!.listing, "work", { mode: "walk" })])];
+    expect(effectiveResultOrder("carbon", unrouted, travelIntent)).toBe("server");
+    expect(effectiveResultOrder("carbon", routed, travelIntent)).toBe("carbon");
+    // The fixture intent names a place, so distance ordering is available for it.
+    expect(effectiveResultOrder("distance", routed, travelIntent)).toBe("distance");
+    expect(effectiveResultOrder("distance", routed, null)).toBe("server");
   });
 });
 
