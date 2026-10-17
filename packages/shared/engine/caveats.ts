@@ -35,7 +35,7 @@ export interface CaveatListing {
   locationPrecision: "exact" | "street" | "area";
   /** ISO timestamp. */
   lastSeenAt: string;
-  utilitiesIncluded: Tri;
+  utilitiesIncluded: Tri | "partial";
   petsAllowed: Tri | "cats_only" | "dogs_only";
   laundryInSuite: Tri;
   parking: Tri;

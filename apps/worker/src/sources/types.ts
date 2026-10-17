@@ -34,7 +34,8 @@ export interface RawListing {
   petsAllowed: TriState;
   parking: TriState;
   laundryInSuite: TriState;
-  utilitiesIncluded: TriState;
+  /** "partial" when some utilities are included and some aren't. */
+  utilitiesIncluded: TriState | "partial";
   /** ISO date; null when unknown or "now". */
   availableFrom: string | null;
   /** Normalized wording: "12 months", "month-to-month", "short-term". */

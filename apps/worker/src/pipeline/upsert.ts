@@ -82,6 +82,25 @@ function keepAi([column, key, unknown]: (typeof AI_KEPT)[number]): string {
 // Fixed identifiers only, so plain SQL text is safe.
 const SET_AI_KEPT = AI_KEPT.map(keepAi).join(",\n          ");
 
+const partialOk = new WeakMap<Sql, Promise<boolean>>();
+
+/**
+ * Whether listings.utilities_included accepts 'partial' (migration 007). Until it does, a
+ * 'partial' value is stored as 'unknown' rather than failing the whole batch.
+ */
+export function utilitiesPartialAllowed(sql: Sql): Promise<boolean> {
+  let ok = partialOk.get(sql);
+  if (!ok) {
+    ok = sql<{ ok: boolean }[]>`
+      SELECT coalesce(bool_or(pg_get_constraintdef(oid) LIKE '%partial%'), true) AS ok
+      FROM pg_constraint
+      WHERE conrelid = 'listings'::regclass
+        AND pg_get_constraintdef(oid) LIKE '%utilities_included%'`.then(([r]) => r.ok);
+    partialOk.set(sql, ok);
+  }
+  return ok;
+}
+
 const COLUMNS = [
   "source",
   "source_listing_id",
@@ -160,7 +179,13 @@ export async function upsertListings(
   listings: NormalizedListing[],
   observedAt: string,
 ): Promise<UpsertResult> {
-  const rows = listings.map((l) => toRow(l, observedAt)).filter((r) => r !== null);
+  const partial = await utilitiesPartialAllowed(sql);
+  const rows = listings
+    .map((l) => toRow(l, observedAt))
+    .filter((r) => r !== null)
+    .map((r) =>
+      !partial && r.utilities_included === "partial" ? { ...r, utilities_included: "unknown" } : r,
+    );
   const optional = await optionalColumns(sql);
   const columns = [...COLUMNS, ...optional];
   // Fixed identifiers from OPTIONAL_COLUMNS, so plain SQL text is safe (and empty when absent).

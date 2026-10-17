@@ -136,6 +136,26 @@ describe("adjustments", () => {
       "This listing has utilities included, 3 comparables didn't: +$150 to compare",
     );
   });
+
+  it("partly included utilities are half a step", () => {
+    const partial = { ...subject, utilitiesIncluded: "partial" as const };
+    const v = valuate(
+      partial,
+      [
+        ...comps([2000, 2000, 2000], { utilitiesIncluded: "no" }),
+        ...comps([2000, 2000], { utilitiesIncluded: "yes" }),
+      ],
+      null,
+      NOW,
+    );
+    expect(v.comparables.map((c) => c.adjustedRentCad).sort()).toEqual([
+      1925, 1925, 2075, 2075, 2075,
+    ]);
+    expect(v.adjustments.map((a) => a.label)).toEqual([
+      "This listing includes more utilities than 3 comparables: +$75 to compare",
+      "2 comparables included more utilities than this listing: −$75 to compare",
+    ]);
+  });
 });
 
 describe("weights and the estimate", () => {

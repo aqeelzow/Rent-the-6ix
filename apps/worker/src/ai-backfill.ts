@@ -22,6 +22,7 @@ import {
   type ExtractTarget,
 } from "./pipeline/extract.ts";
 import { csvField } from "./sources/manual.ts";
+import { utilitiesPartialAllowed } from "./pipeline/upsert.ts";
 import type { SourceId } from "./sources/types.ts";
 
 const { values } = parseArgs({
@@ -179,9 +180,15 @@ console.log(
 if (stats.stopped) console.error(`stopped: ${stats.stopped}`);
 console.log(`review: ${decodeURIComponent(reviewFile.pathname)}`);
 
+if (values.apply && updates.length && !(await utilitiesPartialAllowed(sql))) {
+  // Before migration 007, 'partial' would fail the update: leave those fields unknown.
+  for (const u of updates)
+    if (u.set.utilities_included === "partial") delete u.set.utilities_included;
+}
 if (values.apply && updates.length) {
   await sql.begin(async (tx) => {
     for (const { row, set } of updates) {
+      if (!Object.keys(set).length) continue;
       const evidence = Object.fromEntries(
         Object.keys(set)
           .filter((c) => c !== "year_built_source")

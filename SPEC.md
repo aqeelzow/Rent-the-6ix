@@ -255,7 +255,7 @@ Listing {
   buildingId: string | null             // RentSafeTO registered building, if matched
   neighbourhoodId: string | null, wardId: string | null   // null until geocoded against D's boundaries (P1.10);
                                                           // area filters and safety need a match, so they skip such rows
-  utilitiesIncluded: Tri, parking: Tri, petsAllowed: Tri | 'cats_only' | 'dogs_only',
+  utilitiesIncluded: Tri | 'partial', parking: Tri, petsAllowed: Tri | 'cats_only' | 'dogs_only',
   furnished: Tri, laundryInSuite: Tri   // Tri = 'yes' | 'no' | 'unknown'
   availableFrom: string | null, leaseTerm: string | null
   imageUrl: string | null               // hot-link to source thumbnail only if source terms allow; else null
@@ -947,6 +947,7 @@ One line per change to this spec: `YYYY-MM-DD P#.#: what changed and why`. Newes
 - 2026-10-17 P3.32 [C]: `duplicate_text_elsewhere` stays off: even a narrow rule (identical excerpt, same bedrooms, > 200 m apart, ≥ 30% cheaper) matched 1 of 16k collected listings, a property manager's promo on two of its own buildings.
 - 2026-10-17 [C]: The Kijiji source also collects the Room Rentals & Roommates category (rooms, priced per room), which the student demo prompt needs; before this only 9 rooms were within 8 km of York University.
 - 2026-10-17 [C]: A Room Rentals entry is a whole unit only when its title names one and has no room wording; vague words (home, unit, townhouse, penthouse) count only at $1,500 or more, since "room in a quiet home" is common.
+- 2026-10-17 [C]: `utilitiesIncluded` gains `'partial'` (agreed with B and D): some utilities included, or the tenant pays a share or one of them ("40% of utilities", "hydro extra"). `'no'` now means the tenant pays all of them. Valuation counts partial as half a step ($75 of the $150 adjustment); in search it scores 50 and never passes a must-have "utilities included". Migration 007 widens the DB constraint; until it's applied the worker stores partial as unknown.
 - 2026-10-17 P4.10 [C]: Worker AI field extraction (10.4) reads the full description at ingest, not the excerpt, and every value must come with a phrase found in the listing text; size, year built and lease length are then read from that phrase by code, not taken from the model. It only fills unknown fields, never replaces a known one, and a later run keeps a stored AI value when its rules find nothing. It runs only when a model env var is set.
 - 2026-10-17 P4.11 [C]: Rentals.ca is go: it embeds the network's search results in the page (`App.store.search`) instead of calling /graphql, so the shared rentals-network adapter reads that when no /graphql response arrives. About 60% of its floor plans duplicate torontorentals.
 - 2026-10-17 P1.30 [A]: Search flow. The landing form GETs `/search?q=`; the search page reads the prompt with `/api/search/parse`, then searches, polling `pending` responses. Store contract update: `startParse(prompt)` and `receiveParse(id, parseResponse)`; `receiveResults(id, completedResponse)` also stores `eligibleCount` and `notices`; result ids are `result.listing.id`; `hideUnconfirmed` lives in the store.

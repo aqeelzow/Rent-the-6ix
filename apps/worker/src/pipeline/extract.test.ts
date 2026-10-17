@@ -38,7 +38,7 @@ describe("accept", () => {
       "yes",
     );
     expect(accept("utilitiesIncluded", { value: "no", phrase: "hydro extra" }, TEXT, TODAY)).toBe(
-      "no",
+      "partial", // one utility extra
     );
   });
 
@@ -102,6 +102,16 @@ describe("accept", () => {
     ).toBeNull();
   });
 
+  it("partly included utilities: the phrase decides partial vs the ends", () => {
+    const text = "Rent plus hydro. Hydro/Water/Heating Included. Tenant to pay 1/3 of utilities.";
+    const u = (value: string, phrase: string) =>
+      accept("utilitiesIncluded", { value, phrase }, text, TODAY);
+    expect(u("no", "plus hydro")).toBe("partial");
+    expect(u("partial", "Hydro/Water/Heating Included")).toBe("yes");
+    expect(u("partial", "Tenant to pay 1/3 of utilities")).toBe("partial");
+    expect(u("no", "Tenant to pay 1/3 of utilities")).toBe("no");
+  });
+
   it("takes a dated move-in only when the phrase shows the day", () => {
     expect(
       accept("availableFrom", { value: "2026-11-01", phrase: "Move in Nov 1st" }, TEXT, TODAY),
@@ -139,7 +149,7 @@ describe("extractFields", () => {
     });
     expect(targets[0]).toMatchObject({
       airConditioning: "yes",
-      utilitiesIncluded: "no",
+      utilitiesIncluded: "partial",
       parking: "unknown", // "free parking" isn't in the text
       petsAllowed: "yes",
       sqft: 650,

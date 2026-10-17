@@ -9,6 +9,8 @@ import { excerpt, scrub } from "./scrub.ts";
 
 export type UnitType = "apartment" | "condo" | "basement" | "house" | "townhouse" | "room";
 export type Tri = "yes" | "no" | "unknown";
+/** Partial: some utilities included, or the tenant pays a share or one of them (hydro extra). */
+export type Utilities = Tri | "partial";
 export type AirConditioning = "central" | "yes" | "no" | "unknown";
 export type Pets = Tri | "cats_only" | "dogs_only";
 export type Evidence = "structured" | "parsed_from_text" | "ai_extracted";
@@ -31,7 +33,7 @@ export interface NormalizedListing {
   /** 'rentsafeto' is filled after the building match (P1.5); 'ai_extracted' by extract.ts. */
   yearBuiltSource: "listing" | "ai_extracted" | null;
   airConditioning: AirConditioning;
-  utilitiesIncluded: Tri;
+  utilitiesIncluded: Utilities;
   parking: Tri;
   petsAllowed: Pets;
   furnished: Tri;
@@ -126,7 +128,11 @@ export function normalize(raw: RawListing, now = new Date()): NormalizedListing 
         airConditioningFromText(text),
       ) ?? "unknown",
     utilitiesIncluded: tri(
-      pick("utilitiesIncluded", yesNo(raw.utilitiesIncluded), () => rule(text, UTILITIES)),
+      pick(
+        "utilitiesIncluded",
+        raw.utilitiesIncluded === "partial" ? "partial" : yesNo(raw.utilitiesIncluded),
+        () => utilitiesFromText(text),
+      ),
     ),
     parking: tri(pick("parking", yesNo(raw.parking), () => rule(text, PARKING))),
     petsAllowed: tri(pick("petsAllowed", yesNo(raw.petsAllowed), () => petsFromText(text))),
@@ -276,9 +282,12 @@ interface Rule {
 }
 
 const UTILITIES: Rule = {
-  yes: /\ball[- ]inclusive\b|\butilities (?:are )?included\b|\ball utilities\b|\bincludes?:? (?:\+\s*)?(?:all )?utilities\b|\binclusive of (?:all )?utilities\b/,
-  no: /\+\s*(?:all )?utilities\b|\bplus (?:all )?utilities\b|\butilities (?:are )?(?:extra|not included|additional)\b|\btenants? pays? (?:for )?(?:hydro|utilities)\b|\bhydro (?:is )?extra\b/,
+  yes: /\ball[- ]inclusive\b|\butilities (?:are )?included\b|\ball utilities (?:are )?(?:included|covered)\b|\bincludes?:? (?:\+\s*)?(?:all )?utilities\b|\binclusive of (?:all )?utilities\b/,
+  no: /\+\s*(?:all )?utilities\b|\bplus (?:all )?utilities\b|\butilities (?:are )?(?:extra|not included|additional)\b|\btenants? pays? (?:for )?(?:all )?utilities\b/,
 };
+/** A share of the bills ("40% of utilities", "split utilities") or one utility extra ("hydro extra"). */
+const UTILITIES_PARTIAL =
+  /\b\d{1,3} ?% (?:of (?:the )?)?(?:total )?(?:utilit|hydro|bills)|\b(?:1\/2|1\/3|2\/3|half|one[- ]third|a third|a portion|portion|share|split) of (?:the )?(?:utilit|hydro|bills)|\butilities (?:are |will be )?(?:split|shared)\b|\bsplit (?:the )?utilities\b|\bshares? (?:the )?(?:cost of (?:the )?)?utilities\b|\btenants? pays? (?:for )?hydro\b|\bhydro (?:is )?(?:extra|not included)\b|(?:\+|\bplus) ?hydro\b/;
 const PARKING: Rule = {
   yes: /(?<!no )\bparking (?:spot |space )?(?:is )?(?:included|available)\b|\b\d (?:parking|car)\b|\b(?:underground|garage|driveway|indoor) parking\b|\bincludes? (?:\w+ )?parking\b/,
   no: /\bno parking\b|\bparking (?:is )?not (?:included|available)\b/,
@@ -291,6 +300,10 @@ const LAUNDRY: Rule = {
   yes: /\b(?:en[- ]?suite|in[- ]suite|in[- ]unit|private|own) (?:laundry|washer)|\bwasher (?:and|&|\/) dryer in (?:the )?(?:unit|suite)\b/,
   no: /\b(?:shared|coin|common|coin[- ]operated|on[- ]site) laundry\b|\blaundry (?:room )?(?:in|on) (?:the )?(?:building|basement|each floor)\b/,
 };
+
+function utilitiesFromText(text: string): Utilities | null {
+  return UTILITIES_PARTIAL.test(text) ? "partial" : rule(text, UTILITIES);
+}
 
 /** Both a yes and a no phrase ("furnished or unfurnished") means it's unclear: unknown. */
 function rule(text: string, r: Rule): "yes" | "no" | null {

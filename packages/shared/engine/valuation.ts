@@ -6,6 +6,8 @@
 import { VALUATION as C } from "./config";
 
 export type Tri = "yes" | "no" | "unknown";
+/** Utilities can also be partly included (some utilities, or a share of the bills). */
+export type Utilities = Tri | "partial";
 export type UnitType = "apartment" | "condo" | "basement" | "house" | "townhouse" | "room";
 export type Confidence = "low" | "medium" | "high";
 export type PriceLabel = "underpriced" | "reasonable" | "overpriced";
@@ -18,7 +20,7 @@ export interface ValuationSubject {
   bedrooms: number | null;
   bathrooms: number | null;
   sqft: number | null;
-  utilitiesIncluded: Tri;
+  utilitiesIncluded: Utilities;
   parking: Tri;
   furnished: Tri;
   laundryInSuite: Tri;
@@ -238,10 +240,13 @@ function effectiveCount(list: ComparableCandidate[]): number {
 
 // --- Adjustments and weights -------------------------------------------------------------
 
+/** How much of the feature: partly included utilities count as half. */
+const LEVEL = { yes: 1, partial: 0.5, no: 0 } as const;
+
 /** Put the comparable on the subject's terms; unknown on either side → no adjustment. */
-function adjustmentFor(code: AdjustmentCode, subject: Tri, comparable: Tri): number {
+function adjustmentFor(code: AdjustmentCode, subject: Utilities, comparable: Utilities): number {
   if (subject === "unknown" || comparable === "unknown" || subject === comparable) return 0;
-  return subject === "yes" ? C.adjustmentsCad[code] : -C.adjustmentsCad[code];
+  return Math.round((LEVEL[subject] - LEVEL[comparable]) * C.adjustmentsCad[code]);
 }
 
 const FEATURE: Record<AdjustmentCode, string> = {
@@ -254,6 +259,12 @@ const FEATURE: Record<AdjustmentCode, string> = {
 function adjustmentLabel(code: AdjustmentCode, amountCad: number, count: number): string {
   const which = `${count} comparable${count === 1 ? "" : "s"}`;
   const sign = amountCad > 0 ? "+" : "−";
+  // A half step: one side has utilities partly included.
+  if (Math.abs(amountCad) < C.adjustmentsCad[code]) {
+    return amountCad > 0
+      ? `This listing includes more utilities than ${which}: ${sign}$${Math.abs(amountCad)} to compare`
+      : `${which} included more utilities than this listing: ${sign}$${Math.abs(amountCad)} to compare`;
+  }
   return amountCad > 0
     ? `This listing has ${FEATURE[code]}, ${which} didn't: ${sign}$${Math.abs(amountCad)} to compare`
     : `${which} had ${FEATURE[code]}, this listing doesn't: ${sign}$${Math.abs(amountCad)} to compare`;

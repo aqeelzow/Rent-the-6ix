@@ -71,6 +71,7 @@ export function csvField(value: string | number | null | undefined): string {
 
 const num = (v: string) => (v.trim() === "" || Number.isNaN(Number(v)) ? null : Number(v));
 const tri = (v: string): TriState => (v === "yes" ? true : v === "no" ? false : null);
+const utilities = (v: string) => (v === "partial" ? ("partial" as const) : tri(v));
 
 export interface ManualParse {
   listings: RawListing[];
@@ -107,7 +108,7 @@ export function parseManual(text: string): ManualParse {
       sqft: num(r.sqft),
       yearBuilt: num(r.year_built),
       airConditioning: r.air_conditioning === "central" ? "central" : tri(r.air_conditioning),
-      utilitiesIncluded: tri(r.utilities_included),
+      utilitiesIncluded: utilities(r.utilities_included),
       parking: tri(r.parking),
       petsAllowed: tri(r.pets_allowed),
       furnished: tri(r.furnished),
