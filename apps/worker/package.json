@@ -14,7 +14,8 @@
     "dedupe:listings": "node --env-file-if-exists=../../.env.local src/dedupe.ts",
     "load:manual": "node --env-file-if-exists=../../.env.local src/load-manual.ts",
     "manual:candidates": "node --env-file-if-exists=../../.env.local src/manual-candidates.ts",
-    "ai:backfill": "node --env-file-if-exists=../../.env.local src/ai-backfill.ts"
+    "ai:backfill": "node --env-file-if-exists=../../.env.local src/ai-backfill.ts",
+    "data:civic": "node --env-file-if-exists=../../.env.local src/civic/cli.ts"
   },
   "dependencies": {
     "@rentthe6ix/shared": "workspace:*",
