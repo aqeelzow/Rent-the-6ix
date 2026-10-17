@@ -66,10 +66,19 @@ export function parseRealtor(response: RealtorResponse): RawListing[] {
       postalCode: r.PostalCode ?? null,
       lat: r.Property?.Address?.Latitude ? Number(r.Property.Address.Latitude) : null,
       lng: r.Property?.Address?.Longitude ? Number(r.Property.Address.Longitude) : null,
-      postedAt: r.InsertedDateUTC ?? null,
+      postedAt: ticksToIso(r.InsertedDateUTC),
     });
   }
   return listings;
+}
+
+// .NET ticks: 100 ns steps since 0001-01-01 UTC.
+const TICKS_AT_UNIX_EPOCH = 621_355_968_000_000_000n;
+
+export function ticksToIso(ticks: string | null | undefined): string | null {
+  if (!ticks || !/^\d+$/.test(ticks)) return null;
+  const ms = Number((BigInt(ticks) - TICKS_AT_UNIX_EPOCH) / 10_000n);
+  return new Date(ms).toISOString();
 }
 
 function money(text: string | undefined): number | null {

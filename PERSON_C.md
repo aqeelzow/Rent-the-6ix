@@ -6,11 +6,11 @@ Task ids match `PROGRESS.md`; task details are in `SPEC.md`.
 
 ## Current state
 
-- **Current task:** P1.3 normalize (`RawListing` → `NormalizedListing`)
+- **Current task:** none in progress
 - **Status:** in progress   <!-- not started | in progress | blocked | at sync point -->
-- **Next action:** finish P1.3, then P1.4 scrub (broader name heuristics). P1.5 geocode once D's Address Points are loaded.
+- **Next action:** P1.4 scrub (broader name heuristics + tests), then P2.1–P2.2 valuation (pure, testable without the DB). P1.5 geocode once D's Address Points are loaded.
 - **Blockers / needs from others:** B's `Listing` schema (P0.5; normalize uses a worker-local type until then), D's migrations (P0.8) for P1.6, D's Address Points and boundaries (P1.10, P1.11) for P1.5.
-- **Last updated:** 2026-10-16 (switched fetch layer to CloakBrowser; Zillow and Realtor.ca go)
+- **Last updated:** 2026-10-16 (P1.3 normalize; CloakBrowser fetch layer, Zillow and Realtor.ca go)
 
 ## Handoff notes
 
@@ -19,9 +19,10 @@ Task ids match `PROGRESS.md`; task details are in `SPEC.md`.
 - **Fetch logic is shared code, not per adapter** (SPEC 8.4). Two working sources plus `manual.csv` is enough for the demo.
 - **Fetch layer is CloakBrowser** (stealth Chromium via `playwright-core`; `pnpm --filter worker browser:install` downloads the binary to `~/.cloakbrowser/`). Plain Playwright got 403 bot checks on rentals.ca, Zillow and Realtor.ca.
 - **Working sources:** `kijiji`, `torontorentals`, `zillow`, `realtor_ca` (see `apps/worker/SOURCES.md`). `rentals_ca` is no longer blocked but no `/graphql` results response is captured; adapter needs a fresh look (low priority, `torontorentals` has the same data).
-- **Known source issues:** Realtor.ca `InsertedDateUTC` is .NET ticks, not ISO; its bounding box includes listings outside Toronto (Vaughan), which P1.5 drops. Zillow postal codes come without the space.
+- **Known source issues:** Realtor.ca's bounding box includes listings outside Toronto (Vaughan), which P1.5 drops. **Realtor.ca page 2+ fails** ("no results response"): the page number is only in the URL hash, so `page.goto` doesn't reload; needs an in-page navigation or a direct `PropertySearch_Post` call. (.NET-tick dates and unspaced postal codes are fixed: `ticksToIso` in the adapter, `postalCode()` in normalize.)
+- **Normalize (P1.3)** is `apps/worker/src/pipeline/normalize.ts`: `normalize(raw, now) → NormalizedListing | null` (null = rent outside $300–25,000). Output is a worker-local type matching SPEC 5 minus what geocode/upsert add (id, location, area ids, building, timestamps, status, dataStatus); it also carries `den`, `postalCode` and `sourceLocation` for geocoding. Swap to B's `Listing` schema when P0.5 lands. `ingest:once` now writes normalized rows and prints field coverage per source.
 - `pnpm ingest:once [--sources a,b] [--pages N]` writes scrubbed rows to git-ignored `apps/worker/.cache/ingest/*.json` until P1.6 upserts into TigerData. `scrub.ts` already does emails, phones, links and names after contact verbs (P1.4 still needs broader name heuristics).
-- **Field coverage (2 pages each, 2026-10-16):** Kijiji 91 rows: size 31%, AC 39%, year built 0%. torontorentals 254 rows: size 99%, year built 78%, AC 0%, no description. Zillow 64 rows (1 page): baths and size 25%, no unit type or posted date. Realtor.ca 11 rows (1 page): beds and size 91%, everything else 100%. AC and Kijiji year built are the gaps; worth considering P4.10 earlier.
+- **Field coverage after normalize (2 pages each, 2026-10-16):** Kijiji 90 rows: unit type 59%, size 54%, AC 56%, parking/pets 56–57%, available 48%, year built 0%. torontorentals 347 rows: size 99%, year built 93%, pets 98%, AC/utilities/laundry/parking 0%, available 27%. Zillow 122 rows: baths 32%, size 30%, unit type 2%, nothing else. Realtor.ca 11 rows (1 page): beds and size 91%, unit type 100%, amenities 0%. Text rules add little: Kijiji only gives a truncated snippet, torontorentals no description, and Zillow/Realtor.ca index pages carry no amenity text. AC, utilities and year built (outside torontorentals) are the gaps: P4.10 or detail pages would close them.
 - **Store only `Listing` fields.** Excerpt ≤ 280 chars after scrubbing phone numbers, emails and personal names. No photos stored; thumbnail URL only if the source's terms allow linking.
 - **Snapshots and raw HTML fixtures are git-ignored** and stay on the Vultr instance and team machines (SPEC 8.5). Save small HTML fixtures per source for adapter tests (strip personal info from them too).
 - **New fields:** size (sq ft; convert m²), year built ("built 2018", "new construction"), AC (`central` / `yes` / `no` / `unknown`). After the building match, fill missing `yearBuilt` from RentSafeTO (`yearBuiltSource: 'rentsafeto'`). Record `fieldEvidence` for each.
@@ -49,7 +50,7 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked · `[-]` 
 ### S1 → S2 (H3–H12) — Data in · Core
 - [x] P1.1 First adapter (Kijiji or whichever is "go") + HTML fixture tests
 - [x] P1.2 Second adapter (torontorentals.com, Rentals.ca network; rentals.ca itself is blocked) + fixture tests
-- [~] P1.3 Normalize: rent, bedrooms (studio = 0, 1+den), bathrooms, unit type, size, year built, AC, tri-state amenities, availability, lease + tests
+- [x] P1.3 Normalize: rent, bedrooms (studio = 0, 1+den), bathrooms, unit type, size, year built, AC, tri-state amenities, availability, lease + tests
 - [ ] P1.4 Scrub phone numbers, emails, personal names; 280-char excerpt + tests
 - [ ] P1.5 Geocode (Address Points via `pg_trgm`, street-level, area centroid), drop outside Toronto, neighbourhood/ward join, building match + RentSafeTO year-built fill
 - [ ] P1.6 Upsert listings + `listing_observations` rows; `stale` / `removed` by `lastSeenAt`
@@ -92,7 +93,7 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked · `[-]` 
 | --- | --- | --- |
 | Source rules & adapters | `apps/worker/SOURCES.md`, `src/sources/*.ts`, `src/lib/fetch.ts` | test fixtures are inline, same shape as the live data, made-up values |
 | One-off run | `apps/worker/src/ingest.ts` (`pnpm ingest:once`) | output in `.cache/ingest/` |
-| Pipeline | `apps/worker/src/pipeline/normalize.ts`, `scrub.ts` (done, first pass), `geocode.ts`, `dedupe.ts`, `upsert.ts` (+ tests) | |
+| Pipeline | `apps/worker/src/pipeline/normalize.ts` (done), `scrub.ts` (done, first pass), `geocode.ts`, `dedupe.ts`, `upsert.ts` (+ tests) | normalize: structured fields first, then keyword rules; `fieldEvidence` per field |
 | Schedule | `apps/worker/src/schedule.ts` | every 6 h |
 | Valuation | `packages/shared/engine/valuation.ts` (+ tests), `apps/web/src/app/api/listings/[id]/valuation/route.ts` | |
 | Caveats | `packages/shared/engine/caveats.ts` (+ tests) | |
