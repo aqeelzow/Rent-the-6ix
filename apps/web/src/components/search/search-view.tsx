@@ -108,7 +108,7 @@ export function SearchView({ prompt, shared }: { prompt: string | null; shared: 
 
   // A pin whose card is in the list scrolls the list to it (SPEC 11.2).
   useEffect(() => {
-    if (!selectedId) return;
+    if (!selectedId || appStore.getState().selectedFrom !== "map") return;
     document
       .querySelector(`ol #listing-${CSS.escape(selectedId)}`)
       ?.scrollIntoView({ behavior: "smooth", block: "center" });

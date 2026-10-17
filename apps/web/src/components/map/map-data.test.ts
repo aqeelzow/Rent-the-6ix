@@ -1,6 +1,13 @@
 import { searchFixture, travelIntent } from "@rentthe6ix/shared/fixtures";
 import { describe, expect, it } from "vitest";
-import { boundsOf, circlePolygon, placePins, resultsToGeoJSON, scoreBand } from "./map-data";
+import {
+  boundsOf,
+  circlePolygon,
+  placePins,
+  resultsToGeoJSON,
+  routesToPlaces,
+  scoreBand,
+} from "./map-data";
 
 const results = searchFixture.status === "completed" ? searchFixture.results : [];
 
@@ -83,5 +90,57 @@ describe("places and bounds", () => {
     const [west, , east] = boundsOf([approx], [])!;
     expect(approx.listing.location.lng - west).toBeGreaterThan(0.003);
     expect(east - approx.listing.location.lng).toBeGreaterThan(0.003);
+  });
+});
+
+describe("routesToPlaces", () => {
+  const listing = {
+    id: "00000000-0000-4000-8000-000000000001",
+    location: { lng: -79.4, lat: 43.66 },
+  };
+  const target = {
+    id: "uoft",
+    kind: "place",
+    label: "UofT",
+    mode: "transit",
+    resolved: { lng: -79.395, lat: 43.663 },
+  };
+  const result = (travel: unknown[]) =>
+    ({ listing, travel }) as unknown as Parameters<typeof routesToPlaces>[0];
+  const targets = [target] as unknown as Parameters<typeof routesToPlaces>[1];
+
+  it("uses the quickest routed time when there is one", () => {
+    const rows = [
+      { targetId: "uoft", mode: "transit", method: "otp", minutes: 14.4, distanceM: 900 },
+      { targetId: "uoft", mode: "transit", method: "straight_line", minutes: null, distanceM: 700 },
+    ];
+    expect(routesToPlaces(result(rows), targets)[0]).toMatchObject({
+      kind: "routed",
+      mode: "transit",
+      minutes: 14,
+    });
+  });
+
+  it("falls back to straight-line distance, never minutes", () => {
+    const rows = [
+      { targetId: "uoft", mode: "transit", method: "straight_line", minutes: null, distanceM: 700 },
+    ];
+    const route = routesToPlaces(result(rows), targets)[0]!;
+    expect(route).toMatchObject({ kind: "straight_line", distanceM: 700 });
+    expect(route).not.toHaveProperty("minutes");
+  });
+
+  it("measures the distance itself when there are no travel rows", () => {
+    const route = routesToPlaces(result([]), targets)[0]!;
+    expect(route.kind).toBe("straight_line");
+    expect(route.kind === "straight_line" && route.distanceM).toBeGreaterThan(400);
+  });
+
+  it("skips amenities and places without coordinates", () => {
+    const others = [
+      { ...target, id: "a", kind: "amenity" },
+      { ...target, id: "b", resolved: undefined },
+    ] as unknown as Parameters<typeof routesToPlaces>[1];
+    expect(routesToPlaces(result([]), others)).toEqual([]);
   });
 });

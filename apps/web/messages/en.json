@@ -472,7 +472,10 @@
       "searchArea": "Shaded boundary: approximate search area",
       "place": "Your places",
       "unavailable": "The map couldn't load. The list has every result.",
-      "placePopup": "Your place"
+      "placePopup": "Your place",
+      "routeMinutes": "{minutes} min by {mode}",
+      "routeDrive": "{minutes} min drive, no traffic",
+      "routeKm": "{km} km straight-line"
     },
     "mobile": {
       "showMap": "Map",
@@ -500,7 +503,8 @@
     "scoreBreakdown": "Match score {total}",
     "scorePoints": "{points} pts",
     "scoreRow": "Match score",
-    "view": "View"
+    "view": "View",
+    "viewAria": "View {title}"
   },
   "listing": {
     "title": "Listing",

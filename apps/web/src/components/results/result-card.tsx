@@ -117,7 +117,9 @@ export function ResultCard({
 }) {
   const { listing, valuation, safety, matchScore } = result;
   const id = listing.id;
-  const highlighted = useAppStore((s) => s.hoveredListingId === id || s.selectedListingId === id);
+  const selected = useAppStore((s) => s.selectedListingId === id);
+  const highlighted = useAppStore((s) => s.hoveredListingId === id) || selected;
+  const setSelected = useAppStore((s) => s.setSelectedListingId);
   const shortlisted = useAppStore(selectIsShortlisted(id));
   const setHovered = useAppStore((s) => s.setHoveredListingId);
   const toggleShortlist = useAppStore((s) => s.toggleShortlist);
@@ -135,7 +137,8 @@ export function ResultCard({
       onMouseLeave={() => setHovered(null)}
       onFocus={() => setHovered(id)}
       onBlur={() => setHovered(null)}
-      className={`bg-card relative flex flex-col rounded-3xl border p-1.5 shadow-sm transition-shadow hover:shadow-md ${highlighted ? "ring-primary/60 ring-2" : ""}`}
+      aria-current={selected ? "true" : undefined}
+      className={`bg-card relative flex flex-col rounded-3xl border p-1.5 shadow-sm transition-shadow hover:shadow-md ${selected ? "ring-2 ring-[#e8590c]" : highlighted ? "ring-primary/60 ring-2" : ""}`}
     >
       {/* One calm tint for every card; the price pill carries the label's colour. */}
       <div className="bg-accent text-accent-foreground flex flex-col gap-4 rounded-[1.25rem] p-5">
@@ -146,6 +149,15 @@ export function ResultCard({
               {/* Stretched link: the whole card opens the listing; buttons sit above it. */}
               <Link
                 href={`/listing/${id}`}
+                onClick={(event) => {
+                  // Beside the map, a click shows the listing there (and again unselects it);
+                  // View opens the page. Phones, and new-tab clicks, open the page as before.
+                  if (!window.matchMedia("(min-width: 1024px)").matches) return;
+                  if (event.metaKey || event.ctrlKey || event.shiftKey || event.button !== 0)
+                    return;
+                  event.preventDefault();
+                  setSelected(selected ? null : id, "list");
+                }}
                 className="after:absolute after:inset-0 after:rounded-3xl hover:underline focus-visible:underline focus-visible:outline-none"
               >
                 {listing.title}
@@ -268,13 +280,13 @@ export function ResultCard({
               className={`size-5 ${shortlisted ? "fill-primary text-primary" : "text-muted-foreground"}`}
             />
           </button>
-          {/* Looks like a button; the card's stretched title link does the opening. */}
-          <span
-            aria-hidden
-            className="bg-foreground text-background rounded-full px-5 py-2.5 text-sm font-semibold"
+          <Link
+            href={`/listing/${id}`}
+            aria-label={r("viewAria", { title: listing.title })}
+            className="bg-foreground text-background focus-visible:ring-ring/50 relative z-10 rounded-full px-5 py-2.5 text-sm font-semibold outline-none hover:opacity-90 focus-visible:ring-3"
           >
             {r("view")}
-          </span>
+          </Link>
         </div>
       </div>
     </article>

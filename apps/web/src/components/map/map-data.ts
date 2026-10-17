@@ -1,4 +1,5 @@
 import type { FeatureCollection, Point, Polygon } from "geojson";
+import { distanceM } from "@rentthe6ix/shared/engine/travel";
 import type { SearchIntent, SearchResultItem } from "@/lib/store/types";
 
 // GeoJSON for the results map (SPEC 12). Pure, so it's tested without a browser.
@@ -107,20 +108,30 @@ export function searchAreasToGeoJSON(areas: SearchIntent["areas"]): SearchAreaCo
     features: areas.flatMap((area) => {
       if (area.kind !== "configured") return [];
       const [west, south, east, north] = area.bounds;
-      return [{
-        type: "Feature" as const,
-        properties: {
-          id: area.id,
-          label: area.label.replace(
-            " approximate configured search boundary (not an official boundary)",
-            " (approx.)",
-          ),
+      return [
+        {
+          type: "Feature" as const,
+          properties: {
+            id: area.id,
+            label: area.label.replace(
+              " approximate configured search boundary (not an official boundary)",
+              " (approx.)",
+            ),
+          },
+          geometry: {
+            type: "Polygon" as const,
+            coordinates: [
+              [
+                [west, south],
+                [east, south],
+                [east, north],
+                [west, north],
+                [west, south],
+              ],
+            ],
+          },
         },
-        geometry: {
-          type: "Polygon" as const,
-          coordinates: [[[west, south], [east, south], [east, north], [west, north], [west, south]]],
-        },
-      }];
+      ];
     }),
   };
 }
@@ -132,6 +143,55 @@ export function placePins(targets: SearchIntent["travelTargets"]) {
       ? [{ id: target.id, label: target.label, lng: target.resolved.lng, lat: target.resolved.lat }]
       : [],
   );
+}
+
+/**
+ * From the selected listing to each place the renter named: the quickest routed time over the
+ * renter's modes, else a straight-line distance (from the travel rows, else computed). A
+ * straight-line route never carries minutes (SPEC 7.4).
+ */
+export type RouteToPlace = {
+  id: string;
+  label: string;
+  from: [number, number];
+  to: [number, number];
+} & (
+  | { kind: "routed"; mode: SearchIntent["travelTargets"][number]["mode"]; minutes: number }
+  | { kind: "straight_line"; distanceM: number }
+);
+
+export function routesToPlaces(
+  result: SearchResultItem,
+  targets: SearchIntent["travelTargets"],
+): RouteToPlace[] {
+  const { location } = result.listing;
+  return targets.flatMap((target): RouteToPlace[] => {
+    if (target.kind !== "place" || !target.resolved) return [];
+    const base = {
+      id: target.id,
+      label: target.label,
+      from: [location.lng, location.lat] as [number, number],
+      to: [target.resolved.lng, target.resolved.lat] as [number, number],
+    };
+    const modes = [target.mode, ...(target.alternativeModes ?? [])];
+    const rows = result.travel.filter(
+      (row) => row.targetId === target.id && modes.includes(row.mode),
+    );
+    const routed = rows
+      .filter((row) => row.method === "otp" && row.minutes !== null)
+      .sort((a, b) => a.minutes! - b.minutes!)[0];
+    if (routed) {
+      return [{ ...base, kind: "routed", mode: routed.mode, minutes: Math.round(routed.minutes!) }];
+    }
+    const line = rows.find((row) => row.method === "straight_line");
+    return [
+      {
+        ...base,
+        kind: "straight_line",
+        distanceM: line?.distanceM ?? distanceM(location, target.resolved),
+      },
+    ];
+  });
 }
 
 /**
@@ -155,8 +215,10 @@ export function boundsOf(
     ...searchAreas.flatMap((area) => {
       if (area.kind !== "configured") return [];
       const [west, south, east, north] = area.bounds;
-      return [{ lng: west, lat: south, radiusM: 0 }, { lng: east, lat: north, radiusM: 0 }]
-        .filter(inRegion);
+      return [
+        { lng: west, lat: south, radiusM: 0 },
+        { lng: east, lat: north, radiusM: 0 },
+      ].filter(inRegion);
     }),
   ];
   if (!boxes.length) return null;

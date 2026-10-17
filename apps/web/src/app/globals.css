@@ -225,3 +225,17 @@
   font-size: 0.75rem;
   color: var(--muted-foreground);
 }
+
+/* The trip on a line from the selected listing to a renter's place (results map). */
+.route-label {
+  background: #e8590c;
+  color: #ffffff;
+  border-radius: 9999px;
+  padding: 0.2rem 0.6rem;
+  font-family: var(--font-sans);
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+  box-shadow: 0 2px 8px rgb(0 0 0 / 0.25);
+  pointer-events: none;
+}

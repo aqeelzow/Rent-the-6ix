@@ -77,6 +77,8 @@ export interface SearchSlice {
    */
   hoveredListingId: string | null;
   selectedListingId: string | null;
+  /** Where the selection came from: a map pin scrolls the list to its card; a card doesn't. */
+  selectedFrom: "map" | "list" | null;
 
   setIntent: (intent: SearchIntent | null) => void;
   /** For chip and filter edits. Callers re-run search afterwards; editing never calls Gemini. */
@@ -102,7 +104,7 @@ export interface SearchSlice {
   clearShortlist: () => void;
 
   setHoveredListingId: (id: string | null) => void;
-  setSelectedListingId: (id: string | null) => void;
+  setSelectedListingId: (id: string | null, from?: "map" | "list") => void;
 }
 
 export const createSearchSlice: StateCreator<SearchSlice, [], [], SearchSlice> = (set, get) => ({
@@ -124,6 +126,7 @@ export const createSearchSlice: StateCreator<SearchSlice, [], [], SearchSlice> =
   shortlistLoaded: false,
   hoveredListingId: null,
   selectedListingId: null,
+  selectedFrom: null,
 
   setIntent: (intent) => set({ intent }),
 
@@ -242,7 +245,8 @@ export const createSearchSlice: StateCreator<SearchSlice, [], [], SearchSlice> =
   clearShortlist: () => set({ shortlist: [] }),
 
   setHoveredListingId: (id) => set({ hoveredListingId: id }),
-  setSelectedListingId: (id) => set({ selectedListingId: id }),
+  setSelectedListingId: (id, from = "map") =>
+    set({ selectedListingId: id, selectedFrom: id === null ? null : from }),
 });
 
 export const selectIsShortlisted = (id: string) => (state: SearchSlice) =>

@@ -21,7 +21,9 @@ import {
   boundsOf,
   placePins,
   resultsToGeoJSON,
+  routesToPlaces,
   searchAreasToGeoJSON,
+  type RouteToPlace,
   type ScoreBand,
 } from "./map-data";
 
@@ -55,6 +57,19 @@ const bandColor: ExpressionSpecification = [
 /** The highlighted listing's ring: a warm orange no score band or place pin uses. */
 const ACTIVE_COLOR = "#e8590c";
 
+/** The trip on a route line: minutes only when routed; otherwise straight-line km (SPEC 7.4). */
+function routeLabel(route: RouteToPlace): string {
+  if (route.kind === "routed") {
+    return t(route.mode === "drive" ? "results.map.routeDrive" : "results.map.routeMinutes", {
+      minutes: route.minutes,
+      mode: t(`filters.modes.${route.mode}` as MessageKey),
+    });
+  }
+  return t("results.map.routeKm", {
+    km: new Intl.NumberFormat("en-CA", { maximumFractionDigits: 1 }).format(route.distanceM / 1000),
+  });
+}
+
 /** How close the map comes in on a listing hovered in the list (street level). */
 const HOVER_ZOOM = 14.5;
 
@@ -63,6 +78,7 @@ export function ResultsMap({ className = "" }: { className?: string }) {
   const mapRef = useRef<MapLibreMap | null>(null);
   const markers = useRef<Marker[]>([]);
   const popups = useRef<Popup[]>([]);
+  const routeMarkers = useRef<Marker[]>([]);
   const [ready, setReady] = useState(false);
   const [failed, setFailed] = useState(false);
   const results = useAppStore((s) => s.results);
@@ -191,7 +207,8 @@ export function ResultsMap({ className = "" }: { className?: string }) {
   const homeView = useRef<{ center: [number, number]; zoom: number } | null>(null);
   useEffect(() => {
     const map = mapRef.current;
-    if (!ready || !map || map.getContainer().matches(":hover")) return;
+    // A selected listing owns the view (see below); hovering doesn't move it.
+    if (!ready || !map || selected || map.getContainer().matches(":hover")) return;
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const listing = hovered ? results.find((r) => r.listing.id === hovered)?.listing : undefined;
     const timer = window.setTimeout(
@@ -214,7 +231,75 @@ export function ResultsMap({ className = "" }: { className?: string }) {
       listing ? 250 : 600,
     );
     return () => window.clearTimeout(timer);
-  }, [ready, hovered, results]);
+  }, [ready, hovered, selected, results]);
+
+  // Selecting a listing (its card or its pin) draws a line to each of the renter's places,
+  // labelled with the trip, and fits the map around them; unselecting returns to the view before.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!ready || !map) return;
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const result = selected ? results.find((r) => r.listing.id === selected) : undefined;
+    const routes = result ? routesToPlaces(result, targets ?? []) : [];
+    const lines: FeatureCollection = {
+      type: "FeatureCollection",
+      features: routes.map((route) => ({
+        type: "Feature",
+        properties: { id: route.id },
+        geometry: { type: "LineString", coordinates: [route.from, route.to] },
+      })),
+    };
+    (map.getSource("routes") as GeoJSONSource | undefined)?.setData(lines);
+    // The trip sits on each line's midpoint in a small label.
+    let stale = false;
+    void import("maplibre-gl").then((maplibregl) => {
+      if (stale) return;
+      routeMarkers.current.forEach((marker) => marker.remove());
+      routeMarkers.current = routes.map((route) => {
+        const element = document.createElement("div");
+        element.className = "route-label";
+        element.textContent = routeLabel(route);
+        return new maplibregl.Marker({ element })
+          .setLngLat([(route.from[0] + route.to[0]) / 2, (route.from[1] + route.to[1]) / 2])
+          .addTo(map);
+      });
+    });
+
+    const cleanup = () => {
+      stale = true;
+    };
+    if (!result) {
+      if (homeView.current) {
+        map.easeTo({ ...homeView.current, duration: reduce ? 0 : 600 });
+        homeView.current = null;
+      }
+      return cleanup;
+    }
+    if (!homeView.current) {
+      const center = map.getCenter();
+      homeView.current = { center: [center.lng, center.lat], zoom: map.getZoom() };
+    }
+    const { lng, lat } = result.listing.location;
+    if (routes.length === 0) {
+      map.easeTo({
+        center: [lng, lat],
+        zoom: Math.max(map.getZoom(), HOVER_ZOOM),
+        duration: reduce ? 0 : 600,
+      });
+      return cleanup;
+    }
+    const points = [[lng, lat], ...routes.map((route) => route.to)];
+    const lngs = points.map((point) => point[0]!);
+    const lats = points.map((point) => point[1]!);
+    map.fitBounds(
+      [
+        [Math.min(...lngs), Math.min(...lats)],
+        [Math.max(...lngs), Math.max(...lats)],
+      ],
+      { padding: 80, maxZoom: 15, duration: reduce ? 0 : 700 },
+    );
+    return cleanup;
+  }, [ready, selected, results, targets]);
 
   // New results replace the view to return to.
   useEffect(() => {
@@ -383,6 +468,18 @@ function addLayers(map: MapLibreMap) {
       "circle-stroke-width": 4,
     },
   });
+  // Lines from the selected listing to the renter's places (their labels are HTML markers).
+  map.addSource("routes", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
+  map.addLayer(
+    {
+      id: "routes",
+      type: "line",
+      source: "routes",
+      layout: { "line-cap": "round" },
+      paint: { "line-color": ACTIVE_COLOR, "line-width": 3, "line-dasharray": [1.5, 1.5] },
+    },
+    "clusters",
+  );
   map.addSource("focus", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
   map.addLayer({
     id: "focus-halo",
