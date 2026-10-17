@@ -11,7 +11,7 @@ import { t } from "@/lib/format/messages";
  * The landing prompt. A GET form to /search?q=…, so it works before JS loads; with JS, next/form
  * navigates client-side and /search reads the prompt with B's parser.
  */
-export function PromptBox() {
+export function PromptBox({ defaultPrompt = "" }: { defaultPrompt?: string }) {
   return (
     <Form action="/search" className="flex flex-col gap-3">
       <Label htmlFor="prompt" className="text-base">
@@ -20,6 +20,13 @@ export function PromptBox() {
       <Textarea
         id="prompt"
         name="q"
+        defaultValue={defaultPrompt}
+        // Coming back to edit a request: focus it with the cursor at the end.
+        autoFocus={defaultPrompt !== ""}
+        onFocus={(event) => {
+          const end = event.currentTarget.value.length;
+          event.currentTarget.setSelectionRange(end, end);
+        }}
         required
         maxLength={4000}
         rows={4}

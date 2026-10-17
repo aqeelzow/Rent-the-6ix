@@ -8,8 +8,8 @@ Task ids match `PROGRESS.md`; task details are in `SPEC.md`.
 
 - **Current task:** none in progress (P3.23 safety UI done, including the limit slider)
 - **Status:** S3→S4
-- **Branch:** `a/P3.23-safety`, not pushed. It has D's P2.13 and B's P2.24 drafts for their review, plus A's P3.23. `a/P1.30-keep-prompt` ("Change request" keeps the prompt) is also unpushed.
-- **Next action:** push both branches and open PRs (D and B review their parts). Then P3.24 shortlist in `localStorage` + "Clear my data" + share search as URL (no dependencies), then P3.20/P3.21/P3.22 as D's areas API and B's briefing/import routes land.
+- **Branch:** `a/P1.30-keep-prompt` ("Change request" keeps the prompt), PR #23. The safety work (D's P2.13 and B's P2.24 drafts plus A's P3.23) is merged as PR #22; D and B still review their parts on `main`.
+- **Next action:** merge PR #23. Then P3.24 shortlist in `localStorage` + "Clear my data" + share search as URL (no dependencies), then P3.20/P3.21/P3.22 as D's areas API and B's briefing/import routes land.
 - **Blockers / needs from others:** see "Depends on others". The detail page shows "not available yet" for the building record, area facts, benchmark, the comparables map and travel times other than straight-line, until D (and C for comparable coordinates) deliver.
 - **Last updated:** 2026-10-17 (safety slider verified live: a 0.8× limit gives 999 eligible listings, all at or below 0.8×)
 
@@ -155,7 +155,7 @@ Status checked 2026-10-17 against `main` at `147c74b`.
 | Store | `apps/web/src/lib/store/searchSlice.ts` (+ test), `store.ts`, `types.ts` | intent, parse info, results, eligibleCount, notices, hideUnconfirmed, shortlist, selection; types re-exported from B's schemas |
 | Layout shell | `src/components/layout/*` (header, mobile menu, footer, page placeholder) | nav links in `nav-links.ts` |
 | Strings | `apps/web/messages/en.json`, `src/lib/format/messages.ts` (+ test) | typed `t("ns.key", params?)` |
-| Landing | `src/app/page.tsx`, `src/components/search/prompt-box.tsx` | next/form GET to `/search?q=`; Enter submits, Shift+Enter adds a line |
+| Landing | `src/app/page.tsx`, `src/components/search/prompt-box.tsx` | next/form GET to `/search?q=`; Enter submits, Shift+Enter adds a line; `/?q=…#start` prefills the box below the scenes (used by "Change request") |
 | Search flow | `src/app/search/page.tsx`, `src/components/search/search-view.tsx`, `src/lib/store/actions.ts` (+ test) | parse → search → poll; states: parsing, searching, error + retry, ready; interim result rows until P1.33 |
 | Number formats | `src/lib/format/number.ts` (+ test) | `formatCad`, `formatCount` (en-CA) |
 | Chips & filters | `src/components/search/chips.ts` (+ test), `filter-chips.tsx`, `filters.ts` (+ test), `filter-fields.tsx`, `filters-panel.tsx`, `sort-select.tsx` | `buildChips(intent)`, `setChipHard`, `removeChip`, `setTargetModes`, `setTargetMinutes`; edits keep the intent valid under B's schema and never call the parser |

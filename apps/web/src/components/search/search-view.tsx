@@ -107,7 +107,7 @@ export function SearchView({ prompt }: { prompt: string | null }) {
               {t("search.yourRequest")}
             </h2>
             <Link
-              href="/"
+              href={`/?q=${encodeURIComponent(prompt)}#start`}
               className="text-primary text-sm font-medium underline-offset-4 hover:underline"
             >
               {t("search.editRequest")}
