@@ -114,7 +114,9 @@ export function createRuntime(options: RuntimeOptions = {}) {
     briefing: jsonRoute<undefined, { params: Promise<{ kind: string; id: string }> }>({ name: 'areas.briefing', rateLimit: limit }, async (_input, _request, context) => {
       const { kind, id } = areaParams.parse(await context.params);
       if (!env.DATABASE_URL) throw new ApiError(503, 'service_unavailable', 'Area briefings temporarily unavailable');
-      const facts = await loadBriefingFacts(kind, id);
+      let facts;
+      try { facts = await loadBriefingFacts(kind, id); }
+      catch { throw new ApiError(503, 'service_unavailable', 'Area briefings temporarily unavailable'); }
       if (!facts) throw new ApiError(404, 'area_not_found', 'Area not found');
       if (!canBrief(facts)) return templateBriefing(facts);
       const model = env.GEMINI_MODEL ?? 'none';

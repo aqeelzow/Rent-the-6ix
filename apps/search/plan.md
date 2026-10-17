@@ -1,6 +1,6 @@
 # Natural-language rental search — execution plan
 
-Status: active sequential completion on `b/search-plan-completion` in `/tmp/rent-search-mvp`. One subagent implements each feature, followed by one brief, relevant end-of-feature check. The search pipeline is implemented; the current sequence is P3.1 explanation, P3.3 area briefing, then P3.4 cached demo outputs. P3.2 import and P2.24 latency optimization are deferred by the user. Historical entries below describe earlier checkpoints.
+Status: active sequential completion on `b/s4-s5-search-polish` in `/tmp/rent-search-mvp`, branched from merged main `b3290d4`. One subagent implements each feature, followed by one brief, relevant end-of-feature check. The current sequence is P4.1 weights, P4.2 sorts, then P5.5b route states. P3.2 import and P2.24 latency optimization are deferred by the user. Historical entries below describe earlier checkpoints.
 
 ## Source of truth and scope
 
@@ -67,6 +67,15 @@ Implementation defaults: unstated criteria impose no constraints; household size
 - Coordinate A's destination-choice and polling UI through documented contracts.
 
 ## Verification and acceptance
+
+### Current S4–S5 sequence
+
+- [x] P4.1: existing B intent schema and search/detail scoring accept validated user weights, renormalize known parts, and reject all-zero or safety-without-opt-in weights. Route-level fixture regression confirms a changed score. A's slider UI is P4.24.
+- [~] P4.2: confirmed shortest-trip ordering is wired, with explicit basic-parser selection; live full-pool coverage awaits D P2.10 amenity precompute. Explicit lowest-true-monthly-cost requests fail with 503 rather than ranking by rent; integration awaits D P3.12 affordability and utility/transport benchmarks (EXT-4).
+- [x] P5.5b: completed empty search, pending exact-travel polling, unavailable reasons and stable HTTP error codes are documented; briefing data failures return translatable 503.
+
+P4.2 end-of-feature check: 37 focused parser/candidate tests and web typecheck pass. Read-only live DB has nine rent and two transit benchmarks, with no utilities or car-cost rows. The existing EXT-4 request covers D affordability and sourced missing inputs; P4.2 remains partial.
+P5.5b end-of-feature check: focused empty/briefing/API-state tests and web typecheck pass; route-state behavior is contract-level and needs no database mutation.
 
 ### Current P3 sequence
 

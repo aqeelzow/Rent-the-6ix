@@ -82,6 +82,8 @@ test('explicit static sorts and both building-age directions survive basic parsi
   assert.equal(preference.fieldSources['criteria.buildingAge'].phrase, 'at least 20 years old');
   assert.equal(fallbackParse('Apartments at least 300 years old', now).droppedRequests.length, 1);
   assert.equal(fallbackParse('best value apartments').sortBy, 'best_value');
+  assert.equal(fallbackParse('lowest true monthly cost near work').sortBy, 'lowest_true_cost');
+  assert.equal(fallbackParse('shortest commute to Union Station').sortBy, 'shortest_trips');
   for (const phrase of ['newest listings', 'latest listings', 'most recently listed', 'newest first']) {
     const intent = fallbackParse(`${phrase} under $2500`);
     assert.equal(intent.sortBy, 'newest');
