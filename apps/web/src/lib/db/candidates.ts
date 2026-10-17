@@ -13,9 +13,13 @@ export type SearchDependencies = {
   filterContext?: (listing: Listing, intent: SearchRequest['intent']) => Promise<FilterContext>;
   // Full-pool fairness/numeric ordering also use the owner context.
   enrich: (listing: Listing, intent: SearchRequest['intent'], signal?: AbortSignal) => Promise<ScoreContext>;
-  // Draft adapter contract; not a claim about D's actual exports.
+  // Optional and off by default: travel is answered by straight-line distance, and a router only
+  // replaces those rows when a deployment explicitly switches it on.
   routeTimes?: (origins: Listing[], targets: TravelTarget[], mode: TravelTimeRow['mode'], budgetMs: number, signal: AbortSignal) => Promise<TravelTimeRow[]>;
   routingBudgetMs?: number;
+  // The nearest POI of a target's category around a listing. An amenity target has no point of its
+  // own — "close to groceries" is a different address for every listing — so this supplies one.
+  amenityDestination?: (listing: Listing, target: TravelTarget) => Promise<{ lat: number; lng: number } | null>;
 };
 export class SearchUnavailable extends Error {}
 // Eight pipelined contexts hide network round trips without adding database connections.
@@ -32,13 +36,17 @@ export async function mapCandidatePool<T>(listings: readonly Listing[], operatio
   return results;
 }
 const part = (result: SearchResult, id: 'value') => result.matchScore.parts.find(p => p.id === id)?.score ?? -Infinity;
-export function tripMinutes(intent: SearchRequest['intent'], travel: TravelTimeRow[]): number {
+/**
+ * Mean distance to the search's targets, the figure `shortest_trips` orders by. An unmeasured
+ * listing returns Infinity, so "nothing is known about this one" never sorts as if it were close.
+ */
+export function tripDistanceM(intent: SearchRequest['intent'], travel: TravelTimeRow[]): number {
   if (!intent.travelTargets.length) return Infinity;
   let sum = 0;
   for (const target of intent.travelTargets) {
-    const times = travel.filter(r => r.targetId === target.id && targetModes(target).includes(r.mode) && r.method === 'otp' && r.minutes !== null).map(r => r.minutes!);
-    if (!times.length) return Infinity;
-    sum += Math.min(...times);
+    const rows = travel.filter(r => r.targetId === target.id && targetModes(target).includes(r.mode));
+    if (!rows.length) return Infinity;
+    sum += Math.min(...rows.map(r => r.distanceM));
   }
   return sum / intent.travelTargets.length;
 }
@@ -46,8 +54,38 @@ const tieSide = (listing: Listing, valuation?: { status: string; confidence: Tie
 export function compareResults(intent: SearchRequest['intent'], a: SearchResult, b: SearchResult): number {
   const left = tieSide(a.listing, a.valuation), right = tieSide(b.listing, b.valuation);
   if (intent.sortBy === 'best_match') return bestMatchOrder({ total: a.matchScore.total, unconfirmed: a.matchScore.hardFilterNotes.length, tie: left }, { total: b.matchScore.total, unconfirmed: b.matchScore.hardFilterNotes.length, tie: right });
-  const primary = intent.sortBy === 'lowest_rent' ? a.listing.monthlyRentCad - b.listing.monthlyRentCad : intent.sortBy === 'newest' ? Date.parse(b.listing.lastSeenAt) - Date.parse(a.listing.lastSeenAt) : intent.sortBy === 'best_value' ? part(b, 'value') - part(a, 'value') : intent.sortBy === 'shortest_trips' ? tripMinutes(intent, a.travel) - tripMinutes(intent, b.travel) : b.matchScore.total - a.matchScore.total;
+  const primary = intent.sortBy === 'lowest_rent' ? a.listing.monthlyRentCad - b.listing.monthlyRentCad : intent.sortBy === 'newest' ? Date.parse(b.listing.lastSeenAt) - Date.parse(a.listing.lastSeenAt) : intent.sortBy === 'best_value' ? part(b, 'value') - part(a, 'value') : intent.sortBy === 'shortest_trips' ? tripDistanceM(intent, a.travel) - tripDistanceM(intent, b.travel) : b.matchScore.total - a.matchScore.total;
   return (Number.isNaN(primary) ? 0 : primary) || tieBreak(left, right);
+}
+/**
+ * Fills the straight-line distance for every target: a place target uses its own resolved point, an
+ * amenity target the nearest POI of its category. This is what the app reports as travel, so no
+ * router, network call or budget is involved — one indexed lookup per 100 m cell at worst.
+ * Existing rows for a target are replaced, except a routed row, which is a better answer when a
+ * deployment has switched routing on.
+ */
+export async function fillDistanceRows(
+  dependencies: SearchDependencies,
+  origins: readonly Listing[],
+  targets: readonly TravelTarget[],
+  contexts: Map<string, ScoreContext>,
+): Promise<void> {
+  if (!targets.length || !origins.length) return;
+  await mapCandidatePool(origins, async listing => {
+    const context = contexts.get(listing.id);
+    if (!context) return;
+    for (const target of targets) {
+      if (context.travel.some(row => row.targetId === target.id && row.method === 'otp')) continue;
+      const point = target.resolved ?? (await dependencies.amenityDestination?.(listing, target)) ?? null;
+      if (!point) continue;
+      const rows = targetModes(target).map(mode => TravelTimeRowSchema.parse({
+        listingId: listing.id, targetId: target.id, mode, minutes: null,
+        distanceM: distanceM(listing.location, point), method: 'straight_line' as const,
+        poiId: null, computedAt: listing.lastSeenAt,
+      }));
+      context.travel = [...context.travel.filter(row => row.targetId !== target.id), ...rows];
+    }
+  });
 }
 export async function searchCandidates(input: SearchRequest, dependencies: SearchDependencies) {
   const request = SearchRequestSchema.parse(input), { intent } = request;
@@ -70,8 +108,9 @@ export async function searchCandidates(input: SearchRequest, dependencies: Searc
       const context = { ...owner, travel: owner.travel?.map(row => TravelTimeRowSchema.parse(row)).filter(row => row.listingId === listing.id) };
       filterContexts.set(listing.id, context);
       const eligibility = filterListing(listing, intent, context);
-      // Only place travel can become confirmed in the later routing phase.
-      const unresolved = request.hideUnconfirmed && eligibility.notes.some(note => !dependencies.routeTimes || !intent.travelTargets.some(target => target.kind === 'place' && target.resolved && note === `Travel to ${target.label}: not confirmed`));
+      // Travel is answered by distance further down, so a travel gate that is still open here is not
+      // a reason to hide a listing the way an unknown bedroom count is.
+      const unresolved = request.hideUnconfirmed && eligibility.notes.some(note => !note.startsWith('Travel to '));
       return eligibility.passes && !unresolved ? listing : null;
     });
     eligiblePool = filtered.filter((listing): listing is Listing => listing !== null);
@@ -93,9 +132,11 @@ export async function searchCandidates(input: SearchRequest, dependencies: Searc
     const context = contexts.get(listing.id)!;
     return SearchResultSchema.parse({ listing, valuation: context.valuation, safety: context.safety, travel: context.travel, matchScore: scoreListing(listing, intent, context) });
   }).sort((a, b) => compareResults(intent, a, b)).slice(0, engineConfig.candidateLimit);
-  // Amenities are routable too: `routeTimes` resolves each listing's nearest POI of that category.
   const targets = intent.travelTargets.filter(t => t.kind === 'place' || t.kind === 'amenity');
-  await routeCandidateContexts(dependencies, candidates.slice(0, engineConfig.routingLimit).map(r => r.listing), targets, contexts);
+  const origins = candidates.slice(0, engineConfig.routingLimit).map(r => r.listing);
+  // Distance is the answer; a configured router only upgrades those rows to real times.
+  await fillDistanceRows(dependencies, origins, targets, contexts);
+  await routeCandidateContexts(dependencies, origins, targets, contexts);
   const results = candidates.flatMap(result => {
     const context = contexts.get(result.listing.id)!;
     if (!filterListing(result.listing, intent, context, request.hideUnconfirmed).passes) return [];

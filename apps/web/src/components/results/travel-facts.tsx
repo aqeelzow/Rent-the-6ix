@@ -74,7 +74,8 @@ export function TravelFacts({
         </p>
       )}
 
-      <p className="flex items-start gap-2">
+      {/* Travel is a distance now, so there is no commute to score emissions from: no figure, no line. */}
+      {carbon.kind !== "unrouted" && <p className="flex items-start gap-2">
         {ModeIcon ? (
           <ModeIcon aria-hidden className="mt-0.5 size-4 shrink-0" />
         ) : (
@@ -88,9 +89,8 @@ export function TravelFacts({
             (carbon.driveGrams === null
               ? c("transitUnknown")
               : c("transitUnknownDrive", { co2e: formatCo2e(carbon.driveGrams) }))}
-          {carbon.kind === "unrouted" && c("unrouted")}
         </span>
-      </p>
+      </p>}
       <CarbonInfoButton className="self-start text-xs" />
     </div>
   );

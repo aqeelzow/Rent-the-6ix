@@ -2,7 +2,7 @@ import { ListingSchema, SearchRequestSchema, SearchResponseSchema, TravelTimeRow
 import { filterListing } from '../../../../../packages/shared/engine/filters';
 import { scoreListing, selectPercentile, type ScoreContext } from '../../../../../packages/shared/engine/score';
 import { distanceM, targetModes } from '../../../../../packages/shared/engine/travel';
-import { mapCandidatePool, type SearchDependencies } from './candidates';
+import { fillDistanceRows, mapCandidatePool, type SearchDependencies } from './candidates';
 import { engineConfig } from '../../../../../packages/shared/engine/config';
 
 export type PercentileExecution = { referenceYear: number; deadline?: number; signal?: AbortSignal };
@@ -24,7 +24,8 @@ export async function searchPercentileCandidates(input: SearchRequest, dependenc
     const source = dependencies.loadCandidates ? await dependencies.loadCandidates(request, controller.signal) : dependencies.listings;
     const selectBeforeEnrichment = !exactTravel && !intent.criteria.priceFairness?.hard && !intent.safety.hard && !intent.travelTargets.some(target => target.hard);
     const cheapPool = source.map(raw => ListingSchema.parse(raw)).filter(listing => filterListing(listing, beforeRouting, {}, request.hideUnconfirmed, true).passes);
-    if (exactTravel && cheapPool.length && !dependencies.routeTimes) return unavailable('routing_incomplete');
+    // A travel percentile needs no router: it ranks the full pool by straight-line distance, which
+    // every listing with coordinates has, so the answer is complete rather than a partial ranking.
     // Scalar values cannot change during enrichment when no hard gate needs owner context.
     const contextPool = selectBeforeEnrichment ? selectPercentile(cheapPool, selector, execution.referenceYear) : cheapPool;
     const enriched = await mapCandidatePool(contextPool, async listing => {
@@ -42,8 +43,8 @@ export async function searchPercentileCandidates(input: SearchRequest, dependenc
     });
     if (controller.signal.aborted) return unavailable('timeout');
     const eligible = enriched.filter((listing): listing is Listing => listing !== null);
-    if (routeTargets.length && eligible.length && (dependencies.routeTimes || exactTravel)) {
-      if (!dependencies.routeTimes) return unavailable('routing_incomplete');
+    await fillDistanceRows(dependencies, eligible, routeTargets, contexts);
+    if (routeTargets.length && eligible.length && dependencies.routeTimes) {
       const routingDeadline = exactTravel ? deadline : Date.now() + Math.min(engineConfig.routingBudgetMs, Math.max(0, dependencies.routingBudgetMs ?? engineConfig.routingBudgetMs));
       let routingTimer: ReturnType<typeof setTimeout> | undefined;
       try {
@@ -73,8 +74,12 @@ export async function searchPercentileCandidates(input: SearchRequest, dependenc
     const filtered = eligible.filter(listing => filterListing(listing, intent, contexts.get(listing.id)!, request.hideUnconfirmed).passes);
     const target = intent.travelTargets.find(target => target.id === selector.targetId);
     const selected = selectBeforeEnrichment ? filtered : selectPercentile(filtered, selector, execution.referenceYear, listing => {
-      const times = contexts.get(listing.id)!.travel.filter(row => row.targetId === target?.id && targetModes(target!).includes(row.mode) && row.method === 'otp' && row.minutes !== null).map(row => row.minutes!);
-      return times.length ? Math.min(...times) : null;
+      const rows = contexts.get(listing.id)!.travel.filter(row => row.targetId === target?.id && targetModes(target!).includes(row.mode));
+      // A routed time is the better measure when a deployment has one; otherwise the straight-line
+      // distance ranks the listing, which is the only figure a distance-only search can offer.
+      const minutes = rows.filter(row => row.method === 'otp' && row.minutes !== null).map(row => row.minutes!);
+      if (minutes.length) return Math.min(...minutes);
+      return rows.length ? Math.min(...rows.map(row => row.distanceM)) : null;
     });
     return SearchResponseSchema.parse({ status: 'completed', results: selected.map(listing => {
       const context = contexts.get(listing.id)!;

@@ -17,7 +17,7 @@ import { civicAreasLookup } from '../parse/civic-areas-db';
 import { addressPointsLookup } from '../parse/address-points';
 import { areaPointsLookup } from '../parse/areas';
 import { nearestAmenity } from '../db/pois';
-import { searchCandidates, routeCandidateContexts, SearchUnavailable, type SearchDependencies } from '../db/candidates';
+import { searchCandidates, fillDistanceRows, routeCandidateContexts, SearchUnavailable, type SearchDependencies } from '../db/candidates';
 import { sqlSearchDependencies } from '../db/candidates-context';
 import { OtpClient } from '../geo/otp';
 import { createRouteTimes } from '../geo/route-times';
@@ -38,7 +38,16 @@ export const fixtureDependencies: SearchDependencies = {
 };
 /** Shared across requests so a building's nearest grocery is looked up once, not per search. */
 const amenities = nearestAmenity();
-/** Travel times (P2.11): only when a router URL is configured; any failure degrades to labelled distance. */
+/**
+ * Travel is straight-line distance from the listing to the target. Every recall is one GiST lookup
+ * per 100 m cell, cached, so it needs no service and cannot fail a search.
+ */
+const amenityDestination: NonNullable<SearchDependencies['amenityDestination']> = async (listing, target) =>
+  target.category ? amenities(listing.location, target.category) : null;
+/**
+ * Routed travel times stay opt-in: both TRAVEL_ROUTING=1 and OTP_URL must be set, and any routing
+ * failure still leaves the straight-line distance in place rather than a blank figure.
+ */
 function withRouting(dependencies: SearchDependencies, otpUrl: string | undefined): SearchDependencies {
   if (!otpUrl) return dependencies;
   return {
@@ -60,7 +69,7 @@ export function createRuntime(options: RuntimeOptions = {}) {
   const parser = options.parser ?? new ParseService({ provider: providerFromEnv(env), resolver, civicAreas: env.SEARCH_FIXTURES !== '1' && env.DATABASE_URL ? civicAreasLookup() : undefined, cacheNamespace: `${env.AI_PROVIDER}:${env.GEMINI_MODEL_FAST ?? env.GEMINI_MODEL}`, intentCache: env.SEARCH_FIXTURES !== '1' && env.DATABASE_URL && env.AI_PROVIDER === 'gemini' ? databaseIntentCache() : undefined });
   const explainer = new ExplanationService(options.explainProvider ?? providerFromEnv(env), `${env.AI_PROVIDER}:${env.GEMINI_MODEL_FAST ?? env.GEMINI_MODEL}`, env.SEARCH_FIXTURES !== '1' && env.DATABASE_URL && env.AI_PROVIDER === 'gemini' ? databaseExplanationCache() : undefined);
   const jobs = options.jobs ?? new SearchJobs();
-  const dependencies = options.dependencies ?? (env.SEARCH_FIXTURES === '1' ? fixtureDependencies : env.DATABASE_URL ? withRouting(sqlSearchDependencies(), env.OTP_URL) : undefined);
+  const dependencies = options.dependencies ?? (env.SEARCH_FIXTURES === '1' ? fixtureDependencies : env.DATABASE_URL ? withRouting({ ...sqlSearchDependencies(), amenityDestination }, env.TRAVEL_ROUTING === '1' ? env.OTP_URL : undefined) : undefined);
   // Vercel overwrites this header; other deployments need their own trusted identity callback.
   const identity = options.identity ?? ((request: Request) => {
     const ip = env.VERCEL === '1' ? request.headers.get('x-vercel-forwarded-for') : null;
@@ -95,7 +104,10 @@ export function createRuntime(options: RuntimeOptions = {}) {
     const travel = owner.travel.map(row => TravelTimeRowSchema.parse(row)).filter(row => row.listingId === id);
     for (const target of intent.travelTargets) if (target.resolved) for (const mode of targetModes(target)) if (!travel.some(row => row.targetId === target.id && row.mode === mode)) travel.push({ listingId: id, targetId: target.id, mode, minutes: null, distanceM: distanceM(listing.location, target.resolved), method: 'straight_line', poiId: null, computedAt: listing.lastSeenAt });
     const scoring = { ...owner, travel, safety: intent.safety.enabled ? owner.safety : null };
-    await routeCandidateContexts(deps, [listing], intent.travelTargets.filter(t => t.kind === 'place' || t.kind === 'amenity'), new Map([[id, scoring]]));
+    const scoringByListing = new Map([[id, scoring]]);
+    const targets = intent.travelTargets.filter(t => t.kind === 'place' || t.kind === 'amenity');
+    await fillDistanceRows(deps, [listing], targets, scoringByListing);
+    await routeCandidateContexts(deps, [listing], targets, scoringByListing);
     const fixture = !deps.loadCandidates && !deps.loadListing && listing.dataStatus === 'demo';
     return DetailResponseSchema.parse({ listing, valuation: owner.valuation, travel: scoring.travel, safety: scoring.safety, matchScore: scoreListing(listing, intent, scoring), areas: fixture ? areas.filter(a => a.id === listing.neighbourhoodId || a.id === listing.wardId) : [], indicators: fixture ? detailFixture.indicators.filter(i => i.areaId === listing.neighbourhoodId) : [], duplicates: fixture ? deps.listings.filter(l => l.duplicateOf === id) : [], ...extras });
   };

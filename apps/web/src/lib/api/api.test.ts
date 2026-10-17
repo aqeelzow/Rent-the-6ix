@@ -87,7 +87,9 @@ test('default listing dependencies unavailable; parsing/resolution work; fixture
   const fixtures = createRuntime({ env: { SEARCH_FIXTURES: '1' } });
   const response = await fixtures.search(request('listings/search', { intent: travelIntent }), undefined);
   const search = SearchResponseSchema.parse(await response.json()); assert.equal(search.status, 'completed'); if (search.status !== 'completed') return;
-  assert.equal(search.results.length, 8); assert.ok(search.results.every(r => r.listing.dataStatus === 'demo' && r.travel.every(t => t.minutes === null && t.method === 'straight_line')));
+  // Only the four listings inside the 10-minute walk-or-bike distance budget come back: the rest are
+  // 2.2-2.7 km from the campus point, so the hard travel gate excludes them by distance.
+  assert.equal(search.results.length, 4); assert.ok(search.results.every(r => r.listing.dataStatus === 'demo' && r.travel.every(t => t.minutes === null && t.method === 'straight_line')));
   const intent = { ...travelIntent, rawPrompt: '', fieldSources: {}, droppedRequests: [] };
   const detail = DetailResponseSchema.parse(await (await fixtures.detail(request('listings/x?intent='+encodeURIComponent(JSON.stringify(intent))), context(search.results[0].listing.id))).json());
   assert.deepEqual(detail.matchScore, search.results[0].matchScore); assert.deepEqual(detail.travel, search.results[0].travel);
@@ -173,7 +175,8 @@ test('async API completion, incomplete routing, terminal consumption, unknown/re
     const pending = SearchResponseSchema.parse(await (await api.search(request('listings/search', exact), undefined)).json()); assert.equal(pending.status, 'pending'); if (pending.status !== 'pending') return;
     assert.equal(pending.jobToken.length, 43); assert.ok(!pending.jobToken.includes('campus')); await tick();
     const ctx = { params: Promise.resolve({ token: pending.jobToken }) };
-    const result = SearchResponseSchema.parse(await (await api.poll(request('jobs'), ctx)).json()); assert.equal(result.status, complete ? 'completed' : 'unavailable');
+    // Without a router the travel percentile still completes, ranked by straight-line distance.
+    const result = SearchResponseSchema.parse(await (await api.poll(request('jobs'), ctx)).json()); assert.equal(result.status, 'completed');
     assert.equal((await api.poll(request('jobs'), ctx)).status, 410);
     const fresh = createRuntime({ env: {} }); assert.equal((await fresh.poll(request('jobs'), ctx)).status, 410); api.jobs.dispose();
   }
@@ -184,7 +187,7 @@ test('ordinary routing and detail share validated actual travel/score, ignoring 
     routeTimes: async (origins, targets, mode) => origins.flatMap(l => targets.map(t => ({ listingId: l.id, targetId: t.id, mode, minutes: mode === 'walk' ? 8 : 5, distanceM: 100, method: 'otp', computedAt: l.lastSeenAt, poiId: null }))),
   } });
   const result = SearchResponseSchema.parse(await (await api.search(request('listings/search', { intent: travelIntent }), undefined)).json()); assert.equal(result.status, 'completed'); if (result.status !== 'completed') return;
-  const row = result.results.find(r => r.listing.id === sampleListings[0].id)!;
+  const row = result.results.find(r => r.listing.id === sampleListings[5].id)!;
   const intent = { ...travelIntent, rawPrompt: '', fieldSources: {}, droppedRequests: [] };
   const detail = DetailResponseSchema.parse(await (await api.detail(request('listings/x?intent='+encodeURIComponent(JSON.stringify(intent))), context(row.listing.id))).json());
   assert.ok(detail.travel.every(t => t.listingId === row.listing.id && t.minutes !== null)); assert.deepEqual(detail.travel, row.travel); assert.deepEqual(detail.matchScore, row.matchScore);
