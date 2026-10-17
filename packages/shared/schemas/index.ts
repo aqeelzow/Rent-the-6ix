@@ -177,3 +177,21 @@ export const NearbyResponseSchema = z.strictObject({
 });
 export type PoiCategory = z.infer<typeof PoiCategorySchema>;
 export type NearbyResponse = z.infer<typeof NearbyResponseSchema>;
+// One area's facts with the city value beside each (D's P3.10; drafted by A for D's and B's review).
+// The ward page's table and B's briefing read the same object, so the text can be checked against it.
+export const AreaFactSchema = z.strictObject({
+  indicatorId: text, value: z.number().finite().nullable(), cityValue: z.number().finite().nullable(), unit: text, period: text,
+  sourceId: text, sampleSize: nonnegative.int().nullable(), note: z.string().nullable(),
+});
+export const AreaFactsSchema = z.strictObject({
+  area: z.strictObject({ kind: z.enum(['neighbourhood', 'ward']), id: text, name: text, number: positive.int().nullable() }),
+  facts: z.array(AreaFactSchema),
+  sources: z.array(z.strictObject({ id: text, title: text, url: z.string(), retrievedAt: z.string().nullable() })),
+});
+// B's ward briefing (P3.3; drafted by A for B's review): three paragraphs written only from `facts`.
+export const BriefingSchema = z.strictObject({
+  paragraphs: z.array(text).length(3), generatedBy: z.enum(['gemini', 'template']), generatedAt: timestamp, facts: AreaFactsSchema,
+});
+export type AreaFact = z.infer<typeof AreaFactSchema>;
+export type AreaFacts = z.infer<typeof AreaFactsSchema>;
+export type Briefing = z.infer<typeof BriefingSchema>;
