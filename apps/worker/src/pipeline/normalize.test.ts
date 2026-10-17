@@ -35,6 +35,54 @@ describe("normalize: rent", () => {
   });
 });
 
+describe("normalize: not housing, rooms, implausible rents (seen in TigerData)", () => {
+  it("drops parking spaces and lockers", () => {
+    expect(
+      normalize(raw({ title: "PARKING - 8 WELLESLEY STREET Toronto", monthlyRentCad: 300 }), NOW),
+    ).toBeNull();
+    expect(
+      normalize(
+        raw({ title: "- EV PARKING (L2 CHARGER) - 11 YORKVILLE AVENUE", monthlyRentCad: 600 }),
+        NOW,
+      ),
+    ).toBeNull();
+    expect(
+      normalize(raw({ title: "Storage locker for rent", monthlyRentCad: 300 }), NOW),
+    ).toBeNull();
+    expect(norm({ title: "2 bed condo with parking space available" }).monthlyRentCad).toBe(2450);
+    for (const title of [
+      "Bright Top-Flr the Beaches 1BR – Parking, A/C & Heat Included!",
+      "3-BR Main Floor near UTSC, 2 Parking Spots, $2700 All-inclusive",
+      "2 bedrm+2 bath(union)subway+lakeview+November 15+parking+locker",
+      "2 bedrms 1 washroom updated throughout. 1 parking new appliances",
+      "Looking for Female Roommate | Laundry, Parking & Util Incl",
+    ])
+      expect(normalize(raw({ title }), NOW), title).not.toBeNull();
+  });
+
+  it("a room-for-rent title makes it a room, priced per room, over the structured type", () => {
+    const room = norm({
+      title: "Room for rent, (private room)",
+      unitType: "basement-apartment",
+      monthlyRentCad: 600,
+    });
+    expect(room).toMatchObject({ unitType: "room", rentIsPerRoom: true });
+    expect(room.fieldEvidence.unitType).toBe("parsed_from_text");
+    expect(
+      norm({ title: "1 Room in Main Flooor for Female", unitType: "house", monthlyRentCad: 660 })
+        .unitType,
+    ).toBe("room");
+    expect(norm({ title: "Bright 2 bedroom, rooms are spacious" }).unitType).toBeNull();
+  });
+
+  it("drops whole units under $600; rooms keep the $300 floor", () => {
+    expect(
+      normalize(raw({ title: "Studio at 65 Mutual St", monthlyRentCad: 300 }), NOW),
+    ).toBeNull();
+    expect(norm({ title: "Shared room near Finch", monthlyRentCad: 350 }).monthlyRentCad).toBe(350);
+  });
+});
+
 describe("normalize: structured fields win and are marked structured", () => {
   it("keeps source values and records evidence", () => {
     const out = norm({

@@ -62,13 +62,20 @@ type EvidenceField =
 
 // Outside these, the number is a typo, a weekly/nightly price or a sale price.
 const RENT_RANGE = [300, 25_000] as const;
+/** A whole unit under this is a typo, a deposit or a mislabelled room, not a Toronto rental. */
+const MIN_WHOLE_UNIT_RENT = 600;
 const SQFT_RANGE = [100, 10_000] as const;
 const M2_TO_SQFT = 10.7639;
 
 /** Returns null when the listing has no usable monthly rent. `now` dates "new construction". */
+/**
+ * Returns null when the listing has no usable monthly rent or isn't housing (parking, storage).
+ * `now` dates "new construction".
+ */
 export function normalize(raw: RawListing, now = new Date()): NormalizedListing | null {
   const rent = Math.round(raw.monthlyRentCad);
   if (!inRange(rent, RENT_RANGE)) return null;
+  if (isNotHousing(raw.title)) return null;
 
   const text = `${raw.title}\n${raw.description ?? ""}`.toLowerCase();
   const evidence: NormalizedListing["fieldEvidence"] = {};
@@ -87,9 +94,11 @@ export function normalize(raw: RawListing, now = new Date()): NormalizedListing 
   const listingYear = posted ? Number(posted.slice(0, 4)) : now.getUTCFullYear();
 
   const beds = pick("bedrooms", validBeds(raw.bedrooms), () => bedroomsFromText(text));
-  const unitType = pick("unitType", unitTypeFrom(raw.unitType), () =>
-    unitTypeFrom(raw.title.toLowerCase()),
-  );
+  // A title that says "room for rent" wins: Kijiji files rooms under the house's own type.
+  const unitType = isRoomListing(raw.title)
+    ? ((evidence.unitType = "parsed_from_text"), "room" as const)
+    : pick("unitType", unitTypeFrom(raw.unitType), () => unitTypeFrom(raw.title.toLowerCase()));
+  if (unitType !== "room" && !raw.rentIsPerRoom && rent < MIN_WHOLE_UNIT_RENT) return null;
   const yearBuilt = pick("yearBuilt", validYear(raw.yearBuilt, now), () =>
     yearBuiltFromText(text, listingYear, now),
   );
@@ -165,6 +174,27 @@ function validBaths(n: number | null): number | null {
 }
 
 // --- Unit type ---------------------------------------------------------------------------
+
+/** Parking spaces and storage lockers listed under rentals. */
+export function isNotHousing(title: string): boolean {
+  // "PARKING - 8 WELLESLEY STREET", "- EV PARKING (L2 CHARGER) - 11 YORKVILLE AVENUE".
+  if (/^\W*(?:ev\s+)?parking\b/i.test(title)) return true;
+  // "1BR – Parking, A/C & Heat Included!" is an apartment that comes with parking.
+  if (
+    /\b(?:\d+\s*-?\s*(?:br|bd|bdrm|bed)s?|bed\w*|bdrm|studio|bachelor|condo|apartment|house|home|room\w*|suite|unit|townhouse|loft)\b/i.test(
+      title,
+    )
+  )
+    return false;
+  return /\bparking\b|\bstorage (?:locker|unit|space)\b|\blocker\b/i.test(title);
+}
+
+/** "Private room for rent", "Room available near Yonge/Finch", "1 Room in Main Floor". */
+export function isRoomListing(title: string): boolean {
+  return /\brooms? (?:for (?:rent|lease)|available|to rent)\b|\b(?:private|shared|sharing) (?:bed)?rooms?\b|^\W*(?:1|one) room\b|\broom rental\b|\broommates?\b/i.test(
+    title,
+  );
+}
 
 /** Source wording or a title → UnitType. Order matters: "basement apartment" is a basement. */
 export function unitTypeFrom(value: string | null): UnitType | null {
