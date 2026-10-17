@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useEffect, useState } from "react";
 import { SafetyInfoButton } from "@/components/safety/safety-info";
 import { daysSince, plainHardFilterNote, yearSpan } from "@/components/results/card-data";
@@ -19,8 +20,8 @@ import { t, type MessageKey } from "@/lib/format/messages";
 import { formatCad, formatCount } from "@/lib/format/number";
 import { redactIntent } from "@/lib/store/actions";
 import type { DetailResponse, SearchIntent, SearchResultItem } from "@/lib/store/types";
-import { AdjustmentBars, PricePosition, TravelBars } from "./detail-charts";
-import { homeFields, scoreBreakdown, travelTable } from "./detail-data";
+import { AdjustmentBars, PricePosition } from "./detail-charts";
+import { homeFields, scoreBreakdown } from "./detail-data";
 
 // The sections of the listing detail page, in SPEC 11.3 order. Every figure comes from B's,
 // C's or D's data; these components only word and arrange it.
@@ -68,72 +69,64 @@ export function DetailSection({
   );
 }
 
-/** P2.36: score breakdown whose bars add up to the total, with each part's evidence. */
-export function WhyItRanks({
+/**
+ * P2.36: the score breakdown (shown on hover of the match score tile): B's plain explanation,
+ * then each part's points, how they were reached and the evidence behind them.
+ */
+export function WhyItRanksContent({
   result,
   intent,
-  className,
 }: {
   result: SearchResultItem;
   intent: SearchIntent | null;
-  className?: string;
 }) {
   const { parts, omitted } = scoreBreakdown(result.matchScore);
   return (
-    <DetailSection id="why" title={l("sections.why")} className={className}>
+    <div className="flex flex-col gap-3">
+      <p className="font-semibold">{l("sections.why")}</p>
       <ExplanationSlot listingId={result.listing.id} intent={intent} />
-      <ul className="flex flex-col gap-1">
+      <ul className="flex flex-col gap-3">
         {parts.map((part) => (
-          <li key={part.id}>
-            <details className="group">
-              <summary className="hover:bg-muted/60 -mx-2 flex cursor-pointer list-none flex-col gap-1.5 rounded-lg px-2 py-1.5 [&::-webkit-details-marker]:hidden">
-                <span className="flex items-center justify-between gap-3">
-                  <span className="flex items-center gap-2 font-medium">
-                    <span aria-hidden className={`size-2.5 rounded-full ${partColors[part.id]}`} />
-                    {t(`results.parts.${part.id}` as MessageKey)}
-                  </span>
-                  <span className="figures flex items-center gap-1 text-sm font-semibold">
-                    {l("why.points", { points: formatCount(part.points) })}
-                    <ChevronDown
-                      aria-hidden
-                      className="text-muted-foreground size-4 transition-transform group-open:rotate-180"
-                    />
-                  </span>
-                </span>
-                <span aria-hidden className="bg-muted block h-2 overflow-hidden rounded-full">
-                  <span
-                    className={`${partColors[part.id]} block h-full rounded-full`}
-                    style={{ width: `${part.score}%` }}
-                  />
-                </span>
-              </summary>
-              <div className="text-muted-foreground flex flex-col gap-1 px-2 pt-1 pb-2 text-sm">
-                <p className="figures">
-                  {l("why.part", {
-                    score: formatCount(part.score),
-                    weight: formatCount(part.effectiveWeight * 100),
-                  })}
-                </p>
-                {part.evidence.length > 0 && (
-                  <ul className="list-disc pl-5">
-                    {part.evidence.map((line) => (
-                      <li key={line}>{line}</li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-            </details>
+          <li key={part.id} className="flex flex-col gap-1.5">
+            <span className="flex items-center justify-between gap-3">
+              <span className="flex items-center gap-2 font-medium">
+                <span aria-hidden className={`size-2.5 rounded-full ${partColors[part.id]}`} />
+                {t(`results.parts.${part.id}` as MessageKey)}
+              </span>
+              <span className="figures text-sm font-semibold">
+                {l("why.points", { points: formatCount(part.points) })}
+              </span>
+            </span>
+            <span aria-hidden className="bg-muted block h-1.5 overflow-hidden rounded-full">
+              <span
+                className={`${partColors[part.id]} block h-full rounded-full`}
+                style={{ width: `${part.score}%` }}
+              />
+            </span>
+            <span className="text-muted-foreground figures text-xs">
+              {l("why.part", {
+                score: formatCount(part.score),
+                weight: formatCount(part.effectiveWeight * 100),
+              })}
+            </span>
+            {part.evidence.length > 0 && (
+              <ul className="text-muted-foreground list-disc pl-4 text-xs">
+                {part.evidence.map((line) => (
+                  <li key={line}>{line}</li>
+                ))}
+              </ul>
+            )}
           </li>
         ))}
       </ul>
       {omitted.length > 0 && (
-        <p className="text-muted-foreground text-xs">
+        <p className="text-muted-foreground border-t pt-2 text-xs">
           {l("why.omitted", {
             parts: omitted.map((id) => t(`results.parts.${id}` as MessageKey)).join(", "),
           })}
         </p>
       )}
-    </DetailSection>
+    </div>
   );
 }
 
@@ -301,19 +294,65 @@ export function Disclosure({
   );
 }
 
-/** P2.33: the unit's facts. Known ones are tiles; unknowns fold into one "not stated" row. */
+/** Which facts go in which group: the place itself, what comes with it, and the terms. */
+const homeGroups = {
+  home: ["bedrooms", "bathrooms", "sqft", "unitType", "yearBuilt", "locationPrecision"],
+  amenities: [
+    "airConditioning",
+    "parking",
+    "laundryInSuite",
+    "utilitiesIncluded",
+    "furnished",
+    "petsAllowed",
+  ],
+  terms: ["availableFrom", "leaseTerm"],
+} as const;
+
+/**
+ * P2.33: the unit's facts in three short lists (home, amenities, other info). Known facts are
+ * rows; unknowns fold into one "not stated" line per group.
+ */
 export function TheHome({ result, className }: { result: SearchResultItem; className?: string }) {
   const fields = homeFields(result.listing);
+  return (
+    <>
+      {(Object.keys(homeGroups) as (keyof typeof homeGroups)[]).map((group) => (
+        <FactsGroup
+          key={group}
+          id={`home-${group}`}
+          title={l(`sections.${group === "home" ? "homeFacts" : group}`)}
+          fields={fields.filter((field) =>
+            (homeGroups[group] as readonly string[]).includes(field.key),
+          )}
+          className={className}
+        />
+      ))}
+    </>
+  );
+}
+
+function FactsGroup({
+  id,
+  title,
+  fields,
+  className,
+}: {
+  id: string;
+  title: string;
+  fields: ReturnType<typeof homeFields>;
+  className?: string;
+}) {
   const known = fields.filter((field) => field.value);
   const unknown = fields.filter((field) => !field.value);
+  if (fields.length === 0) return null;
   return (
-    <DetailSection id="home" title={l("sections.home")} className={className}>
+    <DetailSection id={id} title={title} className={className}>
       {known.length > 0 && (
-        <dl className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-4">
+        <dl className="flex flex-col divide-y text-sm">
           {known.map((field) => (
-            <div key={field.key} className="bg-accent flex flex-col gap-0.5 rounded-xl p-3">
-              <dt className="text-muted-foreground text-xs">{field.label}</dt>
-              <dd className="figures font-semibold">
+            <div key={field.key} className="flex items-baseline justify-between gap-4 py-2">
+              <dt className="text-muted-foreground">{field.label}</dt>
+              <dd className="figures text-right font-semibold">
                 {field.value}
                 {field.aiRead && (
                   <span className="text-muted-foreground block text-xs font-normal">
@@ -339,32 +378,8 @@ export function TheHome({ result, className }: { result: SearchResultItem; class
               </li>
             ))}
           </ul>
-          <p className="text-muted-foreground mt-2 text-xs">{l("home.askLandlord")}</p>
         </Disclosure>
       )}
-    </DetailSection>
-  );
-}
-
-/** P2.32: each travel target in all four modes; the renter's mode highlighted; honest labels. */
-export function GettingAround({
-  result,
-  targets,
-  className,
-}: {
-  result: SearchResultItem;
-  targets: SearchIntent["travelTargets"];
-  className?: string;
-}) {
-  const table = travelTable(targets, result.travel);
-  return (
-    <DetailSection id="travel" title={l("sections.travel")} className={className}>
-      {table.length === 0 ? (
-        <p className="text-muted-foreground text-sm">{l("travel.none")}</p>
-      ) : (
-        <TravelBars table={table} />
-      )}
-      <p className="text-muted-foreground text-xs">{l("travel.note")}</p>
     </DetailSection>
   );
 }
@@ -444,14 +459,17 @@ export function NotYetAvailable({
   );
 }
 
-/** A readable name for one of D's indicator ids; an unknown id is shown as it is. */
+/** A readable name for one of D's indicator ids; an unknown id is shown as it is, capitalised. */
 function indicatorLabel(id: string): string {
   const key = `listing.indicators.${id}`;
   const label = t(key as MessageKey);
-  return label === key ? id : label;
+  return label === key ? id.charAt(0).toUpperCase() + id.slice(1).replaceAll("_", " ") : label;
 }
 
-/** P2.34: neighbourhood and ward with their indicators (SPEC 9.1), from the detail route. */
+/**
+ * P2.34: neighbourhood and ward facts (SPEC 9.1), as small tiles grouped by area. Each tile's
+ * period, source and sample size sit behind an info button, so the figures stay traceable.
+ */
 export function AreaCard({
   extras,
   className,
@@ -463,36 +481,64 @@ export function AreaCard({
   const indicators = extras?.indicators ?? [];
   // With nothing loaded, the area folds into NotYetAvailable instead.
   if (areas.length === 0 && indicators.length === 0) return null;
+  const groups = [
+    ...areas.map((area) => ({
+      id: area.id,
+      name: `${area.name} (${l(`area.kind.${area.kind}`)})`,
+      items: indicators.filter((indicator) => indicator.areaId === area.id),
+    })),
+    {
+      id: "other",
+      name: null,
+      items: indicators.filter((indicator) => !areas.some((area) => area.id === indicator.areaId)),
+    },
+  ].filter((group) => group.items.length > 0);
+
   return (
     <DetailSection id="area" title={l("sections.area")} className={className}>
-      <>
-        {areas.length > 0 && (
-          <p className="font-medium">{areas.map((area) => area.name).join(" · ")}</p>
-        )}
-        <dl className="grid gap-2 sm:grid-cols-2">
-          {indicators.map((indicator) => (
-            <div
-              key={`${indicator.areaId}-${indicator.indicatorId}`}
-              className="bg-accent flex flex-col rounded-xl p-3"
-            >
-              <dt className="text-sm">{indicatorLabel(indicator.indicatorId)}</dt>
-              <dd className="figures font-medium">
-                {indicator.value === null
-                  ? t("results.price.unknown")
-                  : l("area.indicator", {
-                      value: decimal.format(indicator.value),
-                      unit: indicator.unit,
-                    })}
-                <span className="text-muted-foreground block text-xs font-normal">
-                  {l("area.source", { period: indicator.period, source: indicator.sourceId })}
-                  {indicator.sampleSize !== undefined &&
-                    ` · ${l("area.sample", { n: formatCount(indicator.sampleSize) })}`}
-                </span>
-              </dd>
-            </div>
-          ))}
-        </dl>
-      </>
+      {groups.map((group) => (
+        <div key={group.id} className="flex flex-col gap-2">
+          {group.name && <h3 className="text-sm font-medium">{group.name}</h3>}
+          <dl className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-4">
+            {group.items.map((indicator) => (
+              <div
+                key={`${indicator.areaId}-${indicator.indicatorId}`}
+                className="bg-accent flex flex-col gap-0.5 rounded-xl p-2.5"
+              >
+                <dt className="text-muted-foreground flex items-start justify-between gap-1 text-xs">
+                  <span className="line-clamp-2">{indicatorLabel(indicator.indicatorId)}</span>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        aria-label={l("area.sourceAria", {
+                          label: indicatorLabel(indicator.indicatorId),
+                        })}
+                        className="hover:text-foreground focus-visible:ring-ring/50 -m-0.5 shrink-0 rounded p-0.5 outline-none focus-visible:ring-2"
+                      >
+                        <Info aria-hidden className="size-3.5" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent className="figures">
+                      {l("area.source", { period: indicator.period, source: indicator.sourceId })}
+                      {indicator.sampleSize !== undefined &&
+                        `, ${l("area.sample", { n: formatCount(indicator.sampleSize) })}`}
+                    </TooltipContent>
+                  </Tooltip>
+                </dt>
+                <dd className="figures text-sm font-semibold">
+                  {indicator.value === null
+                    ? t("results.price.unknown")
+                    : l("area.indicator", {
+                        value: decimal.format(indicator.value),
+                        unit: indicator.unit,
+                      })}
+                </dd>
+              </div>
+            ))}
+          </dl>
+        </div>
+      ))}
     </DetailSection>
   );
 }

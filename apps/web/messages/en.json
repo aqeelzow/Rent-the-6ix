@@ -549,7 +549,10 @@
       "safety": "Safety",
       "building": "Building",
       "area": "The area",
-      "check": "Things to check"
+      "check": "Things to check",
+      "homeFacts": "Home",
+      "amenities": "Amenities",
+      "terms": "Other info"
     },
     "why": {
       "part": "Scored {score}/100, weighted {weight}%",
@@ -652,8 +655,13 @@
     "area": {
       "none": "Neighbourhood facts like renter share, rent burden and transit aren't loaded yet.",
       "indicator": "{value} {unit}",
-      "source": "{period} · source: {source}",
-      "sample": "based on {n}"
+      "source": "{period}, source: {source}",
+      "sample": "based on {n}",
+      "sourceAria": "Where {label} comes from",
+      "kind": {
+        "neighbourhood": "neighbourhood",
+        "ward": "ward"
+      }
     },
     "check": {
       "none": "Nothing flagged.",
@@ -676,7 +684,9 @@
       "transit_stops_per_km2": "Transit stops per km²",
       "rapid_transit_within_800m_pct": "Area within 800 m of rapid transit",
       "libraries": "Libraries",
-      "parks_ha_per_1000": "Park space per 1,000 residents (ha)"
+      "parks_ha_per_1000": "Park space per 1,000 residents (ha)",
+      "parks": "Parks",
+      "population": "Population"
     },
     "photoAlt": "Photo of this listing, shown from {source}",
     "chart": {
@@ -700,7 +710,8 @@
       "inLine": "In line",
       "vsEstimate": "Estimate for similar homes: {value}",
       "typical": "typical range",
-      "priceNone": "Not enough similar listings nearby to compare."
+      "priceNone": "Not enough similar listings nearby to compare.",
+      "scoreHint": "Hover or tap for why"
     },
     "home": {
       "notStated": "{count} details not stated",

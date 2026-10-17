@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { daysSince } from "@/components/results/card-data";
 import { Button } from "@/components/ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatDate, formatDaysAgo } from "@/lib/format/date";
 import { t, type MessageKey } from "@/lib/format/messages";
@@ -17,13 +18,12 @@ import { priceSummary } from "@/components/results/card-data";
 import {
   AreaCard,
   NotYetAvailable,
-  GettingAround,
   RentCheck,
   SafetySection,
   SourceButton,
   TheHome,
   ThingsToCheck,
-  WhyItRanks,
+  WhyItRanksContent,
 } from "./detail-sections";
 import { modeIcons } from "@/components/mode-icons";
 import { modeTimeText, RangeBar, ScoreGauge } from "./detail-charts";
@@ -93,19 +93,15 @@ export function ListingDetail({ id }: { id: string }) {
 
   const body = (
     <>
-      <StatTiles result={data} targets={intent?.travelTargets ?? []} />
+      <StatTiles result={data} intent={intent} />
       <ThingsToCheck result={data} />
       <div className="grid items-start gap-5 lg:grid-cols-12">
         <div className="flex min-w-0 flex-col gap-5 lg:col-span-8">
           <RentCheck result={data} now={now} />
-          <TheHome result={data} />
           <AreaCard extras={extras} />
         </div>
         <div className="flex min-w-0 flex-col gap-5 lg:col-span-4">
-          <WhyItRanks result={data} intent={intent} />
-          {(intent?.travelTargets.length ?? 0) > 0 && (
-            <GettingAround result={data} targets={intent?.travelTargets ?? []} />
-          )}
+          <TheHome result={data} />
           {intent?.safety.enabled && <SafetySection result={data} />}
           <NotYetAvailable result={data} extras={extras} />
         </div>
@@ -367,14 +363,69 @@ const partDots = {
   safety: "bg-score-safety",
 } as const;
 
-/** The three numbers a renter looks for first: match score, price position, the main trip. */
-function StatTiles({
+/**
+ * The match score tile. Hovering it (or tapping, or focusing it with the keyboard) opens why
+ * the listing ranks where it does; the popup stays open while the pointer is over it.
+ */
+function ScoreTile({
   result,
-  targets,
+  intent,
+  children,
 }: {
   result: SearchResultItem;
-  targets: SearchIntent["travelTargets"];
+  intent: SearchIntent | null;
+  children: React.ReactNode;
 }) {
+  const [open, setOpen] = useState(false);
+  const closing = useRef<number | undefined>(undefined);
+  const show = () => {
+    window.clearTimeout(closing.current);
+    setOpen(true);
+  };
+  const hide = () => {
+    window.clearTimeout(closing.current);
+    closing.current = window.setTimeout(() => setOpen(false), 150);
+  };
+  const { total, parts } = scoreBreakdown(result.matchScore);
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          onPointerEnter={(event) => event.pointerType === "mouse" && show()}
+          onPointerLeave={(event) => event.pointerType === "mouse" && hide()}
+          aria-label={t("results.scoreAria", {
+            total,
+            parts: parts
+              .map((part) =>
+                t("results.scorePart", {
+                  part: t(`results.parts.${part.id}` as MessageKey),
+                  points: formatCount(part.points),
+                }),
+              )
+              .join(", "),
+          })}
+          className="bg-card hover:border-primary/50 focus-visible:ring-ring/50 flex cursor-help flex-col items-center gap-3 rounded-2xl border p-5 text-left transition-colors outline-none focus-visible:ring-3"
+        >
+          {children}
+          <span className="text-muted-foreground text-xs">{l("stats.scoreHint")}</span>
+        </button>
+      </PopoverTrigger>
+      <PopoverContent
+        align="start"
+        className="max-h-[70vh] w-96 max-w-[calc(100vw-2rem)] overflow-y-auto text-sm"
+        onPointerEnter={(event) => event.pointerType === "mouse" && show()}
+        onPointerLeave={(event) => event.pointerType === "mouse" && hide()}
+      >
+        <WhyItRanksContent result={result} intent={intent} />
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+/** The three numbers a renter looks for first: match score, price position, the main trip. */
+function StatTiles({ result, intent }: { result: SearchResultItem; intent: SearchIntent | null }) {
+  const targets = intent?.travelTargets ?? [];
   const { total, parts } = scoreBreakdown(result.matchScore);
   const { valuation, listing } = result;
   const summary = priceSummary(valuation);
@@ -385,32 +436,19 @@ function StatTiles({
 
   return (
     <div className="grid gap-4 md:grid-cols-3">
-      <section
-        aria-label={t("results.scoreAria", {
-          total,
-          parts: parts
-            .map((part) =>
-              t("results.scorePart", {
-                part: t(`results.parts.${part.id}` as MessageKey),
-                points: formatCount(part.points),
-              }),
-            )
-            .join(", "),
-        })}
-        className="bg-card flex flex-col items-center gap-3 rounded-2xl border p-5"
-      >
-        <h2 className="self-start font-medium">{l("stats.score")}</h2>
+      <ScoreTile result={result} intent={intent}>
+        <span className="self-start font-medium">{l("stats.score")}</span>
         <ScoreGauge total={total} parts={parts} />
-        <ul className="flex flex-wrap justify-center gap-x-4 gap-y-1 text-sm">
+        <span className="flex flex-wrap justify-center gap-x-4 gap-y-1 text-sm">
           {parts.map((part) => (
-            <li key={part.id} className="flex items-center gap-1.5">
+            <span key={part.id} className="flex items-center gap-1.5">
               <span aria-hidden className={`size-2.5 rounded-full ${partDots[part.id]}`} />
               {t(`results.parts.${part.id}` as MessageKey)}
               <span className="figures text-muted-foreground">{formatCount(part.points)}</span>
-            </li>
+            </span>
           ))}
-        </ul>
-      </section>
+        </span>
+      </ScoreTile>
 
       <section
         className={`flex flex-col gap-3 rounded-2xl p-5 ${priceTint[priced ? summary.label : "unknown"]}`}
