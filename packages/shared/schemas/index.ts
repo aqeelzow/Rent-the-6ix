@@ -126,7 +126,8 @@ export const MatchScoreSchema = z.strictObject({ total: nonnegative.int().max(10
 export const DestinationChoiceSchema = z.strictObject({ id: text, label: text, resolved: ResolvedDestinationSchema });
 export const DestinationResolutionSchema = z.discriminatedUnion('status', [
   z.strictObject({ status: z.literal('resolved'), query: text, destination: DestinationChoiceSchema }),
-  z.strictObject({ status: z.literal('ambiguous'), query: text, choices: z.array(DestinationChoiceSchema).min(2) }),
+  // A single plausible candidate also needs confirmation when it cannot be resolved confidently.
+  z.strictObject({ status: z.literal('ambiguous'), query: text, choices: z.array(DestinationChoiceSchema).min(1) }),
   z.strictObject({ status: z.literal('unavailable'), query: text, reason: text }),
 ]);
 export const ParseRequestSchema = z.strictObject({ prompt: text.max(4000) });

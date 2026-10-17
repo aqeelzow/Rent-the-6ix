@@ -16,13 +16,14 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useMediaQuery } from "@/components/use-media-query";
 import { FilterChips } from "./filter-chips";
 import { FiltersPanel } from "./filters-panel";
+import { DestinationChoices } from "./destination-choices";
 import { ShareSearch } from "./share-search";
 import { SortSelect } from "./sort-select";
 import { commuteCarbon } from "@rentthe6ix/shared/engine/carbon";
 import { t, type MessageKey } from "@/lib/format/messages";
 import { formatCount } from "@/lib/format/number";
 import { parseAndSearch, restoreSearch, runSearch } from "@/lib/store/actions";
-import { readLastSearch } from "@/lib/store/persist";
+import { needsReinterpretation, readLastSearch } from "@/lib/store/persist";
 import { decodeSharedSearch } from "@/lib/store/share";
 import { useLastSearch } from "@/lib/store/use-last-search";
 import { appStore, useAppStore } from "@/lib/store/store";
@@ -115,7 +116,8 @@ export function SearchView({ prompt, shared }: { prompt: string | null; shared: 
     // Coming back to a prompt that's already been read keeps its edited filters (Back from a
     // listing included). Otherwise a shared link's filters, then this browser's last search for
     // the same words (a reload), and only then the parser.
-    if (appStore.getState().intent?.rawPrompt === prompt) return;
+    const current = appStore.getState().intent;
+    if (current?.rawPrompt === prompt && !needsReinterpretation(current)) return;
     const last = readLastSearch();
     const saved =
       (shared ? decodeSharedSearch(shared, prompt) : null) ??
@@ -160,6 +162,11 @@ export function SearchView({ prompt, shared }: { prompt: string | null; shared: 
               {t("search.editRequest")}
             </Link>
             {intent?.rawPrompt === prompt && <ShareSearch />}
+            {intent?.rawPrompt === prompt && intent.droppedRequests.length > 0 && (
+              <Button variant="ghost" size="sm" disabled={busy} onClick={() => void parseAndSearch(prompt)}>
+                {t("search.reinterpret")}
+              </Button>
+            )}
           </div>
         </section>
 
@@ -172,10 +179,16 @@ export function SearchView({ prompt, shared }: { prompt: string | null; shared: 
               <SortSelect />
             </div>
             <FilterChips intent={intent} />
+            <DestinationChoices />
           </>
         )}
 
         <div aria-live="polite" className="flex flex-col gap-4">
+          {status === "idle" && intent && needsReinterpretation(intent) && (
+            <p className="bg-caveat-warning text-caveat-warning-foreground rounded-lg px-3 py-2 text-sm">
+              {t("search.uninterpreted")}
+            </p>
+          )}
           {busy && (
             <div className="text-muted-foreground flex flex-col gap-0.5 text-sm">
               <p className="figures flex items-center gap-2">
