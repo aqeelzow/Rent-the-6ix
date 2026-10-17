@@ -1,7 +1,31 @@
 "use client";
 
-import { ChevronRight, Trash2 } from "lucide-react";
-import { useId, useState } from "react";
+import {
+  ArrowUpDown,
+  Bath,
+  BedDouble,
+  Building2,
+  CalendarDays,
+  ChevronDown,
+  DollarSign,
+  FileText,
+  House,
+  MapPin,
+  PawPrint,
+  Ruler,
+  ShieldQuestion,
+  Snowflake,
+  Sofa,
+  SquareParking,
+  Tag,
+  Trash2,
+  TrendingDown,
+  Users,
+  WashingMachine,
+  Zap,
+  type LucideIcon,
+} from "lucide-react";
+import { createElement, useId, useState } from "react";
 import { SAFETY } from "@rentthe6ix/shared/engine/config";
 import { modeIcons } from "@/components/mode-icons";
 import { SafetyLimit } from "@/components/safety/safety-limit";
@@ -30,6 +54,53 @@ import { setSafety } from "./filters";
 /** How many chip labels the collapsed summary shows before "+N more". */
 const SUMMARY_CHIPS = 3;
 
+/** An icon per kind of chip, so a row of filters can be scanned by shape as well as words. */
+const criterionIcons: Record<NonNullable<Chip["field"]>, LucideIcon> = {
+  rent: DollarSign,
+  priceFairness: Tag,
+  bedrooms: BedDouble,
+  bathrooms: Bath,
+  sizeSqft: Ruler,
+  unitTypes: House,
+  buildingAge: Building2,
+  airConditioning: Snowflake,
+  petsAllowed: PawPrint,
+  furnished: Sofa,
+  parking: SquareParking,
+  laundryInSuite: WashingMachine,
+  utilitiesIncluded: Zap,
+  availableBy: CalendarDays,
+  leaseTerm: FileText,
+};
+
+function chipIconType(chip: Chip, intent: SearchIntent): LucideIcon {
+  switch (chip.kind) {
+    case "criterion":
+      return chip.field ? criterionIcons[chip.field] : Tag;
+    case "travel": {
+      const target = intent.travelTargets.find((item) => item.id === chip.targetId);
+      return target ? modeIcons[target.mode] : MapPin;
+    }
+    case "safety":
+      return ShieldQuestion;
+    case "area":
+      return MapPin;
+    case "household":
+      return Users;
+    case "sort":
+      return ArrowUpDown;
+    case "extreme":
+      return TrendingDown;
+  }
+}
+
+function ChipIcon({ chip, intent }: { chip: Chip; intent: SearchIntent }) {
+  return createElement(chipIconType(chip, intent), {
+    "aria-hidden": true,
+    className: "size-4 shrink-0 opacity-80",
+  });
+}
+
 /** Must-have solid, preference outlined, default dashed (SPEC 6 step 2). */
 function chipStyle(chip: Chip): string {
   if (chip.source === "default")
@@ -56,28 +127,49 @@ export function FilterChips({ intent }: { intent: SearchIntent }) {
 
   // Collapsed by default: a one-line summary; the editable chips open on tap.
   return (
-    <details aria-labelledby="filters-label" className="group flex flex-col gap-2">
-      <summary className="hover:bg-accent focus-visible:ring-ring/50 -mx-2 flex cursor-pointer list-none items-center gap-1.5 rounded-md px-2 py-1 text-sm outline-none focus-visible:ring-3 [&::-webkit-details-marker]:hidden">
-        <ChevronRight
-          aria-hidden
-          className="size-4 shrink-0 transition-transform group-open:rotate-90"
-        />
-        <span id="filters-label" className="shrink-0 font-medium">
+    <details
+      aria-labelledby="filters-label"
+      className="group bg-card flex flex-col rounded-2xl border px-4 py-3"
+    >
+      <summary className="focus-visible:ring-ring/50 -mx-1 flex cursor-pointer list-none items-center gap-2 rounded-lg px-1 py-0.5 text-sm outline-none focus-visible:ring-3 [&::-webkit-details-marker]:hidden">
+        <span id="filters-label" className="shrink-0 font-semibold">
           {t("filters.summaryLabel")}
         </span>
-        <span className="text-muted-foreground truncate">
-          {preview.join(" · ")}
-          {more > 0 && ` · ${t("filters.summaryMore", { count: more })}`}
+        <span className="bg-primary text-primary-foreground figures grid h-5 min-w-5 shrink-0 place-items-center rounded-full px-1.5 text-xs font-semibold">
+          {chips.length}
         </span>
+        <span className="text-muted-foreground min-w-0 flex-1 truncate group-open:invisible">
+          {preview.join(", ")}
+          {more > 0 && ` ${t("filters.summaryMore", { count: more })}`}
+        </span>
+        <ChevronDown
+          aria-hidden
+          className="text-muted-foreground size-4 shrink-0 transition-transform group-open:rotate-180"
+        />
       </summary>
-      <ul className="mt-2 flex flex-wrap gap-2">
+      <ul className="mt-3 flex flex-wrap gap-2">
         {chips.map((chip) => (
           <li key={chip.key} className="max-w-full">
             <ChipButton chip={chip} intent={intent} onEdit={edit} />
           </li>
         ))}
       </ul>
-      <p className="text-muted-foreground mt-2 text-xs">{t("filters.legend")}</p>
+      {/* A key made of sample chips, so the three styles explain themselves. */}
+      <div className="text-muted-foreground mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 border-t pt-3 text-xs">
+        <span className="flex items-center gap-1.5">
+          <span aria-hidden className="border-primary bg-primary h-3 w-5 rounded-full border" />
+          {t("filters.legendMust")}
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span aria-hidden className="border-primary bg-card h-3 w-5 rounded-full border" />
+          {t("filters.legendPreference")}
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span aria-hidden className="border-input h-3 w-5 rounded-full border border-dashed" />
+          {t("filters.legendDefault")}
+        </span>
+        <span className="ml-auto">{t("filters.legendTap")}</span>
+      </div>
     </details>
   );
 }
@@ -99,8 +191,9 @@ function ChipButton({
         <button
           type="button"
           aria-label={kind ? t("filters.chipAria", { label: chip.label, kind }) : chip.label}
-          className={`focus-visible:ring-ring/50 inline-flex h-8 max-w-full items-center rounded-full border px-3 text-sm font-medium outline-none focus-visible:ring-3 ${chipStyle(chip)}`}
+          className={`focus-visible:ring-ring/50 inline-flex h-9 max-w-full items-center gap-1.5 rounded-full border pr-3.5 pl-3 text-sm font-medium transition-colors outline-none hover:opacity-90 focus-visible:ring-3 ${chipStyle(chip)}`}
         >
+          <ChipIcon chip={chip} intent={intent} />
           <span className="truncate">{chip.label}</span>
         </button>
       </PopoverTrigger>

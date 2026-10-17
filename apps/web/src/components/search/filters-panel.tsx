@@ -108,7 +108,7 @@ export function FiltersPanel() {
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetTrigger asChild>
-        <Button variant="outline">
+        <Button variant="outline" className="rounded-full">
           <SlidersHorizontal aria-hidden data-icon="inline-start" />
           {count ? p("openWithCount", { count }) : p("open")}
         </Button>

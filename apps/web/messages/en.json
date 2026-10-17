@@ -180,7 +180,6 @@
   },
   "filters": {
     "label": "Your filters",
-    "legend": "Solid chips are must-haves; outlined chips are preferences. Tap a chip to change it.",
     "mustHave": "Must-have",
     "preference": "Preference",
     "mustHaveHelp": "Must-haves hide listings that don't match. Preferences only change the ranking.",
@@ -368,8 +367,22 @@
       "removeArea": "Remove {label}",
       "sortBy": "Sort by"
     },
-    "summaryLabel": "Your filters:",
-    "summaryMore": "+{count} more"
+    "summaryLabel": "Your filters",
+    "summaryMore": "and {count} more",
+    "legendMust": "Must-have",
+    "legendPreference": "Preference",
+    "legendDefault": "Assumed for you",
+    "legendTap": "Tap a chip to change it.",
+    "sortOptions": {
+      "best_match": "Best Match",
+      "lowest_rent": "Lowest Rent",
+      "best_value": "Best Value",
+      "shortest_trips": "Shortest Trips",
+      "lowest_true_cost": "Lowest True Monthly Cost",
+      "newest": "Newest",
+      "closest_area": "Closest to My Area",
+      "lowest_carbon": "Lowest-Carbon Trips"
+    }
   },
   "results": {
     "perMonth": "/month",
