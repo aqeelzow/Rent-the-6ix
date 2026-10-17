@@ -208,3 +208,10 @@ The incoming optional fixture `newer_building` caveat depends on C's newer `same
 
 
 The repeated live probe returned student1628 eligible/500 results, couple2679/500 and family317/317. Student leading rents600/500/650 were selected by C's high-confidence evidence, rather than rent ascending; couple and family leaders have confirmed2 and3 bedrooms. Observed search times were4.873s,27.642s and2.887s respectively, so the <2s target remains open. A focused cross-field regression additionally proves confirmed hard bedrooms rank ahead when another hard field is unknown. No listing/owner data writes occurred.
+
+
+### Indexed Address Points resolution (2026-10-17)
+
+The live destination resolver now uses D’s published normalizeAddress helper for both the bound exact address_norm lookup and returned-address validation. Street/direction abbreviations, whitespace and unit/suite removal follow the civic loader’s own rules. Known places still resolve first; no/malformed/overly ambiguous Address Points matches fall through to MapTiler under the shared destination deadline. Results retain source `address_points` and actual civic labels; multiple valid rows produce destination choices. The existing one-unfinished-query limit and cancellation behavior are unchanged. No tables, indexes, civic records or owner code are modified.
+
+Focused Address Points/parser coverage passes23 tests, including an expanded `Unit 4 - 100 Queen Street West` input, bound SQL, output validation, ambiguity, cancellation, runtime enablement and provider fallback. Run `RUN_LIVE_ADDRESS_POINTS=1 pnpm --filter web exec vitest run src/lib/parse/address-points.live.test.ts` with the ignored web `.env.local` for the read-only acceptance check. The real DB probe passed: that public address resolves through the civic table without invoking geocoding, and `EXPLAIN (ANALYZE, FORMAT JSON)` uses `address_points_trgm_idx` with no sequential scan. This proves indexed Address Points consumption, not external-provider availability.

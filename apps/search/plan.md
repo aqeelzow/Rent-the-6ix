@@ -97,7 +97,8 @@ Implementation defaults: unstated criteria impose no constraints; household size
   - [x] Publish B root contracts and mount in A’s fetched scaffold.
   - [x] Stage and simulate the Address Points consumer against D’s actual migration/client (exact full-address matching, fallback/deadline validation).
   - [x] Connect D-owned ai_cache for successful privacy-reduced Gemini parse interpretations (P1.24).
-  - [ ] Publish/verify live Address Points and verify live providers.
+  - [x] Publish and verify indexed live Address Points against D’s normalization contract (P1.23).
+  - [ ] Verify live providers (Gemini quota remains independent).
 - [ ] Integrate deterministic search with owner services.
   - [x] Implement and verify canonical filtering, scoring and bounded ordinary orchestration with fixtures.
   - [x] Stage authoritative read-only SQL candidate loader and simulate ordinary/percentile API consumption before enrichment/caps.
@@ -181,3 +182,6 @@ Resume environment: put `/tmp/rent-search-validation/node_modules/node/bin` and 
 
 
 Feature2 final review — confirmed hard bedrooms take priority even when other hard fields differ; added that regression. Focused candidates/SQL/percentile31 and shared52 tests pass. Read-only live SPEC16 recheck completed in36.86s: student eligible1628/returned500, top rents600/500/650 ordered by owner confidence/count; couple eligible2679/returned500 with confirmed2-bedroom top results; family eligible317/returned317 with confirmed3-bedroom top results. Observed ordinary search times4.873s/27.642s/2.887s remain above the2s target. Gemini is not called (labelled fallback); unknown routing stays unconfirmed. Parent owns broad checks/publication and remaining owner latency/safety/routing gates.
+
+
+2026-10-17 — Sequential feature3 completes the Address Points consumer against published D contracts. B imports D’s normalizeAddress directly, binds exact address_norm = $1, and validates returned full-address labels with the same normalization; no owner schema/data/helper changes. This replaces the unindexed lower/regexp address_full scan and accepts owner-defined street/direction abbreviations and unit removal. Existing <=20 ambiguity, malformed/duplicate row rejection, cancellation, one unfinished lookup, known-place precedence and MapTiler fallback are preserved. Focused Address Points/parser tests pass23 tests. Opt-in RUN_LIVE_ADDRESS_POINTS=1 probe passed against the real supplied DB: Unit4 at100QueenStreetWest resolves from actual Address Points before any geocoder call; EXPLAIN ANALYZE proves address_points_trgm_idx is used without a sequential scan. The probe performs read-only SQL and does not test Gemini/MapTiler availability or close the whole parsing section. Web TypeScript, focused ESLint and diff whitespace checks pass.
