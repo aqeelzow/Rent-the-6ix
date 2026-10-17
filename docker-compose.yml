@@ -6,8 +6,8 @@
 #   docker compose up -d --build          # web + worker + caddy
 #   docker compose --profile otp up -d    # add the router (needs otp/graphs/)
 #
-# Values come from `.env` next to this file (copy `.env.example`, then fill it in).
-# `.env` is git-ignored; `DATABASE_URL` and `GEMINI_API_KEY` only ever live there.
+# Values come from a manually-created `.env` next to this file (variables are listed in
+# SPEC.md §20). `.env` is git-ignored; `DATABASE_URL` and `GEMINI_API_KEY` only live there.
 name: rentthe6ix
 
 services:

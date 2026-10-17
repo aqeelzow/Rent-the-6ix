@@ -50,8 +50,8 @@ No local `psql`? Use the Tiger CLI: `tiger db query --command "select 1"` or
    sudo mkdir -p /srv && sudo chown "$USER" /srv
    git clone <team-repo-url> /srv/rentthe6ix && cd /srv/rentthe6ix
    ```
-4. Create `/srv/rentthe6ix/.env` from `.env.example` and fill it in. `SITE_HOST` is the one
-   extra key the deploy needs:
+4. Create `/srv/rentthe6ix/.env` manually (the team intentionally does not track an
+   `.env.example`; see `SPEC.md` section 20) and fill it in. `SITE_HOST` is the extra deploy key:
    ```
    SITE_HOST=203-0-113-7.sslip.io     # the instance IP with dots → dashes
    DATABASE_URL=postgresql://…?sslmode=require
@@ -148,6 +148,9 @@ script fails fast with a message if it is missing.
 
 ## Environment variables
 
-See `.env.example` and `SPEC.md` section 20. On the instance they live in `.env` next to
-`docker-compose.yml`. `NEXT_PUBLIC_*` values are inlined at build time — pass them as build
-args (Compose already does for `NEXT_PUBLIC_MAPTILER_KEY`), not just as runtime env.
+Use `SPEC.md` section 20 as the canonical list. Create `.env` beside `docker-compose.yml`
+with the values needed for this deployment; never commit it. At minimum set `SITE_HOST`,
+`DATABASE_URL` (with `sslmode=require`), and `AI_PROVIDER`. If using Gemini, also set
+`GEMINI_API_KEY`. `OTP_URL` defaults to `http://otp:8080` in Compose. `NEXT_PUBLIC_*` values
+are inlined at build time — pass them as build args (Compose already does for
+`NEXT_PUBLIC_MAPTILER_KEY`), not just as runtime env.

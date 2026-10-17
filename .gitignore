@@ -4,12 +4,13 @@ node_modules/
 dist/
 coverage/
 .turbo/
+.vercel/
 *.tsbuildinfo
 
 # secrets (the repo is public at submission)
 .env
 .env.*
-!.env.example
+.env.example
 
 # scraped content and snapshots stay off GitHub (SPEC 8.5)
 db/snapshots/
