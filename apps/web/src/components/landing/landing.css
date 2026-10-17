@@ -32,8 +32,7 @@ body:has(.landing) > header button:hover {
   background: rgb(255 255 255 / 0.1);
 }
 body:has(.landing) > header a > span[aria-hidden] {
-  background: var(--l-glow);
-  color: var(--l-near);
+  color: var(--l-glow);
 }
 body:has(.landing) > footer {
   background: var(--mist);
@@ -151,6 +150,15 @@ body:has(.landing) > footer {
   font-weight: 900;
   letter-spacing: -0.01em;
   text-shadow: 0 0 80px rgb(242 162 92 / 0.35);
+}
+/* The CN Tower "I": its pod and shaft fill the cap height and the antenna rises above it. */
+.wordmark-tower {
+  display: inline-block;
+  height: 0.98em;
+  width: auto;
+  margin-inline: 0.02em 0.04em;
+  vertical-align: baseline;
+  filter: drop-shadow(0 0 40px rgb(242 162 92 / 0.35));
 }
 @media (min-width: 768px) {
   .hero-mark {
@@ -279,13 +287,13 @@ body:has(.landing) > footer {
 
 /* ---------- Streetcar into morning ---------- */
 .scene-ride {
-  --car: 160vw;
+  --car: 210vw;
   --w: clamp(0, calc(var(--p, 0) / 0.85), 1);
   height: 150svh;
 }
 @media (min-width: 768px) {
   .scene-ride {
-    --car: 78vw;
+    --car: 100vw;
   }
 }
 .ride-morning {
@@ -297,7 +305,7 @@ body:has(.landing) > footer {
 .wire {
   position: absolute;
   inset-inline: 0;
-  top: calc(50svh - var(--car) * 0.104);
+  top: calc(50svh - var(--car) * 0.0713);
   height: 2px;
   background: #4a4380;
   opacity: calc(1 - var(--w));

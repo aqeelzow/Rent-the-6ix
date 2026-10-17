@@ -191,53 +191,118 @@ export function NearStreet({ className }: { className?: string }) {
   );
 }
 
-/** A TTC Flexity streetcar, side view, facing left. */
+/** A TTC Flexity Outlook streetcar, side view, facing left: five sections joined by black bellows. */
 export function Streetcar({ className }: { className?: string }) {
-  const sections = [0, 1, 2, 3, 4];
+  const red = "var(--streetcar)";
+  const white = "#fbfaf7";
+  const glass = "#121022";
+  const seam = "#0c0a17";
+  // Sections run between the bellows; each gets one double door.
+  const bellows = [352, 666, 980, 1294];
+  const doors = [262, 520, 840, 1150, 1450];
+  const mullions = [214, 318, 410, 470, 610, 724, 790, 920, 1040, 1100, 1230, 1350, 1410, 1530];
+
   return (
-    <svg viewBox="0 0 1000 220" className={className} aria-hidden>
-      {/* pantograph */}
-      <g stroke="var(--l-near)" strokeWidth="4" fill="none">
-        <path d="M470 46 L500 6 L540 46" />
-        <path d="M486 6 H556" />
+    <svg viewBox="0 0 1600 240" className={className} aria-hidden>
+      <defs>
+        <clipPath id="streetcar-body">
+          <path d="M1576 40 H190 C96 40 52 58 38 104 L26 160 H8 V182 H18 V196 Q18 204 28 204 H1576 Q1592 204 1592 188 V56 Q1592 40 1576 40 Z" />
+        </clipPath>
+        <linearGradient id="streetcar-glow" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="var(--l-glow)" stopOpacity="0.22" />
+          <stop offset="1" stopColor="var(--l-glow)" stopOpacity="0.03" />
+        </linearGradient>
+      </defs>
+
+      {/* pantograph and roof equipment */}
+      <g stroke={seam} strokeWidth="4" strokeLinecap="round" fill="none">
+        <path d="M800 36 L836 14 L800 6" />
+        <path d="M776 6 H840" />
       </g>
-      <rect x="440" y="40" width="130" height="12" rx="4" fill="var(--l-near)" />
-      {/* body */}
-      <path
-        d="M70 52 H960 Q990 52 990 82 V176 Q990 190 976 190 H40 Q20 190 20 170 V120 Q20 72 70 52 Z"
-        fill="var(--streetcar)"
-      />
-      {/* window band */}
-      <path d="M60 74 H970 V122 H36 Q40 86 60 74 Z" fill="var(--l-near)" />
-      {sections.map((s) => (
-        <rect
-          key={s}
-          x={200 + s * 190}
-          y="52"
-          width="4"
-          height="138"
-          fill="var(--l-near)"
-          opacity="0.5"
-        />
-      ))}
-      {/* lit windows */}
-      <g fill="var(--l-glow)" opacity="0.85">
-        {Array.from({ length: 16 }, (_, i) => (
-          <rect key={i} x={86 + i * 56} y="82" width="40" height="32" rx="3" />
+      <g fill="#a51d14">
+        <rect x="740" y="30" width="120" height="12" rx="4" />
+        <rect x="420" y="32" width="90" height="10" rx="4" />
+        <rect x="1100" y="32" width="90" height="10" rx="4" />
+      </g>
+
+      <g clipPath="url(#streetcar-body)">
+        <rect x="0" y="0" width="1600" height="240" fill={red} />
+        {/* livery: white, black window band, white, red */}
+        <rect x="150" y="62" width="1450" height="14" fill={white} />
+        <rect x="150" y="76" width="1450" height="76" fill={glass} />
+        <rect x="150" y="152" width="1450" height="14" fill={white} />
+        <rect x="150" y="80" width="1450" height="68" fill="url(#streetcar-glow)" />
+        <g fill={seam}>
+          {mullions.map((x) => (
+            <rect key={x} x={x} y="76" width="4" height="76" />
+          ))}
+        </g>
+        <g stroke="#b3241a" strokeWidth="2">
+          {mullions.map((x) => (
+            <path key={x} d={`M${x + 2} 168 V202`} />
+          ))}
+        </g>
+
+        {/* doors: glass from the window band to the floor */}
+        {doors.map((x) => (
+          <g key={x}>
+            <rect x={x} y="78" width="56" height="124" fill={glass} stroke={seam} strokeWidth="3" />
+            <rect x={x + 4} y="82" width="48" height="66" fill="url(#streetcar-glow)" />
+            <path d={`M${x + 28} 78 V202`} stroke={seam} strokeWidth="3" />
+          </g>
         ))}
+
+        {/* cab: raked windshield, white swoosh down the nose, bumper and skirt */}
+        <path d="M0 50 H300 C200 74 128 118 92 212 H0 Z" fill={glass} />
+        <rect x="70" y="56" width="150" height="15" rx="2" fill="#2a2010" />
+        <rect x="0" y="150" width="120" height="40" fill={red} />
+        <path d="M300 69 C200 74 128 118 92 212" stroke={white} strokeWidth="18" fill="none" />
+        <rect x="0" y="182" width="88" height="24" fill={white} />
+        <rect x="0" y="160" width="112" height="22" fill={red} />
+        <rect x="0" y="166" width="74" height="3" fill="#a51d14" />
+        <circle cx="24" cy="173" r="5" fill="#fff6dd" />
+        <circle cx="40" cy="173" r="5" fill="#fff6dd" />
+
+        {/* rear: the stripes wrap round a rounded tail */}
+        <rect x="1580" y="76" width="20" height="76" fill={glass} />
       </g>
-      {/* doors */}
-      <g fill="var(--l-near)" opacity="0.35">
-        <rect x="140" y="128" width="40" height="58" />
-        <rect x="520" y="128" width="40" height="58" />
-        <rect x="860" y="128" width="40" height="58" />
-      </g>
-      {/* headlight and skirt */}
-      <rect x="30" y="148" width="22" height="10" rx="5" fill="#fff6dd" />
-      <rect x="20" y="186" width="970" height="10" fill="var(--l-near)" />
-      <g fill="var(--l-near)">
-        {[110, 300, 700, 890].map((x) => (
-          <circle key={x} cx={x} cy="200" r="16" />
+
+      {/* bellows between sections */}
+      {bellows.map((x) => (
+        <g key={x}>
+          <rect x={x} y="44" width="24" height="160" rx="3" fill={seam} />
+          {[5, 10, 15, 20].map((dx) => (
+            <rect key={dx} x={x + dx - 1} y="48" width="1.5" height="152" fill="#2a2638" />
+          ))}
+        </g>
+      ))}
+
+      {/* fleet number */}
+      <text
+        x="384"
+        y="163"
+        fill={seam}
+        fontSize="12"
+        fontWeight="700"
+        fontFamily="var(--font-sans)"
+      >
+        4400
+      </text>
+      <text
+        x="80"
+        y="67.5"
+        fill="var(--l-glow)"
+        fontSize="10"
+        fontWeight="700"
+        fontFamily="var(--font-sans)"
+      >
+        RENT THE 6IX
+      </text>
+
+      {/* low floor: bogies barely show under the skirt */}
+      <g fill={seam}>
+        {[150, 600, 1000, 1480].map((x) => (
+          <rect key={x} x={x} y="204" width="70" height="7" rx="3" />
         ))}
       </g>
     </svg>
