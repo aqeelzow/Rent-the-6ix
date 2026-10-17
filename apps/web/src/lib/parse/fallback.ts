@@ -79,8 +79,11 @@ export function fallbackParse(rawPrompt: string, now = new Date(), catalogue: Ci
   const fairness = rawPrompt.match(/\b(?:only underpriced|not overpriced|reasonably priced|good deal|underpriced|overpriced)\b/i);
   if (fairness) put('priceFairness', /not overpriced/i.test(fairness[0]) ? ['underpriced', 'reasonable'] : /reasonably/i.test(fairness[0]) ? ['reasonable'] : /^overpriced/i.test(fairness[0]) ? ['overpriced'] : ['underpriced'], fairness[0], /only/i.test(fairness[0]) || (!/good deal/i.test(fairness[0]) && hard(fairness[0])));
   const safety = rawPrompt.match(/\b(?:safety|safe (?:neighbourhood|area)|low crime|safer|below (?:the )?city (?:crime )?rate)\b/i); if (safety) { intent.safety = { enabled: true, hard: /below/i.test(safety[0]) }; source('safety', safety[0]); }
-  const cheapest = rawPrompt.match(/\b(?:cheapest|lowest (?:rent|cost))\b/i); if (cheapest) { intent.sortBy = 'lowest_rent'; source('sortBy', cheapest[0]); }
-  if (!cheapest) {
+  const trueCost = rawPrompt.match(/\b(?:lowest|cheapest) true monthly cost\b/i);
+  const shortest = rawPrompt.match(/\bshortest (?:trips?|commutes?|travel times?)\b/i);
+  const cheapest = rawPrompt.match(/\b(?:cheapest|lowest (?:rent|cost))\b/i);
+  if (trueCost || shortest || cheapest) { intent.sortBy = trueCost ? 'lowest_true_cost' : shortest ? 'shortest_trips' : 'lowest_rent'; source('sortBy', (trueCost ?? shortest ?? cheapest)![0]); }
+  if (!trueCost && !shortest && !cheapest) {
     const value = rawPrompt.match(/\bbest value\b/i);
     const newest = rawPrompt.match(/\b(?:newest listings?|latest listings?|most recently (?:listed|seen)|recently listed|newest first)\b/i);
     if (value || newest) { intent.sortBy = value ? 'best_value' : 'newest'; source('sortBy', (value ?? newest)![0]); }

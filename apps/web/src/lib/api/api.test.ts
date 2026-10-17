@@ -94,6 +94,46 @@ test('default listing dependencies unavailable; parsing/resolution work; fixture
   assert.equal((await fixtures.detail(request('listings/x?intent='+encodeURIComponent(JSON.stringify(travelIntent))), context(search.results[0].listing.id))).status, 422);
   const scalar = SearchResponseSchema.parse(await (await fixtures.search(request('listings/search', { intent: { ...baseIntent, numericExtreme: { field: 'rent', direction: 'min', percentage: 5 } } }), undefined)).json()); assert.equal(scalar.status, 'completed');
 });
+test('briefing data failures use a translatable service error', async () => {
+  const api = createRuntime({ env: { DATABASE_URL: 'configured' } });
+  const original = process.env.DATABASE_URL;
+  delete process.env.DATABASE_URL;
+  try {
+    const response = await api.briefing(request('areas/ward/1/briefing'), { params: Promise.resolve({ kind: 'ward', id: '1' }) });
+    assert.equal(response.status, 503);
+    assert.deepEqual(await response.json(), { error: { code: 'service_unavailable', message: 'Area briefings temporarily unavailable' } });
+  } finally { if (original === undefined) delete process.env.DATABASE_URL; else process.env.DATABASE_URL = original; }
+});
+test('an empty search is a completed result, not an API error', async () => {
+  const api = createRuntime({ env: { SEARCH_FIXTURES: '1' } });
+  const response = await api.search(request('listings/search', { intent: { ...baseIntent, criteria: { rent: { value: { max: 1 }, hard: true } } } }), undefined);
+  assert.equal(response.status, 200);
+  const body = SearchResponseSchema.parse(await response.json());
+  assert.equal(body.status, 'completed');
+  if (body.status === 'completed') { assert.deepEqual(body.results, []); assert.equal(body.eligibleCount, 0); }
+});
+test('search validates user weights and rescores the same listing', async () => {
+  const api = createRuntime({ env: { SEARCH_FIXTURES: '1' } });
+  const criteria = { rent: { value: { max: 1200 }, hard: false }, airConditioning: { value: 'central' as const, hard: false } };
+  const weighted = async (weights: { value: number; price: number; travel: number; home: number; safety: number }) => {
+    const response = await api.search(request('listings/search', { intent: { ...baseIntent, criteria, weights } }), undefined);
+    assert.equal(response.status, 200);
+    const body = SearchResponseSchema.parse(await response.json());
+    assert.equal(body.status, 'completed');
+    if (body.status !== 'completed') throw new Error('Expected completed search');
+    return body.results.find(result => result.listing.id === sampleListings[1].id)!.matchScore;
+  };
+  const price = await weighted({ value: 0, price: 100, travel: 0, home: 0, safety: 0 });
+  const home = await weighted({ value: 0, price: 0, travel: 0, home: 100, safety: 0 });
+  assert.equal(price.total, Math.round(price.parts.find(part => part.id === 'price')!.score!));
+  assert.equal(home.total, Math.round(home.parts.find(part => part.id === 'home')!.score!));
+  assert.notEqual(price.total, home.total);
+  for (const weights of [{ value: 0, price: 0, travel: 0, home: 0, safety: 0 }, { value: 1, price: 0, travel: 0, home: 0, safety: 1 }]) {
+    const response = await api.search(request('listings/search', { intent: { ...baseIntent, weights } }), undefined);
+    assert.equal(response.status, 422);
+    assert.equal((await response.json()).error.code, 'validation_error');
+  }
+});
 const prompts = [
   "I'm looking for houses or apartments around the university of toronto. Should be within 10 minutes biking distance. Around 3-5k per",
   "I work at TD Canada on bay st and queens st w. I'm looking for a place to commute, bike, or walk to work, and it should take no longer than 10 minutes.",
