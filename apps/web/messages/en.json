@@ -22,7 +22,11 @@
       "data": "Sources and methods",
       "status": "Status"
     },
-    "metaDescription": "Describe the rental you need. RentThe6ix searches Toronto listings, checks each price against similar homes, and shows the neighbourhood around it."
+    "metaDescription": "Describe the rental you need. RentThe6ix searches Toronto listings, checks each price against similar homes, and shows the neighbourhood around it.",
+    "theme": {
+      "toDark": "Switch to dark mode",
+      "toLight": "Switch to light mode"
+    }
   },
   "landing": {
     "tagline": "Toronto home finding, made easy",
@@ -122,7 +126,9 @@
       "copied": "Link copied. Anyone with it sees this search with your filters.",
       "manual": "Copy this link to share the search:"
     },
-    "lastSearch": "Continue your last search"
+    "lastSearch": "Continue your last search",
+    "cancelEdit": "Cancel",
+    "runEdit": "Search"
   },
   "status": {
     "title": "System status",
@@ -174,7 +180,6 @@
   },
   "filters": {
     "label": "Your filters",
-    "legend": "Solid chips are must-haves; outlined chips are preferences. Tap a chip to change it.",
     "mustHave": "Must-have",
     "preference": "Preference",
     "mustHaveHelp": "Must-haves hide listings that don't match. Preferences only change the ranking.",
@@ -362,8 +367,22 @@
       "removeArea": "Remove {label}",
       "sortBy": "Sort by"
     },
-    "summaryLabel": "Your filters:",
-    "summaryMore": "+{count} more"
+    "summaryLabel": "Your filters",
+    "summaryMore": "and {count} more",
+    "legendMust": "Must-have",
+    "legendPreference": "Preference",
+    "legendDefault": "Assumed for you",
+    "legendTap": "Tap a chip to change it.",
+    "sortOptions": {
+      "best_match": "Best Match",
+      "lowest_rent": "Lowest Rent",
+      "best_value": "Best Value",
+      "shortest_trips": "Shortest Estimated Travel Time",
+      "lowest_true_cost": "Lowest True Monthly Cost",
+      "newest": "Newest",
+      "closest_area": "Closest to My Area",
+      "lowest_carbon": "Lowest-Carbon Trips"
+    }
   },
   "results": {
     "perMonth": "/month",
@@ -466,7 +485,10 @@
       "low": "Under 50",
       "approx": "Shaded circle: approximate location",
       "place": "Your places",
-      "unavailable": "The map couldn't load. The list has every result."
+      "unavailable": "The map couldn't load. The list has every result.",
+      "placePopup": "Your place",
+      "unitsHere": "{count} listings at this spot",
+      "routeEstimate": "Est. {minutes} min by {mode}, {km} km"
     },
     "mobile": {
       "showMap": "Map",
@@ -489,7 +511,13 @@
       "none": "No limit",
       "city": "city",
       "help": "1.0× is the city rate; lower keeps fewer neighbourhoods. With no limit, safety only changes the ranking."
-    }
+    },
+    "scoreLabel": "match",
+    "scoreBreakdown": "Match score {total}",
+    "scorePoints": "{points} pts",
+    "scoreRow": "Match score",
+    "view": "View",
+    "viewAria": "View {title}"
   },
   "listing": {
     "title": "Listing",
@@ -520,7 +548,10 @@
       "safety": "Safety",
       "building": "Building",
       "area": "The area",
-      "check": "Things to check"
+      "check": "Things to check",
+      "homeFacts": "Home",
+      "amenities": "Amenities",
+      "terms": "Other info"
     },
     "why": {
       "part": "Scored {score}/100, weighted {weight}%",
@@ -626,8 +657,13 @@
     "area": {
       "none": "Neighbourhood facts like renter share, rent burden and transit aren't loaded yet.",
       "indicator": "{value} {unit}",
-      "source": "{period} · source: {source}",
-      "sample": "based on {n}"
+      "source": "{period}, source: {source}",
+      "sample": "based on {n}",
+      "sourceAria": "Where {label} comes from",
+      "kind": {
+        "neighbourhood": "neighbourhood",
+        "ward": "ward"
+      }
     },
     "check": {
       "none": "Nothing flagged.",
@@ -650,7 +686,9 @@
       "transit_stops_per_km2": "Transit stops per km²",
       "rapid_transit_within_800m_pct": "Area within 800 m of rapid transit",
       "libraries": "Libraries",
-      "parks_ha_per_1000": "Park space per 1,000 residents (ha)"
+      "parks_ha_per_1000": "Park space per 1,000 residents (ha)",
+      "parks": "Parks",
+      "population": "Population"
     },
     "photoAlt": "Photo of this listing, shown from {source}",
     "chart": {
@@ -674,7 +712,8 @@
       "inLine": "In line",
       "vsEstimate": "Estimate for similar homes: {value}",
       "typical": "typical range",
-      "priceNone": "Not enough similar listings nearby to compare."
+      "priceNone": "Not enough similar listings nearby to compare.",
+      "scoreHint": "Hover or tap for why"
     },
     "home": {
       "notStated": "{count} details not stated",
@@ -683,7 +722,8 @@
     "missing": {
       "title": "{count} sections not available yet",
       "aria": "Not available yet"
-    }
+    },
+    "toDetails": "See the details"
   },
   "shortlist": {
     "title": "Your shortlist",

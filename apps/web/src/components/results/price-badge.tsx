@@ -22,7 +22,14 @@ const styles = {
  * and, on tap, what it was compared with (SPEC 7.2). Wording only; every number comes from C's
  * valuation.
  */
-export function PriceBadge({ valuation }: { valuation: SearchResultItem["valuation"] }) {
+export function PriceBadge({
+  valuation,
+  inline = false,
+}: {
+  valuation: SearchResultItem["valuation"];
+  /** The detail sits beside the pill instead of under it (result cards). */
+  inline?: boolean;
+}) {
   const summary = priceSummary(valuation);
   const label = r(summary.label);
   const detail =
@@ -38,10 +45,10 @@ export function PriceBadge({ valuation }: { valuation: SearchResultItem["valuati
         <button
           type="button"
           aria-label={`${label}. ${detail}. ${r("more")}`}
-          className="focus-visible:ring-ring/50 relative z-10 flex flex-col items-start gap-1 rounded-md text-left outline-none focus-visible:ring-3"
+          className={`focus-visible:ring-ring/50 relative z-10 flex rounded-md text-left outline-none focus-visible:ring-3 ${inline ? "flex-wrap items-center gap-x-2 gap-y-1" : "flex-col items-start gap-1"}`}
         >
           <span
-            className={`rounded-full px-2 py-0.5 text-xs font-semibold ${styles[summary.label]}`}
+            className={`rounded-full text-xs font-semibold ${inline ? "px-3 py-1" : "px-2 py-0.5"} ${styles[summary.label]}`}
           >
             {label}
           </span>

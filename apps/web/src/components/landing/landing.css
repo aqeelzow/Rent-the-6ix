@@ -14,6 +14,13 @@
   --display: var(--font-display), var(--font-sans);
 }
 
+/* Dark mode: the night carries on past the ride; the search section uses the dark page tokens. */
+.dark .landing {
+  --mist: var(--background);
+  --ink: var(--foreground);
+  --ink-soft: var(--muted-foreground);
+}
+
 /* On the landing the header floats over the night sky and scrolls away with it. */
 body:has(.landing) > header {
   position: absolute;

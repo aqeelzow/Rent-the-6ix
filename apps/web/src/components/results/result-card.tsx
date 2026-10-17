@@ -1,6 +1,17 @@
 "use client";
 
-import { Bookmark, Building2, CircleHelp, ShieldQuestion } from "lucide-react";
+import {
+  Bath,
+  BedDouble,
+  Bookmark,
+  Building2,
+  CalendarDays,
+  CircleHelp,
+  Ruler,
+  ShieldQuestion,
+  Snowflake,
+  type LucideIcon,
+} from "lucide-react";
 import Link from "next/link";
 import { modeIcons } from "@/components/mode-icons";
 import { formatDaysAgo } from "@/lib/format/date";
@@ -44,18 +55,40 @@ function travelText(summary: TravelSummary): string {
   return r("travel.missing", { target: summary.target });
 }
 
-function homeFacts(listing: SearchResultItem["listing"], acInSearch: boolean): string[] {
-  const facts: string[] = [];
+type HomeFact = { key: string; icon: LucideIcon; text: string };
+
+function homeFacts(listing: SearchResultItem["listing"], acInSearch: boolean): HomeFact[] {
+  const facts: HomeFact[] = [];
   if (listing.bedrooms !== null) {
-    facts.push(listing.bedrooms === 0 ? r("studio") : r("beds", { n: listing.bedrooms }));
+    facts.push({
+      key: "beds",
+      icon: BedDouble,
+      text: listing.bedrooms === 0 ? r("studio") : r("beds", { n: listing.bedrooms }),
+    });
   }
-  if (listing.bathrooms !== null) facts.push(r("baths", { n: decimal.format(listing.bathrooms) }));
-  if (listing.sqft !== null) facts.push(r("sqft", { n: formatCount(listing.sqft) }));
-  if (listing.yearBuilt !== null) facts.push(r("built", { year: listing.yearBuilt }));
+  if (listing.bathrooms !== null) {
+    facts.push({
+      key: "baths",
+      icon: Bath,
+      text: r("baths", { n: decimal.format(listing.bathrooms) }),
+    });
+  }
+  if (listing.sqft !== null) {
+    facts.push({ key: "sqft", icon: Ruler, text: r("sqft", { n: formatCount(listing.sqft) }) });
+  }
+  if (listing.yearBuilt !== null) {
+    facts.push({ key: "built", icon: CalendarDays, text: r("built", { year: listing.yearBuilt }) });
+  }
   const ac = acFact(listing.airConditioning, acInSearch);
-  if (ac === "central") facts.push(r("acCentral"));
-  else if (ac === "yes") facts.push(r("acYes"));
-  else if (ac === "not_stated") facts.push(r("acNotStated"));
+  const acText =
+    ac === "central"
+      ? r("acCentral")
+      : ac === "yes"
+        ? r("acYes")
+        : ac === "not_stated"
+          ? r("acNotStated")
+          : null;
+  if (acText) facts.push({ key: "ac", icon: Snowflake, text: acText });
   return facts;
 }
 
@@ -78,7 +111,9 @@ export function ResultCard({
 }) {
   const { listing, valuation, safety, matchScore } = result;
   const id = listing.id;
-  const highlighted = useAppStore((s) => s.hoveredListingId === id || s.selectedListingId === id);
+  const selected = useAppStore((s) => s.selectedListingId === id);
+  const highlighted = useAppStore((s) => s.hoveredListingId === id) || selected;
+  const setSelected = useAppStore((s) => s.setSelectedListingId);
   const shortlisted = useAppStore(selectIsShortlisted(id));
   const setHovered = useAppStore((s) => s.setHoveredListingId);
   const toggleShortlist = useAppStore((s) => s.toggleShortlist);
@@ -96,122 +131,158 @@ export function ResultCard({
       onMouseLeave={() => setHovered(null)}
       onFocus={() => setHovered(id)}
       onBlur={() => setHovered(null)}
-      className={`bg-card relative flex flex-col gap-3 rounded-xl border p-4 transition-shadow hover:shadow-md ${highlighted ? "ring-primary/60 ring-2" : ""}`}
+      aria-current={selected ? "true" : undefined}
+      className={`bg-card relative flex flex-col rounded-3xl border p-1.5 shadow-sm transition-shadow hover:shadow-md ${selected ? "ring-2 ring-[#e8590c]" : highlighted ? "ring-primary/60 ring-2" : ""}`}
     >
-      <div className="flex gap-3">
-        <div className="bg-muted text-muted-foreground grid size-16 shrink-0 place-items-center overflow-hidden rounded-lg">
-          {listing.imageUrl ? (
-            // Hot-linked thumbnail from the source, only when its terms allow (SPEC 8.4).
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={listing.imageUrl}
-              alt=""
-              referrerPolicy="no-referrer"
-              className="size-full object-cover"
-            />
-          ) : (
-            <Building2 aria-hidden className="size-6" />
-          )}
-        </div>
-        <div className="min-w-0 flex-1">
-          <div className="flex items-start justify-between gap-2">
-            <p className="figures text-lg leading-tight font-semibold">
-              {formatCad(listing.monthlyRentCad)}
-              <span className="text-muted-foreground text-sm font-normal">
-                {listing.rentIsPerRoom ? r("perRoom") : r("perMonth")}
-              </span>
-            </p>
-            <button
-              type="button"
-              aria-pressed={shortlisted}
-              aria-label={r(shortlisted ? "shortlistRemove" : "shortlistAdd", {
-                title: listing.title,
-              })}
-              onClick={() => toggleShortlist(listing)}
-              className="hover:bg-accent focus-visible:ring-ring/50 relative z-10 -mt-1 -mr-1 grid size-9 shrink-0 place-items-center rounded-md outline-none focus-visible:ring-3"
-            >
-              <Bookmark
-                aria-hidden
-                className={`size-5 ${shortlisted ? "fill-primary text-primary" : "text-muted-foreground"}`}
-              />
-            </button>
+      {/* One calm tint for every card; the price pill carries the label's colour. */}
+      <div className="bg-accent text-accent-foreground flex flex-col gap-4 rounded-[1.25rem] p-5">
+        <div className="flex gap-4">
+          <div className="flex min-w-0 flex-1 flex-col items-start gap-2.5">
+            <PriceBadge valuation={valuation} inline />
+            <h3 className="line-clamp-2 text-lg leading-snug font-semibold text-balance">
+              {/* Stretched link: the whole card opens the listing; buttons sit above it. */}
+              <Link
+                href={`/listing/${id}`}
+                onClick={(event) => {
+                  // Beside the map, a click shows the listing there (and again unselects it);
+                  // View opens the page. Phones, and new-tab clicks, open the page as before.
+                  if (!window.matchMedia("(min-width: 1024px)").matches) return;
+                  if (event.metaKey || event.ctrlKey || event.shiftKey || event.button !== 0)
+                    return;
+                  event.preventDefault();
+                  setSelected(selected ? null : id, "list");
+                }}
+                className="after:absolute after:inset-0 after:rounded-3xl hover:underline focus-visible:underline focus-visible:outline-none"
+              >
+                {listing.title}
+              </Link>
+            </h3>
+            {listing.addressText && listing.addressText !== listing.title && (
+              <p className="-mt-1 line-clamp-1 text-sm opacity-75">{listing.addressText}</p>
+            )}
+            {facts.length > 0 && (
+              <ul className="figures flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
+                {facts.map((fact) => (
+                  <li key={fact.key} className="flex items-center gap-1.5">
+                    <fact.icon aria-hidden className="size-4 opacity-70" />
+                    {fact.text}
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
-          <h3 className="truncate text-sm font-medium">
-            {/* Stretched link: the whole card opens the listing; buttons sit above it. */}
-            <Link
-              href={`/listing/${id}`}
-              className="after:absolute after:inset-0 after:rounded-xl hover:underline focus-visible:underline focus-visible:outline-none"
-            >
-              {listing.title}
-            </Link>
-          </h3>
-          {facts.length > 0 && (
-            <p className="text-muted-foreground figures text-sm">{facts.join(" · ")}</p>
-          )}
+          <div className="grid size-24 shrink-0 place-items-center overflow-hidden rounded-2xl bg-black/[0.06] shadow-md sm:size-28 dark:bg-white/10">
+            {listing.imageUrl ? (
+              // Hot-linked thumbnail from the source, only when its terms allow (SPEC 8.4).
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={listing.imageUrl}
+                alt=""
+                referrerPolicy="no-referrer"
+                className="size-full object-cover"
+              />
+            ) : (
+              <Building2 aria-hidden className="size-8 opacity-50" />
+            )}
+          </div>
         </div>
-      </div>
 
-      <div className="flex items-start justify-between gap-4">
-        <PriceBadge valuation={valuation} />
-        <ScoreBar matchScore={matchScore} className="w-36 pt-0.5" />
-      </div>
+        {(travel.length > 0 || safetyOn || caveat || unconfirmed.length > 0) && (
+          <div className="flex flex-col gap-1.5 text-sm">
+            {travel.length > 0 && (
+              <ul className="flex flex-col gap-1">
+                {travel.map((summary) => {
+                  const Icon = modeIcons[summary.mode];
+                  return (
+                    <li key={summary.target} className="flex items-start gap-2">
+                      <Icon aria-hidden className="mt-0.5 size-4 shrink-0 opacity-70" />
+                      <span className={summary.kind === "estimated" ? "figures" : "opacity-80"}>
+                        {travelText(summary)}
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
 
-      {travel.length > 0 && (
-        <ul className="flex flex-col gap-1 text-sm">
-          {travel.map((summary) => {
-            const Icon = modeIcons[summary.mode];
-            return (
-              <li key={summary.target} className="flex items-start gap-2">
-                <Icon aria-hidden className="text-muted-foreground mt-0.5 size-4 shrink-0" />
-                <span className={summary.kind === "estimated" ? "figures" : "text-muted-foreground"}>
-                  {travelText(summary)}
+            {/* Distance from the place the renter named, and what the trips emit (owner D). */}
+            <TravelFacts result={result} targets={targets} areas={areas} />
+
+            {safetyOn && (
+              <p className="figures flex items-start gap-2 opacity-80">
+                <ShieldQuestion aria-hidden className="mt-0.5 size-4 shrink-0" />
+                <span>
+                  {safety && safety.relativeRate !== null
+                    ? r("safety", {
+                        rate: decimal.format(safety.relativeRate),
+                        years: yearSpan(safety.years),
+                      })
+                    : r("safetyNoData")}{" "}
+                  <SafetyInfoButton caveats={safety?.caveats} className="text-xs" />
                 </span>
-              </li>
-            );
-          })}
-        </ul>
-      )}
+              </p>
+            )}
 
-      {/* Distance from the place the renter named, and what the trips emit (owner D). */}
-      <TravelFacts result={result} targets={targets} areas={areas} />
+            {(caveat || unconfirmed.length > 0) && (
+              <div className="flex flex-col items-start gap-1.5 pt-1">
+                {caveat && (
+                  <span
+                    className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${caveatStyles[caveat.severity]}`}
+                  >
+                    {caveat.title}
+                  </span>
+                )}
+                {unconfirmed.length > 0 && (
+                  <p className="flex items-start gap-1.5 text-xs">
+                    <CircleHelp aria-hidden className="mt-px size-3.5 shrink-0" />
+                    {unconfirmed.join(" · ")}
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+        )}
 
-      {safetyOn && (
-        <p className="text-muted-foreground figures flex items-start gap-2 text-sm">
-          <ShieldQuestion aria-hidden className="mt-0.5 size-4 shrink-0" />
-          <span>
-            {safety && safety.relativeRate !== null
-              ? r("safety", {
-                  rate: decimal.format(safety.relativeRate),
-                  years: yearSpan(safety.years),
-                })
-              : r("safetyNoData")}{" "}
-            <SafetyInfoButton caveats={safety?.caveats} className="text-xs" />
-          </span>
-        </p>
-      )}
+        <ScoreBar matchScore={matchScore} orientation="horizontal" />
+      </div>
 
-      {(caveat || unconfirmed.length > 0) && (
-        <div className="flex flex-col items-start gap-1.5">
-          {caveat && (
-            <span
-              className={`rounded-md px-2 py-0.5 text-xs font-medium ${caveatStyles[caveat.severity]}`}
-            >
-              {caveat.title}
+      <div className="flex items-center justify-between gap-3 px-4 py-3">
+        <div className="min-w-0">
+          <p className="figures text-lg leading-tight font-semibold">
+            {formatCad(listing.monthlyRentCad)}
+            <span className="text-muted-foreground text-sm font-normal">
+              {listing.rentIsPerRoom ? r("perRoom") : r("perMonth")}
             </span>
-          )}
-          {unconfirmed.length > 0 && (
-            <p className="text-caveat-warning-foreground flex items-start gap-1.5 text-xs">
-              <CircleHelp aria-hidden className="mt-px size-3.5 shrink-0" />
-              {unconfirmed.join(" · ")}
-            </p>
-          )}
+          </p>
+          <p className="text-muted-foreground truncate text-xs">
+            {r(`sources.${listing.source}`)} · {r("seen", { when: formatDaysAgo(days) })}
+            {listing.dataStatus !== "live" && <> · {r(`dataStatus.${listing.dataStatus}`)}</>}
+          </p>
         </div>
-      )}
-
-      <p className="text-muted-foreground text-xs">
-        {r(`sources.${listing.source}`)} · {r("seen", { when: formatDaysAgo(days) })}
-        {listing.dataStatus !== "live" && <> · {r(`dataStatus.${listing.dataStatus}`)}</>}
-      </p>
+        <div className="flex shrink-0 items-center gap-2">
+          <button
+            type="button"
+            aria-pressed={shortlisted}
+            aria-label={r(shortlisted ? "shortlistRemove" : "shortlistAdd", {
+              title: listing.title,
+            })}
+            onClick={() => toggleShortlist(listing)}
+            className="hover:bg-accent focus-visible:ring-ring/50 relative z-10 grid size-10 place-items-center rounded-full border outline-none focus-visible:ring-3"
+          >
+            <Bookmark
+              aria-hidden
+              className={`size-5 ${shortlisted ? "fill-primary text-primary" : "text-muted-foreground"}`}
+            />
+          </button>
+          <Link
+            href={`/listing/${id}`}
+            aria-label={r("viewAria", { title: listing.title })}
+            className="bg-foreground text-background focus-visible:ring-ring/50 relative z-10 rounded-full px-5 py-2.5 text-sm font-semibold outline-none hover:opacity-90 focus-visible:ring-3"
+          >
+            {r("view")}
+          </Link>
+        </div>
+      </div>
     </article>
   );
 }
