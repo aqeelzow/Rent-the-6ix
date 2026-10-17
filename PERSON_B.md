@@ -73,7 +73,7 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked · `[-]` 
 
 ### S3 → S4 (H16–H24) — Explanations & imports · Core
 - [ ] P3.1 `/api/listings/[id]/explain`: facts only, number check, safety wording check, template fallback
-- [ ] P3.2 `/api/listings/import` (paste text or public URL → `Listing` via Gemini, geocode, score against the current intent; SSRF guard; regex fallback) + `/api/listings/score`
+- [ ] P3.2 **Deferred / not a priority — implement `/api/listings/import` only when the user explicitly instructs it.** Planned scope: paste text or public URL → `Listing` via Gemini, geocode, score against the current intent; SSRF guard; regex fallback, plus `/api/listings/score`.
 - [ ] P3.3 `/api/areas/[kind]/[id]/briefing`: indicators only, neutral, no candidates or parties, number check, template fallback; pre-generate all 25 wards
 - [ ] P3.4 Cached parse and explain outputs for the 3 demo prompts (SPEC 16) and the demo pasted listing
 
