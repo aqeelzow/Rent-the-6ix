@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   alsoOn,
+  streetKey,
   distanceM,
   findDuplicates,
   isDuplicate,
@@ -22,6 +23,7 @@ function listing(overrides: Partial<DedupeListing> = {}): DedupeListing {
     monthlyRentCad: 2400,
     title: "Bright 1 bedroom",
     excerpt: "",
+    addressText: null,
     firstSeenAt: "2026-10-01T00:00:00Z",
     ...overrides,
   };
@@ -104,5 +106,31 @@ describe("findDuplicates and alsoOn", () => {
 describe("distanceM", () => {
   it("is about 111 km per degree of latitude", () => {
     expect(distanceM(QUEEN_WEST, north(50))).toBeCloseTo(50, 0);
+  });
+});
+
+describe("street addresses", () => {
+  it("reduce every source's spelling to number + street name", () => {
+    expect(streetKey("2207 - 181 WYNFORD DRIVE Toronto (Banbury-Don Mills)")).toBe("181 wynford");
+    expect(streetKey("- 25 FREDERICK TODD WAY, Toronto (Thorncliffe Park)")).toBe("25 frederick");
+    expect(streetKey("25 Frederick Todd Way, Toronto, ON M4G 0C9")).toBe("25 frederick");
+    expect(streetKey("11 33rd St #204, Toronto, ON M8W 3H1")).toBe("11 33rd");
+    expect(streetKey("1 Bed at The Hampton")).toBeNull();
+    expect(streetKey(null)).toBeNull();
+  });
+
+  it("two different addresses are never the same unit, even 40 m apart at the same rent", () => {
+    const a = listing({ addressText: "195 Redpath Avenue, Toronto" });
+    const b = listing({
+      id: "b",
+      source: "zillow",
+      location: north(34),
+      addressText: "99 Broadway Ave, Toronto, ON",
+    });
+    expect(isDuplicate(a, b)).toBe(false);
+    expect(
+      isDuplicate(a, { ...b, addressText: "- 195 REDPATH AVENUE, Toronto (Mount Pleasant West)" }),
+    ).toBe(true);
+    expect(isDuplicate(a, { ...b, addressText: null })).toBe(true);
   });
 });

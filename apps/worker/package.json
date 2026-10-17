@@ -10,7 +10,8 @@
     "start": "node --env-file-if-exists=../../.env.local src/index.ts",
     "ingest:once": "node --env-file-if-exists=../../.env.local src/ingest.ts",
     "browser:install": "cloakbrowser install",
-    "load:cache": "node --env-file-if-exists=../../.env.local src/load-cache.ts"
+    "load:cache": "node --env-file-if-exists=../../.env.local src/load-cache.ts",
+    "dedupe:listings": "node --env-file-if-exists=../../.env.local src/dedupe.ts"
   },
   "dependencies": {
     "@rentthe6ix/shared": "workspace:*",

@@ -18,6 +18,7 @@ import {
   scrubPatch,
 } from "./details.ts";
 import { normalize, type NormalizedListing } from "./normalize.ts";
+import { dedupeStored } from "./dedupe-store.ts";
 import { markFreshness, upsertListings } from "./upsert.ts";
 
 export interface SourceRun {
@@ -150,6 +151,8 @@ export async function runIngest(options: IngestOptions): Promise<IngestResult> {
   if (db) {
     try {
       console.log(`freshness: ${await markFreshness(db, new Date())} listings changed status`);
+      const dedupe = await dedupeStored(db);
+      console.log(`dedupe: ${dedupe.duplicates} of ${dedupe.listings} listings are duplicates`);
     } finally {
       await db.end();
     }

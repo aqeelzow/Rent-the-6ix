@@ -3,7 +3,8 @@
 // 3%, or their title + excerpt are ≥ 0.6 trigram-similar (pg_trgm's measure, so SQL agrees).
 // The oldest listing in a group is canonical; the others get `duplicateOf`.
 // Same-source pairs never match: torontorentals lists each floor plan of a building separately at
-// the same point, and property managers reuse one description across their buildings.
+// the same point, and property managers reuse one description across their buildings. Two different
+// street addresses never match either: downtown, two $2,000 1-beds 40 m apart are two units.
 import type { SourceId } from "../sources/types.ts";
 
 export interface DedupeListing {
@@ -14,6 +15,8 @@ export interface DedupeListing {
   monthlyRentCad: number;
   title: string;
   excerpt: string;
+  /** As the source shows it ("2207 - 181 WYNFORD DRIVE Toronto …", "109 Erskine Ave, Toronto"). */
+  addressText: string | null;
   /** ISO timestamp; the oldest becomes canonical. */
   firstSeenAt: string;
 }
@@ -29,6 +32,9 @@ export const DEDUPE = {
 export function isDuplicate(a: DedupeListing, b: DedupeListing): boolean {
   if (a.source === b.source) return false;
   if (a.bedrooms === null || a.bedrooms !== b.bedrooms) return false;
+  const ka = streetKey(a.addressText);
+  const kb = streetKey(b.addressText);
+  if (ka && kb && ka !== kb) return false;
   const near = distanceM(a.location, b.location) <= DEDUPE.maxDistanceM;
   const rentClose =
     Math.abs(a.monthlyRentCad - b.monthlyRentCad) / Math.max(a.monthlyRentCad, b.monthlyRentCad) <=
@@ -66,6 +72,35 @@ export function alsoOn(
     .filter((l) => duplicateOf.get(l.id) === canonicalId && l.source !== own)
     .map((l) => l.source);
   return [...new Set(sources)].sort();
+}
+
+const STREET_TYPES = new Set(
+  "street st avenue ave road rd drive dr boulevard blvd way crescent cres court ct place pl lane ln trail terrace circle parkway pkwy square sq gate grove park gardens east west e w".split(
+    " ",
+  ),
+);
+
+/**
+ * "195 redpath" from any source's address spelling: the street number and the first word of the
+ * street name, with unit numbers ("2207 - ", "#204"), street types and the city dropped.
+ * null when there's no street number.
+ */
+export function streetKey(address: string | null): string | null {
+  if (!address) return null;
+  let a = address
+    .toLowerCase()
+    .split(",")[0]
+    .split(/\s+toronto\b/)[0];
+  if (a.includes(" - ")) a = a.slice(a.lastIndexOf(" - ") + 3);
+  a = a
+    .replace(/#\s*\S+/g, " ")
+    .replace(/^\s*-\s*/, "")
+    .trim();
+  const m = a.match(/^(\d+)[a-z]?(?:-\d+[a-z]?)?\s+(.+)$/);
+  // "1 bed at …" is a title, not an address.
+  if (!m || /^(bed|bedroom|br|bath|studio)s?\b/.test(m[2])) return null;
+  const name = m[2].split(/\s+/).find((w) => !STREET_TYPES.has(w.replace(/\.$/, "")));
+  return name ? `${m[1]} ${name}` : null;
 }
 
 function text(l: DedupeListing): string {
