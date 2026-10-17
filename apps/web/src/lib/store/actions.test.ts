@@ -2,6 +2,7 @@ import { baseIntent, detailFixture, searchFixture } from "@rentthe6ix/shared/fix
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   fetchListingDetail,
+  importPastedListing,
   parseAndSearch,
   redactIntent,
   resolveDestination,
@@ -277,5 +278,43 @@ describe("fetchListingDetail", () => {
     expect(redacted.rawPrompt).toBe("");
     expect(redacted.droppedRequests).toEqual([]);
     expect(redacted.criteria).toEqual(baseIntent.criteria);
+  });
+});
+
+describe("importPastedListing", () => {
+  const result = searchFixture.status === "completed" ? searchFixture.results[0]! : null;
+
+  it("sends the text with a redacted intent and returns the scored listing", async () => {
+    const { fetch, calls } = fakeFetch({ body: { result } });
+    const reply = await importPastedListing({ text: "2 bed, $2,100" }, parsed.intent as never, {
+      fetch,
+    });
+    expect(reply).toEqual({ ok: true, result });
+    expect(calls[0]).toMatchObject({ url: "/api/listings/import", method: "POST" });
+    expect(calls[0]!.body).toMatchObject({
+      text: "2 bed, $2,100",
+      intent: { rawPrompt: "", fieldSources: {}, droppedRequests: [] },
+    });
+  });
+
+  it("reports a route that isn't built yet as not available, and keeps B's own errors", async () => {
+    const notBuilt = fakeFetch({ status: 404, body: "<html>Not found</html>" });
+    expect(await importPastedListing({ url: "https://x.test/a" }, null, notBuilt)).toEqual({
+      ok: false,
+      error: { code: "not_available", message: "HTTP 404" },
+    });
+    const limited = fakeFetch({
+      status: 429,
+      body: { error: { code: "rate_limited", message: "Slow down", retryAfterSeconds: 30 } },
+    });
+    expect(await importPastedListing({ text: "x" }, null, limited)).toMatchObject({
+      ok: false,
+      error: { code: "rate_limited" },
+    });
+    const odd = fakeFetch({ body: { listing: {} } });
+    expect(await importPastedListing({ text: "x" }, null, odd)).toMatchObject({
+      ok: false,
+      error: { code: "unexpected_response" },
+    });
   });
 });

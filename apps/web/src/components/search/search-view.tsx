@@ -2,18 +2,29 @@
 
 import { AlertCircle, ChevronRight, Info, List, LoaderCircle, MapIcon, X } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ResultsMap } from "@/components/map/results-map";
 import { ResultCard } from "@/components/results/result-card";
+import {
+  effectiveResultOrder,
+  orderByCarbon,
+  orderByPreferredDistance,
+  preferredAreaReference,
+} from "@/components/results/travel-facts-data";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useMediaQuery } from "@/components/use-media-query";
 import { FilterChips } from "./filter-chips";
 import { FiltersPanel } from "./filters-panel";
+import { ShareSearch } from "./share-search";
 import { SortSelect } from "./sort-select";
+import { commuteCarbon } from "@rentthe6ix/shared/engine/carbon";
 import { t, type MessageKey } from "@/lib/format/messages";
 import { formatCount } from "@/lib/format/number";
-import { parseAndSearch, runSearch } from "@/lib/store/actions";
+import { parseAndSearch, restoreSearch, runSearch } from "@/lib/store/actions";
+import { readLastSearch } from "@/lib/store/persist";
+import { decodeSharedSearch } from "@/lib/store/share";
+import { useLastSearch } from "@/lib/store/use-last-search";
 import { appStore, useAppStore } from "@/lib/store/store";
 import type { ApiError, SearchIntent, SearchResultItem } from "@/lib/store/types";
 
@@ -33,12 +44,25 @@ const knownErrors = new Set([
   "search_job_expired",
 ]);
 
+/** "Continue your last search" on `/search` without a prompt, when this browser has one. */
+function LastSearchLink() {
+  const last = useLastSearch();
+  if (!last) return null;
+  return (
+    <Button asChild variant="outline">
+      <Link href={`/search?q=${encodeURIComponent(last.intent.rawPrompt)}`}>
+        {t("search.lastSearch")}
+      </Link>
+    </Button>
+  );
+}
+
 function errorMessage(error: ApiError): string {
   const key = (knownErrors.has(error.code) ? error.code : "default") as string;
   return t(`search.errors.${key}` as MessageKey, { seconds: error.retryAfterSeconds ?? 30 });
 }
 
-export function SearchView({ prompt }: { prompt: string | null }) {
+export function SearchView({ prompt, shared }: { prompt: string | null; shared: string | null }) {
   const status = useAppStore((s) => s.status);
   const intent = useAppStore((s) => s.intent);
   const error = useAppStore((s) => s.error);
@@ -56,10 +80,23 @@ export function SearchView({ prompt }: { prompt: string | null }) {
   const [mobileView, setMobileView] = useState<"list" | "map">("list");
   const busySince = useAppStore((s) => s.busySince);
   const elapsed = useElapsedSeconds(busySince);
+  // "Closest to my area" and "lowest-carbon trips" reorder the results already on screen, so they
+  // never cost another search (a server-side sort is requested in PERSON_D.md for B to add).
+  const resultOrder = useAppStore((s) => s.resultOrder);
+  const order = effectiveResultOrder(resultOrder, results, intent);
+  const ordered = useMemo(() => {
+    if (order === "carbon")
+      return orderByCarbon(results, (result) =>
+        commuteCarbon(intent?.travelTargets ?? [], result.travel),
+      );
+    if (order === "distance")
+      return orderByPreferredDistance(results, preferredAreaReference(intent));
+    return results;
+  }, [order, results, intent]);
   // Paging resets whenever a new set of results arrives.
-  const [paging, setPaging] = useState({ results, count: PAGE_SIZE });
-  const pageCount = paging.results === results ? paging.count : PAGE_SIZE;
-  const visibleCount = Math.min(results.length, pageCount);
+  const [paging, setPaging] = useState({ results: ordered, count: PAGE_SIZE });
+  const pageCount = paging.results === ordered ? paging.count : PAGE_SIZE;
+  const visibleCount = Math.min(ordered.length, pageCount);
   const selectedIndex = selectedId ? results.findIndex((r) => r.listing.id === selectedId) : -1;
   const selectedResult = selectedIndex >= 0 ? results[selectedIndex] : undefined;
   // A pin past "Show more" opens its card over the map instead of growing the list.
@@ -75,19 +112,28 @@ export function SearchView({ prompt }: { prompt: string | null }) {
 
   useEffect(() => {
     if (!prompt) return;
-    // Coming back to a prompt that's already been read keeps its edited filters.
+    // Coming back to a prompt that's already been read keeps its edited filters (Back from a
+    // listing included). Otherwise a shared link's filters, then this browser's last search for
+    // the same words (a reload), and only then the parser.
     if (appStore.getState().intent?.rawPrompt === prompt) return;
-    void parseAndSearch(prompt);
-  }, [prompt]);
+    const last = readLastSearch();
+    const saved =
+      (shared ? decodeSharedSearch(shared, prompt) : null) ??
+      (last?.intent.rawPrompt === prompt ? last : null);
+    void (saved ? restoreSearch(saved) : parseAndSearch(prompt));
+  }, [prompt, shared]);
 
   if (!prompt) {
     return (
       <div className="mx-auto flex w-full max-w-3xl flex-col items-start gap-4 px-4 py-10">
         <h1 className="text-2xl font-semibold tracking-tight">{t("search.title")}</h1>
         <p className="text-muted-foreground">{t("search.noPrompt")}</p>
-        <Button asChild>
-          <Link href="/">{t("search.startSearch")}</Link>
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button asChild>
+            <Link href="/">{t("search.startSearch")}</Link>
+          </Button>
+          <LastSearchLink />
+        </div>
       </div>
     );
   }
@@ -102,18 +148,19 @@ export function SearchView({ prompt }: { prompt: string | null }) {
         <h1 className="sr-only">{t("search.title")}</h1>
 
         <section aria-labelledby="request-label" className="bg-card rounded-xl border p-4">
-          <div className="flex items-baseline justify-between gap-3">
-            <h2 id="request-label" className="text-muted-foreground text-sm font-medium">
-              {t("search.yourRequest")}
-            </h2>
+          <h2 id="request-label" className="text-muted-foreground text-sm font-medium">
+            {t("search.yourRequest")}
+          </h2>
+          <p className="mt-1">{prompt}</p>
+          <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1">
             <Link
-              href="/"
+              href={`/?q=${encodeURIComponent(prompt)}#start`}
               className="text-primary text-sm font-medium underline-offset-4 hover:underline"
             >
               {t("search.editRequest")}
             </Link>
+            {intent?.rawPrompt === prompt && <ShareSearch />}
           </div>
-          <p className="mt-1">{prompt}</p>
         </section>
 
         {intent && intent.rawPrompt === prompt && (
@@ -214,13 +261,22 @@ export function SearchView({ prompt }: { prompt: string | null }) {
                 ))}
               </ul>
             )}
+            {order !== "server" && (
+              // Says what the order does to the listings nothing is known about, so "first" is
+              // never read as "every one of these is close" or "every one of these is clean".
+              <p className="text-muted-foreground text-xs">
+                {t(order === "carbon" ? "results.order.carbon" : "results.order.distance")}
+              </p>
+            )}
             <ol className={`flex flex-col gap-3 ${busy ? "opacity-60" : ""}`}>
-              {results.slice(0, visibleCount).map((result) => (
+              {ordered.slice(0, visibleCount).map((result) => (
                 <li key={result.listing.id}>
                   <ResultCard
                     result={result}
                     targets={intent?.travelTargets ?? []}
+                    areas={intent?.areas ?? []}
                     safetyOn={intent?.safety.enabled ?? false}
+                    acInSearch={intent?.criteria.airConditioning !== undefined}
                     now={now}
                   />
                 </li>
@@ -230,7 +286,7 @@ export function SearchView({ prompt }: { prompt: string | null }) {
               <Button
                 variant="outline"
                 className="self-center"
-                onClick={() => setPaging({ results, count: visibleCount + PAGE_SIZE })}
+                onClick={() => setPaging({ results: ordered, count: visibleCount + PAGE_SIZE })}
               >
                 {t("search.showMore", {
                   count: formatCount(Math.min(PAGE_SIZE, results.length - visibleCount)),
@@ -321,6 +377,7 @@ function MapListingCard({
           result={result}
           targets={intent?.travelTargets ?? []}
           safetyOn={intent?.safety.enabled ?? false}
+          acInSearch={intent?.criteria.airConditioning !== undefined}
           now={now}
         />
       </div>

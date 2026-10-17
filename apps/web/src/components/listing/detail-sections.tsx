@@ -6,7 +6,12 @@ import { useEffect, useState } from "react";
 import { modeIcons } from "@/components/mode-icons";
 import { SafetyInfoButton } from "@/components/safety/safety-info";
 import { PriceBadge } from "@/components/results/price-badge";
-import { daysSince, priceSummary, yearSpan } from "@/components/results/card-data";
+import {
+  daysSince,
+  plainHardFilterNote,
+  priceSummary,
+  yearSpan,
+} from "@/components/results/card-data";
 import { formatDaysAgo } from "@/lib/format/date";
 import { t, type MessageKey } from "@/lib/format/messages";
 import { formatCad, formatCount } from "@/lib/format/number";
@@ -501,7 +506,7 @@ export function ThingsToCheck({ result }: { result: SearchResultItem }) {
         <DetailSection id="unconfirmed" title={l("sections.unconfirmed")}>
           <ul className="text-caveat-warning-foreground list-disc pl-5 text-sm">
             {hardFilterNotes.map((note) => (
-              <li key={note}>{note}</li>
+              <li key={note}>{plainHardFilterNote(note)}</li>
             ))}
           </ul>
         </DetailSection>
