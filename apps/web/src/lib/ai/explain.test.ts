@@ -1,7 +1,9 @@
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
+import { randomUUID } from 'node:crypto';
 import { detailFixture, baseIntent } from '../../../../../packages/shared/fixtures/index';
 import { ExplanationService, explanationFacts, validExplanation } from './explain';
+import { databaseExplanationCache } from './explain-cache';
 import { createRuntime } from '../api/runtime';
 import type { AIProvider } from './index';
 import postgres from 'postgres';
@@ -59,3 +61,33 @@ test.skipIf(process.env.RUN_LIVE_EXPLAIN !== '1')('live DB listing produces a gr
     assert.match(body.explanation, /^This listing scores \d+ out of 100/);
   } finally { api.jobs.dispose(); await sql.end({ timeout: 2 }); }
 }, 30000);
+
+test.skipIf(process.env.RUN_LIVE_EXPLAIN_CACHE !== '1')('validated explanation survives a new runtime in ai_cache and changes with facts', async () => {
+  if (!process.env.DATABASE_URL) process.loadEnvFile('.env.local');
+  assert.ok(process.env.DATABASE_URL);
+  const sql = postgres(process.env.DATABASE_URL, { max: 1, connect_timeout: 5, onnotice: () => {} });
+  const keys = new Set<string>();
+  const client = () => ({ unsafe: async (statement: string, parameters: string[]) => {
+    if (statement.startsWith('INSERT INTO ai_cache')) keys.add(parameters[0]);
+    return sql.unsafe(statement, parameters);
+  } });
+  const cache = databaseExplanationCache(client, 1000);
+  const namespace = `live-explain-${randomUUID()}`;
+  let calls = 0;
+  const provider: AIProvider = { generateStructured: async () => { throw Error('unused'); }, generateText: async () => { calls++; return 'The score reflects the shown factors. Verify the listing with its source.'; } };
+  try {
+    assert.equal((await new ExplanationService(provider, namespace, cache).explain(detailFixture)).source, 'gemini');
+    assert.equal((await new ExplanationService(provider, namespace, cache).explain(detailFixture)).source, 'gemini');
+    assert.equal(calls, 1);
+    const changed = { ...detailFixture, matchScore: { ...detailFixture.matchScore, total: detailFixture.matchScore.total - 1 } };
+    await new ExplanationService(provider, namespace, cache).explain(changed);
+    assert.equal(calls, 2);
+    const [row] = await sql`SELECT route, payload FROM ai_cache WHERE key = ${[...keys][0]}`;
+    assert.equal(row.route, 'listings.explain');
+    assert.deepEqual(row.payload, { explanation: 'The score reflects the shown factors. Verify the listing with its source.' });
+    assert.equal(JSON.stringify(row.payload).includes(detailFixture.listing.excerpt), false);
+  } finally {
+    try { if (keys.size) await sql`DELETE FROM ai_cache WHERE key = ANY(${[...keys]}::text[]) AND route = 'listings.explain'`; }
+    finally { await sql.end({ timeout: 2 }); }
+  }
+}, 20000);

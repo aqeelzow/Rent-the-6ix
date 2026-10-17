@@ -10,6 +10,7 @@ import { ParseService, DestinationResolver, IpLimiter } from '../parse/index';
 import { databaseIntentCache } from '../parse/db-cache';
 import { providerFromEnv } from '../ai/index';
 import { ExplanationService } from '../ai/explain';
+import { databaseExplanationCache } from '../ai/explain-cache';
 import { canBrief, templateBriefing, writeBriefing } from '../ai/briefing';
 import { loadBriefingFacts, cachedBriefing, cacheBriefing } from '../db/briefing';
 import { civicAreasLookup } from '../parse/civic-areas-db';
@@ -43,7 +44,7 @@ export function createRuntime(options: RuntimeOptions = {}) {
   const env = options.env ?? process.env;
   const resolver = options.resolver ?? new DestinationResolver({ maptilerKey: env.NEXT_PUBLIC_MAPTILER_KEY, addressLookup: env.SEARCH_FIXTURES !== '1' && env.DATABASE_URL ? addressPointsLookup() : undefined });
   const parser = options.parser ?? new ParseService({ provider: providerFromEnv(env), resolver, civicAreas: env.SEARCH_FIXTURES !== '1' && env.DATABASE_URL ? civicAreasLookup() : undefined, cacheNamespace: `${env.AI_PROVIDER}:${env.GEMINI_MODEL_FAST ?? env.GEMINI_MODEL}`, intentCache: env.SEARCH_FIXTURES !== '1' && env.DATABASE_URL && env.AI_PROVIDER === 'gemini' ? databaseIntentCache() : undefined });
-  const explainer = new ExplanationService(options.explainProvider ?? providerFromEnv(env), `${env.AI_PROVIDER}:${env.GEMINI_MODEL_FAST ?? env.GEMINI_MODEL}`);
+  const explainer = new ExplanationService(options.explainProvider ?? providerFromEnv(env), `${env.AI_PROVIDER}:${env.GEMINI_MODEL_FAST ?? env.GEMINI_MODEL}`, env.SEARCH_FIXTURES !== '1' && env.DATABASE_URL && env.AI_PROVIDER === 'gemini' ? databaseExplanationCache() : undefined);
   const jobs = options.jobs ?? new SearchJobs();
   const dependencies = options.dependencies ?? (env.SEARCH_FIXTURES === '1' ? fixtureDependencies : env.DATABASE_URL ? withRouting(sqlSearchDependencies(), env.OTP_URL) : undefined);
   // Vercel overwrites this header; other deployments need their own trusted identity callback.

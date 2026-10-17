@@ -6,10 +6,10 @@ Task ids match `PROGRESS.md`; task details are in `SPEC.md`.
 
 ## Current state
 
-- **Current task:** sequential completion of apps/search/plan.md with a subagent per feature and live DB validation.
-- **Status:** active on `b/search-plan-completion` in `/tmp/rent-search-mvp`, based on main `f0d729b`. Feature1 parse ai_cache integration passes real PostgreSQL cross-runtime/privacy/expiry validation and154 web tests.
+- **Current task:** P3.1/P3.3/P3.4 after the search plan; P3.2 import and P2.24 latency optimization are deferred by the user.
+- **Status:** active on `b/search-plan-completion` in `/tmp/rent-search-mvp`, reconciled through main `f53fc69`. P3.1 explanation is implemented; P3.3 and P3.4 are partial for the dependencies below.
 - **Verified:** 20,956 live listings / 16,892 active nonduplicates at inspection; native SQL-backed cheapest/known filters, scalar percentiles, fairness, detail and overlap acceptance.
-- **Remaining:** cold/full enriched performance needs C optimization/bulk context (post-merge SPEC16 observations5.406s/30.017s/2.752s); live static safety is now SQL-verified after PR22. Owner changes remain outside B scope under TEAM.md. Dynamic routing/distance computations are deferred by the user.
+- **Remaining:** D ward housing indicators and a sourced Toronto comparator for 25 full P3.3 briefings; Gemini quota for all three P3.4 AI outputs and demo cache population; P3.2 import for the pasted-listing part of P3.4. P2.24 cold-search optimization is deferred by the user. Owner changes remain outside B scope under TEAM.md.
 - **Last updated:** 2026-10-17
 
 
@@ -72,10 +72,10 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked · `[-]` 
 - [~] P2.25 `/api/listings/[id]`: live listing/valuation/caveats, official areas, source-backed opt-in indicators, building and direct duplicates are SQL-verified; full routed travel and A building rendering remain open.
 
 ### S3 → S4 (H16–H24) — Explanations & imports · Core
-- [ ] P3.1 `/api/listings/[id]/explain`: facts only, number check, safety wording check, template fallback
+- [x] P3.1 `/api/listings/[id]/explain`: facts only, number check, safety wording check, template fallback
 - [ ] P3.2 **Deferred / not a priority — implement `/api/listings/import` only when the user explicitly instructs it.** Planned scope: paste text or public URL → `Listing` via Gemini, geocode, score against the current intent; SSRF guard; regex fallback, plus `/api/listings/score`.
-- [ ] P3.3 `/api/areas/[kind]/[id]/briefing`: indicators only, neutral, no candidates or parties, number check, template fallback; pre-generate all 25 wards
-- [ ] P3.4 Cached parse and explain outputs for the 3 demo prompts (SPEC 16) and the demo pasted listing
+- [~] P3.3 `/api/areas/[kind]/[id]/briefing`: grounded route/fallback/cache implemented; 25 full ward briefings await D indicators and city comparator
+- [~] P3.4 Persistent explanation cache and three-prompt prewarm path implemented; Gemini quota and deferred P3.2 import prevent full demo cache population
 
 ### S4 → S5 (H22–H30) — P1 · Stretch
 - [ ] P4.1 Weight sliders: accept `weights` in the intent, validate, rescore (A builds the UI, P4.24)
