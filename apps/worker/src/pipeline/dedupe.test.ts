@@ -5,10 +5,12 @@ import {
   distanceM,
   findDuplicates,
   isDuplicate,
+  shownCopy,
   similarity,
   trigrams,
   type DedupeListing,
 } from "./dedupe.ts";
+import type { SourceId } from "../sources/types.ts";
 
 const QUEEN_WEST = { lng: -79.4, lat: 43.645 };
 // ~0.00045° latitude ≈ 50 m.
@@ -89,7 +91,7 @@ describe("isDuplicate", () => {
 });
 
 describe("findDuplicates and alsoOn", () => {
-  it("the oldest listing is canonical; the rest point to it", () => {
+  it("groups around the oldest listing; with equal rents the oldest is shown", () => {
     const listings = [
       listing({ id: "z", source: "zillow", firstSeenAt: "2026-10-05T00:00:00Z" }),
       listing({ id: "k", source: "kijiji", firstSeenAt: "2026-10-01T00:00:00Z" }),
@@ -100,6 +102,19 @@ describe("findDuplicates and alsoOn", () => {
     expect(Object.fromEntries(dupes)).toEqual({ r: "k", z: "k" });
     expect(alsoOn("k", listings, dupes)).toEqual(["realtor_ca", "zillow"]);
     expect(alsoOn("other", listings, dupes)).toEqual([]);
+  });
+
+  it("shows the cheapest copy, unless it is far below the other copies", () => {
+    // Same text on three sites: the text rule groups them whatever the rents.
+    const text = "Bright renovated 1 bedroom near Queen West with ensuite laundry and a balcony";
+    const copy = (id: string, source: SourceId, monthlyRentCad: number, day: string) =>
+      listing({ id, source, monthlyRentCad, title: text, firstSeenAt: `2026-10-${day}T00:00:00Z` });
+    const real = [copy("r", "realtor_ca", 2400, "01"), copy("k", "kijiji", 2250, "05")];
+    expect(Object.fromEntries(findDuplicates(real))).toEqual({ r: "k" });
+    // $1,500 is 33% below the next copy: likely a copied ad, so the $2,250 one is shown.
+    const scam = [...real, copy("z", "zillow", 1500, "07")];
+    expect(Object.fromEntries(findDuplicates(scam))).toEqual({ r: "k", z: "k" });
+    expect(shownCopy(scam.slice(0, 1)).id).toBe("r");
   });
 });
 
