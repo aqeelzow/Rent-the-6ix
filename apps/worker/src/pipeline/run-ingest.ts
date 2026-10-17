@@ -152,6 +152,7 @@ export async function runIngest(options: IngestOptions): Promise<IngestResult> {
       if (db) console.log(`${adapter.id}: ${run.stored} listings in TigerData`);
       console.log(`${adapter.id}: field coverage ${coverage(rows)}`);
     }
+    if (db) await recordRun(db, run, observedAt);
   }
 
   if (db) {
@@ -166,6 +167,24 @@ export async function runIngest(options: IngestOptions): Promise<IngestResult> {
   const result = { finishedAt: new Date().toISOString(), runs };
   await writeFile(new URL("last-run.json", outDir), JSON.stringify(result, null, 2));
   return result;
+}
+
+/** One ingest_runs row per source (migration 006), for /status; skipped until the table exists. */
+async function recordRun(db: Sql, run: SourceRun, startedAt: string): Promise<void> {
+  try {
+    const [{ exists }] = await db<{ exists: boolean }[]>`
+      SELECT to_regclass('ingest_runs') IS NOT NULL AS exists`;
+    if (!exists) return;
+    await db`
+      INSERT INTO ingest_runs (source, started_at, finished_at, status, pages, listings, dropped,
+        details, stored, message)
+      VALUES (${run.source}, ${startedAt}, now(), ${run.status}, ${run.pages}, ${run.listings},
+        ${run.dropped}, ${run.details}, ${run.stored}, ${run.message ?? null})`;
+  } catch (error) {
+    console.error(
+      `${run.source}: ingest_runs insert failed: ${error instanceof Error ? error.message : error}`,
+    );
+  }
 }
 
 /** A database error is logged, not fatal: the JSON file still has the run. */
