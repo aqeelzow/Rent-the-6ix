@@ -194,6 +194,7 @@ TravelTarget {
   label: string                       // "Work: 100 King St W", "Supermarket", "Elementary school"
   // place: a specific destination (job, campus, family)
   query?: string
+  normalizedQuery?: string           // optional Gemini search hint; query preserves the original words, resolver verifies coordinates
   resolved?: { lng: number, lat: number, source: 'address_points' | 'maptiler' | 'known_place' }
   // amenity: the nearest of a kind
   category?: 'grocery' | 'school' | 'university' | 'library' | 'park' | 'community_centre'
@@ -911,6 +912,8 @@ User accounts, saved searches and alerts, messaging landlords, applications or p
 ---
 
 ## 27. Change log
+
+- 2026-10-17 [B]: Place targets may carry optional `normalizedQuery` (1–500 characters) to expand a nickname, abbreviation or spelling into a geocoder search name. `query` remains verbatim user text and requires source evidence. Gemini coordinates are discarded; the resolver verifies the location. Original known places and campus ambiguities take precedence; a normalized search can still return choices or unavailable. Amenities cannot carry this field. Normalized intents skip persistent parse caching to avoid storing generated location text. MapTiler lookups now explicitly enable its named POI index alongside existing default types.
 
 One line per change to this spec: `YYYY-MM-DD P#.#: what changed and why`. Newest at the bottom.
 

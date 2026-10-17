@@ -6,8 +6,8 @@ Task ids match `PROGRESS.md`; task details are in `SPEC.md`.
 
 ## Current state
 
-- **Current task:** P4.1/P4.2/P5.5b on the new branch; P3.2 import and P2.24 latency optimization are deferred by the user.
-- **Status:** active on `b/s4-s5-search-polish` in `/tmp/rent-search-mvp`, branched from merged main `b3290d4`. P4.1's B API/schema/scoring contract is complete; A owns the slider UI (P4.24). P3.3 and P3.4 remain partial for the dependencies below.
+- **Current task:** General-area display and Gemini-assisted place normalization; P3.2 import and P2.24 latency optimization are deferred by the user.
+- **Status:** active on `b/general-area-display` in `/tmp/rent-search-mvp`, branched from merged main `3da246f`. Place queries retain original evidence plus an optional normalized search name; only DestinationResolver supplies coordinates. Focused checks and live ROM → Royal Ontario Museum → MapTiler-coordinate acceptance pass. The new key was used only by the test process; runtime/deployment environment credentials were not changed. P3.3 and P3.4 remain partial for the dependencies below.
 - **Verified:** 20,956 live listings / 16,892 active nonduplicates at inspection; native SQL-backed cheapest/known filters, scalar percentiles, fairness, detail and overlap acceptance.
 - **Remaining:** D ward housing indicators and a sourced Toronto comparator for 25 full P3.3 briefings; Gemini quota for all three P3.4 AI outputs and demo cache population; P3.2 import for the pasted-listing part of P3.4. P2.24 cold-search optimization is deferred by the user. Owner changes remain outside B scope under TEAM.md.
 - **Last updated:** 2026-10-17

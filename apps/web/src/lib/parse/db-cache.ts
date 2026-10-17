@@ -18,7 +18,7 @@ export const parseCacheWrite = `INSERT INTO ai_cache (key, route, payload, expir
 function pack(prompt: string, input: SearchIntent) {
   const intent = SearchIntentSchema.parse(structuredClone(input));
   // shortcut: cache only losslessly grounded parses without generated clarification text; broaden when a privacy-safe reason vocabulary exists.
-  if (intent.droppedRequests.length || intent.travelTargets.some(t => !/^target-\d+$/.test(t.id)) || intent.areas.some(a => !Object.values(configuredAreas).some(known => JSON.stringify(a) === JSON.stringify(known)))) return;
+  if (intent.droppedRequests.length || intent.travelTargets.some(t => t.normalizedQuery || !/^target-\d+$/.test(t.id)) || intent.areas.some(a => !Object.values(configuredAreas).some(known => JSON.stringify(a) === JSON.stringify(known)))) return;
   const locate = (text: string): z.infer<typeof span> => {
     const start = prompt.indexOf(text);
     if (start < 0 || !text) throw new Error('Ungrounded cache text');

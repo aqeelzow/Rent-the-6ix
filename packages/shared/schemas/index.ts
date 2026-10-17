@@ -27,13 +27,14 @@ export const AreaFilterSchema = z.discriminatedUnion('kind', [
 export const ResolvedDestinationSchema = CoordinateSchema.extend({ source: z.enum(['address_points', 'maptiler', 'known_place']), representativePoint: z.boolean().optional(), label: text.optional() }).refine(v => !v.representativePoint || !!v.label, 'Representative points need a label');
 export const TravelTargetSchema = z.strictObject({
   id: text, kind: z.enum(['place', 'amenity']), label: text,
-  query: text.optional(), resolved: ResolvedDestinationSchema.optional(),
+  query: text.max(500).optional(), normalizedQuery: text.max(500).optional(), resolved: ResolvedDestinationSchema.optional(),
   category: z.enum(['grocery', 'school', 'university', 'library', 'park', 'community_centre', 'pharmacy', 'clinic', 'rapid_transit']).optional(),
   schoolLevel: z.enum(['elementary', 'secondary', 'any']).optional(),
   mode: ModeSchema, alternativeModes: unique(ModeSchema).optional(), maxMinutes: positive.optional(), hard: z.boolean(),
 }).superRefine((v, ctx) => {
   if (v.kind === 'place' && (!v.query && !v.resolved || v.category || v.schoolLevel)) ctx.addIssue({ code: 'custom', message: 'Place requires query or resolved coordinates, without amenity fields' });
-  if (v.kind === 'amenity' && (!v.category || v.query || v.resolved)) ctx.addIssue({ code: 'custom', message: 'Amenity requires category, without place fields' });
+  if (v.normalizedQuery && !v.query) ctx.addIssue({ code: 'custom', message: 'Normalized query requires an original place query' });
+  if (v.kind === 'amenity' && (!v.category || v.query || v.normalizedQuery || v.resolved)) ctx.addIssue({ code: 'custom', message: 'Amenity requires category, without place fields' });
   if (v.schoolLevel && v.category !== 'school') ctx.addIssue({ code: 'custom', message: 'schoolLevel only applies to school' });
   if (v.alternativeModes?.includes(v.mode)) ctx.addIssue({ code: 'custom', message: 'Alternative modes must differ from primary mode' });
 });
