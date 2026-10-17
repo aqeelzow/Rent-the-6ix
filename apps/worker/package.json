@@ -14,7 +14,8 @@
   "dependencies": {
     "@rentthe6ix/shared": "workspace:*",
     "cloakbrowser": "^0.6.3",
-    "playwright-core": "^1.64.1"
+    "playwright-core": "^1.64.1",
+    "postgres": "^3.4.9"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.5",
