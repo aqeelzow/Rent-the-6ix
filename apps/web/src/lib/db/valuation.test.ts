@@ -120,10 +120,25 @@ describe("listingContext", () => {
     expect(caveats.map((c) => c.code)).toContain("insufficient_comparables");
   });
 
-  it("reads the RentSafeTO building for the low-score caveat", async () => {
+  it("flags a price drop from the first observation", async () => {
     const sql = fakeSql(five(), [
-      { latest_score: "58.0", score_date: new Date("2025-03-01T00:00:00Z") },
+      {
+        asking_rent_cad: listing.monthlyRentCad + 200,
+        observed_at: new Date("2026-10-01T00:00:00Z"),
+      },
     ]);
+    const { caveats } = await listingContext(sql, listing, NOW);
+    expect(caveats.find((c) => c.code === "price_dropped")?.explanation).toContain(
+      "since 2026-10-01",
+    );
+  });
+
+  it("reads the RentSafeTO building for the low-score caveat", async () => {
+    const sql = fakeSql(
+      five(),
+      [],
+      [{ latest_score: "58.0", score_date: new Date("2025-03-01T00:00:00Z") }],
+    );
     const { caveats } = await listingContext(sql, { ...listing, buildingId: "RSN-1" }, NOW);
     const low = caveats.find((c) => c.code === "rentsafeto_low");
     expect(low?.explanation).toContain(

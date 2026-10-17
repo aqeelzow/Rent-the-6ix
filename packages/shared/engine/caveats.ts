@@ -14,6 +14,7 @@ export type CaveatCode =
   | "stale"
   | "fields_unknown"
   | "rentsafeto_low"
+  | "price_dropped"
   | "insufficient_comparables";
 
 export interface Caveat {
@@ -26,6 +27,7 @@ export interface Caveat {
 /** The listing fields caveats read. */
 export interface CaveatListing {
   title: string;
+  monthlyRentCad: number;
   excerpt: string;
   locationPrecision: "exact" | "street" | "area";
   /** ISO timestamp. */
@@ -43,6 +45,8 @@ export interface CaveatContext {
   building: { latestScore: number | null; scoreDate: string | null } | null;
   /** Other listings with the same description at a different address or price (from SQL). */
   sameTextElsewhere: number;
+  /** The first asking rent seen for this listing (listing_observations), if it's stored. */
+  firstSeen?: { rentCad: number; at: string } | null;
   now: Date;
 }
 
@@ -117,6 +121,15 @@ export function caveats(listing: CaveatListing, ctx: CaveatContext): Caveat[] {
       code: "rentsafeto_low",
       title: "Low RentSafeTO score",
       explanation: `The building scored ${Math.round(score)}% in its latest City of Toronto RentSafeTO evaluation${ctx.building?.scoreDate ? ` (${ctx.building.scoreDate})` : ""}. Buildings under ${C.rentSafeToLowScore}% are evaluated every year.`,
+    });
+
+  const first = ctx.firstSeen;
+  if (first && first.rentCad - listing.monthlyRentCad >= C.priceDropMinCad)
+    out.push({
+      severity: "info",
+      code: "price_dropped",
+      title: "Price dropped",
+      explanation: `The asking rent dropped from $${first.rentCad.toLocaleString("en-CA")} to $${listing.monthlyRentCad.toLocaleString("en-CA")} since ${first.at.slice(0, 10)}. A listing that's been reduced may be open to negotiation.`,
     });
 
   if (ctx.valuation?.status === "insufficient_data")

@@ -182,6 +182,10 @@ export async function listingContext(
     valuation = valuate(listing, candidates, benchmark, now);
     remember(key, now, valuation);
   }
+  // Pasted listings have no observations; the query just returns nothing.
+  const [first] = await sql<{ asking_rent_cad: number; observed_at: Date }[]>`
+    SELECT asking_rent_cad, observed_at FROM listing_observations
+    WHERE listing_id = ${listing.id} ORDER BY observed_at LIMIT 1`;
   const [building] = listing.buildingId
     ? await sql<{ latest_score: string | null; score_date: Date | null }[]>`
         SELECT latest_score, score_date FROM buildings WHERE id = ${listing.buildingId}`
@@ -197,6 +201,9 @@ export async function listingContext(
           }
         : null,
       sameTextElsewhere: 0,
+      firstSeen: first
+        ? { rentCad: first.asking_rent_cad, at: first.observed_at.toISOString() }
+        : null,
       now,
     }),
   };
