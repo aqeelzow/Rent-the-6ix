@@ -177,7 +177,7 @@ SearchIntent {
     leaseTerm?: Pref<'short_term' | '12_months'>
   }
   travelTargets: TravelTarget[]       // time to places and to kinds of amenity (section 7.4)
-  safety: { enabled: boolean, hard: boolean }   // off unless the user asks; hard = "below the city rate" only (section 7.6)
+  safety: { enabled: boolean, hard: boolean, maxRelativeRate?: number }   // off unless the user asks; hard = only neighbourhoods at most maxRelativeRate × the city rate, default 1 (section 7.6)
   household?: { annualIncomeCad?: number, people?: number }
   weights?: { value: number, price: number, travel: number, home: number, safety: number }
   sortBy: 'best_match' | 'lowest_rent' | 'best_value' | 'shortest_trips' | 'lowest_true_cost' | 'newest'
@@ -973,3 +973,4 @@ One line per change to this spec: `YYYY-MM-DD P#.#: what changed and why`. Newes
 - 2026-10-17 P2.13 [D] (drafted by A for D's review): `engine/safety.ts` combines the five Major Crime Indicators (assault, auto theft, break and enter, robbery, theft over) from the loaded `crime:*` three-year averages. `relativeRate` is the neighbourhood rate divided by the city rate, and the score is 100 at ≤0.5×, 0 at ≥2×, linear between. The city rate is population-weighted when neighbourhood population is loaded, else the equal-weight mean of the 158 neighbourhoods, and a caveat states which. Missing types give null rates, never a guess. The caveat text lives only in `safety.ts`. The lookup lives in `apps/web/src/lib/db/safety.ts`.
 - 2026-10-17 P2.24 [B] (drafted by A for B's review): live search attaches D's safety and safety score in `enrich()` only when the renter opts in. An unreadable crime table leaves safety unknown instead of failing the search.
 - 2026-10-17 P3.23 [A]: "How this works" dialog for the safety preference (measure, 15% weight, score scale, must-have, caveats from D's engine), opened from the filters panel, cards and the detail page. The detail page shows rates by type per 100,000 residents.
+- 2026-10-17 P2.24 [B] (drafted by A for B's review): `SearchIntent.safety` gains an optional `maxRelativeRate` (at most 5). The hard filter keeps neighbourhoods with `relativeRate` ≤ that limit, or ≤ 1 (`SAFETY.hardMaxRelativeRate`) when it is absent, so existing intents behave as before. `clean.ts` deletes any limit from AI output, because only the renter's slider sets one.

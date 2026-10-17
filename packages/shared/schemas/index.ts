@@ -54,7 +54,7 @@ export const SearchIntentSchema = z.strictObject({
     furnished: pref(z.boolean()).optional(), parking: pref(z.boolean()).optional(), laundryInSuite: pref(z.boolean()).optional(), utilitiesIncluded: pref(z.boolean()).optional(),
     availableBy: pref(date).optional(), leaseTerm: pref(z.enum(['short_term', '12_months'])).optional(),
   }),
-  travelTargets: z.array(TravelTargetSchema), safety: z.strictObject({ enabled: z.boolean(), hard: z.boolean() }).refine(v => v.enabled || !v.hard, 'Hard safety requires opt-in'),
+  travelTargets: z.array(TravelTargetSchema), safety: z.strictObject({ enabled: z.boolean(), hard: z.boolean(), maxRelativeRate: positive.max(5).optional() }).refine(v => v.enabled || !v.hard, 'Hard safety requires opt-in'),
   household: z.strictObject({ annualIncomeCad: positive.optional(), people: z.number().int().positive().optional() }).optional(),
   weights: WeightsSchema.optional(), sortBy: z.enum(['best_match', 'lowest_rent', 'best_value', 'shortest_trips', 'lowest_true_cost', 'newest']),
   fieldSources: z.record(text, z.strictObject({ source: z.enum(['ai_prompt', 'user', 'default']), phrase: text.optional() })),
