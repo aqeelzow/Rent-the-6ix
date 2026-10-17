@@ -9,7 +9,7 @@ const columns = ['id', 'source', 'sourceListingId', 'sourceUrl', 'title', 'excer
 // shortcut: retain at most eight unfinished reads after caller cancellation; use cancellable connections for higher production load.
 let candidateReadsInFlight = 0;
 const snake = (value: string) => value.replace(/[A-Z]/g, c => `_${c.toLowerCase()}`);
-const candidateColumns = `${columns.map(snake).join(', ')}, ST_X(location::geometry) AS lng, ST_Y(location::geometry) AS lat`;
+export const candidateColumns = `${columns.map(snake).join(', ')}, ST_X(location::geometry) AS lng, ST_Y(location::geometry) AS lat`;
 const numeric = (value: unknown) => typeof value === 'string' && /^-?\d+(?:\.\d+)?$/.test(value) ? Number(value) : value;
 export function listingFromRow(input: unknown): Listing {
   if (typeof input !== 'object' || input === null || Array.isArray(input)) throw new Error('Invalid listing row');

@@ -24,7 +24,7 @@ function client(options: { candidates?: unknown[]; observations?: unknown[]; com
     if (text.includes('listing_observations')) return Promise.resolve(options.observations ?? [{ deposit: true, asking_rent_cad: 2200, observed_at: new Date('2026-10-01') }]);
     throw new Error('Unexpected SQL');
   });
-  const unsafe = vi.fn((text: string, parameters?: unknown[]) => parameters ? Promise.resolve(options.candidates ?? [rowFor(listing)]) : text);
+  const unsafe = vi.fn((text: string, parameters?: unknown[]) => parameters ? Promise.resolve(text.includes('FROM neighbourhoods') || text.includes('FROM area_indicators') || text.includes('FROM buildings WHERE') || text.includes('WHERE duplicate_of =') ? [] : options.candidates ?? [rowFor(listing)]) : text);
   Object.assign(sql, { unsafe });
   return { sql: sql as unknown as Sql, tagged: sql, unsafe };
 }
@@ -164,4 +164,13 @@ test('enrich adds D safety and its score only when the renter opted in', async (
   assert.equal((await deps.enrich(listing, { ...baseIntent, safety: { enabled: true, hard: false } })).safety, null);
   const missing = sqlSearchDependencies(getClient, async () => { throw new Error('down'); });
   assert.equal((await missing.enrich(located, { ...baseIntent, safety: { enabled: true, hard: false } })).safety, null);
+});
+
+test('SQL eligibility phase exposes safety/travel without valuation reads or opt-out crime reads', async () => {
+  const db = client(), crime = vi.fn(async () => null);
+  const deps = sqlSearchDependencies(() => db.sql, crime);
+  assert.deepEqual(await deps.filterContext!(listing, baseIntent), { safety: null, travel: [] });
+  assert.equal(crime.mock.calls.length, 0); assert.equal(db.tagged.mock.calls.length, 0);
+  assert.deepEqual(await deps.filterContext!(listing, { ...travelIntent, safety: { enabled: true, hard: true } }), { safety: null, travel: [] });
+  assert.equal(crime.mock.calls.length, 1); assert.equal(db.tagged.mock.calls.length, 0);
 });

@@ -36,6 +36,48 @@ test('safe anonymous quotas ignore forged forwarding headers; start and poll quo
   assert.equal((await starts.search(request('listings/search', exact), undefined)).status, 200);
   assert.equal((await starts.search(request('listings/search', exact), undefined)).status, 429); starts.jobs.dispose();
 });
+test('Vercel platform IP isolates all quota classes and preserves custom identity', async () => {
+  const api = createRuntime({ env: { SEARCH_FIXTURES: '1', VERCEL: '1' }, limiter: new IpLimiter(1), startLimiter: new IpLimiter(1), pollLimiter: new IpLimiter(1) });
+  const forwarded = (req: Request, ip: string) => { req.headers.set('x-vercel-forwarded-for', ip); req.headers.set('x-forwarded-for', '203.0.113.99'); return req; };
+  const ips = ['192.0.2.1', '2001:db8::1'];
+  const ctx = { params: Promise.resolve({ token: 'a'.repeat(43) }) };
+  for (const ip of ips) {
+    assert.equal((await api.search(forwarded(request('listings/search', exact), ip), undefined)).status, 200);
+    const limited = await api.resolve(forwarded(request('geo/resolve?q=Union%20Station'), ip), undefined);
+    assert.equal(limited.status, 429); assert.equal(limited.headers.get('Retry-After'), '60');
+    assert.deepEqual(await limited.json(), { error: { code: 'rate_limited', message: 'Too many requests', retryAfterSeconds: 60 } });
+    assert.equal((await api.poll(forwarded(request('jobs'), ip), ctx)).status, 410);
+    assert.equal((await api.poll(forwarded(request('jobs'), ip), ctx)).status, 429);
+  }
+  api.jobs.dispose();
+  const starts = createRuntime({ env: { SEARCH_FIXTURES: '1', VERCEL: '1' }, startLimiter: new IpLimiter(1) });
+  for (const ip of ips) {
+    assert.equal((await starts.search(forwarded(request('listings/search', exact), ip), undefined)).status, 200);
+    assert.equal((await starts.search(forwarded(request('listings/search', exact), ip), undefined)).status, 429);
+  }
+  starts.jobs.dispose();
+  const custom = createRuntime({ env: { SEARCH_FIXTURES: '1', VERCEL: '1' }, identity: () => 'injected-server-identity', limiter: new IpLimiter(1) });
+  assert.equal((await custom.parse(forwarded(request('search/parse', { prompt: 'cheapest' }), ips[0]), undefined)).status, 200);
+  assert.equal((await custom.parse(forwarded(request('search/parse', { prompt: 'cheapest' }), ips[1]), undefined)).status, 429);
+});
+test('only Vercel single-IP header is trusted; malformed or missing identity shares anonymous quota', async () => {
+  for (const vercel of [undefined, '0', 'true']) {
+    const api = createRuntime({ env: { SEARCH_FIXTURES: '1', VERCEL: vercel }, limiter: new IpLimiter(1) });
+    for (const [index, ip] of ['192.0.2.1', '2001:db8::2'].entries()) {
+      const req = request('geo/resolve?q=Union%20Station');
+      req.headers.set('x-vercel-forwarded-for', ip); req.headers.set('x-forwarded-for', ip); req.headers.set('x-real-ip', ip);
+      assert.equal((await api.resolve(req, undefined)).status, index ? 429 : 200);
+    }
+  }
+  for (const ip of [null, '', 'not-an-ip', '192.0.2.1, 192.0.2.2', '192.0.2.1:443', '[2001:db8::1]', '999.0.0.1']) {
+    const api = createRuntime({ env: { SEARCH_FIXTURES: '1', VERCEL: '1' }, limiter: new IpLimiter(1) });
+    const req = request('geo/resolve?q=Union%20Station');
+    if (ip !== null) req.headers.set('x-vercel-forwarded-for', ip);
+    req.headers.set('x-forwarded-for', '192.0.2.3'); req.headers.set('x-real-ip', '192.0.2.4');
+    assert.equal((await api.resolve(req, undefined)).status, 200);
+    assert.equal((await api.resolve(request('geo/resolve?q=Union%20Station'), undefined)).status, 429);
+  }
+});
 test('default listing dependencies unavailable; parsing/resolution work; fixture search/detail preserve scores and distance labels', async () => {
   const api = createRuntime({ env: {} });
   assert.equal((await api.search(request('listings/search', { intent: baseIntent }), undefined)).status, 503);

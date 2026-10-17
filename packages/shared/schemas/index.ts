@@ -139,8 +139,9 @@ export const SearchResponseSchema = z.discriminatedUnion('status', [
 ]);
 export const ErrorResponseSchema = z.strictObject({ error: z.strictObject({ code: text, message: text, issues: z.array(z.strictObject({ path: z.array(z.union([z.string(), z.number().int()])), message: text })).optional(), retryAfterSeconds: positive.int().optional() }) });
 export const JobExpiredResponseSchema = z.strictObject({ error: z.strictObject({ code: z.literal('search_job_expired'), message: text }) });
-// Building details await D's exported contract; this draft cannot invent them.
-export const DetailResponseSchema = SearchResultSchema.safeExtend({ areas: z.array(AreaSchema), indicators: z.array(AreaIndicatorSchema), duplicates: z.array(ListingSchema) });
+// RentSafeTO fields mirror D's buildings table and published loader; colours are passed through.
+export const BuildingSchema = z.strictObject({ id: text, address: text, addressPointId: text.nullable(), location: CoordinateSchema.nullable(), yearBuilt: year.nullable(), storeys: nonnegative.int().nullable(), units: nonnegative.int().nullable(), propertyType: z.enum(['private', 'social_housing', 'tchc']).nullable(), latestScore: nonnegative.max(100).nullable(), scoreDate: z.iso.date().nullable(), signColour: text.nullable(), previousScores: z.array(z.strictObject({ year, score: nonnegative.max(100) })), sourceId: text.nullable() });
+export const DetailResponseSchema = SearchResultSchema.safeExtend({ building: BuildingSchema.nullable().optional(), areas: z.array(AreaSchema), indicators: z.array(AreaIndicatorSchema), duplicates: z.array(ListingSchema) });
 
 export type Listing = z.infer<typeof ListingSchema>;
 export type SearchIntent = z.infer<typeof SearchIntentSchema>;

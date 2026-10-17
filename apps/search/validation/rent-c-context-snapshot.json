@@ -1,0 +1,55 @@
+{
+  "scope": "Read-only repeatable-read single-connection diagnosis, 24 active canonical subjects: six rooms, studios, two-bedroom and three-plus whole units, prioritizing co-located listings; three cold owner-context passes at fixed now",
+  "measuredAt": "2026-10-17T19:34:10.931Z",
+  "fixedValuationNow": "2026-10-17T19:34:06.353Z",
+  "transaction": {
+    "isolation": "repeatable read",
+    "readOnly": "on",
+    "snapshotUnchanged": true
+  },
+  "sampleClasses": [
+    "room",
+    "studio",
+    "three-plus",
+    "two-bedroom"
+  ],
+  "subjectsWithColocatedListings": 24,
+  "runs": [
+    {
+      "run": 1,
+      "count": 24,
+      "estimates": 24,
+      "benchmarks": 24,
+      "comparables": 930,
+      "elapsedMs": 1334,
+      "sameResults": true
+    },
+    {
+      "run": 2,
+      "count": 24,
+      "estimates": 24,
+      "benchmarks": 24,
+      "comparables": 930,
+      "elapsedMs": 1128,
+      "sameResults": true
+    },
+    {
+      "run": 3,
+      "count": 24,
+      "estimates": 24,
+      "benchmarks": 24,
+      "comparables": 930,
+      "elapsedMs": 1116,
+      "sameResults": true
+    }
+  ],
+  "differences": [],
+  "elapsedMs": 4578,
+  "limits": [
+    "One snapshot and 24 subjects cannot prove determinism for all 500 candidates or every SQL tie/cutoff",
+    "Comparable, adjustment and caveat arrays canonicalized without dropping membership or scalar values; semantic array order not asserted",
+    "Single reserved connection with sequential reads; no concurrency tuning or endpoint/full-pool latency claim",
+    "Earlier 500-context cross-snapshot differences remain unclassified; concurrent ingest was not controlled in that probe",
+    "No database data/schema writes, owner query changes, provider calls or private prompt output"
+  ]
+}
