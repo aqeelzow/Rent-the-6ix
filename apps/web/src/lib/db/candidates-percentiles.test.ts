@@ -1,8 +1,8 @@
-import { test } from 'node:test';
+import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { baseIntent, sampleListings, valuations, travelIntent, safetySearchFixture } from '../../../../../packages/shared/fixtures/index';
 import { selectPercentile } from '../../../../../packages/shared/engine/score';
-import { SearchResponseSchema, type Listing, type NumericExtreme, type SearchIntent, type TravelTarget, type TravelTimeRow } from '../../../../../packages/shared/schemas/index';
+import { SearchResponseSchema, type Listing, type NumericExtreme, type SearchIntent } from '../../../../../packages/shared/schemas/index';
 import { searchPercentileCandidates } from './candidates-percentiles';
 import type { SearchDependencies } from './candidates';
 const selector: NumericExtreme = { field: 'rent', direction: 'min', percentage: 5, minimumCount: 10 };
@@ -35,7 +35,7 @@ test('scalar full eligible pool before cap and full hard enriched filters before
   assert.equal(all.results.length, 520); assert.equal(all.results[0].listing.id, pool[519].id);
   const safety = safetySearchFixture.status === 'completed' ? safetySearchFixture.results[0].safety! : null!;
   const gated = await execute({ ...scalar, criteria: { priceFairness: { value: ['underpriced'], hard: true } }, safety: { enabled: true, hard: true }, travelTargets: travelIntent.travelTargets }, {
-    listings: sampleListings, enrich: async (listing) => ({ valuation: { ...(listing.id === sampleListings[0].id ? valuations[2] : valuations[0]), estimatedRentCad: listing.monthlyRentCad / (listing.id === sampleListings[0].id ? 1.15 : .85), differenceCad: listing.monthlyRentCad / (listing.id === sampleListings[0].id ? 1.15 : .85) - listing.monthlyRentCad }, safety: { ...safety, areaId: listing.neighbourhoodId ?? safety.areaId, relativeRate: listing.id === sampleListings[1].id ? 2 : .5 }, travel: (await router([listing], travelIntent.travelTargets, 'walk', 100, new AbortController().signal)).map(row => ({ ...row, minutes: listing.id === sampleListings[2].id ? 30 : 5 })) }),
+    listings: sampleListings, enrich: async (listing) => ({ valuation: { ...(listing.id === sampleListings[0].id ? valuations[2] : valuations[0]), estimatedRentCad: listing.monthlyRentCad / (listing.id === sampleListings[0].id ? 1.15 : .85), differenceCad: listing.monthlyRentCad / (listing.id === sampleListings[0].id ? 1.15 : .85) - listing.monthlyRentCad }, safety: { ...safety, areaId: listing.neighbourhoodId!, relativeRate: listing.id === sampleListings[1].id ? 2 : .5 }, travel: (await router([listing], travelIntent.travelTargets, 'walk', 100, new AbortController().signal)).map(row => ({ ...row, minutes: listing.id === sampleListings[2].id ? 30 : 5 })) }),
   }, true);
   assert.equal(gated.status, 'completed'); if (gated.status !== 'completed') return;
   assert.equal(gated.eligibleCount, 5); assert.equal(gated.results.length, 5);
@@ -77,7 +77,7 @@ test('travel full pool exceeds500 and100; no incomplete partial exact selection'
 test('shared deadline and caller abort bound enrichment and uncooperative routing', async () => {
   const budgets: number[] = [];
   const signals: AbortSignal[] = [];
-  const deps = { listings: sampleListings, enrich, routeTimes: async (_l: Listing[], _t: TravelTarget[], _m: TravelTimeRow['mode'], budget: number, signal: AbortSignal) => { budgets.push(budget); signals.push(signal); return new Promise<never>(() => {}); } };
+  const deps: SearchDependencies = { listings: sampleListings, enrich, routeTimes: async (_l, _t, _m, budget, signal) => { budgets.push(budget); signals.push(signal); return new Promise<never>(() => {}); } };
   const result = await searchPercentileCandidates({ intent: exact, hideUnconfirmed: false }, deps, { referenceYear: 2026, deadline: Date.now() + 25 });
   assert.equal(result.status, 'unavailable'); assert.ok(budgets.every(budget => budget <= 25)); assert.ok(signals.every(signal => signal.aborted));
   const controller = new AbortController();

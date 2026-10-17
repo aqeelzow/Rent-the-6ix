@@ -1,7 +1,7 @@
-import { test } from 'node:test';
+import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { baseIntent, sampleListings, valuations, travelIntent, safetySearchFixture } from '../fixtures/index';
-import { MatchScoreSchema, SearchIntentSchema, type Listing, type TravelTimeRow } from '../schemas/index';
+import { ListingSchema, MatchScoreSchema, SearchIntentSchema, type SearchIntent, type Listing, type TravelTimeRow } from '../schemas/index';
 import { homeFit, roomsScore, sizeScore, unitTypeMatch } from './home-fit';
 import { filterListing } from './filters';
 import { scoreListing } from './score';
@@ -71,4 +71,17 @@ test('travel evidence labels distance and driving free flow', () => {
   const score = scoreListing(listing, { ...baseIntent, travelTargets: [t] }, { ...context, travel: [row('drive', null)] });
   const evidence = score.parts.find(p => p.id === 'travel')!.evidence.join(' ');
   assert.ok(evidence.includes('1000 m straight-line')); assert.ok(evidence.includes('driving, no traffic')); assert.ok(!evidence.includes('null minutes'));
+});
+
+test('missing civic IDs stay unconfirmed through geographic OR and hide gates', () => {
+  const sparse = ListingSchema.parse({ ...listing, neighbourhoodId: null, wardId: null });
+  assert.equal(sparse.neighbourhoodId, null); assert.equal(sparse.wardId, null);
+  const areas: SearchIntent['areas'] = [{ kind: 'ward', id: 'known-ward' }];
+  const current = { ...baseIntent, areas };
+  assert.deepEqual(filterListing(sparse, current), { passes: true, notes: ['area: not confirmed'] });
+  assert.equal(filterListing(sparse, current, {}, true).passes, false);
+  assert.equal(filterListing({ ...sparse, wardId: 'different-ward' }, current).passes, false);
+  const withNear = { ...current, areas: [...areas, { kind: 'near' as const, point: sparse.location, radiusM: 1 }] };
+  assert.deepEqual(filterListing(sparse, withNear, {}, true), { passes: true, notes: [] });
+  assert.deepEqual(filterListing(sparse, baseIntent, {}, true), { passes: true, notes: [] });
 });
