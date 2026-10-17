@@ -12,6 +12,7 @@ import { loadBoundaries } from "./areas.ts";
 import { loadBuildings } from "./buildings.ts";
 import { loadCensus } from "./census.ts";
 import { loadCrimeRates } from "./crime.ts";
+import { loadDevApplications } from "./dev-applications.ts";
 import { loadPois } from "./pois.ts";
 import { loadTransitStops } from "./transit-stops.ts";
 
@@ -88,6 +89,13 @@ async function census(sql: Sql): Promise<void> {
     throw new Error("expected all 158 neighbourhoods in the profiles");
 }
 
+async function devapps(sql: Sql): Promise<void> {
+  const load = await loadDevApplications(sql);
+  console.log(
+    `  dev_applications: ${load.applications} applications from ${load.records} rows (${load.withUnits} with a unit count); area_indicators: ${load.indicators} rows for ${load.period}`,
+  );
+}
+
 // `indicators` reads buildings, stops and POIs, so it runs after them in `all`.
 const TASKS: Record<string, Task> = {
   areas,
@@ -97,6 +105,7 @@ const TASKS: Record<string, Task> = {
   buildings,
   crime,
   census,
+  devapps,
   indicators,
 };
 
