@@ -16,7 +16,7 @@ import { loadBriefingFacts, cachedBriefing, cacheBriefing } from '../db/briefing
 import { civicAreasLookup } from '../parse/civic-areas-db';
 import { addressPointsLookup } from '../parse/address-points';
 import { areaPointsLookup } from '../parse/areas';
-import { nearestAmenity } from '../db/pois';
+import { amenityDistances, nearestAmenity } from '../db/pois';
 import { searchCandidates, routeCandidateContexts, SearchUnavailable, type SearchDependencies } from '../db/candidates';
 import { sqlSearchDependencies } from '../db/candidates-context';
 import { OtpClient } from '../geo/otp';
@@ -46,6 +46,8 @@ function withRouting(dependencies: SearchDependencies, otpUrl: string | undefine
     routeTimes: createRouteTimes(new OtpClient({ url: otpUrl }), {
       destinationFor: (listing, target) => (target.category ? amenities(listing.location, target.category) : Promise.resolve(null)),
     }),
+    // Filled after routing, so a card the router never reached still shows a distance, not a blank.
+    amenityDistances: amenityDistances(),
   };
 }
 type RuntimeOptions = { env?: Record<string, string | undefined>; parser?: ParseService; resolver?: DestinationResolver; dependencies?: SearchDependencies; jobs?: SearchJobs; identity?: (request: Request) => string; limiter?: IpLimiter; startLimiter?: IpLimiter; pollLimiter?: IpLimiter; explainProvider?: import('../ai/index').AIProvider };

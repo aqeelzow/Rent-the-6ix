@@ -45,6 +45,22 @@ test('routing only top100; numeric sort survives rescore; hide waits for routing
   assert.equal(result.results[0].listing.monthlyRentCad, 1001);
   assert.equal(result.results[99].listing.monthlyRentCad, 1100);
 });
+test('amenity targets the router never reached still carry a labelled distance', async () => {
+  const row = (listing: Listing, method: 'otp' | 'straight_line', minutes: number | null) => ({ listingId: listing.id, targetId: 'grocery', mode: 'walk' as const, distanceM: 300, minutes, method, computedAt: listing.lastSeenAt, poiId: null });
+  const intent = { ...baseIntent, sortBy: 'lowest_rent' as const, travelTargets: [{ id: 'grocery', kind: 'amenity' as const, label: 'Groceries', category: 'grocery' as const, mode: 'walk' as const, hard: false }] };
+  const result = await searchCandidates({ intent, hideUnconfirmed: false }, {
+    listings: pool.slice(0, 5), enrich,
+    // Answer for two listings only, as a spent routing budget does.
+    routeTimes: async (origins, targets, mode) => origins.slice(0, 2).flatMap(listing => targets.map(target => ({ ...row(listing, 'otp', 6), targetId: target.id, mode }))),
+    amenityDistances: async (listings, targets) => listings.flatMap(listing => targets.flatMap(target => ({ ...row(listing, 'straight_line', null), targetId: target.id }))),
+  });
+  const methods = result.results.map(item => item.travel.find(t => t.targetId === 'grocery')?.method);
+  assert.equal(result.results.length, 5);
+  assert.equal(methods.filter(method => method === 'otp').length, 2, 'the routed answers stay as they are');
+  assert.equal(methods.filter(method => method === 'straight_line').length, 3, 'the rest get a distance, never minutes');
+  assert.ok(result.results.every(item => item.travel.length === 1), 'no duplicate rows per target and mode');
+});
+
 test('one shared deadline across modes, late routing ignored, failure retains unknown', async () => {
   const budgets: number[] = [];
   let resolveLate: (rows: TravelTimeRow[]) => void = () => {};
