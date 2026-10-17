@@ -2,9 +2,8 @@ import { AreaFactsSchema, type AreaFact, type AreaFacts } from "@rentthe6ix/shar
 import { getClient } from "../db";
 
 // One area's facts with the city value beside each (P3.10 core, SPEC 9.1–9.3). Owner: D. The ward
-// page's table and B's briefing read this same object, so every number in the briefing can be
-// checked against what the page shows. Crime rates are left out: they are opt-in only (SPEC 9.4),
-// never part of a default view or a briefing.
+// page's "at a glance" table reads this object. Crime rates are left out: they are opt-in only
+// (SPEC 9.4), never part of a default view.
 //
 // City values follow what each figure means: counts are summed; densities and shares of area are
 // weighted by area; the renter share by households; the RentSafeTO average is over every evaluated
