@@ -6,7 +6,7 @@ Database configuration is now supplied and verified. B static SQL filters/percen
 
 C performance request: `listingContext` currently performs comparable/observation/building reads per listing. A cold 183-result confirmed static search took20.1 seconds in the built server; B now overlaps two owner calls and caches validated context for60 seconds, but full fairness/best-value eligibility may scan16,892 listings and cannot rely on C's5,000-entry valuation cache. Please provide a batch context/valuation API retaining current comparable selection, caveats and confidence semantics. No owner algorithm/schema was copied or modified. B depends on that contract for consistently fast cold/full enriched searches.
 
-D static safety request: all16,892 active nonduplicate listings have NULL neighbourhood_id in the current data. Publish authoritative neighbourhood assignment and safety lookup/score adapters before B enables live safety ranking/filter confirmation. B keeps these values unknown and never substitutes fixture rates. Dynamic distance/routing work is explicitly deferred by the user.
+D static safety revalidation: current data now has15,510 active nonduplicate listings, all assigned neighbourhoods,158 neighbourhoods and1,422 crime indicators (nine types,2023–2025). The earlier missing-assignment blocker is resolved. Current upstream still lacks authoritative city-rate, safety lookup and score adapters; publish those contracts before B enables live rate/ranking confirmation. B does not infer a city rate by averaging neighbourhood rates, and never substitutes fixture rates. Dynamic distance/routing work is explicitly deferred by the user.
 
 ## Latest status — upstream 29a7393
 

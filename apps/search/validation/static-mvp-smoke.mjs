@@ -17,6 +17,27 @@ try {
   assert.deepEqual(parsed.intent.criteria.rent.value, { max: 3000 });
   assert.deepEqual(parsed.intent.criteria.bedrooms.value, { min: 2, max: 2 });
   assert.equal(parsed.intent.sortBy, 'lowest_rent');
+  const parseChecks = [
+    ['At least 2 bedrooms, under $3000', value => {
+      assert.deepEqual(value.criteria.rent.value, { max: 3000 });
+      assert.deepEqual(value.criteria.bedrooms.value, { min: 2 });
+    }],
+    ['2-3 bedrooms, $2000-$3000', value => {
+      assert.deepEqual(value.criteria.rent.value, { min: 2000, max: 3000 });
+      assert.deepEqual(value.criteria.bedrooms.value, { min: 2, max: 3 });
+    }],
+    ['best value apartments', value => assert.equal(value.sortBy, 'best_value')],
+    ['newest listings under $2500', value => {
+      assert.equal(value.sortBy, 'newest');
+      assert.deepEqual(value.criteria.rent.value, { max: 2500 });
+    }],
+    ['apartments at least 20 years old', value => assert.deepEqual(value.criteria.buildingAge.value, { builtBefore: new Date().getUTCFullYear() - 20 })],
+    ['bottom 5% rent minimum 100 results', value => {
+      assert.equal(value.criteria.rent, undefined);
+      assert.equal(value.numericExtreme.minimumCount, 100);
+    }],
+  ];
+  for (const [prompt, check] of parseChecks) check((await call('/api/search/parse', { prompt })).intent);
   const intent = { ...parsed.intent, rawPrompt: '', fieldSources: {}, droppedRequests: [] };
   const request = { intent, hideUnconfirmed: true };
   // Independent SQL oracle for these known fields and the documented configured Downtown box.
@@ -72,5 +93,5 @@ try {
   assert.equal(terminal.status, 'unavailable');
   assert.equal(terminal.reason, 'routing_incomplete');
   await call(job.pollUrl, undefined, 410);
-  console.log(JSON.stringify({ parser: parsed.parser, eligible: expected.length, returned: results.results.length, percentile: count, liveDetail: true, overlappingSearches: true, staticSizeAgeTypeAc: true, hardFairness: true, asyncJobs: true, measurements }, null, 2));
+  console.log(JSON.stringify({ parser: parsed.parser, eligible: expected.length, returned: results.results.length, percentile: count, liveDetail: true, overlappingSearches: true, staticSizeAgeTypeAc: true, compoundPromptParsing: true, hardFairness: true, asyncJobs: true, measurements }, null, 2));
 } finally { await sql.end({ timeout: 1 }); }

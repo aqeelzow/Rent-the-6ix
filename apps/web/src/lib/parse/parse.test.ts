@@ -36,12 +36,61 @@ test('home bounds, preferences, booleans, age, source evidence and safety remain
 });
 test('percentiles, minima, travel selectors, independent destinations and clarification', () => {
   assert.deepEqual(fallbackParse('bottom 5% rent min 12 results').numericExtreme, { field:'rent', direction:'min', percentage:5, minimumCount:12 });
+  for (const prompt of ['bottom 5% rent minimum 100 results', 'bottom 5% rent min 10 results', 'rent under 5%']) {
+    assert.equal(fallbackParse(prompt).criteria.rent, undefined, prompt);
+  }
+  assert.equal(fallbackParse('bottom 5% rent minimum 100 results').numericExtreme?.minimumCount, 100);
   assert.equal(fallbackParse('top 5% largest').numericExtreme?.field, 'sizeSqft');
   assert.equal(fallbackParse('top 5% shortest travel to Union Station by bike').numericExtreme?.targetId, 'target-1');
   const multiple = fallbackParse('bottom 5% rent and top 10% size'); assert.equal(multiple.numericExtreme, undefined); assert.equal(multiple.droppedRequests.length, 2);
   assert.ok(fallbackParse('bottom 5%').droppedRequests.length); assert.ok(fallbackParse('spacious').droppedRequests.length);
   const independent = fallbackParse('10 min walk to Union Station and 20 min bike to Eaton Centre'); assert.equal(independent.travelTargets.length, 2); assert.equal(independent.travelTargets[0].maxMinutes, 10); assert.equal(independent.travelTargets[0].alternativeModes,undefined); assert.equal(independent.travelTargets[1].maxMinutes, 20); assert.equal(independent.travelTargets[1].mode, 'bike');
   assert.deepEqual(fallbackParse('rent at least $1,800').criteria.rent?.value, { min: 1800 });
+});
+test('rent parsing skips earlier bedroom, size and travel quantities', async () => {
+  const service = new ParseService({ provider: new NoneProvider() });
+  for (const prompt of [
+    'At least 2 bedrooms, under $3000',
+    'Budget for at least 2-bedroom apartments, under $3000',
+    'At least 800 sqft and under $3000',
+    'Under 30 years old and under $3000',
+    'Within 15 minutes walk to Union Station and under $3000',
+  ]) {
+    const { intent } = await service.parse({ prompt }, 'rent-order-test');
+    assert.deepEqual(intent.criteria.rent?.value, { max: 3000 }, prompt);
+    assert.equal(intent.fieldSources['criteria.rent'].phrase, 'under $3000');
+  }
+  for (const prompt of [
+    '2-3 bedrooms, $2000-$3000',
+    '700-900 sqft, rent 2000-3000',
+    'Budget for 2-3 bedrooms, $2000-$3000',
+  ]) assert.deepEqual(fallbackParse(prompt).criteria.rent?.value, { min: 2000, max: 3000 }, prompt);
+  for (const prompt of ['Budget 2 bedrooms', 'Budget for at least 2 bedrooms', 'Budget for 700-900 sqft']) {
+    assert.equal(fallbackParse(prompt).criteria.rent, undefined, prompt);
+  }
+});
+test('explicit static sorts and both building-age directions survive basic parsing', () => {
+  const now = new Date('2026-10-17');
+  for (const phrase of ['at most', 'maximum', 'under', 'no more than']) {
+    assert.deepEqual(fallbackParse(`Apartments ${phrase} 20 years old`, now).criteria.buildingAge?.value, { builtAfter: 2006 });
+  }
+  for (const phrase of ['at least', 'minimum', 'over', 'older than', 'no less than']) {
+    assert.deepEqual(fallbackParse(`Apartments ${phrase} 20 years old`, now).criteria.buildingAge?.value, { builtBefore: 2006 });
+  }
+  const preference = fallbackParse('Apartments, ideally at least 20 years old', now);
+  assert.equal(preference.criteria.buildingAge?.hard, false);
+  assert.equal(preference.fieldSources['criteria.buildingAge'].phrase, 'at least 20 years old');
+  assert.equal(fallbackParse('Apartments at least 300 years old', now).droppedRequests.length, 1);
+  assert.equal(fallbackParse('best value apartments').sortBy, 'best_value');
+  for (const phrase of ['newest listings', 'latest listings', 'most recently listed', 'newest first']) {
+    const intent = fallbackParse(`${phrase} under $2500`);
+    assert.equal(intent.sortBy, 'newest');
+    assert.equal(intent.fieldSources.sortBy.phrase, phrase);
+    assert.equal(intent.criteria.buildingAge, undefined);
+  }
+  const building = fallbackParse('top 5% newest apartments');
+  assert.equal(building.numericExtreme?.field, 'buildingAge');
+  assert.equal(building.sortBy, 'best_match');
 });
 test('known places ambiguity, representative labels and honest unknown business', async () => {
   const resolver = new DestinationResolver();

@@ -2,13 +2,15 @@
 
 ## Current static MVP work — 2026-10-17
 
-Verification:279 workspace tests, workspace lint/typecheck, production build and live standalone HTTP smoke pass. Cold183-row search20.143s remains above target; immediate warm repeat0.801s, scalar0.149s and cached detail0.047s. Fast parse returned labelled fallback in3.074s. See `validation/static-mvp-findings.md` for requirements/evidence and remaining owner work.
+Verification:281 workspace tests, workspace lint/typecheck, production build and live standalone HTTP smoke pass. Cold183-row search20.143s remains above target; immediate warm repeat0.801s, scalar0.149s and cached detail0.047s. Fast parse returned labelled fallback in3.074s. See `validation/static-mvp-findings.md` for requirements/evidence and remaining owner work.
 
 Branch `b/search-static-mvp` in `/tmp/rent-search-mvp`, based on canonical `f055a38`. SQL search is enabled by `DATABASE_URL` (configured locally, never committed); `SEARCH_FIXTURES=1` still explicitly selects synthetic data. Live static filters, cheapest sorting, scalar percentiles, real valuation/caveats and context detail have passed native HTTP checks against the supplied database. Unknown data remains labelled unknown. Dynamic routing is deferred; live safety/civic adapters remain unavailable.
 
 Ordinary enrichment uses two concurrent owner calls and preserves deterministic result order. Scalar percentiles without hard enriched gates select from the full cheap-filtered pool before enriching only selected rows; hard fairness/safety/travel gates still run before percentile selection. Broad fairness/best-value scans remain expensive and are not claimed to meet the search latency target.
 
 Run the repeatable database-backed smoke with `node --env-file=apps/web/.env.local apps/search/validation/static-mvp-smoke.mjs` from the repository root while the app runs on port3040; override `SEARCH_BASE_URL` for another server. It asserts SQL counts/rent bounds, percentiles, real detail/score identity, missing-ID404, invalid-request422, hard fairness and overlapping searches. No listing snapshots or credentials are saved by the check.
+
+Fallback parsing preserves rent when an earlier bedroom, size, age or travel quantity appears first (for example, “at least 2 bedrooms, under $3000”). Explicit “best value” selects valuation ordering; “newest listings”/“latest listings” select listing recency, while “top 5% newest” remains a building-age percentile. “At most” and “at least” years old map to construction-year bounds using the current UTC year; ages outside supported construction years are returned as clarification requests. Focused parser regression tests exercise these through the basic parser and parse service.
 
 ## Historical handoff — upstream 29a7393
 

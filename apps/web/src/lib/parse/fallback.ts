@@ -20,19 +20,28 @@ export function fallbackParse(rawPrompt: string, now = new Date()): SearchIntent
   const people = rawPrompt.match(/\b(\d+)\s+(?:people|persons|of us)\b/i);
   if (people) { intent.household = { ...intent.household, people: Number(people[1]) }; source('household.people', people[0]); }
   const money = String.raw`\$?\d[\d,]*(?:\.\d+)?k?`;
-  const rentRange = rawPrompt.match(new RegExp(`(?:between\\s+)?(${money})\\s*(?:-|–|to|and)\\s*(${money})(?:\\s*(?:per|a|\\/)?\\s*(?:month|monthly|mo)\\b|\\s+per\\b)?`, 'i'));
-  if (rentRange && !(income && rentRange.index! >= income.index! && rentRange.index! < income.index! + income[0].length) && (/[$k]|\bper\b|month/i.test(rentRange[0]) || /rent|budget|price/i.test(rawPrompt.slice(Math.max(0, rentRange.index! - 20), rentRange.index)))) {
+  const nonRentUnit = /^\s*[-+]?\s*(?:sqft|sq\.?\s*ft|square feet|bedrooms?|beds?|bathrooms?|baths?|rooms?|years?|min(?:ute)?s?|results?)\b|^\s*%/i;
+  const rentRange = [...rawPrompt.matchAll(new RegExp(`(?:between\\s+)?(${money})\\s*(?:-|–|to|and)\\s*(${money})(?:\\s*(?:per|a|\\/)?\\s*(?:month|monthly|mo)\\b|\\s+per\\b)?`, 'gi'))].find(m =>
+    !(income && m.index >= income.index! && m.index < income.index! + income[0].length) &&
+    !nonRentUnit.test(rawPrompt.slice(m.index + m[0].length)) &&
+    (/[$k]|\bper\b|month/i.test(m[0]) || /rent|budget|price/i.test(rawPrompt.slice(Math.max(0, m.index - 20), m.index)))
+  );
+  if (rentRange) {
     const a = amount(rentRange[1]), b = amount(rentRange[2]);
     // A shared trailing k applies to both ends of an abbreviated range such as 3–5k.
     const min = /k$/i.test(rentRange[2]) && !/k$/i.test(rentRange[1]) && a < 100 ? a * 1000 : a;
     if (min <= b) put('rent', { min, max: b }, rentRange[0]); else drop(rentRange[0], 'Rent bounds are reversed; clarify the range.');
   } else {
-    const rent = rawPrompt.match(new RegExp(`(under|below|less than|no more than|at most|max(?:imum)?(?: rent)?|over|above|at least|min(?:imum)?(?: rent)?)\\s+(${money})`, 'i'));
-    if (rent && !/^\s*(?:sqft|sq\.?\s*ft|square feet|bedrooms?|beds?|bathrooms?|baths?|rooms?|years?|min(?:ute)?s?)\b/i.test(rawPrompt.slice(rent.index! + rent[0].length)) && (/[$k]/i.test(rent[2]) || amount(rent[2]) >= 100 || /rent|budget|price|per month/i.test(rawPrompt.slice(Math.max(0, rent.index! - 20), rent.index! + rent[0].length + 20)))) put('rent', /over|above|at least|^min/i.test(rent[1]) ? { min: amount(rent[2]) } : { max: amount(rent[2]) }, rent[0]);
+    const rent = [...rawPrompt.matchAll(new RegExp(`(under|below|less than|no more than|at most|max(?:imum)?(?: rent)?|over|above|at least|min(?:imum)?(?: rent)?)\\s+(${money})`, 'gi'))].find(m =>
+      !(income && m.index >= income.index! && m.index < income.index! + income[0].length) &&
+      !nonRentUnit.test(rawPrompt.slice(m.index + m[0].length)) &&
+      (/[$k]/i.test(m[2]) || amount(m[2]) >= 100 || /rent|budget|price|per month/i.test(rawPrompt.slice(Math.max(0, m.index - 20), m.index + m[0].length + 20)))
+    );
+    if (rent) put('rent', /over|above|at least|^min/i.test(rent[1]) ? { min: amount(rent[2]) } : { max: amount(rent[2]) }, rent[0]);
   }
   if (!intent.criteria.rent) {
     const budget = rawPrompt.match(new RegExp(`\\b(?:budget|maximum rent|max rent)(?:\\s+(?:of|is))?\\s*:?\\s*(${money})`, 'i'));
-    if (budget) put('rent', { max: amount(budget[1]) }, budget[0]);
+    if (budget && !nonRentUnit.test(rawPrompt.slice(budget.index! + budget[0].length))) put('rent', { max: amount(budget[1]) }, budget[0]);
   }
   for (const [field, noun] of [['bedrooms', 'bedrooms?|beds?|rooms?'], ['bathrooms', 'bathrooms?|baths?'], ['sizeSqft', 'sq\\.?\\s*ft|square feet|sqft']] as const) {
     const m = rawPrompt.match(new RegExp(`(?:(at least|minimum|min|over|at most|maximum|max|under)\\s+)?(\\d+(?:\\.\\d+)?)(?:\\s*(-|–|to)\\s*(\\d+(?:\\.\\d+)?))?\\s*[-+]?\\s*(?:${noun})\\b`, 'i'));
@@ -50,7 +59,14 @@ export function fallbackParse(rawPrompt: string, now = new Date()): SearchIntent
   }
   const built = rawPrompt.match(/built\s+(after|before|since|in)\s+(\d{4})/i);
   if (built) { const y = Number(built[2]); put('buildingAge', built[1].toLowerCase() === 'in' ? { builtAfter: y, builtBefore: y } : /after|since/i.test(built[1]) ? { builtAfter: y } : { builtBefore: y }, built[0]); }
-  else { const age = rawPrompt.match(/(?:less than|under|no more than)\s+(\d+)\s+years?\s+old|new build/i); if (age) put('buildingAge', { builtAfter: now.getUTCFullYear() - Number(age[1] ?? 10) }, age[0]); }
+  else {
+    const age = rawPrompt.match(/(less than|under|no more than|at most|maximum|more than|over|older than|at least|minimum|no less than)\s+(\d+)\s+years?\s+old|new build/i);
+    if (age) {
+      const year = now.getUTCFullYear() - Number(age[2] ?? 10);
+      if (year < 1800 || year > 2100) drop(age[0], 'Building age is outside supported construction years; clarify the age.');
+      else put('buildingAge', /^(?:more than|over|older than|at least|minimum|no less than)$/i.test(age[1] ?? '') ? { builtBefore: year } : { builtAfter: year }, age[0]);
+    }
+  }
   const ac = rawPrompt.match(/\b(?:central\s+(?:air|ac)|air conditioning|a\/c|ac)\b/i); if (ac) { if (/no\s*$/i.test(rawPrompt.slice(Math.max(0, ac.index! - 4), ac.index))) drop(ac[0], 'No-AC exclusion is unsupported; clarify.'); else put('airConditioning', /central/i.test(ac[0]) ? 'central' : 'any', ac[0]); }
   const pet = rawPrompt.match(/\b(?:cat(?:s)?[- ]friendly|dog(?:s)?[- ]friendly|cats?(?: allowed)?|dogs?(?: allowed)?|pet[- ]friendly|pets allowed)\b/i); if (pet) { if (/no\s*$/i.test(rawPrompt.slice(Math.max(0, pet.index! - 4), pet.index))) drop(pet[0], 'Pet exclusion is unsupported; clarify.'); else put('petsAllowed', /cat/i.test(pet[0]) ? 'cats' : /dog/i.test(pet[0]) ? 'dogs' : 'any', pet[0]); }
   for (const [field, pattern] of [['furnished', /\b(?:unfurnished|furnished)\b/i], ['parking', /\b(?:no parking|parking)\b/i], ['laundryInSuite', /\b(?:no in[- ]suite laundry|in[- ]suite laundry)\b/i], ['utilitiesIncluded', /\b(?:utilities (?:not )?included)\b/i]] as const) { const m = rawPrompt.match(pattern); if (m) put(field, !/^(no|un)|not/i.test(m[0]), m[0]); }
@@ -58,6 +74,11 @@ export function fallbackParse(rawPrompt: string, now = new Date()): SearchIntent
   if (fairness) put('priceFairness', /not overpriced/i.test(fairness[0]) ? ['underpriced', 'reasonable'] : /reasonably/i.test(fairness[0]) ? ['reasonable'] : /^overpriced/i.test(fairness[0]) ? ['overpriced'] : ['underpriced'], fairness[0], /only/i.test(fairness[0]) || (!/good deal/i.test(fairness[0]) && hard(fairness[0])));
   const safety = rawPrompt.match(/\b(?:safety|safe (?:neighbourhood|area)|low crime|safer|below (?:the )?city (?:crime )?rate)\b/i); if (safety) { intent.safety = { enabled: true, hard: /below/i.test(safety[0]) }; source('safety', safety[0]); }
   const cheapest = rawPrompt.match(/\b(?:cheapest|lowest (?:rent|cost))\b/i); if (cheapest) { intent.sortBy = 'lowest_rent'; source('sortBy', cheapest[0]); }
+  if (!cheapest) {
+    const value = rawPrompt.match(/\bbest value\b/i);
+    const newest = rawPrompt.match(/\b(?:newest listings?|latest listings?|most recently (?:listed|seen)|recently listed|newest first)\b/i);
+    if (value || newest) { intent.sortBy = value ? 'best_value' : 'newest'; source('sortBy', (value ?? newest)![0]); }
+  }
   const placeCount = [...rawPrompt.matchAll(/\b(?:university of toronto|uoft|u of t|york university|eaton cent(?:er|re)|union station|toronto general hospital|financial district|TD(?: Canada)?\s+(?:on|at))/gi)].length;
   const placeContext = rawPrompt.replace(/\d+\s*(?:minutes?|mins?)\s+(?:by\s+)?(?:transit|drive|walk|bike|car|walking|biking)\s+to\s+(?:(?:a|the|nearest)\s+)?(?:supermarkets?|grocer(?:y|ies)|public schools?|schools?|parks?|subway|librar(?:y|ies)|pharmac(?:y|ies)|clinics?)\b/gi, '');
   const globalModes = placeCount <= 1 ? modes(placeContext) : [];
