@@ -44,8 +44,8 @@ const bandColor: ExpressionSpecification = [
  * Results map (SPEC 12): clustered pins, listing uncertainty circles, configured search areas and
  * place pins. Hover and select are shared with the list through the store.
  */
-/** The highlighted listing's ring: the dashboard's navy, darker than every score band. */
-const ACTIVE_COLOR = "#120f2e";
+/** The highlighted listing's ring: a warm orange no score band or place pin uses. */
+const ACTIVE_COLOR = "#e8590c";
 
 /** How close the map comes in on a listing hovered in the list (street level). */
 const HOVER_ZOOM = 14.5;
