@@ -71,7 +71,7 @@ Implementation defaults: unstated criteria impose no constraints; household size
 ### Current P3 sequence
 
 - [x] P3.1: POST listing explanation from computed detail facts, output number/safety checks, bounded fast-model cache, template fallback and API documentation. Focused feature validation recorded below.
-- [ ] P3.3: area briefing from available official indicators, neutral number-checked paragraphs, fallback and ward pre-generation. Ward source indicators remain an owner dependency; track partial scope precisely.
+- [~] P3.3: B route, sourced-fact loader, number/political checks, template fallback and fact-keyed cache/pre-generation path implemented. Full three-topic ward briefings and all-25 pre-generation remain blocked on D ward housing and city-comparator indicators; A ward view still needs to consume the API.
 - [ ] P3.4: cached parse/explain outputs for the three demo prompts and demo pasted listing. Pasted-listing import is deferred; do not implement P3.2 as part of this step.
 
 2026-10-17 — P3.1: B explanation route now consumes the shared computed detail pipeline and redacted intent, sends selected numeric facts to the fast model, checks sentence count/numbers/safety wording, and falls back to a deterministic three-sentence summary. A's existing explanation slot accepts `{explanation}`. Focused tests passed with a live read-only listing, web typecheck passed and changed-file ESLint passed. Provider availability remains unverified; the route returns a template when Gemini is unavailable. P3.4 will address persistent demo output caching.

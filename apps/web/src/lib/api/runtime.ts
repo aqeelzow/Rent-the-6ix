@@ -10,6 +10,8 @@ import { ParseService, DestinationResolver, IpLimiter } from '../parse/index';
 import { databaseIntentCache } from '../parse/db-cache';
 import { providerFromEnv } from '../ai/index';
 import { ExplanationService } from '../ai/explain';
+import { canBrief, templateBriefing, writeBriefing } from '../ai/briefing';
+import { loadBriefingFacts, cachedBriefing, cacheBriefing } from '../db/briefing';
 import { civicAreasLookup } from '../parse/civic-areas-db';
 import { addressPointsLookup } from '../parse/address-points';
 import { searchCandidates, routeCandidateContexts, SearchUnavailable, type SearchDependencies } from '../db/candidates';
@@ -55,6 +57,7 @@ export function createRuntime(options: RuntimeOptions = {}) {
   const params = z.strictObject({ id: z.uuid() });
   const explainBody = z.strictObject({ intent: SearchIntentSchema.optional() });
   const token = z.strictObject({ token: z.string().regex(/^[A-Za-z0-9_-]{32,128}$/) });
+  const areaParams = z.strictObject({ kind: z.enum(['ward', 'neighbourhood']), id: z.string().regex(/^[A-Za-z0-9_-]{1,64}$/) });
   const query = (request: Request, field: string) => {
     const url = new URL(request.url);
     if (url.searchParams.getAll(field).length !== 1) throw new ApiError(422, 'validation_error', 'Exactly one query value is required');
@@ -106,6 +109,19 @@ export function createRuntime(options: RuntimeOptions = {}) {
     explain: jsonRoute<z.infer<typeof explainBody>, { params: Promise<{ id: string }> }>({ name: 'listings.explain', body: explainBody, rateLimit: limit }, async (input, _request, context) => {
       const id = params.parse(await context.params).id;
       return explainer.explain(await loadDetail(id, checkedIntent(input.intent ?? baseIntent)));
+    }),
+    briefing: jsonRoute<undefined, { params: Promise<{ kind: string; id: string }> }>({ name: 'areas.briefing', rateLimit: limit }, async (_input, _request, context) => {
+      const { kind, id } = areaParams.parse(await context.params);
+      if (!env.DATABASE_URL) throw new ApiError(503, 'service_unavailable', 'Area briefings temporarily unavailable');
+      const facts = await loadBriefingFacts(kind, id);
+      if (!facts) throw new ApiError(404, 'area_not_found', 'Area not found');
+      if (!canBrief(facts)) return templateBriefing(facts);
+      const model = env.GEMINI_MODEL ?? 'none';
+      const cached = await cachedBriefing(facts, model);
+      if (cached) return { ...facts, status: 'available' as const, paragraphs: cached, source: 'gemini' as const };
+      const result = await writeBriefing(facts, providerFromEnv(env));
+      if (result.source === 'gemini') await cacheBriefing(facts, model, result.paragraphs);
+      return result;
     }),
   };
 }

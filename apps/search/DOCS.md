@@ -1,5 +1,13 @@
 # Natural-language rental search
 
+## P3.3 area briefing API (partial, 2026-10-17)
+
+`GET /api/areas/{kind}/{id}/briefing` accepts `kind=ward|neighbourhood` and an area ID (a ward's numeric URL also resolves by ward number). It returns `{area:{kind,id,name,number}, indicators, cityIndicators, status, paragraphs, source}`. Each indicator contains `indicatorId`, numeric `value`, `unit`, `period`, `sourceId`, `sourceTitle`, `sourceUrl`, and nullable `note`. `status` is `available` only with sourced area and matching city facts for rent/affordability, housing stock/conditions, and growth/development. `source` is `gemini` for a validated cached or generated three-paragraph briefing, otherwise `template`. The template reports missing categories without fabricating facts. Crime indicators are excluded from these housing briefings.
+
+For example, with the current DB, `GET /api/areas/ward/1/briefing` returns HTTP 200 with the canonical ward area, `indicators:[]`, `cityIndicators:[]`, `status:"insufficient_data"`, three short data-gap paragraphs and `source:"template"`. Invalid kind/ID returns 422; unknown area returns 404; no configured database returns 503; requests use the common per-IP limit and error envelope. Current `area_indicators` has no ward housing indicators or city kind, so full AI briefings and pre-generation of all 25 wards remain blocked by D's derived-indicator and city-comparator contract (EXT-5). After D publishes city comparators, B must integrate that lookup into `loadBriefingFacts()` before running `preGenerateWardBriefings()`. The function stores only validated AI results in existing `ai_cache` under `area.briefing`; fact-hashed keys make source/period changes invalidate older results. With current facts, it would report 25 insufficient wards and write none. A must mount this response and the sourced indicator table on the ward page.
+
+The main Gemini model receives only computed area/city indicators, periods and sources. Output must contain exactly three short topical paragraphs. Every numeral must occur in the supplied facts; political wording is rejected. Failed output is retried once, then a sourced template is used. AI or cache failures do not hide the data-gap response.
+
 ## Current static MVP work — 2026-10-17
 
 Verification:283 workspace tests, workspace lint/typecheck, production build and live standalone HTTP smoke pass. Cold183-row search20.143s remains above target; immediate warm repeat0.801s, scalar0.149s and cached detail0.047s. Fast parse returned labelled fallback in3.074s. See `validation/static-mvp-findings.md` for requirements/evidence and remaining owner work.
