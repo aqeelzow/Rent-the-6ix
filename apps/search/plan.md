@@ -105,7 +105,8 @@ Implementation defaults: unstated criteria impose no constraints; household size
   - [x] Implement and verify canonical filtering, scoring and bounded ordinary orchestration with fixtures.
   - [x] Stage authoritative read-only SQL candidate loader and simulate ordinary/percentile API consumption before enrichment/caps.
   - [x] Compose C’s actual listingContext query/cache through SQL search; validate with small simulated DB data.
-  - [ ] Verify live SQL/C performance and connect authoritative D safety/travel adapters.
+  - [x] Connect published D safety and place-routing adapters; verify safety against live SQL and routing fallback/partial coverage with controlled published adapters.
+  - [ ] Meet representative live SQL/C cold-performance targets and verify live OTP/amenity precompute.
 - [ ] Integrate percentile searches with owner routing.
   - [x] Implement and verify scalar/full-pool exact executors and bounded async jobs.
   - [ ] Verify complete live D routing and real latency.
@@ -116,7 +117,7 @@ Implementation defaults: unstated criteria impose no constraints; household size
   - [x] Connect live static detail areas/indicators/building/direct duplicates and verify API facts against read-only SQL (P2.25 static substep).
   - [x] Integrate C's published StatCan asking-rent benchmark consumer and verify search/detail context against real DB facts (P2.3 dependency for P2.25).
   - [x] Verify rendered local desktop/mobile landing, real result cards, editable filters/empty state, campus choices, civic detail and Back navigation against a read-only DB oracle; external basemap isolated, map/deployed acceptance remains open.
-  - [ ] Connect remaining owner routing, coordinate A’s rendered UI and verify live acceptance/latency.
+  - [ ] Connect owner amenity precompute and verify live OTP, A building/map rendering, branch deployment rollout and latency.
 - [ ] Complete verification and record results.
   - [x] Exercise staged APIs with fallback/mocked Gemini acceptance prompts and record synthetic ordinary/detail/async timing.
   - [x] Run canonical typecheck, lint, 57 workspace tests, production build and native fixture HTTP smoke.
