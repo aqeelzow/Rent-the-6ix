@@ -13,15 +13,30 @@ export type SearchStatus = "idle" | "parsing" | "searching" | "ready" | "error";
 type CompletedSearch = Extract<SearchResponse, { status: "completed" }>;
 
 /**
+<<<<<<< HEAD
  * How the list on screen is ordered. "server" keeps B's ranking (the intent's own sort); the other
  * two reorder the results already loaded, so switching them never costs another search.
  */
 export type ResultOrder = "server" | "carbon" | "distance";
+=======
+ * What the shortlist shows for a saved listing until it's opened again: the figures as they were
+ * when it was saved. Kept separate from `Listing` so saved shortlists survive schema changes.
+ */
+export type SavedListing = Pick<
+  Listing,
+  "title" | "monthlyRentCad" | "rentIsPerRoom" | "bedrooms" | "bathrooms" | "sqft" | "source"
+>;
+>>>>>>> 9b657b61037f7580c1f616937381ccb99a631484
 
 /** Shortlisted listings live only in the browser (SPEC 15); pasted ones keep the whole listing. */
 export type ShortlistEntry =
-  | { kind: "listing"; id: string; addedAt: string }
+  | { kind: "listing"; id: string; addedAt: string; saved: SavedListing }
   | { kind: "pasted"; id: string; listing: Listing; addedAt: string };
+
+export function savedListing(listing: Listing): SavedListing {
+  const { title, monthlyRentCad, rentIsPerRoom, bedrooms, bathrooms, sqft, source } = listing;
+  return { title, monthlyRentCad, rentIsPerRoom, bedrooms, bathrooms, sqft, source };
+}
 
 export interface SearchSlice {
   /** The current search: from the parser or the URL, then edited by chips and the filters panel. */
@@ -49,6 +64,8 @@ export interface SearchSlice {
   searchRequestId: number;
 
   shortlist: ShortlistEntry[];
+  /** True once the shortlist has been read from browser storage (see `persist.ts`). */
+  shortlistLoaded: boolean;
 
   /**
    * Selection contract (TEAM.md 3.8), read and set by the results list, the map and the detail view.
@@ -62,7 +79,12 @@ export interface SearchSlice {
   /** For chip and filter edits. Callers re-run search afterwards; editing never calls Gemini. */
   updateIntent: (update: (intent: SearchIntent) => SearchIntent) => void;
   setHideUnconfirmed: (hide: boolean) => void;
+<<<<<<< HEAD
   setResultOrder: (order: ResultOrder) => void;
+=======
+  /** Opens a saved or shared search as it was edited; nothing from an earlier parse is kept. */
+  loadSearch: (intent: SearchIntent, hideUnconfirmed: boolean) => void;
+>>>>>>> 9b657b61037f7580c1f616937381ccb99a631484
   /** Marks a prompt as being read and returns its request id, to pass to `receiveParse`. */
   startParse: (prompt: string) => number;
   /** Stores the parsed intent. Returns false when a newer request has started. */
@@ -72,7 +94,7 @@ export interface SearchSlice {
   receiveResults: (requestId: number, response: CompletedSearch) => void;
   receiveError: (requestId: number, error: ApiError) => void;
 
-  toggleShortlist: (id: string) => void;
+  toggleShortlist: (listing: Listing) => void;
   addPastedListing: (listing: Listing) => void;
   removeFromShortlist: (id: string) => void;
   clearShortlist: () => void;
@@ -97,6 +119,7 @@ export const createSearchSlice: StateCreator<SearchSlice, [], [], SearchSlice> =
   error: null,
   searchRequestId: 0,
   shortlist: [],
+  shortlistLoaded: false,
   hoveredListingId: null,
   selectedListingId: null,
 
@@ -109,7 +132,19 @@ export const createSearchSlice: StateCreator<SearchSlice, [], [], SearchSlice> =
 
   setHideUnconfirmed: (hideUnconfirmed) => set({ hideUnconfirmed }),
 
+<<<<<<< HEAD
   setResultOrder: (resultOrder) => set({ resultOrder }),
+=======
+  loadSearch: (intent, hideUnconfirmed) =>
+    set({
+      intent,
+      hideUnconfirmed,
+      parser: null,
+      parseNotice: null,
+      parsingPrompt: null,
+      destinations: [],
+    }),
+>>>>>>> 9b657b61037f7580c1f616937381ccb99a631484
 
   startParse: (prompt) => {
     const requestId = get().searchRequestId + 1;
@@ -164,12 +199,21 @@ export const createSearchSlice: StateCreator<SearchSlice, [], [], SearchSlice> =
     set({ status: "error", error, parsingPrompt: null, busySince: null });
   },
 
-  toggleShortlist: (id) => {
+  toggleShortlist: (listing) => {
     const { shortlist } = get();
+    const { id } = listing;
     set({
       shortlist: shortlist.some((entry) => entry.id === id)
         ? shortlist.filter((entry) => entry.id !== id)
-        : [...shortlist, { kind: "listing", id, addedAt: new Date().toISOString() }],
+        : [
+            ...shortlist,
+            {
+              kind: "listing",
+              id,
+              addedAt: new Date().toISOString(),
+              saved: savedListing(listing),
+            },
+          ],
     });
   },
 

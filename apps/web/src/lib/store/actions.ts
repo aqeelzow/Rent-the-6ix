@@ -4,9 +4,17 @@ import {
   ErrorResponseSchema,
   ParseResponseSchema,
   SearchResponseSchema,
+  SearchResultSchema,
 } from "@rentthe6ix/shared/schemas";
+import { z } from "zod";
 import { appStore, type createAppStore } from "./store";
-import type { ApiError, DestinationResolution, DetailResponse, SearchIntent } from "./types";
+import type {
+  ApiError,
+  DestinationResolution,
+  DetailResponse,
+  SearchIntent,
+  SearchResultItem,
+} from "./types";
 
 // Browser-side calls to B's routes (SPEC 13). Responses are validated with B's schemas before they
 // reach the store; a response that doesn't match is treated as an error, never shown half-parsed.
@@ -27,7 +35,11 @@ export const clientErrorCodes = {
   network: "network_error",
   unexpected: "unexpected_response",
   expired: "search_job_expired",
+  /** The route isn't built yet (a bare 404/405/501 without B's error body). */
+  notAvailable: "not_available",
 } as const;
+
+const NOT_BUILT = new Set([404, 405, 501]);
 
 type Result = { ok: true; json: unknown } | { ok: false; error: ApiError };
 
@@ -58,12 +70,11 @@ async function request(
   }
   if (response.ok) return { ok: true, json };
   const parsed = ErrorResponseSchema.safeParse(json);
-  return {
-    ok: false,
-    error: parsed.success
-      ? parsed.data.error
-      : { code: clientErrorCodes.unexpected, message: `HTTP ${response.status}` },
-  };
+  if (parsed.success) return { ok: false, error: parsed.data.error };
+  const code = NOT_BUILT.has(response.status)
+    ? clientErrorCodes.notAvailable
+    : clientErrorCodes.unexpected;
+  return { ok: false, error: { code, message: `HTTP ${response.status}` } };
 }
 
 const unexpected: ApiError = {
@@ -146,6 +157,19 @@ export async function runSearch(options: ActionOptions = {}): Promise<void> {
   }
 }
 
+/**
+ * Opens a search from a shared link or this browser's last search, as it was edited, and runs it.
+ * The parser isn't called, so the filters are exactly the ones that were saved.
+ */
+export async function restoreSearch(
+  search: { intent: SearchIntent; hideUnconfirmed: boolean },
+  options: ActionOptions = {},
+): Promise<void> {
+  const store = options.store ?? appStore;
+  store.getState().loadSearch(search.intent, search.hideUnconfirmed);
+  await runSearch(options);
+}
+
 /** Looks up a place with B's resolver: resolved, ambiguous (choices) or unavailable. */
 export async function resolveDestination(
   query: string,
@@ -180,6 +204,32 @@ export const EMPTY_INTENT: SearchIntent = {
  */
 export function redactIntent(intent: SearchIntent): SearchIntent {
   return { ...intent, rawPrompt: "", fieldSources: {}, droppedRequests: [] };
+}
+
+/**
+ * Draft of B's P3.2 response (SPEC 10.3), to confirm with B: the pasted listing, geocoded and
+ * scored against the renter's search like any other result. Extra fields are allowed.
+ */
+const ImportResponseDraftSchema = z.object({ result: SearchResultSchema });
+
+/**
+ * Sends pasted listing text or a public link to B's import route. The intent is redacted like a
+ * detail request; nothing pasted is stored on the server (SPEC 10.3).
+ */
+export async function importPastedListing(
+  input: { text: string } | { url: string },
+  intent: SearchIntent | null,
+  options: Pick<ActionOptions, "fetch"> = {},
+): Promise<{ ok: true; result: SearchResultItem } | { ok: false; error: ApiError }> {
+  const response = await request(options.fetch ?? fetch, "/api/listings/import", {
+    method: "POST",
+    body: { ...input, intent: redactIntent(intent ?? EMPTY_INTENT) },
+  });
+  if (!response.ok) return response;
+  const parsed = ImportResponseDraftSchema.safeParse(response.json);
+  return parsed.success
+    ? { ok: true, result: parsed.data.result }
+    : { ok: false, error: unexpected };
 }
 
 /** Loads one listing with B's detail route: valuation, travel, areas, indicators, duplicates. */

@@ -15,11 +15,15 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useMediaQuery } from "@/components/use-media-query";
 import { FilterChips } from "./filter-chips";
 import { FiltersPanel } from "./filters-panel";
+import { ShareSearch } from "./share-search";
 import { SortSelect } from "./sort-select";
 import { commuteCarbon } from "@rentthe6ix/shared/engine/carbon";
 import { t, type MessageKey } from "@/lib/format/messages";
 import { formatCount } from "@/lib/format/number";
-import { parseAndSearch, runSearch } from "@/lib/store/actions";
+import { parseAndSearch, restoreSearch, runSearch } from "@/lib/store/actions";
+import { readLastSearch } from "@/lib/store/persist";
+import { decodeSharedSearch } from "@/lib/store/share";
+import { useLastSearch } from "@/lib/store/use-last-search";
 import { appStore, useAppStore } from "@/lib/store/store";
 import type { ApiError, SearchIntent, SearchResultItem } from "@/lib/store/types";
 
@@ -39,12 +43,25 @@ const knownErrors = new Set([
   "search_job_expired",
 ]);
 
+/** "Continue your last search" on `/search` without a prompt, when this browser has one. */
+function LastSearchLink() {
+  const last = useLastSearch();
+  if (!last) return null;
+  return (
+    <Button asChild variant="outline">
+      <Link href={`/search?q=${encodeURIComponent(last.intent.rawPrompt)}`}>
+        {t("search.lastSearch")}
+      </Link>
+    </Button>
+  );
+}
+
 function errorMessage(error: ApiError): string {
   const key = (knownErrors.has(error.code) ? error.code : "default") as string;
   return t(`search.errors.${key}` as MessageKey, { seconds: error.retryAfterSeconds ?? 30 });
 }
 
-export function SearchView({ prompt }: { prompt: string | null }) {
+export function SearchView({ prompt, shared }: { prompt: string | null; shared: string | null }) {
   const status = useAppStore((s) => s.status);
   const intent = useAppStore((s) => s.intent);
   const error = useAppStore((s) => s.error);
@@ -93,19 +110,28 @@ export function SearchView({ prompt }: { prompt: string | null }) {
 
   useEffect(() => {
     if (!prompt) return;
-    // Coming back to a prompt that's already been read keeps its edited filters.
+    // Coming back to a prompt that's already been read keeps its edited filters (Back from a
+    // listing included). Otherwise a shared link's filters, then this browser's last search for
+    // the same words (a reload), and only then the parser.
     if (appStore.getState().intent?.rawPrompt === prompt) return;
-    void parseAndSearch(prompt);
-  }, [prompt]);
+    const last = readLastSearch();
+    const saved =
+      (shared ? decodeSharedSearch(shared, prompt) : null) ??
+      (last?.intent.rawPrompt === prompt ? last : null);
+    void (saved ? restoreSearch(saved) : parseAndSearch(prompt));
+  }, [prompt, shared]);
 
   if (!prompt) {
     return (
       <div className="mx-auto flex w-full max-w-3xl flex-col items-start gap-4 px-4 py-10">
         <h1 className="text-2xl font-semibold tracking-tight">{t("search.title")}</h1>
         <p className="text-muted-foreground">{t("search.noPrompt")}</p>
-        <Button asChild>
-          <Link href="/">{t("search.startSearch")}</Link>
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button asChild>
+            <Link href="/">{t("search.startSearch")}</Link>
+          </Button>
+          <LastSearchLink />
+        </div>
       </div>
     );
   }
@@ -120,18 +146,19 @@ export function SearchView({ prompt }: { prompt: string | null }) {
         <h1 className="sr-only">{t("search.title")}</h1>
 
         <section aria-labelledby="request-label" className="bg-card rounded-xl border p-4">
-          <div className="flex items-baseline justify-between gap-3">
-            <h2 id="request-label" className="text-muted-foreground text-sm font-medium">
-              {t("search.yourRequest")}
-            </h2>
+          <h2 id="request-label" className="text-muted-foreground text-sm font-medium">
+            {t("search.yourRequest")}
+          </h2>
+          <p className="mt-1">{prompt}</p>
+          <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1">
             <Link
               href={`/?q=${encodeURIComponent(prompt)}#start`}
               className="text-primary text-sm font-medium underline-offset-4 hover:underline"
             >
               {t("search.editRequest")}
             </Link>
+            {intent?.rawPrompt === prompt && <ShareSearch />}
           </div>
-          <p className="mt-1">{prompt}</p>
         </section>
 
         {intent && intent.rawPrompt === prompt && (
@@ -242,6 +269,7 @@ export function SearchView({ prompt }: { prompt: string | null }) {
             <ol className={`flex flex-col gap-3 ${busy ? "opacity-60" : ""}`}>
               {ordered.slice(0, visibleCount).map((result) => (
                 <li key={result.listing.id}>
+<<<<<<< HEAD
           <ResultCard
             result={result}
             targets={intent?.travelTargets ?? []}
@@ -249,6 +277,15 @@ export function SearchView({ prompt }: { prompt: string | null }) {
             safetyOn={intent?.safety.enabled ?? false}
             now={now}
           />
+=======
+                  <ResultCard
+                    result={result}
+                    targets={intent?.travelTargets ?? []}
+                    safetyOn={intent?.safety.enabled ?? false}
+                    acInSearch={intent?.criteria.airConditioning !== undefined}
+                    now={now}
+                  />
+>>>>>>> 9b657b61037f7580c1f616937381ccb99a631484
                 </li>
               ))}
             </ol>
@@ -347,6 +384,7 @@ function MapListingCard({
           result={result}
           targets={intent?.travelTargets ?? []}
           safetyOn={intent?.safety.enabled ?? false}
+          acInSearch={intent?.criteria.airConditioning !== undefined}
           now={now}
         />
       </div>

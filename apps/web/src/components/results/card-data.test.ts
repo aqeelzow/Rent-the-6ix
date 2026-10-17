@@ -2,7 +2,9 @@ import { searchFixture, travelIntent, valuations } from "@rentthe6ix/shared/fixt
 import { describe, expect, it } from "vitest";
 import type { SearchResultItem } from "@/lib/store/types";
 import {
+  acFact,
   daysSince,
+  plainHardFilterNote,
   priceSummary,
   scoreSegments,
   topCaveat,
@@ -119,6 +121,26 @@ describe("small helpers", () => {
     };
     expect(topCaveat([info, high])).toBe(high);
     expect(topCaveat([])).toBeNull();
+  });
+
+  it("turns field codes into plain must-have notes", () => {
+    expect(plainHardFilterNote("airConditioning: not confirmed")).toBe(
+      "Air conditioning not confirmed",
+    );
+    expect(plainHardFilterNote("unitTypes: not confirmed")).toBe("Type of place not confirmed");
+    expect(plainHardFilterNote("petsAllowed: not confirmed")).toBe("Pets not confirmed");
+    expect(plainHardFilterNote("Travel to UofT St. George: not confirmed")).toBe(
+      "Travel to UofT St. George not confirmed",
+    );
+    expect(plainHardFilterNote("Utilities not stated")).toBe("Utilities not stated");
+  });
+
+  it("shows unstated AC only when the renter asked for it", () => {
+    expect(acFact("unknown", true)).toBe("not_stated");
+    expect(acFact("unknown", false)).toBeNull();
+    expect(acFact("no", true)).toBeNull();
+    expect(acFact("central", false)).toBe("central");
+    expect(acFact("yes", true)).toBe("yes");
   });
 
   it("formats year spans and days since", () => {

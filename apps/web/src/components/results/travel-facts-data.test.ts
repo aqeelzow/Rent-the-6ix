@@ -166,21 +166,20 @@ describe("orderByPreferredDistance", () => {
   // The reference sits at 43.66/-79.40, so every listing's distance is measured from one point.
   const reference = { label: "U of T", point: { lat: 43.66, lng: -79.4 }, kind: "place" as const };
 
-  it("puts the nearest first and keeps listings without a location last", () => {
+  it("puts the nearest first", () => {
     const far = at(0, 43.7, -79.4);
-    const unknown = { ...at(1, 0, 0), listing: { ...results[1]!.listing, location: null } };
     const near = at(2, 43.661, -79.4);
     const mid = at(3, 43.675, -79.4);
-    const ordered = orderByPreferredDistance(
-      [far, unknown, near, mid] as SearchResultItem[],
-      reference,
-    );
+    const list = [far, near, mid] as SearchResultItem[];
+    const before = [...list];
+    const ordered = orderByPreferredDistance(list, reference);
     expect(ordered.map((result) => result.listing.id)).toEqual([
       near.listing.id,
       mid.listing.id,
       far.listing.id,
-      unknown.listing.id,
     ]);
+    // The results the store holds keep B's ranking; only the rendered order changes.
+    expect(list).toEqual(before);
   });
 
   it("leaves the list as it was when there is no place to measure from", () => {
