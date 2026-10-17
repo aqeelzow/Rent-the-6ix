@@ -38,6 +38,15 @@ describe("scrub", () => {
     );
   });
 
+  it("removes names before a role and after DM (seen on Kijiji)", () => {
+    expect(scrub("Deniz Rousta Leasing manager text or call 416-555-0100")).toBe(
+      "[name removed] Leasing manager text or call [phone removed]",
+    );
+    expect(scrub("Interested? DM Alex at 647-555-0101")).toBe(
+      "Interested? DM [name removed] at [phone removed]",
+    );
+  });
+
   it("leaves capitalized words that aren't names", () => {
     for (const text of [
       "Contact Us Today for a viewing",
@@ -46,6 +55,9 @@ describe("scrub", () => {
       "I’m renting out a clean 1 bedroom",
       "Close to Union Station and Queen West",
       "Ask for Management on site",
+      // Realtor.ca writes remarks in Title Case.
+      "Don't Miss Out on This Condo Gem To Call Home!",
+      "Steps to Brookbanks Dr. Realstar manages the building",
     ])
       expect(scrub(text)).toBe(text);
   });

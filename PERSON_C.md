@@ -8,9 +8,9 @@ Task ids match `PROGRESS.md`; task details are in `SPEC.md`.
 
 - **Current task:** none in progress (P2.1 SQL waits on D's migrations)
 - **Status:** in progress   <!-- not started | in progress | blocked | at sync point -->
-- **Next action:** everything left is blocked on D or B (see Blockers). Unblocked options: Realtor.ca bounding-box tiles for volume (P3.30), the `rentals_ca` results capture, or detail-page fetches for full descriptions (AC/utilities/year-built gaps; scam + name rules). When D's migrations land: `selectComparables` SQL (finishes P2.1), P1.6 upsert. P1.5 geocode once D's Address Points are loaded.
+- **Next action:** everything left is blocked on D or B (see Requests, in priority order). Unblocked options: Realtor.ca bounding-box tiles for volume (P3.30), the `rentals_ca` results capture, or computing `deposit_before_viewing` at ingest from the full description (caveats only see the 280-char excerpt). When D's migrations land: `selectComparables` SQL (finishes P2.1), P1.6 upsert. P1.5 geocode once D's Address Points are loaded.
 - **Blockers / needs from others:** B's `Listing` schema (P0.5; normalize uses a worker-local type until then), D's migrations (P0.8) for P1.6, D's Address Points and boundaries (P1.10, P1.11) for P1.5.
-- **Last updated:** 2026-10-16 (P1.3, P1.4, P2.2, P2.4, P3.32; engine part of P2.1, schedule part of P3.31)
+- **Last updated:** 2026-10-17 (detail pages; P1.3, P1.4, P2.2, P2.4, P3.32; engine part of P2.1, schedule part of P3.31)
 
 ## Handoff notes
 
@@ -21,6 +21,7 @@ Task ids match `PROGRESS.md`; task details are in `SPEC.md`.
 - **Working sources:** `kijiji`, `torontorentals`, `zillow`, `realtor_ca` (see `apps/worker/SOURCES.md`). `rentals_ca` is no longer blocked but no `/graphql` results response is captured; adapter needs a fresh look (low priority, `torontorentals` has the same data).
 - **Known source issues:** Realtor.ca's bounding box includes listings outside Toronto (Vaughan), which P1.5 drops. Realtor.ca paging works (fixed in `fetch.ts`: a hash-only URL change goes via `about:blank` so the page reloads). It reports 8,663 Toronto-area rentals but serves only the first 600 (55 pages × 11) per map view; for P3.30 volume, split the bounding box into tiles. (.NET-tick dates and unspaced postal codes are fixed: `ticksToIso` in the adapter, `postalCode()` in normalize.)
 - **Normalize (P1.3)** is `apps/worker/src/pipeline/normalize.ts`: `normalize(raw, now) → NormalizedListing | null` (null = rent outside $300–25,000). Output is a worker-local type matching SPEC 5 minus what geocode/upsert add (id, location, area ids, building, timestamps, status, dataStatus); it also carries `den`, `postalCode` and `sourceLocation` for geocoding. Swap to B's `Listing` schema when P0.5 lands. `ingest:once` now writes normalized rows and prints field coverage per source.
+- **Detail pages:** `fetchDetail()` on Kijiji (same `__NEXT_DATA__` shape as search: full HTML description, all attributes, `agreementtype` → lease), Zillow (`/homedetails/` via `gdpClientCache`; `/apartments/` and `/b/` via `gdp.building`, `/b/` is usually empty) and Realtor.ca (server-rendered label/value pairs: Cooling, Appliances Included, Total Parking Spaces). torontorentals building URLs render the search map, so no detail there. `src/pipeline/details.ts`: `needsDetail` (new or rent changed), `applyPatch` (page wins, nulls never erase, longer description kept), cache in `.cache/details/<source>.json` (scrubbed, re-scrubbed on load). One live page each (15 details): Realtor.ca AC 0 → 100%, parking 0 → 100%, laundry 0 → 82%; Kijiji full descriptions + lease 100%. Full descriptions surfaced real contacts: scrub now also catches "Name Leasing manager" and "DM Name", and no longer treats "Don't Miss Out" as a name.
 - **Schedule (P3.31):** `pnpm --filter worker start` (src/index.ts) runs `runIngest()` (src/pipeline/run-ingest.ts) now and every `INGEST_INTERVAL_HOURS` via `every()` in src/schedule.ts; no overlap, failures logged. Still to do once the DB lands: freshness job (`stale` / `removed` by `lastSeenAt`) and last-ingest stats in the DB for `/status` (today: `.cache/ingest/last-run.json`).
 - `pnpm ingest:once [--sources a,b] [--pages N]` writes scrubbed rows to git-ignored `apps/worker/.cache/ingest/*.json` until P1.6 upserts into TigerData. `scrub.ts` (P1.4) removes emails, phones, links, messaging IDs (WeChat/WhatsApp/IG…, @handles) and names by context: after contact verbs, "my name is / I'm", Mr./Mrs./Dr., and a sign-off at the end or before a removed phone/email. No name list; a `NOT_A_NAME` stop list keeps "Contact Us Today" intact. 100 real Kijiji/Realtor.ca rows: 0 removals, 0 false positives (snippets rarely carry contact info; recheck when detail pages are fetched).
 - **Field coverage after normalize (2 pages each, 2026-10-16):** Kijiji 90 rows: unit type 59%, size 54%, AC 56%, parking/pets 56–57%, available 48%, year built 0%. torontorentals 347 rows: size 99%, year built 93%, pets 98%, AC/utilities/laundry/parking 0%, available 27%. Zillow 122 rows: baths 32%, size 30%, unit type 2%, nothing else. Realtor.ca 11 rows (1 page): beds and size 91%, unit type 100%, amenities 0%. Text rules add little: Kijiji only gives a truncated snippet, torontorentals no description, and Zillow/Realtor.ca index pages carry no amenity text. AC, utilities and year built (outside torontorentals) are the gaps: P4.10 or detail pages would close them.
@@ -37,10 +38,17 @@ Task ids match `PROGRESS.md`; task details are in `SPEC.md`.
 
 ## Requests to others
 
-- **To D:** Address Points and neighbourhood/ward boundaries loaded early in S1→S2 (P1.10, P1.11) so geocoding and area joins work; RentSafeTO buildings with year built (P1.14); benchmarks table (P2.15) for the valuation's benchmark line.
-- **To B:** add `'torontorentals'` to `Listing.source` (zillow and realtor_ca are already there).
-- **To B:** the `Listing` and `Valuation` schemas include `sqft`, `yearBuilt`, `yearBuiltSource`, `airConditioning`, `priceLabel` (P0.5).
-- **To A:** tell me which listing fields look wrong on real data; I'll fix the normalizer.
+In priority order (what unblocks the most first). Updated 2026-10-17.
+
+- **To D (1, biggest):** P0.8 Tiger Cloud + migrations: `listings` (SPEC 5 fields incl. `sqft`, `yearBuilt`, `yearBuiltSource`, `airConditioning`, `fieldEvidence`, `duplicateOf`, `status`, `firstSeenAt`/`lastSeenAt`), `listing_observations` hypertable, `buildings`, `sources`; plus a `DATABASE_URL` for me. Unblocks P1.6 upsert, P1.7 first ingest (≥ 300 by S2), `selectComparables` (P2.1), the valuation route + cache (P2.5), freshness job (P3.31), volume (P3.30). Please also add a listing column for the last detail-page fetch (`detail_fetched_at`, `detail_rent_cad`) so the worker can stop using its local cache.
+- **To D (2):** P1.11 Address Points and P1.10 neighbourhood/ward boundaries, for P1.5 geocoding (drops listings outside Toronto, e.g. Realtor.ca's Vaughan rows) and the area join.
+- **To D (3):** P1.14 RentSafeTO buildings (year built, `address_point_id`, latest score + date): building match, year-built fill, the `rentsafeto_low` caveat, and the `buildingKey` valuation uses to cap same-building floor plans.
+- **To D (4):** P2.15 benchmarks (StatCan 46-10-0092-01 by bedrooms, CMHC zones) for the valuation's benchmark line (P2.3).
+- **To D (5):** P0.9 Vultr instance, so ingests run from there, not laptops. The worker starts with `pnpm --filter worker start` and needs the CloakBrowser binary (`pnpm --filter worker browser:install`).
+- **To B (1):** P0.5 schemas: `Listing` (add `'torontorentals'` to `source`; `sqft`, `yearBuilt`, `yearBuiltSource`, `airConditioning`), `Valuation` (`priceLabel: 'underpriced' | 'reasonable' | 'overpriced' | 'unknown'`; `adjustments[]` with `code`, `amountCad`, `count`, `label`), `Caveat`. My worker/engine types match SPEC 5 field names, so the swap is small.
+- **To B (2):** P0.7 API conventions, so I can build `/api/listings/[id]/valuation` (P2.5) on them.
+- **To B (3, stretch):** P1.20 `AIProvider`, for worker field extraction (P4.10).
+- **To A:** nothing blocking. Once real listings show in the UI, tell me which fields look wrong; I'll fix the normalizer.
 
 ---
 

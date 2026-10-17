@@ -25,7 +25,8 @@ export interface RawListing {
   unitType: string | null;
   sqft: number | null;
   yearBuilt: number | null;
-  airConditioning: TriState;
+  /** "central" when the source says central air; true = some kind of AC. */
+  airConditioning: TriState | "central";
   furnished: TriState;
   petsAllowed: TriState;
   parking: TriState;
@@ -33,6 +34,8 @@ export interface RawListing {
   utilitiesIncluded: TriState;
   /** ISO date; null when unknown or "now". */
   availableFrom: string | null;
+  /** Normalized wording: "12 months", "month-to-month", "short-term". */
+  leaseTerm: string | null;
   address: string | null;
   postalCode: string | null;
   lat: number | null;
@@ -46,11 +49,25 @@ export interface IndexPage {
   nextCursor: string | null;
 }
 
+/** Fields a listing's own page adds or corrects; null/absent = the page doesn't say. */
+export type DetailPatch = Partial<Omit<RawListing, "source" | "sourceListingId" | "sourceUrl">>;
+
+/** A full listing parsed from its own page, minus the identity fields. */
+export function toPatch(listing: RawListing): DetailPatch {
+  const patch: DetailPatch & Partial<RawListing> = { ...listing };
+  delete patch.source;
+  delete patch.sourceListingId;
+  delete patch.sourceUrl;
+  return patch;
+}
+
 export interface SourceAdapter {
   id: SourceId;
   displayName: string;
   /** Load one index page (cursor null = first page) and return the listings on it. */
   fetchIndex(session: Session, cursor: string | null): Promise<IndexPage>;
+  /** Load the listing's own page for the full description and amenities (SPEC 8.4 step 1). */
+  fetchDetail?(session: Session, listing: RawListing): Promise<DetailPatch>;
 }
 
 export const emptyRawListing = {
@@ -69,6 +86,7 @@ export const emptyRawListing = {
   laundryInSuite: null,
   utilitiesIncluded: null,
   availableFrom: null,
+  leaseTerm: null,
   address: null,
   postalCode: null,
   lat: null,

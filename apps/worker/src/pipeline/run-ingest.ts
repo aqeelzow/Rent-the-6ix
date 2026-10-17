@@ -5,7 +5,15 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { openSession, SourceBlockedError } from "../lib/fetch.ts";
 import { sources } from "../sources/index.ts";
-import type { SourceId } from "../sources/types.ts";
+import type { DetailPatch, RawListing, SourceAdapter, SourceId } from "../sources/types.ts";
+import type { Session } from "../lib/fetch.ts";
+import {
+  applyPatch,
+  loadDetailCache,
+  needsDetail,
+  saveDetailCache,
+  scrubPatch,
+} from "./details.ts";
 import { normalize, type NormalizedListing } from "./normalize.ts";
 
 export interface SourceRun {
@@ -15,12 +23,16 @@ export interface SourceRun {
   listings: number;
   /** Rows normalize dropped (no plausible monthly rent). */
   dropped: number;
+  /** Detail pages fetched this run (new or changed listings, up to maxDetails). */
+  details: number;
   message?: string;
 }
 
 export interface IngestOptions {
   sources: string[];
   maxPages: number;
+  /** Detail pages per source per run; each costs one request (INGEST_REQUEST_DELAY_MS). */
+  maxDetails: number;
 }
 
 export interface IngestResult {
@@ -31,9 +43,12 @@ export interface IngestResult {
 // The sources marked "go" in SOURCES.md.
 const DEFAULT_SOURCES = "kijiji,torontorentals,zillow,realtor_ca";
 
-/** Ingest options from env (INGEST_SOURCES, INGEST_MAX_PAGES); `manual` is loaded separately. */
+/**
+ * Ingest options from env (INGEST_SOURCES, INGEST_MAX_PAGES, INGEST_MAX_DETAILS);
+ * `manual` is loaded separately.
+ */
 export function ingestOptionsFromEnv(
-  overrides: { sources?: string; pages?: string } = {},
+  overrides: { sources?: string; pages?: string; details?: string } = {},
 ): IngestOptions {
   const list = overrides.sources ?? process.env.INGEST_SOURCES ?? DEFAULT_SOURCES;
   return {
@@ -42,6 +57,7 @@ export function ingestOptionsFromEnv(
       .map((s) => s.trim())
       .filter((s) => s && s !== "manual"),
     maxPages: Number(overrides.pages ?? process.env.INGEST_MAX_PAGES ?? 3),
+    maxDetails: Number(overrides.details ?? process.env.INGEST_MAX_DETAILS ?? 50),
   };
 }
 
@@ -59,12 +75,20 @@ export async function runIngest(options: IngestOptions): Promise<IngestResult> {
         pages: 0,
         listings: 0,
         dropped: 0,
+        details: 0,
         message: "unknown source",
       });
       continue;
     }
-    const run: SourceRun = { source: adapter.id, status: "ok", pages: 0, listings: 0, dropped: 0 };
-    const rows: NormalizedListing[] = [];
+    const run: SourceRun = {
+      source: adapter.id,
+      status: "ok",
+      pages: 0,
+      listings: 0,
+      dropped: 0,
+      details: 0,
+    };
+    const raws: RawListing[] = [];
     // Featured listings repeat on later index pages (torontorentals); keep the first copy.
     const seen = new Set<string>();
     const session = await openSession();
@@ -75,20 +99,25 @@ export async function runIngest(options: IngestOptions): Promise<IngestResult> {
         for (const raw of page.listings) {
           if (seen.has(raw.sourceListingId)) continue;
           seen.add(raw.sourceListingId);
-          const listing = normalize(raw);
-          if (listing) rows.push(listing);
-          else run.dropped++;
+          raws.push(raw);
         }
         run.pages++;
         cursor = page.nextCursor;
         console.log(`${adapter.id}: page ${run.pages}, ${page.listings.length} listings`);
       } while (cursor && run.pages < options.maxPages);
+      await addDetails(adapter, session, raws, options.maxDetails, run);
     } catch (error) {
       run.status = error instanceof SourceBlockedError ? "unhealthy" : "error";
       run.message = error instanceof Error ? error.message : String(error);
       console.error(`${adapter.id}: ${run.status}: ${run.message}`);
     } finally {
       await session.close();
+    }
+    const rows: NormalizedListing[] = [];
+    for (const raw of raws) {
+      const listing = normalize(raw);
+      if (listing) rows.push(listing);
+      else run.dropped++;
     }
     run.listings = rows.length;
     runs.push(run);
@@ -106,6 +135,61 @@ export async function runIngest(options: IngestOptions): Promise<IngestResult> {
   const result = { finishedAt: new Date().toISOString(), runs };
   await writeFile(new URL("last-run.json", outDir), JSON.stringify(result, null, 2));
   return result;
+}
+
+const MAX_DETAIL_FAILURES = 3;
+
+/**
+ * Fetch detail pages for new or changed listings (up to `max`), cache the scrubbed patches, and
+ * merge every cached patch into its row. A block stops detail fetches for the source; the index
+ * rows are kept.
+ */
+async function addDetails(
+  adapter: SourceAdapter,
+  session: Session,
+  raws: RawListing[],
+  max: number,
+  run: SourceRun,
+): Promise<void> {
+  if (!adapter.fetchDetail) return;
+  const cache = await loadDetailCache(adapter.id);
+  // Building cards share one page (Zillow): fetch each URL once per run.
+  const byUrl = new Map<string, DetailPatch>();
+  let failures = 0;
+  try {
+    for (const raw of raws) {
+      if (run.details >= max) break;
+      if (!needsDetail(raw, cache)) continue;
+      let patch = byUrl.get(raw.sourceUrl);
+      if (!patch) {
+        try {
+          patch = scrubPatch(await adapter.fetchDetail(session, raw));
+          run.details++;
+          failures = 0;
+        } catch (error) {
+          if (error instanceof SourceBlockedError) throw error;
+          if (++failures >= MAX_DETAIL_FAILURES) throw error;
+          continue;
+        }
+        byUrl.set(raw.sourceUrl, patch);
+      }
+      cache[raw.sourceListingId] = {
+        rent: raw.monthlyRentCad,
+        fetchedAt: new Date().toISOString(),
+        patch,
+      };
+    }
+  } catch (error) {
+    run.message = `details stopped: ${error instanceof Error ? error.message : String(error)}`;
+    console.error(`${adapter.id}: ${run.message}`);
+  } finally {
+    await saveDetailCache(adapter.id, cache);
+  }
+  for (let i = 0; i < raws.length; i++) {
+    const entry = cache[raws[i].sourceListingId];
+    if (entry) raws[i] = applyPatch(raws[i], entry.patch);
+  }
+  console.log(`${adapter.id}: ${run.details} detail pages fetched`);
 }
 
 /** Share of rows with a known value per field, e.g. "sqft 31%, yearBuilt 0%, ...". */

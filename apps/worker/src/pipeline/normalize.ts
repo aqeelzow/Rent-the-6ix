@@ -125,7 +125,7 @@ export function normalize(raw: RawListing, now = new Date()): NormalizedListing 
     availableFrom: pick("availableFrom", isoDate(raw.availableFrom), () =>
       availableFromText(text, posted ?? now.toISOString()),
     ),
-    leaseTerm: pick("leaseTerm", null, () => leaseTermFromText(text)),
+    leaseTerm: pick("leaseTerm", raw.leaseTerm, () => leaseTermFromText(text)),
     addressText: raw.address?.replace(/\s+/g, " ").trim() || null,
     postalCode: postalCode(raw.postalCode),
     sourceLocation:
@@ -222,7 +222,8 @@ const NO_AIR = /\bno (?:a\/c|ac|air[- ]?condition\w*)\b/;
 const SOME_AIR =
   /\ba\/c\b|\bair[- ]?condition\w*|\bwindow (?:ac|a\/c|unit)\b|\bductless\b|\bheat pump\b/;
 
-function airConditioningFrom(value: TriState, text: string): AirConditioning | null {
+function airConditioningFrom(value: TriState | "central", text: string): AirConditioning | null {
+  if (value === "central") return "central";
   if (value === true) return CENTRAL_AIR.test(text) ? "central" : "yes";
   return value === false ? "no" : null;
 }

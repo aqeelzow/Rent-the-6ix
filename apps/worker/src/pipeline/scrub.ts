@@ -15,7 +15,7 @@ const HANDLE = /(^|\s)@[A-Za-z0-9_.]{3,}/g;
 
 // Capitalized words that follow "contact" / "call" etc. but aren't names ("Contact Us Today").
 const NOT_A_NAME =
-  "(?!(?:Us|Me|Now|Today|Tomorrow|Our|The|Your|For|To|Anytime|Any|Office|Management|Leasing|Property|Superintendent|Super|Info|Inquiries|Please|Directly|Here|Him|Her|Them|Owner|Landlord|Agent|Realtor|Mon|Tue|Wed|Thu|Fri|Sat|Sun|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday|Toronto)\\b)";
+  "(?!(?:Us|Me|Now|Today|Tomorrow|Our|The|Your|For|To|Anytime|Any|Office|Management|Leasing|Property|Superintendent|Super|Info|Inquiries|Please|Directly|Here|Him|Her|Them|Owner|Landlord|Agent|Realtor|Home|Out|This|That|It|Again|Soon|Back|Mon|Tue|Wed|Thu|Fri|Sat|Sun|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday|Toronto)\\b)";
 // "Maria", "O'Brien", "Jean-Luc"; a lone capital letter is never a name.
 const NAME = `${NOT_A_NAME}[A-Z](?:[a-z]+|['’][A-Z][a-z]+)(?:-[A-Z][a-z]+)?`;
 const FULL_NAME = `${NAME}(?:\\s+${NAME})?`;
@@ -23,17 +23,24 @@ const FULL_NAME = `${NAME}(?:\\s+${NAME})?`;
 const NAME_RULES: RegExp[] = [
   // Verb in either case, name capitalized (so "call today" is left alone).
   new RegExp(
-    `\\b((?:[Aa]sk for|[Cc]ontact(?: person)?|[Cc]all|[Tt]ext|[Ee]mail|[Mm]essage|[Ss]peak (?:to|with)|[Rr]each out to|[Ll]andlord|[Aa]gent|[Rr]ealtor|[Nn]ame)(?::?\\s+))(${FULL_NAME})`,
+    `\\b((?:[Aa]sk for|[Cc]ontact(?: person)?|[Cc]all|[Tt]ext|[Ee]mail|[Mm]essage|[Ss]peak (?:to|with)|[Rr]each out to|DM|[Dd]m|[Ll]andlord|[Aa]gent|[Rr]ealtor|[Nn]ame)(?::?\\s+))(${FULL_NAME})`,
     "g",
   ),
   new RegExp(`\\b((?:[Mm]y name is|I['’]m|I am)\\s+)(${FULL_NAME})(?=[\\s,.!;)]|$)`, "g"),
-  new RegExp(`\\b((?:Mr|Mrs|Ms|Miss|Dr)\\.?\\s+)(${FULL_NAME})`, "g"),
+  // Not "Miss" ("Don't Miss Out") or "Dr" (usually Drive).
+  new RegExp(`\\b((?:Mr|Mrs|Ms)\\.?\\s+)(${FULL_NAME})`, "g"),
   // A sign-off is only a sign-off at the end, or right before removed contact details.
   new RegExp(
     `\\b((?:Thanks|Thank you|Regards|Best regards|Kind regards|Cheers|Sincerely)[,!.]?\\s+)(${FULL_NAME})(?=\\s*(?:[-,.:]?\\s*\\[(?:phone|email) removed\\]|[.!]?\\s*$))`,
     "g",
   ),
 ];
+
+// "Deniz Rousta, Leasing manager": a name right before a role.
+const NAME_BEFORE_ROLE = new RegExp(
+  `\\b(${FULL_NAME})(\\s*[,-]?\\s+(?:[Ll]easing|[Pp]roperty|[Bb]uilding) (?:[Mm]anager|[Aa]gent|[Cc]onsultant)|\\s*[,-]?\\s+[Ss]uperintendent)\\b`,
+  "g",
+);
 
 export function scrub(text: string): string {
   let out = text
@@ -46,7 +53,7 @@ export function scrub(text: string): string {
     .trim();
   for (const rule of NAME_RULES)
     out = out.replace(rule, (_, lead: string) => `${lead}[name removed]`);
-  return out;
+  return out.replace(NAME_BEFORE_ROLE, (_, name: string, role: string) => `[name removed]${role}`);
 }
 
 export function excerpt(text: string | null): string {

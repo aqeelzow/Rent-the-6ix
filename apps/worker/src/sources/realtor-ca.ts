@@ -2,7 +2,8 @@
 // api2.realtor.ca/Listing.svc/PropertySearch_Post; we capture that response while the page loads.
 // Realtor.ca answers plain Playwright with "Sorry, you have been blocked" (403); CloakBrowser gets
 // through and the parser was checked against a live response on 2026-10-16 (SOURCES.md).
-import { emptyRawListing, type RawListing, type SourceAdapter } from "./types.ts";
+import { htmlToText } from "../lib/text.ts";
+import { emptyRawListing, type DetailPatch, type RawListing, type SourceAdapter } from "./types.ts";
 
 const ORIGIN = "https://www.realtor.ca";
 // Toronto bounding box, rentals only (TransactionTypeId=3).
@@ -92,6 +93,35 @@ function sqft(text: string | undefined): number | null {
   return /m2|m²/i.test(text ?? "") ? Math.round(n * 10.7639) : n;
 }
 
+/**
+ * The listing page is server-rendered: label/value pairs ("Cooling" → "Central air conditioning")
+ * and the description. The agent's name and phone are on the page too and are never read.
+ */
+export function parseRealtorDetail(html: string): DetailPatch {
+  const fields = new Map<string, string>();
+  for (const m of html.matchAll(
+    /<div class="propertyDetailsSectionContentLabel">\s*([^<]*?)\s*<\/div>\s*<div class="propertyDetailsSectionContentValue">([\s\S]*?)<\/div>/g,
+  ))
+    fields.set(htmlToText(m[1]).toLowerCase(), htmlToText(m[2]));
+  const description = html.match(/<div id="propertyDescriptionCon">([\s\S]*?)<\/div>/)?.[1];
+  const cooling = fields.get("cooling");
+  const appliances = fields.get("appliances included") ?? "";
+  const spaces = fields.get("total parking spaces");
+  return {
+    description: description ? htmlToText(description) : null,
+    airConditioning: !cooling
+      ? null
+      : /^none$/i.test(cooling)
+        ? false
+        : /central/i.test(cooling)
+          ? "central"
+          : true,
+    // Washer and dryer included with a rental means they're in the unit.
+    laundryInSuite: /washer/i.test(appliances) && /dryer/i.test(appliances) ? true : null,
+    parking: spaces === undefined || Number.isNaN(Number(spaces)) ? null : Number(spaces) > 0,
+  };
+}
+
 export const realtorCa: SourceAdapter = {
   id: "realtor_ca",
   displayName: "Realtor.ca",
@@ -106,5 +136,9 @@ export const realtorCa: SourceAdapter = {
       throw new Error(`realtor_ca: no results response on page ${page} (page layout changed?)`);
     const total = response.Paging?.TotalPages ?? 0;
     return { listings: parseRealtor(response), nextCursor: page < total ? String(page + 1) : null };
+  },
+  async fetchDetail(session, listing) {
+    const { html } = await session.visit(listing.sourceUrl);
+    return parseRealtorDetail(html);
   },
 };
