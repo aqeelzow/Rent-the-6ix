@@ -779,9 +779,10 @@ TRAVEL_PRECOMPUTE_RPS=20
 
 # Worker
 USER_AGENT="RentThe6ix hackathon bot (contact: team@example.com)"
-INGEST_SOURCES=kijiji,torontorentals,manual
+INGEST_SOURCES=kijiji,torontorentals,zillow,realtor_ca,manual   # sources marked "go" in apps/worker/SOURCES.md
 INGEST_INTERVAL_HOURS=6
 INGEST_REQUEST_DELAY_MS=4000
+INGEST_MAX_PAGES=3                 # index pages per source per run (pnpm ingest:once --pages N overrides)
 ```
 
 Each developer keeps these in `.env.local` at the repo root; every env file, including `.env.example`, is git-ignored. The app must start and be usable (with fallbacks) when `AI_PROVIDER=none`, without a MapTiler key, and without OTP.
@@ -911,3 +912,4 @@ One line per change to this spec: `YYYY-MM-DD P#.#: what changed and why`. Newes
 - 2026-10-16 P2.1 [C]: `valuate(subject, candidates, benchmark, now)` takes `now` (the engine never reads the clock) and does the radius widening itself; SQL returns pool candidates within 3 km with their distance. Pool classes: rooms only with rooms; a basement with basements and apartments; every other type (incl. unknown) together, without basements. A whole unit with unknown bedrooms can't be valued (`insufficient_data`). Unknown bathrooms pass the ±1 rule with no similarity penalty; an amenity unknown on either side gets no adjustment. Weighted quantile = first value whose cumulative weight reaches q (averaged with the next on an exact boundary, so equal weights give the usual median). `PriceLabel` values are `underpriced | reasonable | overpriced`. `adjustments[]` entries also carry `code` and `count`. Constants live in `engine/config.ts` (`VALUATION`).
 - 2026-10-16 P2.4 [C]: Dedupe only pairs listings from different sources (torontorentals lists each floor plan of a building at one point, and property managers reuse descriptions), and both rules need the same bedrooms (unknown never matches). The text rule needs at least 40 characters of title + excerpt on both sides. Trigram similarity is computed the way pg_trgm does it, so worker and SQL agree.
 - 2026-10-16 P3.32 [C]: `caveats(listing, ctx)` takes `ctx = { valuation, building, sameTextElsewhere, now }`; caveat titles and explanations live in `engine/caveats.ts` (as safety caveat text lives in `safety.ts`), sorted high → warning → info. `fields_unknown` appears when at least 2 of utilities, pets, laundry, parking and AC are unknown, and names them. `deposit_before_viewing` needs a money word and a before-the-viewing phrase in the same sentence ("pre-screening before viewing" alone doesn't count), or an offer to mail the keys plus a money word. RentSafeTO scores are 0–100.
+- 2026-10-16 P3.31 [C]: `pnpm --filter worker start` runs the worker: an ingest now, then every `INGEST_INTERVAL_HOURS`, never two at once (an overrunning run delays the next). `INGEST_SOURCES` default is the four "go" sources; `INGEST_MAX_PAGES` added to section 20. Until the DB lands, the last run's per-source stats are in `apps/worker/.cache/ingest/last-run.json`.

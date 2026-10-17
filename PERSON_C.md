@@ -8,9 +8,9 @@ Task ids match `PROGRESS.md`; task details are in `SPEC.md`.
 
 - **Current task:** none in progress (P2.1 SQL waits on D's migrations)
 - **Status:** in progress   <!-- not started | in progress | blocked | at sync point -->
-- **Next action:** P3.31 schedule loop (the DB-backed freshness/status parts wait on P0.8). When D's migrations land: `selectComparables` SQL (finishes P2.1), P1.6 upsert. P1.5 geocode once D's Address Points are loaded.
+- **Next action:** everything left is blocked on D or B (see Blockers). Unblocked options: Realtor.ca bounding-box tiles for volume (P3.30), the `rentals_ca` results capture, or detail-page fetches for full descriptions (AC/utilities/year-built gaps; scam + name rules). When D's migrations land: `selectComparables` SQL (finishes P2.1), P1.6 upsert. P1.5 geocode once D's Address Points are loaded.
 - **Blockers / needs from others:** B's `Listing` schema (P0.5; normalize uses a worker-local type until then), D's migrations (P0.8) for P1.6, D's Address Points and boundaries (P1.10, P1.11) for P1.5.
-- **Last updated:** 2026-10-16 (P1.3, P1.4, P2.2, P2.4, P3.32; P2.1 engine part)
+- **Last updated:** 2026-10-16 (P1.3, P1.4, P2.2, P2.4, P3.32; engine part of P2.1, schedule part of P3.31)
 
 ## Handoff notes
 
@@ -21,6 +21,7 @@ Task ids match `PROGRESS.md`; task details are in `SPEC.md`.
 - **Working sources:** `kijiji`, `torontorentals`, `zillow`, `realtor_ca` (see `apps/worker/SOURCES.md`). `rentals_ca` is no longer blocked but no `/graphql` results response is captured; adapter needs a fresh look (low priority, `torontorentals` has the same data).
 - **Known source issues:** Realtor.ca's bounding box includes listings outside Toronto (Vaughan), which P1.5 drops. Realtor.ca paging works (fixed in `fetch.ts`: a hash-only URL change goes via `about:blank` so the page reloads). It reports 8,663 Toronto-area rentals but serves only the first 600 (55 pages × 11) per map view; for P3.30 volume, split the bounding box into tiles. (.NET-tick dates and unspaced postal codes are fixed: `ticksToIso` in the adapter, `postalCode()` in normalize.)
 - **Normalize (P1.3)** is `apps/worker/src/pipeline/normalize.ts`: `normalize(raw, now) → NormalizedListing | null` (null = rent outside $300–25,000). Output is a worker-local type matching SPEC 5 minus what geocode/upsert add (id, location, area ids, building, timestamps, status, dataStatus); it also carries `den`, `postalCode` and `sourceLocation` for geocoding. Swap to B's `Listing` schema when P0.5 lands. `ingest:once` now writes normalized rows and prints field coverage per source.
+- **Schedule (P3.31):** `pnpm --filter worker start` (src/index.ts) runs `runIngest()` (src/pipeline/run-ingest.ts) now and every `INGEST_INTERVAL_HOURS` via `every()` in src/schedule.ts; no overlap, failures logged. Still to do once the DB lands: freshness job (`stale` / `removed` by `lastSeenAt`) and last-ingest stats in the DB for `/status` (today: `.cache/ingest/last-run.json`).
 - `pnpm ingest:once [--sources a,b] [--pages N]` writes scrubbed rows to git-ignored `apps/worker/.cache/ingest/*.json` until P1.6 upserts into TigerData. `scrub.ts` (P1.4) removes emails, phones, links, messaging IDs (WeChat/WhatsApp/IG…, @handles) and names by context: after contact verbs, "my name is / I'm", Mr./Mrs./Dr., and a sign-off at the end or before a removed phone/email. No name list; a `NOT_A_NAME` stop list keeps "Contact Us Today" intact. 100 real Kijiji/Realtor.ca rows: 0 removals, 0 false positives (snippets rarely carry contact info; recheck when detail pages are fetched).
 - **Field coverage after normalize (2 pages each, 2026-10-16):** Kijiji 90 rows: unit type 59%, size 54%, AC 56%, parking/pets 56–57%, available 48%, year built 0%. torontorentals 347 rows: size 99%, year built 93%, pets 98%, AC/utilities/laundry/parking 0%, available 27%. Zillow 122 rows: baths 32%, size 30%, unit type 2%, nothing else. Realtor.ca 11 rows (1 page): beds and size 91%, unit type 100%, amenities 0%. Text rules add little: Kijiji only gives a truncated snippet, torontorentals no description, and Zillow/Realtor.ca index pages carry no amenity text. AC, utilities and year built (outside torontorentals) are the gaps: P4.10 or detail pages would close them.
 - **Store only `Listing` fields.** Excerpt ≤ 280 chars after scrubbing phone numbers, emails and personal names. No photos stored; thumbnail URL only if the source's terms allow linking.
@@ -68,7 +69,7 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked · `[-]` 
 
 ### S3 → S4 (H16–H24) — Volume & caveats · Core
 - [ ] P3.30 ≥ 1,500 active listings across ≥ 2 sources
-- [ ] P3.31 Worker schedule (every 6 h), freshness/status job, `pnpm ingest:once`, last-ingest stats for `/status`
+- [~] P3.31 Worker schedule (every 6 h), freshness/status job, `pnpm ingest:once`, last-ingest stats for `/status`
 - [x] P3.32 `caveats()`: approx location, stale, fields unknown, RentSafeTO low score, insufficient comparables, `rent_far_below`, `deposit_before_viewing`, `duplicate_text_elsewhere` + tests
 - [ ] P3.33 `manual.csv` source as the demo backup (20–40 hand-checked rows)
 
@@ -97,7 +98,7 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked · `[-]` 
 | Source rules & adapters | `apps/worker/SOURCES.md`, `src/sources/*.ts`, `src/lib/fetch.ts` | test fixtures are inline, same shape as the live data, made-up values |
 | One-off run | `apps/worker/src/ingest.ts` (`pnpm ingest:once`) | output in `.cache/ingest/` |
 | Pipeline | `apps/worker/src/pipeline/normalize.ts` (done), `scrub.ts` (done), `dedupe.ts` (done, matching only), `geocode.ts`, `upsert.ts` (+ tests) | normalize: structured fields first, then keyword rules; `fieldEvidence` per field |
-| Schedule | `apps/worker/src/schedule.ts` | every 6 h |
+| Schedule | `apps/worker/src/schedule.ts` (`every`), `src/index.ts` (`pnpm --filter worker start`), `src/pipeline/run-ingest.ts` | every 6 h; freshness job + DB stats todo |
 | Valuation | `packages/shared/engine/valuation.ts` (+ tests, done), `engine/config.ts` (`VALUATION`), `apps/web/src/lib/db/valuation.ts` (`selectComparables`, todo), `apps/web/src/app/api/listings/[id]/valuation/route.ts` | |
 | Caveats | `packages/shared/engine/caveats.ts` (+ tests, done), `engine/config.ts` (`CAVEATS`) | text lives in caveats.ts |
 | Backup data | `db/seed/manual.csv` | |
