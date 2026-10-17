@@ -9,7 +9,8 @@
     "test": "vitest run --passWithNoTests",
     "start": "node --env-file-if-exists=../../.env.local src/index.ts",
     "ingest:once": "node --env-file-if-exists=../../.env.local src/ingest.ts",
-    "browser:install": "cloakbrowser install"
+    "browser:install": "cloakbrowser install",
+    "load:cache": "node --env-file-if-exists=../../.env.local src/load-cache.ts"
   },
   "dependencies": {
     "@rentthe6ix/shared": "workspace:*",

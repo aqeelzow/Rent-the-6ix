@@ -8,6 +8,8 @@ import { openSession, SourceBlockedError } from "../lib/fetch.ts";
 import { sources } from "../sources/index.ts";
 import type { DetailPatch, RawListing, SourceAdapter, SourceId } from "../sources/types.ts";
 import type { Session } from "../lib/fetch.ts";
+import type { Sql } from "postgres";
+import { openDb } from "../lib/db.ts";
 import {
   applyPatch,
   loadDetailCache,
@@ -16,6 +18,7 @@ import {
   scrubPatch,
 } from "./details.ts";
 import { normalize, type NormalizedListing } from "./normalize.ts";
+import { markFreshness, upsertListings } from "./upsert.ts";
 
 export interface SourceRun {
   source: SourceId;
@@ -26,6 +29,8 @@ export interface SourceRun {
   dropped: number;
   /** Detail pages fetched this run (new or changed listings, up to maxDetails). */
   details: number;
+  /** Rows written to TigerData (0 when DATABASE_URL isn't set). */
+  stored: number;
   message?: string;
 }
 
@@ -68,6 +73,8 @@ export function ingestOptionsFromEnv(
 export async function runIngest(options: IngestOptions): Promise<IngestResult> {
   const outDir = new URL("../../.cache/ingest/", import.meta.url);
   await mkdir(outDir, { recursive: true });
+  // With DATABASE_URL, every checkpoint and the final rows are also upserted into TigerData.
+  const db = openDb();
 
   const runs: SourceRun[] = [];
   for (const id of options.sources) {
@@ -80,6 +87,7 @@ export async function runIngest(options: IngestOptions): Promise<IngestResult> {
         listings: 0,
         dropped: 0,
         details: 0,
+        stored: 0,
         message: "unknown source",
       });
       continue;
@@ -91,15 +99,19 @@ export async function runIngest(options: IngestOptions): Promise<IngestResult> {
       listings: 0,
       dropped: 0,
       details: 0,
+      stored: 0,
     };
     const raws: RawListing[] = [];
     // Featured listings repeat on later index pages (torontorentals); keep the first copy.
     const seen = new Set<string>();
     // One file per source per run, rewritten every few pages so a crash or stop loses little.
-    const file = new URL(
-      `${adapter.id}-${new Date().toISOString().replace(/[:.]/g, "-")}.json`,
-      outDir,
-    );
+    // The run's start time is also when its listings count as seen.
+    const observedAt = new Date().toISOString();
+    const file = new URL(`${adapter.id}-${observedAt.replace(/[:.]/g, "-")}.json`, outDir);
+    const save = async (rows: NormalizedListing[]) => {
+      await writeRows(file, rows);
+      if (db) run.stored = await store(db, adapter.id, rows, observedAt);
+    };
     const session = await openSession();
     try {
       let cursor: string | null = options.cursor ?? null;
@@ -113,7 +125,7 @@ export async function runIngest(options: IngestOptions): Promise<IngestResult> {
         run.pages++;
         cursor = page.nextCursor;
         console.log(`${adapter.id}: page ${run.pages}, ${page.listings.length} listings`);
-        if (run.pages % CHECKPOINT_PAGES === 0) await writeRows(file, normalizeAll(raws).rows);
+        if (run.pages % CHECKPOINT_PAGES === 0) await save(normalizeAll(raws).rows);
       } while (cursor && run.pages < options.maxPages);
       await addDetails(adapter, session, raws, options.maxDetails, run);
     } catch (error) {
@@ -128,15 +140,40 @@ export async function runIngest(options: IngestOptions): Promise<IngestResult> {
     run.listings = rows.length;
     runs.push(run);
     if (rows.length) {
-      await writeRows(file, rows);
+      await save(rows);
       console.log(`${adapter.id}: wrote ${rows.length} listings to ${file.pathname}`);
+      if (db) console.log(`${adapter.id}: ${run.stored} listings in TigerData`);
       console.log(`${adapter.id}: field coverage ${coverage(rows)}`);
     }
   }
 
+  if (db) {
+    try {
+      console.log(`freshness: ${await markFreshness(db, new Date())} listings changed status`);
+    } finally {
+      await db.end();
+    }
+  }
   const result = { finishedAt: new Date().toISOString(), runs };
   await writeFile(new URL("last-run.json", outDir), JSON.stringify(result, null, 2));
   return result;
+}
+
+/** A database error is logged, not fatal: the JSON file still has the run. */
+async function store(
+  db: Sql,
+  source: SourceId,
+  rows: NormalizedListing[],
+  observedAt: string,
+): Promise<number> {
+  try {
+    return (await upsertListings(db, rows, observedAt)).written;
+  } catch (error) {
+    console.error(
+      `${source}: TigerData upsert failed: ${error instanceof Error ? error.message : error}`,
+    );
+    return 0;
+  }
 }
 
 const INDEX_ATTEMPTS = 3;
