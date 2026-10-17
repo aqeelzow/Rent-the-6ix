@@ -102,11 +102,11 @@ export function ListingDetail({ id }: { id: string }) {
       <div className="grid items-start gap-5 lg:grid-cols-12">
         <div className="flex min-w-0 flex-col gap-5 lg:col-span-8">
           <RentCheck result={data} now={now} />
-          <NearbySection state={nearby} />
           <AreaCard extras={extras} />
         </div>
         <div className="flex min-w-0 flex-col gap-5 lg:col-span-4">
           <TheHome result={data} />
+          <NearbySection state={nearby} />
           {intent?.safety.enabled && <SafetySection result={data} />}
           <NotYetAvailable result={data} extras={extras} />
         </div>

@@ -91,7 +91,7 @@ export function NearbySection({ state, className }: { state: NearbyState; classN
           </ul>
           {more.length > 0 && (
             <Disclosure label={n("more")}>
-              <div className="grid gap-x-6 gap-y-3 sm:grid-cols-2">
+              <div className="grid gap-x-6 gap-y-3 sm:grid-cols-2 lg:grid-cols-1">
                 {more.map((group) => (
                   <section key={group.kind} aria-label={n(`categories.${group.kind}`)}>
                     <h3 className="text-sm font-medium">{n(`categories.${group.kind}`)}</h3>
