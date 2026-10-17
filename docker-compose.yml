@@ -31,6 +31,8 @@ services:
     # on-failure, not unless-stopped: while the entry point is still a no-op it exits
     # 0, and a clean exit must not restart-loop. Real crashes still come back.
     restart: on-failure
+    # Chromium keeps page state in /dev/shm; Docker's 64 MB default crashes it on big pages.
+    shm_size: 1gb
     env_file: .env
     environment:
       # In-network name; ignores whatever OTP_URL says in .env.

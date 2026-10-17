@@ -61,7 +61,20 @@ CMD ["node", "apps/web/server.js"]
 # --- runtime: worker ------------------------------------------------------
 # Node 24 runs TypeScript directly (type stripping), so the worker needs no build
 # step. Keep the deps tree: civic loaders and the OTP client import shared code.
+#
+# Listing adapters drive CloakBrowser (Chromium via playwright-core; C, apps/worker/src/lib/fetch.ts).
+# Its binary and Chromium's system libraries go in layers that depend only on the installed
+# dependencies, so a code change doesn't re-download ~150 MB. The binary lives in the image
+# (CLOAKBROWSER_CACHE_DIR), not the worker-cache volume, and auto-update is off so a running
+# container never swaps its browser mid-run.
 FROM base AS worker
-ENV NODE_ENV=production
+ENV NODE_ENV=production \
+    CLOAKBROWSER_CACHE_DIR=/opt/cloakbrowser \
+    CLOAKBROWSER_AUTO_UPDATE=false
+COPY --from=deps /app ./
+# playwright-core knows Chromium's apt packages for this Debian release.
+RUN node apps/worker/node_modules/playwright-core/cli.js install-deps chromium \
+    && rm -rf /var/lib/apt/lists/*
+RUN apps/worker/node_modules/.bin/cloakbrowser install
 COPY --from=build /app ./
 CMD ["node", "apps/worker/src/index.ts"]

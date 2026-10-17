@@ -798,6 +798,7 @@ TRAVEL_PRECOMPUTE_RPS=20
 USER_AGENT="RentThe6ix hackathon bot (contact: team@example.com)"
 INGEST_SOURCES=kijiji,torontorentals,zillow,realtor_ca,manual   # sources marked "go" in apps/worker/SOURCES.md
 INGEST_INTERVAL_HOURS=6
+INGEST_ON_START=true               # false: the first ingest waits one interval (deploys don't scrape at once)
 INGEST_REQUEST_DELAY_MS=4000
 INGEST_MAX_PAGES=3                 # index pages per source per run (pnpm ingest:once --pages N overrides)
 INGEST_MAX_DETAILS=50              # listing pages per source per run, new or changed listings only (--details N)
