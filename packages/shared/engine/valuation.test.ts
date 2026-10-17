@@ -108,6 +108,8 @@ describe("radius widening and the 5-comparable floor", () => {
       benchmark,
     });
     expect(v.estimatedRentCad).toBeUndefined();
+    // What was found is still listed, and the count matches the list.
+    expect(v.comparables).toHaveLength(4);
   });
 });
 
