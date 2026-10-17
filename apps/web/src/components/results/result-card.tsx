@@ -10,6 +10,7 @@ import { selectIsShortlisted } from "@/lib/store/searchSlice";
 import { useAppStore } from "@/lib/store/store";
 import type { SearchIntent, SearchResultItem } from "@/lib/store/types";
 import { daysSince, topCaveat, travelSummaries, yearSpan, type TravelSummary } from "./card-data";
+import { TravelFacts } from "./travel-facts";
 import { SafetyInfoButton } from "@/components/safety/safety-info";
 import { PriceBadge } from "./price-badge";
 import { ScoreBar } from "./score-bar";
@@ -57,11 +58,14 @@ function homeFacts(listing: SearchResultItem["listing"]): string[] {
 export function ResultCard({
   result,
   targets,
+  areas = [],
   safetyOn,
   now,
 }: {
   result: SearchResultItem;
   targets: SearchIntent["travelTargets"];
+  /** Area filters, so a "within X km" search still has a point to measure distance from. */
+  areas?: SearchIntent["areas"];
   safetyOn: boolean;
   now: number;
 }) {
@@ -159,6 +163,9 @@ export function ResultCard({
           })}
         </ul>
       )}
+
+      {/* Distance from the place the renter named, and what the trips emit (owner D). */}
+      <TravelFacts result={result} targets={targets} areas={areas} />
 
       {safetyOn && (
         <p className="text-muted-foreground figures flex items-start gap-2 text-sm">

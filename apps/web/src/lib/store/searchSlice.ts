@@ -12,6 +12,12 @@ export type SearchStatus = "idle" | "parsing" | "searching" | "ready" | "error";
 
 type CompletedSearch = Extract<SearchResponse, { status: "completed" }>;
 
+/**
+ * How the list on screen is ordered. "server" keeps B's ranking (the intent's own sort); the other
+ * two reorder the results already loaded, so switching them never costs another search.
+ */
+export type ResultOrder = "server" | "carbon" | "distance";
+
 /** Shortlisted listings live only in the browser (SPEC 15); pasted ones keep the whole listing. */
 export type ShortlistEntry =
   | { kind: "listing"; id: string; addedAt: string }
@@ -33,6 +39,8 @@ export interface SearchSlice {
   notices: string[];
   /** "Hide listings that don't confirm my must-haves" (SPEC 7.1). */
   hideUnconfirmed: boolean;
+  /** The order shown in the results header; "server" is B's ranking for the intent's sort. */
+  resultOrder: ResultOrder;
   status: SearchStatus;
   /** When the current parse or search started (ms), for the "taking a while" message. */
   busySince: number | null;
@@ -54,6 +62,7 @@ export interface SearchSlice {
   /** For chip and filter edits. Callers re-run search afterwards; editing never calls Gemini. */
   updateIntent: (update: (intent: SearchIntent) => SearchIntent) => void;
   setHideUnconfirmed: (hide: boolean) => void;
+  setResultOrder: (order: ResultOrder) => void;
   /** Marks a prompt as being read and returns its request id, to pass to `receiveParse`. */
   startParse: (prompt: string) => number;
   /** Stores the parsed intent. Returns false when a newer request has started. */
@@ -82,6 +91,7 @@ export const createSearchSlice: StateCreator<SearchSlice, [], [], SearchSlice> =
   eligibleCount: 0,
   notices: [],
   hideUnconfirmed: false,
+  resultOrder: "server",
   status: "idle",
   busySince: null,
   error: null,
@@ -98,6 +108,8 @@ export const createSearchSlice: StateCreator<SearchSlice, [], [], SearchSlice> =
   },
 
   setHideUnconfirmed: (hideUnconfirmed) => set({ hideUnconfirmed }),
+
+  setResultOrder: (resultOrder) => set({ resultOrder }),
 
   startParse: (prompt) => {
     const requestId = get().searchRequestId + 1;
