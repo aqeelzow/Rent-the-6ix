@@ -154,7 +154,7 @@ function Header({
           aria-label={t(shortlisted ? "results.shortlistRemove" : "results.shortlistAdd", {
             title: listing.title,
           })}
-          onClick={() => toggleShortlist(listing.id)}
+          onClick={() => toggleShortlist(listing)}
           className="hover:bg-accent focus-visible:ring-ring/50 grid size-10 shrink-0 place-items-center rounded-md outline-none focus-visible:ring-3"
         >
           <Bookmark

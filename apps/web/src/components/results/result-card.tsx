@@ -115,7 +115,7 @@ export function ResultCard({
               aria-label={r(shortlisted ? "shortlistRemove" : "shortlistAdd", {
                 title: listing.title,
               })}
-              onClick={() => toggleShortlist(id)}
+              onClick={() => toggleShortlist(listing)}
               className="hover:bg-accent focus-visible:ring-ring/50 relative z-10 -mt-1 -mr-1 grid size-9 shrink-0 place-items-center rounded-md outline-none focus-visible:ring-3"
             >
               <Bookmark

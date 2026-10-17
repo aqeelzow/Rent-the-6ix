@@ -6,12 +6,12 @@ Task ids match `PROGRESS.md`; task details are in `SPEC.md`.
 
 ## Current state
 
-- **Current task:** none in progress (P3.23 safety UI done, including the limit slider)
+- **Current task:** P3.21 ward page and P3.22 paste-a-listing, built against SPEC with "not available yet" until B's routes land (P3.24 done)
 - **Status:** S3→S4
-- **Branch:** `a/P1.30-keep-prompt` ("Change request" keeps the prompt), PR #23. The safety work (D's P2.13 and B's P2.24 drafts plus A's P3.23) is merged as PR #22; D and B still review their parts on `main`.
-- **Next action:** merge PR #23. Then P3.24 shortlist in `localStorage` + "Clear my data" + share search as URL (no dependencies), then P3.20/P3.21/P3.22 as D's areas API and B's briefing/import routes land.
+- **Branch:** `a/P3.24-shortlist` (P3.24, then P3.21/P3.22 placeholders). The safety work (PR #22) and "Change request" keeps the prompt (PR #23) are merged.
+- **Next action:** P3.21 and P3.22 pages, then push and open a PR. P3.20 explorer waits for D's P3.10 and for non-crime indicators (only `crime:*` is loaded, so a choropleth now would be a crime map, against SPEC 9.4).
 - **Blockers / needs from others:** see "Depends on others". The detail page shows "not available yet" for the building record, area facts, benchmark, the comparables map and travel times other than straight-line, until D (and C for comparable coordinates) deliver.
-- **Last updated:** 2026-10-17 (safety slider verified live: a 0.8× limit gives 999 eligible listings, all at or below 0.8×)
+- **Last updated:** 2026-10-17 (shortlist, reload restore, share link and "Clear my data" verified in the browser)
 
 ## Handoff notes
 
@@ -106,7 +106,7 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked · `[-]` 
 - [ ] P3.21 Ward page: B's briefing, the indicator table it was written from, election info box
 - [ ] P3.22 Paste a listing: text or URL input, B's import route, scored result card, fallback form when extraction is partial
 - [x] P3.23 Safety UI: switch and limit slider in filters and on results, rate on cards and detail, caveats sheet ("How this works")
-- [ ] P3.24 Shortlist in `localStorage` (try/catch), "Clear my data", share search as URL
+- [x] P3.24 Shortlist in `localStorage` (try/catch), "Clear my data", share search as URL
 
 ### S4 → S5 (H22–H30) — P1 · Stretch
 - [ ] P4.20 Compare page (up to 4 listings, SPEC 11.5)
@@ -152,7 +152,8 @@ Status checked 2026-10-17 against `main` at `147c74b`.
 | Feature | Key files | Notes |
 | --- | --- | --- |
 | Layout shell, tokens | `apps/web/src/app/layout.tsx`, `src/app/globals.css`, `src/components/ui/*` | shadcn (Radix base, nova preset); tokens `price-*`, `caveat-*`, `score-*`; `figures` utility for numbers; light only |
-| Store | `apps/web/src/lib/store/searchSlice.ts` (+ test), `store.ts`, `types.ts` | intent, parse info, results, eligibleCount, notices, hideUnconfirmed, shortlist, selection; types re-exported from B's schemas |
+| Store | `apps/web/src/lib/store/searchSlice.ts` (+ test), `store.ts`, `types.ts`, `persist.ts` (+ test: browser storage), `share.ts` (+ test: share links) | intent, parse info, results, eligibleCount, notices, hideUnconfirmed, shortlist, selection; types re-exported from B's schemas |
+| Shortlist | `src/app/shortlist/page.tsx`, `src/components/shortlist/` (`shortlist-view.tsx`, `shortlist-count.tsx` in the header, `store-persistence.tsx` mounted in the layout), `src/components/search/share-search.tsx` | entries keep a `SavedListing` snapshot (rent, rooms, title, source as saved); keys `rentthe6ix.shortlist.v1` and `rentthe6ix.lastSearch.v1`; share link `/search?q=<prompt>&s=<base64url intent>`; strings under `shortlist` and `search.share` |
 | Layout shell | `src/components/layout/*` (header, mobile menu, footer, page placeholder) | nav links in `nav-links.ts` |
 | Strings | `apps/web/messages/en.json`, `src/lib/format/messages.ts` (+ test) | typed `t("ns.key", params?)` |
 | Landing | `src/app/page.tsx`, `src/components/search/prompt-box.tsx` | next/form GET to `/search?q=`; Enter submits, Shift+Enter adds a line; `/?q=…#start` prefills the box below the scenes (used by "Change request") |

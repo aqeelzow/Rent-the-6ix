@@ -146,6 +146,19 @@ export async function runSearch(options: ActionOptions = {}): Promise<void> {
   }
 }
 
+/**
+ * Opens a search from a shared link or this browser's last search, as it was edited, and runs it.
+ * The parser isn't called, so the filters are exactly the ones that were saved.
+ */
+export async function restoreSearch(
+  search: { intent: SearchIntent; hideUnconfirmed: boolean },
+  options: ActionOptions = {},
+): Promise<void> {
+  const store = options.store ?? appStore;
+  store.getState().loadSearch(search.intent, search.hideUnconfirmed);
+  await runSearch(options);
+}
+
 /** Looks up a place with B's resolver: resolved, ambiguous (choices) or unavailable. */
 export async function resolveDestination(
   query: string,
