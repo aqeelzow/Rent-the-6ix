@@ -12,7 +12,7 @@ import { CAVEATS } from '../../../../../packages/shared/engine/config';
 test.skipIf(process.env.RUN_LIVE_SEARCH_RANKING !== '1')('SPEC16 live database ranking, room exclusion and unknown-bedroom evidence', async () => {
   if (!process.env.DATABASE_URL) process.loadEnvFile('.env.local');
   assert.ok(process.env.DATABASE_URL, 'DATABASE_URL required');
-  const sql = postgres(process.env.DATABASE_URL, { max: 4, connect_timeout: 5, onnotice: () => {} });
+  const sql = postgres(process.env.DATABASE_URL, { max: 2, connect_timeout: 5, onnotice: () => {} });
   const deps = sqlSearchDependencies(() => sql);
   const prompts = [
     'Room or studio near York University under $1,300, close to the subway, furnished.',
@@ -25,8 +25,14 @@ test.skipIf(process.env.RUN_LIVE_SEARCH_RANKING !== '1')('SPEC16 live database r
       assert.equal(parsed.parser, 'fallback');
       const request = { intent: parsed.intent, hideUnconfirmed: false };
       const pool = await deps.loadCandidates!(request);
+      let valuationCalls = 0;
       const started = performance.now();
-      const response = await searchCandidates(request, deps);
+      const response = await searchCandidates(request, { ...deps, enrich: async (...args) => { valuationCalls++; return deps.enrich(...args); } });
+      assert.ok(valuationCalls <= 500, 'ordinary demos must cap C contexts after eligibility');
+      // Independent full-pool gate oracle uses no C valuation and never truncates candidates.
+      let eligibleOracle = 0;
+      for (const listing of pool) if (filterListing(listing, parsed.intent, await deps.filterContext!(listing, parsed.intent)).passes) eligibleOracle++;
+      assert.equal(response.eligibleCount, eligibleOracle);
       assert.ok(response.results.length > 0, `demo ${index + 1} must be non-vacuous`);
       for (const row of response.results) {
         assert.equal(row.matchScore.total, Math.round(row.matchScore.parts.reduce((sum, p) => sum + (p.score ?? 0) * p.effectiveWeight, 0)));
@@ -54,7 +60,7 @@ test.skipIf(process.env.RUN_LIVE_SEARCH_RANKING !== '1')('SPEC16 live database r
       // Cheap confirmation ordering must survive SQL source order and the ordinary candidate cap.
       const confirmed = pool.filter(l => filterListing(l, parsed.intent, {}, false, true).notes.length === 0);
       if (index > 0 && confirmed.length) assert.notEqual(response.results[0].listing.bedrooms, null);
-      process.stdout.write(JSON.stringify({ demo: index + 1, database: 'live (read-only)', parser: parsed.parser, eligible: response.eligibleCount, returned: response.results.length, elapsedMs: Math.round(performance.now() - started), top6: response.results.slice(0, 6).map(r => ({ rent: r.listing.monthlyRentCad, bedrooms: r.listing.bedrooms, unitType: r.listing.unitType, score: r.matchScore.total, unknownHardFields: r.matchScore.hardFilterNotes.length, value: r.matchScore.parts.find(p => p.id === 'value')!.score, confidence: r.valuation.confidence, effectiveCount: r.valuation.effectiveCount })) }) + '\n');
+      process.stdout.write(JSON.stringify({ demo: index + 1, database: 'live (read-only)', parser: parsed.parser, eligible: response.eligibleCount, valuationCalls, returned: response.results.length, elapsedMs: Math.round(performance.now() - started), top6: response.results.slice(0, 6).map(r => ({ rent: r.listing.monthlyRentCad, bedrooms: r.listing.bedrooms, unitType: r.listing.unitType, score: r.matchScore.total, unknownHardFields: r.matchScore.hardFilterNotes.length, value: r.matchScore.parts.find(p => p.id === 'value')!.score, confidence: r.valuation.confidence, effectiveCount: r.valuation.effectiveCount })) }) + '\n');
     }
   } finally { await sql.end({ timeout: 2 }); }
 }, 180000);

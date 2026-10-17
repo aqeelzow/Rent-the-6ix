@@ -23,6 +23,8 @@ export function sqlSearchDependencies(client: typeof getClient = getClient, crim
     loadListing: sqlListingLoader(client),
     loadDetail: sqlDetailLoader(client),
     loadCandidates: sqlCandidateLoader(client),
+    // No stored travel adapter is published yet; both stages explicitly expose unknown time.
+    filterContext: async (listing, intent) => ({ travel: [], safety: intent.safety.enabled ? safetyForListing(await crimeTable().catch(() => null), listing.neighbourhoodId).safety : null }),
     enrich: async (listing, intent, signal) => {
       let abort: (() => void) | undefined;
       try {

@@ -1,6 +1,6 @@
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
-import { baseIntent, sampleListings, valuations, travelIntent } from '../../../../../packages/shared/fixtures/index';
+import { baseIntent, sampleListings, valuations, travelIntent, safetySearchFixture } from '../../../../../packages/shared/fixtures/index';
 import type { Listing, TravelTimeRow } from '../../../../../packages/shared/schemas/index';
 import { mapCandidatePool, searchCandidates, SearchUnavailable, type SearchDependencies } from './candidates';
 const enrich: SearchDependencies['enrich'] = async () => ({ valuation: valuations[3], travel: [], safety: null });
@@ -152,4 +152,68 @@ test('hard bedroom confirmation takes priority even when another hard field is u
   assert.equal(result.results[0].listing.id, listings[1].id);
   assert.deepEqual(result.results[0].matchScore.hardFilterNotes, ['parking: not confirmed']);
   assert.deepEqual(result.results[1].matchScore.hardFilterNotes, ['bedrooms: not confirmed']);
+});
+
+test('eligibility context filters full pool before500 while bounding valuation and preserving hide/routing counts', async () => {
+  const listings = Array.from({ length: 620 }, (_, i) => ({ ...pool[i % pool.length], id: `00000000-0000-4000-8000-${String(i + 1).padStart(12, '0')}`, monthlyRentCad: 1000 + i }));
+  const intent = { ...travelIntent, sortBy: 'lowest_rent' as const };
+  let valuationsCalled = 0, filtersCalled = 0, routed = 0;
+  const travel = (listing: Listing): TravelTimeRow[] => intent.travelTargets.flatMap(target => [target.mode, ...target.alternativeModes ?? []].map(mode => ({ listingId: listing.id, targetId: target.id, mode, minutes: listing.monthlyRentCad < 1100 ? 1000 : null, method: listing.monthlyRentCad < 1100 ? 'otp' : 'straight_line', distanceM: 100, computedAt: listing.lastSeenAt, poiId: null })));
+  const deps: SearchDependencies = {
+    listings,
+    filterContext: async listing => { filtersCalled++; return { travel: travel(listing), safety: null }; },
+    enrich: async listing => { valuationsCalled++; return { valuation: valuations[3], travel: travel(listing), safety: null }; },
+    routeTimes: async (origins, targets, mode) => { routed = Math.max(routed, origins.length); return origins.flatMap(listing => targets.map(target => ({ listingId: listing.id, targetId: target.id, mode, minutes: 5, method: 'otp', distanceM: 100, computedAt: listing.lastSeenAt, poiId: null }))); },
+  };
+  const result = await searchCandidates({ intent, hideUnconfirmed: false }, deps);
+  assert.equal(filtersCalled, 620); assert.equal(valuationsCalled, 500); assert.equal(routed, 100);
+  assert.equal(result.eligibleCount, 520); assert.equal(result.results.length, 500);
+  assert.equal(result.results[0].listing.monthlyRentCad, 1100);
+  valuationsCalled = filtersCalled = 0;
+  const hidden = await searchCandidates({ intent, hideUnconfirmed: true }, deps);
+  assert.equal(filtersCalled, 620); assert.equal(valuationsCalled, 500);
+  assert.equal(hidden.eligibleCount, 100); assert.equal(hidden.results.length, 100);
+  const unrouted = await searchCandidates({ intent, hideUnconfirmed: true }, { ...deps, routeTimes: undefined });
+  assert.equal(unrouted.eligibleCount, 0); assert.equal(unrouted.results.length, 0);
+  valuationsCalled = 0;
+  const unresolved = await searchCandidates({ intent: { ...intent, travelTargets: intent.travelTargets.map(target => ({ ...target, resolved: undefined })) }, hideUnconfirmed: true }, { ...deps, filterContext: async () => ({ travel: [] }) });
+  assert.equal(valuationsCalled, 0); assert.equal(unresolved.results.length, 0);
+});
+
+test('valuation ordering/fairness retain full contexts and cross-listing eligibility travel cannot confirm', async () => {
+  let full = 0, cheap = 0;
+  const deps: SearchDependencies = { listings: pool, filterContext: async () => { cheap++; return {}; }, enrich: async (...args) => { full++; return enrich(...args); } };
+  for (const intent of [{ ...travelIntent, sortBy: 'best_value' as const }, { ...travelIntent, sortBy: 'shortest_trips' as const }, { ...travelIntent, criteria: { priceFairness: { hard: true, value: ['underpriced' as const] } } }]) {
+    full = cheap = 0;
+    await searchCandidates({ intent, hideUnconfirmed: false }, deps);
+    assert.equal(full, 520); assert.equal(cheap, 0);
+  }
+  const listing = pool[0];
+  const response = await searchCandidates({ intent: travelIntent, hideUnconfirmed: true }, { ...deps, listings: [listing], filterContext: async () => ({ travel: [{ listingId: pool[1].id, targetId: travelIntent.travelTargets[0].id, mode: 'bike', minutes: 5, method: 'otp', distanceM: 100, computedAt: listing.lastSeenAt, poiId: null }] }) });
+  assert.equal(response.results.length, 0); assert.equal(response.eligibleCount, 0);
+});
+
+test('hard safety eligibility rejects known failures across full pool before valuation cap', async () => {
+  const safety = { ...(safetySearchFixture.status === 'completed' ? safetySearchFixture.results[0].safety! : null!), relativeRate: 0.5 };
+  const listings = pool.map(listing => ({ ...listing, neighbourhoodId: safety.areaId }));
+  const intent = { ...baseIntent, sortBy: 'lowest_rent' as const, safety: { enabled: true, hard: true, maxRelativeRate: 1 } };
+  let calls = 0;
+  const context = (listing: Listing) => ({ safety: listing.monthlyRentCad > 1020 ? { ...safety, relativeRate: 2 } : safety, travel: [] });
+  const response = await searchCandidates({ intent, hideUnconfirmed: true }, { listings, filterContext: async listing => context(listing), enrich: async listing => { calls++; return { ...context(listing), valuation: valuations[3] }; } });
+  assert.equal(calls, 20); assert.equal(response.eligibleCount, 20); assert.equal(response.results.length, 20);
+  assert.equal(response.results[0].listing.monthlyRentCad, 1001);
+});
+
+test('hide filters unknown hard safety/travel before cap while retaining later confirmed matches', async () => {
+  const safety = safetySearchFixture.status === 'completed' ? safetySearchFixture.results[0].safety! : null!;
+  const listings = pool.map(listing => ({ ...listing, neighbourhoodId: safety.areaId }));
+  const confirmed = (listing: Listing) => listing.monthlyRentCad > 1500;
+  let calls = 0;
+  const travel = (listing: Listing): TravelTimeRow[] => confirmed(listing) ? travelIntent.travelTargets.flatMap(target => [target.mode, ...target.alternativeModes ?? []].map(mode => ({ listingId: listing.id, targetId: target.id, mode, minutes: 5, method: 'otp', distanceM: 100, computedAt: listing.lastSeenAt, poiId: null }))) : [];
+  const deps: SearchDependencies = { listings, filterContext: async listing => ({ safety: confirmed(listing) ? safety : null, travel: travel(listing) }), enrich: async listing => { calls++; return { valuation: valuations[3], safety: confirmed(listing) ? safety : null, travel: travel(listing) }; } };
+  const timed = await searchCandidates({ intent: { ...travelIntent, sortBy: 'lowest_rent' }, hideUnconfirmed: true }, deps);
+  assert.equal(calls, 20); assert.equal(timed.results.length, 20); assert.equal(timed.eligibleCount, 20);
+  calls = 0;
+  const safe = await searchCandidates({ intent: { ...baseIntent, sortBy: 'lowest_rent', safety: { enabled: true, hard: true, maxRelativeRate: 5 } }, hideUnconfirmed: true }, { ...deps, routeTimes: async () => [] });
+  assert.equal(calls, 20); assert.equal(safe.results.length, 20); assert.equal(safe.eligibleCount, 20);
 });
