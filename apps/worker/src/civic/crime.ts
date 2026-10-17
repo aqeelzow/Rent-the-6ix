@@ -91,9 +91,7 @@ export async function loadCrimeRates(sql: Sql): Promise<CrimeLoad> {
         period,
         source_id: SOURCE_ID,
         sample_size: null,
-        note: MAJOR.includes(type as (typeof MAJOR)[number])
-          ? "major crime indicator"
-          : null,
+        note: MAJOR.includes(type as (typeof MAJOR)[number]) ? "major crime indicator" : null,
       });
     }
     if (!counted) missingCodes++;

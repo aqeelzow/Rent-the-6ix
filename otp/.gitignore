@@ -1,0 +1,5 @@
+# OTP inputs, the cached download and the built graph are large and reproducible from
+# build.sh: 1 GB of OSM plus a multi-hundred-MB graph object must never enter git.
+downloads/*
+data/*
+!data/.gitkeep

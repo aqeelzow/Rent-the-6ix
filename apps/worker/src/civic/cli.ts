@@ -31,7 +31,9 @@ async function addresses(sql: Sql): Promise<void> {
     `  address_points: ${load.total} rows, ${load.withNeighbourhood} with a neighbourhood (${pct(load.withNeighbourhood)}), ${load.withWard} with a ward`,
   );
   if (load.withNeighbourhood < load.total * 0.95) {
-    throw new Error("fewer than 95% of address points landed in a neighbourhood — check the boundaries");
+    throw new Error(
+      "fewer than 95% of address points landed in a neighbourhood — check the boundaries",
+    );
   }
 }
 
@@ -40,8 +42,15 @@ async function pois(sql: Sql): Promise<void> {
   console.log(`  pois: ${load.written} rows`, load.byCategory);
   // Every category is required: an empty one means a source silently stopped contributing
   // (the City's facility layers are MultiPoint, which is easy to mis-parse into zero rows).
-  const missing = ["library", "park", "community_centre", "school", "grocery", "pharmacy", "clinic"]
-    .filter((category) => !load.byCategory[category]);
+  const missing = [
+    "library",
+    "park",
+    "community_centre",
+    "school",
+    "grocery",
+    "pharmacy",
+    "clinic",
+  ].filter((category) => !load.byCategory[category]);
   if (missing.length > 0) throw new Error(`no POIs for: ${missing.join(", ")}`);
 }
 
