@@ -22,7 +22,14 @@ const styles = {
  * and, on tap, what it was compared with (SPEC 7.2). Wording only; every number comes from C's
  * valuation.
  */
-export function PriceBadge({ valuation }: { valuation: SearchResultItem["valuation"] }) {
+export function PriceBadge({
+  valuation,
+  tinted = false,
+}: {
+  valuation: SearchResultItem["valuation"];
+  /** On a panel already tinted by the label: a quiet pill with the detail beside it. */
+  tinted?: boolean;
+}) {
   const summary = priceSummary(valuation);
   const label = r(summary.label);
   const detail =
@@ -38,14 +45,16 @@ export function PriceBadge({ valuation }: { valuation: SearchResultItem["valuati
         <button
           type="button"
           aria-label={`${label}. ${detail}. ${r("more")}`}
-          className="focus-visible:ring-ring/50 relative z-10 flex flex-col items-start gap-1 rounded-md text-left outline-none focus-visible:ring-3"
+          className={`focus-visible:ring-ring/50 relative z-10 flex rounded-md text-left outline-none focus-visible:ring-3 ${tinted ? "flex-wrap items-center gap-x-2 gap-y-1" : "flex-col items-start gap-1"}`}
         >
           <span
-            className={`rounded-full px-2 py-0.5 text-xs font-semibold ${styles[summary.label]}`}
+            className={`rounded-full text-xs font-semibold ${tinted ? "bg-black/[0.07] px-3 py-1 dark:bg-white/12" : `px-2 py-0.5 ${styles[summary.label]}`}`}
           >
             {label}
           </span>
-          <span className="figures text-muted-foreground text-xs">{detail}</span>
+          <span className={`figures text-xs ${tinted ? "opacity-80" : "text-muted-foreground"}`}>
+            {detail}
+          </span>
         </button>
       </PopoverTrigger>
       <PopoverContent align="start" className="flex w-72 flex-col gap-1 text-sm">

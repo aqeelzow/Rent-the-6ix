@@ -498,7 +498,9 @@
     },
     "scoreLabel": "match",
     "scoreBreakdown": "Match score {total}",
-    "scorePoints": "{points} pts"
+    "scorePoints": "{points} pts",
+    "scoreRow": "Match score",
+    "view": "View"
   },
   "listing": {
     "title": "Listing",
