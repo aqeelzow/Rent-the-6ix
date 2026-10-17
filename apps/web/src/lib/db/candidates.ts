@@ -15,6 +15,19 @@ export type SearchDependencies = {
   routingBudgetMs?: number;
 };
 export class SearchUnavailable extends Error {}
+// Eight pipelined contexts hide network round trips without adding database connections.
+export async function mapCandidatePool<T>(listings: readonly Listing[], operation: (listing: Listing) => Promise<T>): Promise<T[]> {
+  const results = new Array<T>(listings.length);
+  let next = 0, failed = false;
+  await Promise.all(Array.from({ length: Math.min(8, listings.length) }, async () => {
+    while (!failed && next < listings.length) {
+      const index = next++;
+      try { results[index] = await operation(listings[index]); }
+      catch (error) { failed = true; throw error; }
+    }
+  }));
+  return results;
+}
 const part = (result: SearchResult, id: 'value') => result.matchScore.parts.find(p => p.id === id)?.score ?? -Infinity;
 export function tripMinutes(intent: SearchRequest['intent'], travel: TravelTimeRow[]): number {
   if (!intent.travelTargets.length) return Infinity;
@@ -39,12 +52,10 @@ export async function searchCandidates(input: SearchRequest, dependencies: Searc
   // Numeric listing sorts operate on the entire cheap-filtered pool before expensive enrichment.
   if (intent.sortBy === 'lowest_rent' || intent.sortBy === 'newest') pool.sort((a, b) => intent.sortBy === 'lowest_rent' ? a.monthlyRentCad - b.monthlyRentCad || tieBreak(a, b) : tieBreak(a, b));
   const contexts = new Map<string, ScoreContext>();
-  const eligible: Listing[] = [];
   // Fairness/safety hard filters must be known before taking the numeric candidate cap.
   const fullContextRequired = intent.sortBy === 'best_value' || intent.sortBy === 'shortest_trips' || intent.criteria.priceFairness?.hard || intent.safety.hard || intent.travelTargets.some(t => t.hard);
   const contextPool = fullContextRequired ? pool : pool.slice(0, engineConfig.candidateLimit);
-  for (let offset = 0; offset < contextPool.length; offset += 2) {
-    const batch = await Promise.all(contextPool.slice(offset, offset + 2).map(async listing => {
+  const enriched = await mapCandidatePool(contextPool, async listing => {
       const owner = await dependencies.enrich(listing, intent);
       const travel = owner.travel.map(row => TravelTimeRowSchema.parse(row)).filter(row => row.listingId === listing.id);
       for (const target of intent.travelTargets) if (target.resolved) for (const mode of targetModes(target)) {
@@ -53,9 +64,8 @@ export async function searchCandidates(input: SearchRequest, dependencies: Searc
       const context = { ...owner, safety: intent.safety.enabled ? owner.safety : null, travel };
       contexts.set(listing.id, context);
       return filterListing(listing, intent, context).passes ? listing : null;
-    }));
-    eligible.push(...batch.filter((listing): listing is Listing => listing !== null));
-  }
+  });
+  const eligible = enriched.filter((listing): listing is Listing => listing !== null);
   if (intent.sortBy === 'best_value' || intent.sortBy === 'shortest_trips') {
     const key = (listing: Listing) => {
       const context = contexts.get(listing.id)!;

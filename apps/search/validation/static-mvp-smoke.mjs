@@ -93,5 +93,15 @@ try {
   assert.equal(terminal.status, 'unavailable');
   assert.equal(terminal.reason, 'routing_incomplete');
   await call(job.pollUrl, undefined, 410);
-  console.log(JSON.stringify({ parser: parsed.parser, eligible: expected.length, returned: results.results.length, percentile: count, liveDetail: true, overlappingSearches: true, staticSizeAgeTypeAc: true, compoundPromptParsing: true, hardFairness: true, asyncJobs: true, measurements }, null, 2));
+  const broadJob = await call('/api/listings/search', { intent: { ...travelIntent, criteria: {}, areas: [] } });
+  assert.equal(broadJob.status, 'pending');
+  for (let attempt = 0; attempt < 50; attempt++) {
+    terminal = await call(broadJob.pollUrl);
+    if (terminal.status !== 'pending') break;
+    await new Promise(resolve => setTimeout(resolve, 100));
+  }
+  assert.equal(terminal.status, 'unavailable');
+  assert.equal(terminal.reason, 'routing_incomplete');
+  await call(broadJob.pollUrl, undefined, 410);
+  console.log(JSON.stringify({ parser: parsed.parser, eligible: expected.length, returned: results.results.length, percentile: count, liveDetail: true, overlappingSearches: true, staticSizeAgeTypeAc: true, compoundPromptParsing: true, hardFairness: true, asyncJobs: true, broadMissingRouter: true, measurements }, null, 2));
 } finally { await sql.end({ timeout: 1 }); }

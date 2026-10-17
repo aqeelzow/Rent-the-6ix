@@ -6,7 +6,7 @@ import { CaveatSchema, ValuationSchema } from '../../../../../packages/shared/sc
 import { SearchUnavailable, type SearchDependencies } from './candidates';
 import { sqlCandidateLoader, sqlListingLoader } from './candidates-sql';
 
-// shortcut: bound unfinished owner reads to eight; use cancellable connections for higher production load.
+// shortcut: bound unfinished owner reads to four eight-context requests; use cancellable connections for higher production load.
 let enrichmentsInFlight = 0;
 export function sqlSearchDependencies(client: typeof getClient = getClient): SearchDependencies {
   // shortcut: public owner context can lag observations/building updates by 60 seconds; invalidate on owner events when available.
@@ -22,7 +22,7 @@ export function sqlSearchDependencies(client: typeof getClient = getClient): Sea
         const key = inputHash(JSON.stringify(listing));
         const cached = cache.get(key);
         if (cached) return cached;
-        if (enrichmentsInFlight >= 8) throw new SearchUnavailable('Listing context is unavailable');
+        if (enrichmentsInFlight >= 32) throw new SearchUnavailable('Listing context is unavailable');
         const sql = client();
         if (!sql) throw new SearchUnavailable('Database is unavailable');
         enrichmentsInFlight++;

@@ -82,6 +82,7 @@ test('exact deadline aborts enrichment while another runtime can still serve sta
   const db = client({ query: () => { queries++; return queries === 1 ? new Promise(resolve => { finish = resolve; }) : Promise.resolve([]); } });
   const dependencies = sqlSearchDependencies(() => db.sql);
   const exact: SearchRequest = { ...input, intent: { ...travelIntent, numericExtreme: { field: 'travel', direction: 'min', percentage: 5, minimumCount: 10, targetId: travelIntent.travelTargets[0].id } } };
+  dependencies.routeTimes = async () => [];
   const result = await searchPercentileCandidates(exact, dependencies, { referenceYear: 2026, deadline: Date.now() + 25 });
   assert.equal(result.status, 'unavailable'); if (result.status === 'unavailable') assert.equal(result.reason, 'timeout');
   assert.equal(queries, 1);
@@ -98,10 +99,10 @@ test('unfinished owner enrichments are bounded and release capacity when settled
   const rows = new Promise<unknown[]>(resolve => { finish = resolve; });
   const db = client({ query: () => rows });
   const dependencies = sqlSearchDependencies(() => db.sql);
-  const pending = Array.from({ length: 8 }, (_, i) => dependencies.enrich({ ...listing, id: sampleListings[i].id }, baseIntent));
+  const pending = Array.from({ length: 32 }, (_, i) => dependencies.enrich({ ...listing, id: `00000000-0000-4000-8000-${String(i + 1).padStart(12, '0')}` }, baseIntent));
   await assert.rejects(dependencies.enrich(listing, baseIntent), SearchUnavailable);
   finish([]);
-  assert.equal((await Promise.all(pending)).length, 8);
+  assert.equal((await Promise.all(pending)).length, 32);
   assert.equal((await dependencies.enrich(listing, baseIntent)).valuation.status, 'insufficient_data');
 });
 
