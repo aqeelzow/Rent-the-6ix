@@ -6,6 +6,7 @@
 import { htmlToText } from "../lib/text.ts";
 import {
   emptyRawListing,
+  httpsUrl,
   toPatch,
   type RawListing,
   type SourceAdapter,
@@ -36,6 +37,8 @@ interface KijijiListing {
   } | null;
   price?: { __typename: string; amount?: number | null } | null;
   attributes?: { all?: { canonicalName: string; canonicalValues: string[] }[] } | null;
+  /** The listing's photos, first = the cover. */
+  imageUrls?: string[] | null;
 }
 
 const ROOM_WORDS =
@@ -114,6 +117,7 @@ export function parseKijiji(
       lat: coords?.latitude ?? null,
       lng: coords?.longitude ?? null,
       postedAt: entry.activationDate ?? null,
+      imageUrl: httpsUrl(entry.imageUrls?.[0]),
     });
   }
 

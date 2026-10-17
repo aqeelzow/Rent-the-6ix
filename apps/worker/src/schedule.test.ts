@@ -21,6 +21,27 @@ describe("every", () => {
     expect(job).toHaveBeenCalledTimes(2);
   });
 
+  it("can wait one interval before the first run", async () => {
+    const log = vi.fn();
+    const job = vi.fn(async () => {});
+    const schedule = every(6 * HOUR, "ingest", job, log, { startNow: false });
+    await vi.advanceTimersByTimeAsync(6 * HOUR - 1);
+    expect(job).not.toHaveBeenCalled();
+    expect(log.mock.calls[0][0]).toMatch(/^ingest: first run at /);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(job).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(6 * HOUR);
+    expect(job).toHaveBeenCalledTimes(2);
+    schedule.stop();
+  });
+
+  it("stops before a delayed first run", async () => {
+    const job = vi.fn(async () => {});
+    every(HOUR, "ingest", job, () => {}, { startNow: false }).stop();
+    await vi.advanceTimersByTimeAsync(3 * HOUR);
+    expect(job).not.toHaveBeenCalled();
+  });
+
   it("never overlaps: a run longer than the interval delays the next one", async () => {
     let running = 0;
     let maxRunning = 0;

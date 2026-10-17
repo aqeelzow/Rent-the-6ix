@@ -26,7 +26,15 @@ const response = {
           Latitude: "43.64",
           Longitude: "-79.39",
         },
+        Photo: [
+          {
+            HighResPath: "https://cdn.realtor.ca/listing/high/1.jpg",
+            MedResPath: "https://cdn.realtor.ca/listing/med/1.jpg",
+            LowResPath: "https://cdn.realtor.ca/listing/low/1.jpg",
+          },
+        ],
       },
+      Individual: [{ Name: "An Agent", Photo: "https://cdn.realtor.ca/individual/agent.jpg" }],
     },
     { MlsNumber: "N2", RelativeDetailsURL: "/real-estate/2/example", Property: {} },
   ],
@@ -48,6 +56,8 @@ describe("realtor.ca", () => {
       address: "1 EXAMPLE ST, Toronto, Ontario M5V1A1",
       lat: 43.64,
       postedAt: "2026-10-17T02:33:55.783Z",
+      // The property's medium photo; the agent's photo is never read.
+      imageUrl: "https://cdn.realtor.ca/listing/med/1.jpg",
     });
   });
 

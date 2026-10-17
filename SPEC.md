@@ -308,7 +308,7 @@ Valuation {
   confidence: 'low' | 'medium' | 'high'
   comparables: { listingId, rentCad, adjustedRentCad, distanceM, weight, lastSeenAt }[]
   adjustments: { code?, amountCad, count?, label }[]   // e.g. "utilities included: −$150 to compare", with (when known) how many comparables it moved
-  benchmark: { label, valueCad, period, sourceId } | null   // context, never the estimate; null until D's benchmarks seed (P2.15)
+  benchmark: { label, valueCad, period, sourceId } | null   // context, never the estimate; StatCan asking rent for the dwelling and bedrooms; null when bedrooms are unknown
   method: string
 }
 ```
@@ -800,6 +800,7 @@ TRAVEL_PRECOMPUTE_RPS=20
 USER_AGENT="RentThe6ix hackathon bot (contact: team@example.com)"
 INGEST_SOURCES=kijiji,torontorentals,zillow,realtor_ca,manual   # sources marked "go" in apps/worker/SOURCES.md
 INGEST_INTERVAL_HOURS=6
+INGEST_ON_START=true               # false: the first ingest waits one interval (deploys don't scrape at once)
 INGEST_REQUEST_DELAY_MS=4000
 INGEST_MAX_PAGES=3                 # index pages per source per run (pnpm ingest:once --pages N overrides)
 INGEST_MAX_DETAILS=50              # listing pages per source per run, new or changed listings only (--details N)
@@ -976,6 +977,11 @@ One line per change to this spec: `YYYY-MM-DD P#.#: what changed and why`. Newes
 - 2026-10-17 P2.24 [B] (drafted by A for B's review): live search attaches D's safety and safety score in `enrich()` only when the renter opts in. An unreadable crime table leaves safety unknown instead of failing the search.
 - 2026-10-17 P3.23 [A]: "How this works" dialog for the safety preference (measure, 15% weight, score scale, must-have, caveats from D's engine), opened from the filters panel, cards and the detail page. The detail page shows rates by type per 100,000 residents.
 - 2026-10-17 P2.24 [B] (drafted by A for B's review): `SearchIntent.safety` gains an optional `maxRelativeRate` (at most 5). The hard filter keeps neighbourhoods with `relativeRate` ≤ that limit, or ≤ 1 (`SAFETY.hardMaxRelativeRate`) when it is absent, so existing intents behave as before. `clean.ts` deletes any limit from AI output, because only the renter's slider sets one.
+- 2026-10-17 P2.1 [C]: A rent more than 30% below its estimate now scores a neutral 50 for value instead of no score: with no score, renormalization gave it full marks from the other parts. The "best value" sort uses the same rule (`valueScore` in score.ts).
+- 2026-10-17 [C]: Listings store the source's cover-photo link in `imageUrl` (https only) for Kijiji, Zillow and Realtor.ca, after the team checked that the four sites' terms allow linking; the card hot-links it, nothing is downloaded or stored (SOURCES.md). A run that doesn't see a photo keeps the stored link.
+- 2026-10-17 P3.31 [C]: `INGEST_ON_START=false` makes the worker wait one interval before its first ingest, so a deploy or restart doesn't scrape at once. The worker image carries Chromium's libraries and the CloakBrowser binary (drafted for D's review).
+- 2026-10-17 P5.5c [C]: `/status` lists each listing source with its last run, last successful run, newest listing seen and active/stale counts. A source is Failed, Blocked, No listings found (ok run with 0 rows) or Behind (no listing seen for 24 h), worst first, each with a plain explanation and the worker's own message.
+- 2026-10-17 P2.3 [C]: The benchmark line uses StatCan **asking** rent only (paid rent is what sitting tenants pay). Dwelling: rooms → Room; house/townhouse → House (2 and 3+ bedrooms; smaller houses use apartments, as StatCan has no house row); everything else, including basements and unknown type → Apartment; 3+ bedrooms use the "3+" row; latest quarter; unknown bedrooms → no benchmark. Labelled "Toronto-area average asking rent, <size> <dwelling>".
 - 2026-10-17 P3.23 [A]: The safety must-have is a slider ("Only neighbourhoods up to 0.8× the city rate") from 0.5× to 2.0× in steps of 0.1, ending at "No limit", which means a preference. It replaces the must-have switch in the filters panel and the chip popover. The chip reads "Crime at most 0.8× city rate". In the popover, a drag starts one search when released, and arrow keys start one after a half-second pause.
 - 2026-10-17 P1.30 [A]: "Change request" on `/search` links to `/?q=<prompt>#start`, which jumps past the landing scenes to the prompt and fills it with the original request (focused, cursor at the end) so it can be edited instead of retyped. The landing page now renders per request.
 - 2026-10-17 P3.24 [A]: Shortlist and last search in `localStorage` (keys `rentthe6ix.shortlist.v1` and `rentthe6ix.lastSearch.v1`). Every read and write is wrapped, and stored values are validated, dropping bad shortlist entries one at a time. A saved listing keeps a small snapshot (title, rent, rooms, size, source) so `/shortlist` can show it without a request, labelled as the figures when saved. `/shortlist` lists saved listings newest first, with remove and "Clear my data", which removes every `rentthe6ix.*` key after a confirm. The header shows the count. Changes in another tab show up. "Share search" puts the edited intent in the link as `/search?q=<prompt>&s=<base64url JSON without the prompt>`, validated with `SearchIntentSchema` on open. A bad `s` is ignored and the prompt is read as usual. On `/search`, the start-up order is the in-memory search for the same prompt (Back from a listing), then the shared link, then this browser's last search for the same prompt (a reload), then the parser, so a reload doesn't call Gemini again. `/search` without a prompt offers "Continue your last search".

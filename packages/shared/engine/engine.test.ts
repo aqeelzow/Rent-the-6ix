@@ -102,6 +102,7 @@ test('a rent far below the estimate scores 50 on value, so other parts cannot fi
   assert.equal(deal.parts.find(p => p.id === 'value')!.score, 100);
   assert.equal(valueScore(priced(55)), 50);
   assert.equal(suspicious.parts.find(p => p.id === 'value')!.score, 50);
+  assert.match(suspicious.parts.find(p => p.id === 'value')!.evidence[0], /scored neutral/);
   assert.equal(suspicious.parts.find(p => p.id === 'home')!.score, 100);
   assert.ok(suspicious.total < 100);
   assert.equal(suspicious.parts.find(p => p.id === 'price')!.score, null);

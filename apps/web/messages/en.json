@@ -140,7 +140,37 @@
     "neighbourhoods": "Neighbourhoods",
     "wards": "Wards",
     "notLoaded": "Not loaded",
-    "comingSoon": "Other system checks will appear here as those services are connected."
+    "comingSoon": "Other system checks will appear here as those services are connected.",
+    "listingSources": {
+      "title": "Listing sources",
+      "intro": "The worker collects listings from each site on a schedule. A site that blocks it is skipped until the next run: we never solve captchas or use proxies.",
+      "loadFailed": "Source health couldn't be read from the database.",
+      "none": "No listings collected yet.",
+      "never": "Never",
+      "lastRun": "Last run",
+      "lastOk": "Last successful run",
+      "newestSeen": "Newest listing seen",
+      "listings": "Active / stale listings",
+      "activeStale": "{active} / {stale}",
+      "lastRunCounts": "Last run",
+      "collectedStored": "{collected} collected, {stored} stored",
+      "state": {
+        "ok": "Working",
+        "no_runs": "No runs recorded",
+        "stale": "Behind",
+        "empty": "No listings found",
+        "blocked": "Blocked",
+        "failed": "Failed"
+      },
+      "explain": {
+        "ok": "",
+        "no_runs": "The worker hasn't recorded a run for this site yet; its listings come from earlier runs.",
+        "stale": "No listing from this site has been seen for more than {hours} hours. Its listings stay searchable and are marked stale after 8 days unseen.",
+        "empty": "The last run finished but found no listings, which usually means the site changed its pages.",
+        "blocked": "The site blocked the worker on its last run, so it stopped there. Listings already collected stay searchable and are marked stale after 8 days unseen.",
+        "failed": "The last run stopped with an error. Listings already collected stay searchable."
+      }
+    }
   },
   "filters": {
     "label": "Your filters",
@@ -412,6 +442,7 @@
       "rentals_ca": "Rentals.ca",
       "zillow": "Zillow",
       "realtor_ca": "Realtor.ca",
+      "torontorentals": "TorontoRentals",
       "manual": "Hand-checked",
       "pasted": "Pasted by you"
     },

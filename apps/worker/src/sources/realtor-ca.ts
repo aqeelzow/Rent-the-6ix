@@ -5,7 +5,13 @@
 // Realtor.ca answers plain Playwright with "Sorry, you have been blocked" (403); CloakBrowser gets
 // through and the parser was checked against a live response on 2026-10-16 (SOURCES.md).
 import { htmlToText } from "../lib/text.ts";
-import { emptyRawListing, type DetailPatch, type RawListing, type SourceAdapter } from "./types.ts";
+import {
+  emptyRawListing,
+  httpsUrl,
+  type DetailPatch,
+  type RawListing,
+  type SourceAdapter,
+} from "./types.ts";
 
 const ORIGIN = "https://www.realtor.ca";
 
@@ -103,6 +109,8 @@ interface RealtorResult {
     Price?: string;
     Type?: string;
     Address?: { AddressText?: string; Latitude?: string; Longitude?: string } | null;
+    /** The property's photos. (Agent photos sit under `Individual`, which is never read.) */
+    Photo?: { HighResPath?: string; MedResPath?: string; LowResPath?: string }[] | null;
   } | null;
 }
 
@@ -131,6 +139,7 @@ export function parseRealtor(response: RealtorResponse): RawListing[] {
     // "2 + 1" = two bedrooms plus a den.
     const [beds, plus] = (r.Building?.Bedrooms ?? "").split("+").map((s) => s.trim());
     const address = r.Property?.Address?.AddressText?.replace("|", ", ") ?? null;
+    const cover = r.Property?.Photo?.[0];
     listings.push({
       ...emptyRawListing,
       source: "realtor_ca",
@@ -149,6 +158,7 @@ export function parseRealtor(response: RealtorResponse): RawListing[] {
       lat: r.Property?.Address?.Latitude ? Number(r.Property.Address.Latitude) : null,
       lng: r.Property?.Address?.Longitude ? Number(r.Property.Address.Longitude) : null,
       postedAt: ticksToIso(r.InsertedDateUTC),
+      imageUrl: httpsUrl(cover?.MedResPath ?? cover?.HighResPath ?? cover?.LowResPath),
     });
   }
   return listings;

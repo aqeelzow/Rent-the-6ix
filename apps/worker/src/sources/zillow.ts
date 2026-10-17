@@ -5,6 +5,7 @@
 import { htmlToText } from "../lib/text.ts";
 import {
   emptyRawListing,
+  httpsUrl,
   type DetailPatch,
   type RawListing,
   type SourceAdapter,
@@ -25,6 +26,8 @@ interface ZillowResult {
   area?: number | null;
   latLong?: { latitude?: number; longitude?: number } | null;
   units?: { price?: string; beds?: string }[] | null;
+  /** The card's cover photo. */
+  imgSrc?: string | null;
 }
 
 export function parseZillow(html: string): { listings: RawListing[]; totalPages: number | null } {
@@ -46,6 +49,7 @@ export function parseZillow(html: string): { listings: RawListing[]; totalPages:
       postalCode: r.addressZipcode ?? null,
       lat: r.latLong?.latitude ?? null,
       lng: r.latLong?.longitude ?? null,
+      imageUrl: httpsUrl(r.imgSrc),
     };
     if (r.units?.length) {
       // A building card: one row per unit type, priced "from".

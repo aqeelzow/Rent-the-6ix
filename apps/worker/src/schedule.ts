@@ -1,4 +1,5 @@
-// Worker schedule (SPEC 8.4): run a job now and then every interval, never two at once.
+// Worker schedule (SPEC 8.4): run a job now (or after one interval) and then every interval, never
+// two at once.
 // A run that overruns its slot starts the next one as soon as it finishes; a failed run is logged
 // and the schedule carries on.
 export interface Schedule {
@@ -10,6 +11,7 @@ export function every(
   name: string,
   job: () => Promise<unknown>,
   log: (message: string) => void = console.log,
+  { startNow = true }: { startNow?: boolean } = {},
 ): Schedule {
   let timer: ReturnType<typeof setTimeout> | undefined;
   let stopped = false;
@@ -29,7 +31,11 @@ export function every(
     timer = setTimeout(tick, wait);
   }
 
-  void tick();
+  if (startNow) void tick();
+  else {
+    log(`${name}: first run at ${new Date(Date.now() + intervalMs).toISOString()}`);
+    timer = setTimeout(tick, intervalMs);
+  }
   return {
     stop() {
       stopped = true;
