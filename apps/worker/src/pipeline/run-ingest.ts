@@ -20,6 +20,7 @@ import {
   applyPatch,
   loadDetailCache,
   needsDetail,
+  recordDetailFetches,
   saveDetailCache,
   scrubPatch,
 } from "./details.ts";
@@ -182,6 +183,16 @@ export async function runIngest(options: IngestOptions): Promise<IngestResult> {
       console.log(`${adapter.id}: field coverage ${coverage(rows)}`);
     }
     if (db) await recordRun(db, run, observedAt);
+    if (db && adapter.fetchDetail) {
+      try {
+        const n = await recordDetailFetches(db, adapter.id, await loadDetailCache(adapter.id));
+        console.log(`${adapter.id}: ${n} listings' detail fetches recorded in TigerData`);
+      } catch (error) {
+        console.error(
+          `${adapter.id}: detail fetch record failed: ${error instanceof Error ? error.message : error}`,
+        );
+      }
+    }
   }
 
   if (db) {
