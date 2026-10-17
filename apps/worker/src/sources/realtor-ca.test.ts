@@ -56,8 +56,8 @@ describe("realtor.ca", () => {
       address: "1 EXAMPLE ST, Toronto, Ontario M5V1A1",
       lat: 43.64,
       postedAt: "2026-10-17T02:33:55.783Z",
-      // The property's medium photo; the agent's photo is never read.
-      imageUrl: "https://cdn.realtor.ca/listing/med/1.jpg",
+      // The property's largest photo; the agent's photo is never read.
+      imageUrl: "https://cdn.realtor.ca/listing/high/1.jpg",
     });
   });
 
