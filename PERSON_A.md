@@ -8,8 +8,8 @@ Task ids match `PROGRESS.md`; task details are in `SPEC.md`.
 
 - **Current task:** none in progress (S1 items done)
 - **Status:** at sync point
-- **Branch:** `a/P0-foundation`, 5 commits (P0.1, P0.2, P0.3, P0.10, P0.13), all checks green; **not pushed or merged to `main` yet**
-- **Next action:** merge `a/P0-foundation` to `main` (S1). Then, once B's schemas and fixtures (P0.5–P0.6) are on `main`: swap `src/lib/store/types.ts` to re-export B's types, then P1.30 (landing calls `/api/search/parse`).
+- **Branch:** P0.1–P0.13 merged to `main` (2026-10-16)
+- **Next action:** once B's schemas and fixtures (P0.5–P0.6) are on `main`: swap `src/lib/store/types.ts` to re-export B's types, then P1.30 (landing calls `/api/search/parse`).
 - **Blockers / needs from others:** P1.30+ need B's schemas and fixtures (P0.5–P0.6).
 - **Last updated:** 2026-10-16
 
