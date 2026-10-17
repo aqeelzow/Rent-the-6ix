@@ -464,6 +464,7 @@
       "mid": "50 to 74",
       "low": "Under 50",
       "approx": "Shaded circle: approximate location",
+      "searchArea": "Shaded boundary: approximate search area",
       "place": "Your places",
       "unavailable": "The map couldn't load. The list has every result."
     },
