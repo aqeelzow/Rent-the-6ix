@@ -70,7 +70,31 @@
   },
   "search": {
     "title": "Results",
-    "yourRequest": "Your request"
+    "yourRequest": "Your request",
+    "noPrompt": "Describe the place you're looking for to start a search.",
+    "startSearch": "Start a search",
+    "editRequest": "Change request",
+    "parsing": "Reading your request…",
+    "searching": "Finding listings…",
+    "basicSearch": "AI wasn't used for this search",
+    "droppedTitle": "We can't search on these yet",
+    "count": "Showing {shown} of {eligible} matching listings",
+    "noResults": "No listings match all of your must-haves. Try turning one into a preference.",
+    "retry": "Try again",
+    "perMonth": "{rent}/month",
+    "bedrooms": "{count} bed",
+    "studio": "Studio",
+    "errors": {
+      "rate_limited": "Too many searches at once. Try again in {seconds} seconds.",
+      "service_unavailable": "Search isn't available right now. Try again in a moment.",
+      "network_error": "Couldn't reach RentThe6ix. Check your connection and try again.",
+      "validation_error": "We couldn't use that request. Try rewording it.",
+      "search_timeout": "This search took too long. Try fewer travel targets.",
+      "search_capacity": "Lots of people are searching right now. Try again shortly.",
+      "search_routing_incomplete": "We couldn't work out every travel time for this search. Try again shortly.",
+      "search_job_expired": "This search expired. Run it again.",
+      "default": "Something went wrong with this search. Try again."
+    }
   },
   "status": {
     "title": "System status",

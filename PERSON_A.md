@@ -6,16 +6,23 @@ Task ids match `PROGRESS.md`; task details are in `SPEC.md`.
 
 ## Current state
 
-- **Current task:** none in progress (S1 items done)
-- **Status:** at sync point
-- **Branch:** P0.1–P0.13 merged to `main` (2026-10-16)
-- **Next action:** once B's schemas and fixtures (P0.5–P0.6) are on `main`: swap `src/lib/store/types.ts` to re-export B's types, then P1.30 (landing calls `/api/search/parse`).
-- **Blockers / needs from others:** P1.30+ need B's schemas and fixtures (P0.5–P0.6).
-- **Last updated:** 2026-10-16
+- **Current task:** P1.31 filter chips (next)
+- **Status:** in progress
+- **Branch:** `a/P1.30-landing-parse` (P1.30 done, not merged yet)
+- **Next action:** P1.31 chips from `intent.criteria`, `travelTargets`, `fieldSources` and `droppedRequests` in `src/components/search/`, mounted in `search-view.tsx` where the interim notices are. Editing a chip calls `updateIntent()` then `runSearch()` and never re-parses.
+- **Blockers / needs from others:** none for P1.31–P1.35. Run the dev server with `SEARCH_FIXTURES=1`, otherwise B's search route returns 503.
+- **Last updated:** 2026-10-17 (P1.30 done: landing prompt → `/search?q=` → B's parse → search, with polling, error and retry states; checked at 375 px)
 
 ## Handoff notes
 
 > Where an unfinished task stopped, gotchas, things to verify. Replace each session.
+
+**Session 2026-10-17 (P1.30):**
+- **Search flow:** the landing `PromptBox` (next/form) GETs `/search?q=…`. `SearchView` calls `parseAndSearch(prompt)` from `src/lib/store/actions.ts` unless the store already holds that prompt's intent, so back/forward keeps edits. `runSearch()` re-searches with the current intent (for chip and filter edits) and polls B's `pending` jobs until done or expired. Responses are validated with B's zod schemas, and contract drift shows as an `unexpected_response` error.
+- **Dev double effects:** React runs effects twice in development; `parseAndSearch` skips a prompt that's already being read (`parsingPrompt`). Stale responses are dropped by request id.
+- **Format only your own files:** run `pnpm exec prettier --write <your paths>`. B's code isn't Prettier-formatted, and `pnpm format` rewrites it.
+- **`main` is red on tests and lint because of B's and D's files**, not ours; see Requests. Check our own files with `pnpm exec vitest run src/lib/store src/lib/format` and `pnpm exec eslint src/lib/store src/lib/format src/components` from `apps/web`.
+- B's `SearchResult` has no top-level `id`; use `result.listing.id`.
 
 **Session 2026-10-16 (P0 foundation):**
 - **Next.js 16.4 differs from older versions.** Read `apps/web/AGENTS.md` and `node_modules/next/dist/docs/` before using Next APIs. `params`/`searchParams` are Promises; use the global `PageProps<"/route">` / `LayoutProps<"/">` types. Cache Components is off (SPEC change log P0.1).
@@ -43,6 +50,8 @@ Task ids match `PROGRESS.md`; task details are in `SPEC.md`.
 - **To B:** fixtures by S1 that include sizes, years built, AC, all five score parts (some `null`), price labels of each kind, travel times with both `otp` and `straight_line` methods, and one listing with safety on.
 - **To D:** the `/status` and `/data` content as data (JSON from routes); I build the pages.
 - **To D:** `DEPLOY.md` step 2 still says `cp .env.example .env`, but `.env.example` is no longer in the repo; point it at SPEC 20 instead. Vercel builds from the repo root via the root `vercel.json` (see Handoff notes).
+- **To B:** (1) `apps/web/src/lib/{api,parse,db}/*.test.ts` use `node:test`, so Vitest reports "No test suite found" and `pnpm test` fails on `main`. Switch the import to `import { test } from "vitest"`; `node:assert` still works. (2) `candidates-percentiles.test.ts:235` has three `any`s that fail `pnpm lint`. (3) B's files aren't Prettier-formatted, so `pnpm format:check` fails; run `pnpm exec prettier --write` on your paths. (4) In-memory search jobs need one server process; on Vercel, polls may land on another instance and get 410. (5) The parse `notice` is hard-coded English on the server; move it to `en.json` (`errors` namespace) if you want it translatable.
+- **To D:** `apps/web/src/lib/server-only.test.ts` is a stub, but its `.test.ts` name makes Vitest run it as an empty test file (fails `pnpm test`). Rename it, e.g. `server-only.stub.ts`, and update the alias in `vitest.config.ts`. The `/status` page you built is in A's area; fine to keep, just tell me before changing its layout.
 - **To C:** one or two real listings with full fields early (any source) so the detail page can be checked against reality, not just fixtures.
 
 ---
@@ -59,7 +68,7 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked · `[-]` 
 - [x] P0.13 `searchSlice.ts` (intent, results, shortlist) + selection contract (`hoveredListingId`, `selectedListingId`) — merge early
 
 ### S1 → S2 (H3–H12) — Search UI on fixtures · Core
-- [ ] P1.30 Landing: prompt box, 3 example chips (student, couple, family), "Explore neighbourhoods", "Paste a listing"; calls B's `/api/search/parse` (fixture until live)
+- [x] P1.30 Landing: prompt box, 3 example chips (student, couple, family), "Explore neighbourhoods", "Paste a listing"; calls B's `/api/search/parse` (fixture until live)
 - [ ] P1.31 Filter chips: must-have/preference/default styles, source phrase, must-have ⇄ preference switch, remove, "dropped requests" notice
 - [ ] P1.32 Filters panel (SPEC 11.2): Price (range, price vs market), Home (rooms, size, unit type, building age, AC, pets, furnished, parking, laundry, utilities, availability, lease), Getting around (add place or amenity, mode, minutes), Safety (switch + explanation), Area; each with must-have/preference
 - [ ] P1.33 Results cards (SPEC 11.2): price badge, segmented score bar, travel targets with mode icon, size/year/AC, top caveat, source + freshness, "Also on", shortlist button
@@ -108,10 +117,12 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked · `[-]` 
 | Feature | Key files | Notes |
 | --- | --- | --- |
 | Layout shell, tokens | `apps/web/src/app/layout.tsx`, `src/app/globals.css`, `src/components/ui/*` | shadcn (Radix base, nova preset); tokens `price-*`, `caveat-*`, `score-*`; `figures` utility for numbers; light only |
-| Store | `apps/web/src/lib/store/searchSlice.ts` (+ test), `store.ts`, `types.ts` | intent, results (stale responses dropped), shortlist, selection; `types.ts` = placeholders until B's schemas |
+| Store | `apps/web/src/lib/store/searchSlice.ts` (+ test), `store.ts`, `types.ts` | intent, parse info, results, eligibleCount, notices, hideUnconfirmed, shortlist, selection; types re-exported from B's schemas |
 | Layout shell | `src/components/layout/*` (header, mobile menu, footer, page placeholder) | nav links in `nav-links.ts` |
 | Strings | `apps/web/messages/en.json`, `src/lib/format/messages.ts` (+ test) | typed `t("ns.key", params?)` |
-| Landing | `src/app/page.tsx`, `src/components/search/prompt-box.tsx` | P0.10: static GET form to `/search?q=`; P1.30 wires parse |
+| Landing | `src/app/page.tsx`, `src/components/search/prompt-box.tsx` | next/form GET to `/search?q=`; Enter submits, Shift+Enter adds a line |
+| Search flow | `src/app/search/page.tsx`, `src/components/search/search-view.tsx`, `src/lib/store/actions.ts` (+ test) | parse → search → poll; states: parsing, searching, error + retry, ready; interim result rows until P1.33 |
+| Number formats | `src/lib/format/number.ts` (+ test) | `formatCad`, `formatCount` (en-CA) |
 | Chips & filters | `src/components/search/filter-chips.tsx`, `filters-panel.tsx` | no Gemini call on edit |
 | Results | `src/app/search/page.tsx`, `src/components/results/*`, `src/components/map/results-map.tsx` | |
 | Listing detail | `src/app/listing/[id]/page.tsx`, `src/components/listing/*` | |

@@ -7,9 +7,7 @@ import {
   Building2,
 } from "lucide-react";
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { PromptBox } from "@/components/search/prompt-box";
 import { t, type MessageKey } from "@/lib/format/messages";
 
 const examples = ["student", "couple", "family"] as const;
@@ -43,24 +41,7 @@ export default function Home() {
           <p className="text-muted-foreground text-lg text-pretty">{t("landing.subtitle")}</p>
         </div>
 
-        {/* Plain GET form so search works before JS loads; P1.30 adds the parse call. */}
-        <form action="/search" className="flex flex-col gap-3">
-          <Label htmlFor="prompt" className="text-base">
-            {t("landing.promptLabel")}
-          </Label>
-          <Textarea
-            id="prompt"
-            name="q"
-            required
-            rows={4}
-            placeholder={t("landing.promptPlaceholder")}
-            className="bg-card min-h-28 resize-y text-base md:text-base"
-          />
-          <Button type="submit" size="lg" className="h-11 self-stretch px-5 text-base sm:self-end">
-            {t("landing.submit")}
-            <ArrowRight aria-hidden data-icon="inline-end" />
-          </Button>
-        </form>
+        <PromptBox />
 
         <div className="flex flex-col gap-2">
           <p className="text-muted-foreground text-sm font-medium">{t("landing.examplesLabel")}</p>
