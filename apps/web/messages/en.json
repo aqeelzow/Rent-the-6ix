@@ -387,6 +387,162 @@
     }
   },
   "listing": {
-    "title": "Listing"
+    "title": "Listing",
+    "back": "Back to results",
+    "newSearch": "Start a search",
+    "loading": "Loading this listing…",
+    "notFound": "This listing isn't available any more. It may have been taken down on the source site.",
+    "loadFailed": "We couldn't load this listing right now.",
+    "retry": "Try again",
+    "perMonth": "/month",
+    "perRoom": "/month per room",
+    "viewOnSource": "View on {source}",
+    "sourceNote": "Contact the landlord and apply on the source site; RentThe6ix doesn't host listings.",
+    "seen": "Last seen {when}",
+    "listedSince": "first seen {date}",
+    "dataStatus": {
+      "live": "Live listing",
+      "snapshot": "Snapshot of {date}",
+      "demo": "Demo data"
+    },
+    "alsoOn": "Also on: ",
+    "approxAddress": "Exact address not shown by the source",
+    "sections": {
+      "why": "Why it ranks here",
+      "rent": "Rent check",
+      "home": "The home",
+      "travel": "Getting around",
+      "safety": "Safety",
+      "building": "Building",
+      "area": "The area",
+      "check": "Things to check",
+      "unconfirmed": "Must-haves we couldn't confirm"
+    },
+    "why": {
+      "total": "{total} out of 100",
+      "part": "{score}/100 × {weight}%",
+      "points": "{points} points",
+      "omitted": "Not scored for this search: {parts}. They count once you ask for them or the data exists.",
+      "sum": "The parts add up to the total."
+    },
+    "rent": {
+      "estimate": "Estimated rent for similar homes",
+      "range": "Typical range",
+      "difference": "This listing",
+      "below": "{amount} ({percent}%) below the estimate",
+      "above": "{amount} ({percent}%) above the estimate",
+      "inLine": "In line with the estimate",
+      "basis": "Based on {count} similar listings within {km} km, seen in the last {days} days. {confidence}.",
+      "thin": "Not enough data: {count} similar listings within {km} km (at least 5 are needed for a price label).",
+      "asking": "Compared with asking rents for similar listings, not signed leases.",
+      "comparables": "Similar listings",
+      "colRent": "Rent",
+      "colAdjusted": "On this listing's terms",
+      "colDistance": "Distance",
+      "colSeen": "Last seen",
+      "view": "View",
+      "adjustments": "Adjustments to compare like with like",
+      "benchmark": "Benchmark",
+      "benchmarkValue": "{label}: {value} ({period})",
+      "benchmarkNone": "City-wide benchmark (Statistics Canada, CMHC) isn't loaded yet.",
+      "mapNote": "A map of these listings needs their locations, which aren't available yet."
+    },
+    "fields": {
+      "bedrooms": "Bedrooms",
+      "bathrooms": "Bathrooms",
+      "size": "Size",
+      "unitType": "Type of place",
+      "yearBuilt": "Year built",
+      "airConditioning": "Air conditioning",
+      "pets": "Pets",
+      "furnished": "Furnished",
+      "parking": "Parking",
+      "laundry": "In-suite laundry",
+      "utilities": "Utilities",
+      "availableFrom": "Available from",
+      "leaseTerm": "Lease",
+      "location": "Location"
+    },
+    "values": {
+      "notStated": "Not stated",
+      "aiRead": "read from the description",
+      "yes": "Yes",
+      "no": "No",
+      "studio": "Studio",
+      "sqft": "{n} sq ft",
+      "yearFrom": "{year} (from {source})",
+      "yearSource": {
+        "rentsafeto": "RentSafeTO",
+        "ai_extracted": "the description"
+      },
+      "lease12": "12 months",
+      "leaseShort": "Short-term",
+      "ac": {
+        "central": "Central air",
+        "yes": "Yes (type not stated)",
+        "no": "No"
+      },
+      "pets": {
+        "yes": "Allowed",
+        "no": "Not allowed",
+        "cats_only": "Cats only",
+        "dogs_only": "Dogs only"
+      },
+      "utilities": {
+        "yes": "Included",
+        "partial": "Some included",
+        "no": "Not included"
+      },
+      "precision": {
+        "exact": "Exact address",
+        "street": "Street-level (approximate)",
+        "area": "Neighbourhood only (approximate)"
+      }
+    },
+    "travel": {
+      "none": "Add a place or an amenity in Filters to see travel times from here.",
+      "chosen": "your choice",
+      "routed": "{minutes} min",
+      "routedDrive": "{minutes} min, no traffic",
+      "straightLine": "{km} km straight-line",
+      "missing": "Not available",
+      "note": "Transit uses TTC schedules for a weekday at 8:30 am. Driving assumes no traffic. Straight-line distance is shown where a travel time isn't available yet, never as minutes."
+    },
+    "safety": {
+      "rate": "Police-reported major crime here: {rate}× the city rate ({years} average, Toronto Police Service).",
+      "noData": "Police-reported crime rates for this neighbourhood aren't available.",
+      "caveats": "Read before using this"
+    },
+    "building": {
+      "none": "No RentSafeTO record is available for this building yet. The City's RentSafeTO program covers apartment buildings with 3 or more storeys and 10 or more units; houses and smaller buildings aren't evaluated."
+    },
+    "area": {
+      "none": "Neighbourhood facts (renters, rent burden, transit, development nearby) aren't loaded yet.",
+      "indicator": "{value} {unit}",
+      "source": "{period} · source: {source}",
+      "sample": "based on {n}"
+    },
+    "check": {
+      "none": "Nothing flagged."
+    },
+    "explanation": "In plain words",
+    "indicators": {
+      "median_asking_rent_0br": "Typical asking rent here, studio",
+      "median_asking_rent_1br": "Typical asking rent here, 1 bedroom",
+      "median_asking_rent_2br": "Typical asking rent here, 2 bedrooms",
+      "median_asking_rent_3br": "Typical asking rent here, 3+ bedrooms",
+      "listing_count_30d": "Listings seen here in the last 30 days",
+      "renter_households_pct": "Renter households",
+      "renters_shelter_cost_30pct": "Renters spending 30%+ of income on shelter",
+      "median_household_income": "Median household income",
+      "rentsafeto_avg_score": "Average RentSafeTO score",
+      "rentsafeto_buildings": "RentSafeTO buildings",
+      "dev_applications_12m": "Development applications in the last 12 months",
+      "residential_units_proposed_12m": "Homes proposed in the last 12 months",
+      "transit_stops_per_km2": "Transit stops per km²",
+      "rapid_transit_within_800m_pct": "Area within 800 m of rapid transit",
+      "libraries": "Libraries",
+      "parks_ha_per_1000": "Park space per 1,000 residents (ha)"
+    }
   }
 }

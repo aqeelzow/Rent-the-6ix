@@ -6,16 +6,22 @@ Task ids match `PROGRESS.md`; task details are in `SPEC.md`.
 
 ## Current state
 
-- **Current task:** listing detail page (P2.30–P2.36)
-- **Status:** in progress
-- **Branch:** `a/P2.30-listing-detail` (P1.30–P1.35 merged to `main` via PR #7)
-- **Next action:** the detail page: render from the search result in the store, and add `GET /api/listings/[id]?intent=…` extras (areas, indicators, duplicates, all travel rows) when they arrive.
-- **Blockers / needs from others:** see "Depends on others". Nothing blocks starting; travel, building, area and benchmark sections show "not available yet" until D delivers.
-- **Last updated:** 2026-10-17
+- **Current task:** none in progress (all of A's S2→S3 tasks are done: P2.30–P2.36)
+- **Status:** at sync point (S3)
+- **Branch:** `a/P2.30-listing-detail` (P2.35 and P2.30–P2.36, not merged yet)
+- **Next action:** merge the branch. Then S3→S4: P3.24 shortlist in `localStorage` + "Clear my data" + share search as URL (no dependencies), P3.23 safety "How this works" sheet, then P3.20/P3.21/P3.22 as D's areas API and B's briefing/import routes land.
+- **Blockers / needs from others:** see "Depends on others". The detail page shows "not available yet" for the building record, area facts, benchmark, the comparables map and travel times other than straight-line, until D (and C for comparable coordinates) deliver.
+- **Last updated:** 2026-10-17 (live search and the listing detail page verified against TigerData)
 
 ## Handoff notes
 
 > Where an unfinished task stopped, gotchas, things to verify. Replace each session.
+
+**Session 2026-10-17 (S2→S3: live search + detail page):**
+- **Live search works but is slow**: 77–147 s and ~3.5 MB for 500 results. The list draws 25 at a time and the map gets all 500. Client-side zod validation of the full response takes ~15–30 ms, so it stays.
+- **Detail page data flow**: `useListingDetail(id)` renders from the store's search result at once, then `fetchListingDetail()` (B's `GET /api/listings/[id]?intent=<redacted>`) adds areas, indicators, duplicates and travel rows. A shared link fetches with `EMPTY_INTENT`. `redactIntent()` strips `rawPrompt`, `fieldSources` and `droppedRequests`, which B's route requires.
+- **Explanation slot (P2.36)** guesses B's contract: `POST /api/listings/[id]/explain` with `{ intent }` → `{ explanation: string }`. Any non-200 hides the slot. Check against B's P3.1 when it lands.
+- **Placeholders waiting on others**: building (D, RentSafeTO), area facts (D indicators), benchmark (D), comparables map (C: comparables carry no coordinates), all-mode travel times (D/OTP).
 
 **Session 2026-10-17 (P1.34 map):**
 - **MapLibre 6 is ESM-only and loads its worker by URL.** `scripts/copy-maplibre-worker.mjs` copies the worker and shared chunk into `public/maplibre/` before `next dev` and `next build` (git-ignored). `ResultsMap` calls `setWorkerUrl("/maplibre/maplibre-gl-worker.mjs")`. A `vercel build` from the repo root ships `static/maplibre/`.
@@ -58,6 +64,7 @@ Task ids match `PROGRESS.md`; task details are in `SPEC.md`.
 - **To D:** `DEPLOY.md` step 2 still says `cp .env.example .env`, but `.env.example` is no longer in the repo; point it at SPEC 20 instead. Vercel builds from the repo root via the root `vercel.json` (see Handoff notes).
 - **To B:** (1) `apps/web/src/lib/{api,parse,db}/*.test.ts` use `node:test`. They run inside Vitest but only pass because of `--passWithNoTests`, so a failing assertion there can't fail `pnpm test`. Switch the import to `import { test } from "vitest"`; `node:assert` still works. (2) ~~lint `any`s~~ fixed on `main`. (3) B's files aren't Prettier-formatted, so `pnpm format:check` fails; run `pnpm exec prettier --write` on your paths. (4) In-memory search jobs need one server process; on Vercel, polls may land on another instance and get 410. (5) The parse `notice` is hard-coded English on the server; move it to `en.json` (`errors` namespace) if you want it translatable.
 - **To B (from P1.33):** (6) The fallback parser turns "within 25 minutes by transit to UofT St. George" into two targets, "UofT St. George" and "UofT St" (it splits on the period). (7) `matchScore.hardFilterNotes` use internal names ("unitTypes: not confirmed"); please send plain words ("Type of place: not confirmed") or a field code I can translate. (8) Search results carry no neighbourhood name and no duplicates, so cards can't show the neighbourhood or "Also on: Kijiji" yet. Add `neighbourhoodName` and `alsoOn: source[]` to `SearchResult`, or tell me where to get them.
+- **To C:** `Valuation.comparables` has no coordinates, so the rent check can't map them (SPEC 11.3 "comparables table and mini map"). Add `location: { lng, lat }` per comparable, or tell me where to get it. Also, real data I noticed: the top result for "2 bedroom near UofT" was "Waterloo Finished Basement for rent - $750" with `bedrooms: null` at George Street, Toronto. Worth a look in the normalizer.
 - **To D:** `apps/web/src/lib/server-only.test.ts` is a stub, but its `.test.ts` name makes Vitest collect it as an empty test file (hidden by `--passWithNoTests`). Rename it, e.g. `server-only.stub.ts`, and update the alias in `vitest.config.ts`. The `/status` page you built is in A's area; fine to keep, just tell me before changing its layout.
 - **To C:** one or two real listings with full fields early (any source) so the detail page can be checked against reality, not just fixtures.
 
@@ -84,12 +91,12 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked · `[-]` 
 
 ### S2 → S3 (H10–H18) — Live search & detail · Core
 - [x] P2.35 Wire results to B's live `/api/listings/search`; loading, empty and error states
-- [~] P2.30 Listing detail page layout and header (rent, beds/baths, address or area, source button, freshness, data status)
-- [ ] P2.31 Rent check: price label, estimate, range, difference, confidence, comparables table + mini map, adjustments, benchmark
-- [ ] P2.33 The home: size, year built + source, AC, other fields, unknowns marked
-- [ ] P2.32 Getting around: each target with the amenity/place reached and its time by transit, car, walk and bike, chosen mode highlighted, method labels
-- [ ] P2.34 Building (RentSafeTO score, date, sign colour, explanation or "not in program") + area card (SPEC 9.1)
-- [ ] P2.36 "Why it ranks here": score breakdown bars with evidence + slot for B's explanation
+- [x] P2.30 Listing detail page layout and header (rent, beds/baths, address or area, source button, freshness, data status)
+- [x] P2.31 Rent check: price label, estimate, range, difference, confidence, comparables table + mini map, adjustments, benchmark
+- [x] P2.33 The home: size, year built + source, AC, other fields, unknowns marked
+- [x] P2.32 Getting around: each target with the amenity/place reached and its time by transit, car, walk and bike, chosen mode highlighted, method labels
+- [x] P2.34 Building (RentSafeTO score, date, sign colour, explanation or "not in program") + area card (SPEC 9.1)
+- [x] P2.36 "Why it ranks here": score breakdown bars with evidence + slot for B's explanation
 
 ### S3 → S4 (H16–H24) — Civic layer & flows · Core
 - [ ] P3.20 Explorer `/areas`: choropleth (158 neighbourhoods / 25 wards), one indicator at a time, quantile legend with city value, area side panel with sources
@@ -150,7 +157,7 @@ Status checked 2026-10-17 against `main` at `147c74b`.
 | Number formats | `src/lib/format/number.ts` (+ test) | `formatCad`, `formatCount` (en-CA) |
 | Chips & filters | `src/components/search/chips.ts` (+ test), `filter-chips.tsx`, `filters.ts` (+ test), `filter-fields.tsx`, `filters-panel.tsx`, `sort-select.tsx` | `buildChips(intent)`, `setChipHard`, `removeChip`, `setTargetModes`, `setTargetMinutes`; edits keep the intent valid under B's schema and never call the parser |
 | Results | `src/app/search/page.tsx`, `src/components/search/search-view.tsx` (layout, mobile toggle, bottom card), `src/components/results/` (`card-data.ts` + test, `result-card.tsx`, `price-badge.tsx`, `score-bar.tsx`), `src/components/mode-icons.ts`, `src/components/use-media-query.ts`, `src/components/map/` (`map-data.ts` + test, `results-map.tsx`), `apps/web/scripts/copy-maplibre-worker.mjs` | card helpers enforce honest labels; the card is a stretched link to `/listing/[id]` (placeholder until P2.30) |
-| Listing detail | `src/app/listing/[id]/page.tsx`, `src/components/listing/*` | |
+| Listing detail | `src/app/listing/[id]/page.tsx`, `src/components/listing/` (`listing-detail.tsx` header + layout, `detail-sections.tsx` every section, `detail-data.ts` + test, `use-listing-detail.ts`), `fetchListingDetail`/`redactIntent` in `src/lib/store/actions.ts` | renders from search at once, then B's detail extras; honest placeholders for D's data |
 | Explorer | `src/app/areas/*`, `src/components/areas/*` | |
 | Paste a listing | `src/components/listing/paste-listing.tsx` | |
 | Compare | `src/app/compare/page.tsx` | P1 |

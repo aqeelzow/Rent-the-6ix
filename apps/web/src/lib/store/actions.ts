@@ -1,11 +1,12 @@
 import {
   DestinationResolutionSchema,
+  DetailResponseSchema,
   ErrorResponseSchema,
   ParseResponseSchema,
   SearchResponseSchema,
 } from "@rentthe6ix/shared/schemas";
 import { appStore, type createAppStore } from "./store";
-import type { ApiError, DestinationResolution } from "./types";
+import type { ApiError, DestinationResolution, DetailResponse, SearchIntent } from "./types";
 
 // Browser-side calls to B's routes (SPEC 13). Responses are validated with B's schemas before they
 // reach the store; a response that doesn't match is treated as an error, never shown half-parsed.
@@ -158,4 +159,42 @@ export async function resolveDestination(
   if (!response.ok) return response;
   const parsed = DestinationResolutionSchema.safeParse(response.json);
   return parsed.success ? { ok: true, resolution: parsed.data } : { ok: false, error: unexpected };
+}
+
+/** An empty search, for opening a listing without one (a shared link). */
+export const EMPTY_INTENT: SearchIntent = {
+  schemaVersion: 1,
+  rawPrompt: "",
+  areas: [],
+  criteria: {},
+  travelTargets: [],
+  safety: { enabled: false, hard: false },
+  sortBy: "best_match",
+  fieldSources: {},
+  droppedRequests: [],
+};
+
+/**
+ * The intent sent with a detail request. B's route scores the listing against it but must not
+ * receive the renter's own words, so the prompt, phrases and dropped requests are removed.
+ */
+export function redactIntent(intent: SearchIntent): SearchIntent {
+  return { ...intent, rawPrompt: "", fieldSources: {}, droppedRequests: [] };
+}
+
+/** Loads one listing with B's detail route: valuation, travel, areas, indicators, duplicates. */
+export async function fetchListingDetail(
+  id: string,
+  intent: SearchIntent | null,
+  options: Pick<ActionOptions, "fetch"> & { signal?: AbortSignal } = {},
+): Promise<{ ok: true; detail: DetailResponse } | { ok: false; error: ApiError }> {
+  const query = encodeURIComponent(JSON.stringify(redactIntent(intent ?? EMPTY_INTENT)));
+  const response = await request(
+    options.fetch ?? fetch,
+    `/api/listings/${encodeURIComponent(id)}?intent=${query}`,
+    { method: "GET", signal: options.signal },
+  );
+  if (!response.ok) return response;
+  const parsed = DetailResponseSchema.safeParse(response.json);
+  return parsed.success ? { ok: true, detail: parsed.data } : { ok: false, error: unexpected };
 }
