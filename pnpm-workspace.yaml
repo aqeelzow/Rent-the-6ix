@@ -1,0 +1,8 @@
+packages:
+  - apps/*
+  - packages/*
+
+# Packages allowed to run install scripts. sharp is used by next/image.
+allowBuilds:
+  sharp: true
+  unrs-resolver: false

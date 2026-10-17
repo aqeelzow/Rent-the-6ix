@@ -6,11 +6,12 @@ Task ids match `PROGRESS.md`; task details are in `SPEC.md`.
 
 ## Current state
 
-- **Current task:** none in progress
-- **Status:** not started   <!-- not started | in progress | blocked | at sync point -->
-- **Next action:** P0.1 scaffold, then P0.13 store + selection contract, merged to `main` as early as possible so B and the others can build on it.
+- **Current task:** P0.2 Tailwind + shadcn/ui + Public Sans + tokens
+- **Status:** in progress
+- **Branch:** `a/P0-foundation` (P0.1–P0.13, one commit per task; not pushed yet)
+- **Next action:** P0.2, then P0.3, P0.10, P0.13; merge to `main` at S1.
 - **Blockers / needs from others:** none yet. Build against B's fixtures (P0.6) until live routes land.
-- **Last updated:** 2026-10-15 (file created from SPEC)
+- **Last updated:** 2026-10-16 (P0.1 done: pnpm workspace, Next 16.4 in `apps/web`, `packages/shared` and `apps/worker` skeletons; `pnpm typecheck` and `pnpm build` pass)
 
 ## Handoff notes
 
@@ -39,7 +40,7 @@ Task ids match `PROGRESS.md`; task details are in `SPEC.md`.
 Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked · `[-]` dropped. **Core** = needed for the demo. **Stretch** = drop first if behind.
 
 ### Before S1 (H0–H3) — Foundation · Core
-- [ ] P0.1 Monorepo scaffold: pnpm workspaces (`apps/web`, `apps/worker`, `packages/shared`), Next.js App Router, TypeScript strict — **merge first, everyone waits on it**
+- [x] P0.1 Monorepo scaffold: pnpm workspaces (`apps/web`, `apps/worker`, `packages/shared`), Next.js App Router, TypeScript strict — **merge first, everyone waits on it**
 - [ ] P0.2 Tailwind + shadcn/ui + Public Sans + design tokens (light; dark if time), tabular numerals utility
 - [ ] P0.3 Zustand, Vitest, ESLint, Prettier; root scripts `typecheck`, `lint`, `test`
 - [ ] P0.10 Layout shell, static landing page; check the starter `README.md` and `.env.example` still match the scaffold
