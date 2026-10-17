@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertCircle, Info, List, LoaderCircle, MapIcon, X } from "lucide-react";
+import { AlertCircle, ChevronRight, Info, List, LoaderCircle, MapIcon, X } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -16,6 +16,11 @@ import { formatCount } from "@/lib/format/number";
 import { parseAndSearch, runSearch } from "@/lib/store/actions";
 import { appStore, useAppStore } from "@/lib/store/store";
 import type { ApiError, SearchIntent, SearchResultItem } from "@/lib/store/types";
+
+/** Cards drawn at a time; a live search can return 500 (the map shows them all). */
+const PAGE_SIZE = 25;
+/** Seconds before the "taking a while" message appears. */
+const SLOW_AFTER_SECONDS = 3;
 
 const knownErrors = new Set([
   "rate_limited",
@@ -49,6 +54,24 @@ export function SearchView({ prompt }: { prompt: string | null }) {
   // Desktop shows the map beside the list; phones switch between them (SPEC 11.2).
   const desktop = useMediaQuery("(min-width: 1024px)");
   const [mobileView, setMobileView] = useState<"list" | "map">("list");
+  const busySince = useAppStore((s) => s.busySince);
+  const elapsed = useElapsedSeconds(busySince);
+  // Paging resets whenever a new set of results arrives.
+  const [paging, setPaging] = useState({ results, count: PAGE_SIZE });
+  const pageCount = paging.results === results ? paging.count : PAGE_SIZE;
+  const visibleCount = Math.min(results.length, pageCount);
+  const selectedIndex = selectedId ? results.findIndex((r) => r.listing.id === selectedId) : -1;
+  const selectedResult = selectedIndex >= 0 ? results[selectedIndex] : undefined;
+  // A pin past "Show more" opens its card over the map instead of growing the list.
+  const selectedOffList = selectedIndex >= visibleCount;
+
+  // A pin whose card is in the list scrolls the list to it (SPEC 11.2).
+  useEffect(() => {
+    if (!selectedId) return;
+    document
+      .querySelector(`ol #listing-${CSS.escape(selectedId)}`)
+      ?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [selectedId]);
 
   useEffect(() => {
     if (!prompt) return;
@@ -107,10 +130,19 @@ export function SearchView({ prompt }: { prompt: string | null }) {
 
         <div aria-live="polite" className="flex flex-col gap-4">
           {busy && (
-            <p className="text-muted-foreground flex items-center gap-2 text-sm">
-              <LoaderCircle aria-hidden className="size-4 animate-spin" />
-              {t(status === "parsing" ? "search.parsing" : "search.searching")}
-            </p>
+            <div className="text-muted-foreground flex flex-col gap-0.5 text-sm">
+              <p className="figures flex items-center gap-2">
+                <LoaderCircle aria-hidden className="size-4 animate-spin" />
+                {status === "parsing"
+                  ? t("search.parsing")
+                  : elapsed >= SLOW_AFTER_SECONDS
+                    ? t("search.searchingElapsed", { seconds: formatCount(elapsed) })
+                    : t("search.searching")}
+              </p>
+              {status === "searching" && elapsed >= SLOW_AFTER_SECONDS && (
+                <p className="pl-6 text-xs">{t("search.slowHint")}</p>
+              )}
+            </div>
           )}
 
           {status === "error" && error && (
@@ -138,16 +170,28 @@ export function SearchView({ prompt }: { prompt: string | null }) {
           )}
 
           {intent && intent.droppedRequests.length > 0 && status !== "parsing" && (
-            <div className="rounded-lg border border-dashed px-3 py-2 text-sm">
-              <p className="font-medium">{t("search.droppedTitle")}</p>
-              <ul className="text-muted-foreground mt-1 list-disc pl-5">
+            // Collapsed by default; the details open on tap.
+            <details className="group rounded-lg border border-dashed px-3 py-2 text-sm">
+              <summary className="flex cursor-pointer list-none items-center gap-1.5 font-medium [&::-webkit-details-marker]:hidden">
+                <ChevronRight
+                  aria-hidden
+                  className="size-4 shrink-0 transition-transform group-open:rotate-90"
+                />
+                {t(
+                  intent.droppedRequests.length === 1 ? "search.droppedOne" : "search.droppedMany",
+                  {
+                    count: formatCount(intent.droppedRequests.length),
+                  },
+                )}
+              </summary>
+              <ul className="text-muted-foreground mt-2 list-disc pl-5">
                 {intent.droppedRequests.map((dropped) => (
                   <li key={dropped.phrase}>
                     “{dropped.phrase}”: {dropped.reason}
                   </li>
                 ))}
               </ul>
-            </div>
+            </details>
           )}
         </div>
 
@@ -159,7 +203,7 @@ export function SearchView({ prompt }: { prompt: string | null }) {
           <section aria-labelledby="results-count" className="flex flex-col gap-3">
             <h2 id="results-count" className="text-muted-foreground figures text-sm">
               {t("search.count", {
-                shown: formatCount(results.length),
+                shown: formatCount(visibleCount),
                 eligible: formatCount(eligibleCount),
               })}
             </h2>
@@ -171,7 +215,7 @@ export function SearchView({ prompt }: { prompt: string | null }) {
               </ul>
             )}
             <ol className={`flex flex-col gap-3 ${busy ? "opacity-60" : ""}`}>
-              {results.map((result) => (
+              {results.slice(0, visibleCount).map((result) => (
                 <li key={result.listing.id}>
                   <ResultCard
                     result={result}
@@ -182,6 +226,17 @@ export function SearchView({ prompt }: { prompt: string | null }) {
                 </li>
               ))}
             </ol>
+            {visibleCount < results.length && (
+              <Button
+                variant="outline"
+                className="self-center"
+                onClick={() => setPaging({ results, count: visibleCount + PAGE_SIZE })}
+              >
+                {t("search.showMore", {
+                  count: formatCount(Math.min(PAGE_SIZE, results.length - visibleCount)),
+                })}
+              </Button>
+            )}
           </section>
         ) : null}
 
@@ -199,7 +254,17 @@ export function SearchView({ prompt }: { prompt: string | null }) {
         )}
       </div>
       {desktop ? (
-        <ResultsMap className="sticky top-14 h-[calc(100dvh-3.5rem)] border-l" />
+        <div className="sticky top-14 h-[calc(100dvh-3.5rem)] border-l">
+          <ResultsMap className="size-full" />
+          {selectedOffList && (
+            <MapListingCard
+              result={selectedResult}
+              intent={intent}
+              now={now}
+              onClose={() => setSelected(null)}
+            />
+          )}
+        </div>
       ) : (
         mobileView === "map" && (
           <div className="fixed inset-x-0 top-14 bottom-0 z-30">
@@ -211,8 +276,8 @@ export function SearchView({ prompt }: { prompt: string | null }) {
               <List aria-hidden data-icon="inline-start" />
               {t("results.mobile.showList")}
             </Button>
-            <MobileListingCard
-              result={results.find((r) => r.listing.id === selectedId)}
+            <MapListingCard
+              result={selectedResult}
               intent={intent}
               now={now}
               onClose={() => setSelected(null)}
@@ -224,8 +289,11 @@ export function SearchView({ prompt }: { prompt: string | null }) {
   );
 }
 
-/** On a phone's map view, the tapped pin's card slides up from the bottom (SPEC 11.2). */
-function MobileListingCard({
+/**
+ * The picked pin's card over the map: always on a phone's map view, and on desktop when the
+ * card isn't in the list yet (SPEC 11.2).
+ */
+function MapListingCard({
   result,
   intent,
   now,
@@ -238,7 +306,7 @@ function MobileListingCard({
 }) {
   if (!result) return null;
   return (
-    <div className="animate-in slide-in-from-bottom-4 absolute inset-x-0 bottom-0 z-10 max-h-[70%] overflow-y-auto p-3">
+    <div className="animate-in slide-in-from-bottom-4 absolute inset-x-0 bottom-0 z-10 max-h-[70%] overflow-y-auto p-3 lg:right-auto lg:bottom-4 lg:left-4 lg:w-[26rem]">
       <div className="relative">
         <Button
           variant="secondary"
@@ -268,4 +336,15 @@ function ResultSkeletons() {
       ))}
     </div>
   );
+}
+
+/** Whole seconds since `since`, ticking once a second; 0 when nothing is running. */
+function useElapsedSeconds(since: number | null): number {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (since === null) return;
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, [since]);
+  return since === null ? 0 : Math.max(0, Math.floor((now - since) / 1000));
 }
