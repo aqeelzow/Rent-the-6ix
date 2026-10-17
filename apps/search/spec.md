@@ -35,7 +35,24 @@ Since the database only provides a longitude and a latitude, we also need to pro
 
 This subservice will also need to be able to query for locations by natural language, for example: "university of toronto", "eaton center", "TD at bay st and queens st w.". It should be able to account for both "general area" and "specific area" cases.
 
-## Validation
+## Agreed search semantics (2026-10-16)
+
+These explicit user clarifications also appear in `plan.md`. Root shared-contract updates require coordination before integration.
+
+- Unstated criteria impose no constraints; household size does not imply bedrooms. Monetary ranges mean CAD/month; rooms mean bedrooms unless shared accommodation is explicit.
+- Cheapest sorts all eligible matches. Explicit numeric top/bottom percentiles select from the full eligible pool after hard filters, using `min(N, max(minimumCount, ceil(N * percentage / 100)))` known values; minimumCount defaults to 10. Existing score tie-breakers resolve the cutoff. Multiple percentile fields require clarification.
+- Alternative travel modes use OR per destination; separate destinations must each satisfy their requirement. Use the best normalized travel score per destination, and shortest requested routed time for travel percentiles.
+- Broad destinations use a labelled representative point. Ambiguous campuses or branches require structured destination choices.
+- Missing routing produces labelled straight-line distance and an unconfirmed time requirement; hide-unconfirmed excludes it. Never present straight-line distance as minutes.
+- Exact travel percentiles run asynchronously for at most two minutes over the full eligible pool. Incomplete routing returns explicit unavailability, never an exact partial percentile. Jobs are bounded, temporary and in memory, with opaque polling tokens and an expired response after restart. Prompts and job payloads are never persisted or logged.
+
+## Change log
+
+- 2026-10-16: Incorporated the user's agreed plan clarifications before drafting affected schemas and behavior. Implementation scope is the search pipeline; imports, AI explanations and ward briefings remain outside this local plan.
+
+- 2026-10-16: Search-only unit-type choice `studio` represents a whole-unit listing with bedrooms 0, while preserving the owner's existing Listing unit types. This permits room OR studio searches without adding a conjunctive bedroom restriction. Configured Downtown/Scarborough search rectangles are explicitly approximate search definitions, not official civic boundaries; authoritative geographic integration remains dependent on D.
+
+## Validation examples
 
 User query with natural language: something like
 - "I'm looking for houses or apartments around the university of toronto. Should be within 10 minutes biking distance. Around 3-5k per"

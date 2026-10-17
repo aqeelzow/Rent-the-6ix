@@ -1,0 +1,76 @@
+import { z } from 'zod';
+import { ParseRequestSchema, SearchRequestSchema, SearchResponseSchema, SearchIntentSchema, DetailResponseSchema, TravelTimeRowSchema } from '../../../../../packages/shared/schemas/index';
+import { sampleListings, searchFixture, safetySearchFixture, areas, detailFixture } from '../../../../../packages/shared/fixtures/index';
+import { scoreListing } from '../../../../../packages/shared/engine/score';
+import { distanceM, targetModes } from '../../../../../packages/shared/engine/travel';
+import { ParseService, DestinationResolver, IpLimiter } from '../parse/index';
+import { providerFromEnv } from '../ai/index';
+import { searchCandidates, routeCandidateContexts, SearchUnavailable, type SearchDependencies } from '../db/candidates';
+import { searchPercentileCandidates } from '../db/candidates-percentiles';
+import { SearchJobs } from './jobs';
+import { ApiError, jsonRoute } from './json-route';
+export const fixtureDependencies: SearchDependencies = {
+  listings: sampleListings,
+  enrich: async (listing, intent) => {
+    const result = searchFixture.status === 'completed' ? searchFixture.results.find(r => r.listing.id === listing.id)! : undefined!;
+    const safety = safetySearchFixture.status === 'completed' ? safetySearchFixture.results[0].safety : null;
+    return { valuation: result.valuation, travel: [], safety: intent.safety.enabled && safety ? { ...safety, areaId: listing.neighbourhoodId } : null, safetyScore: 80, caveats: result.matchScore.caveats };
+  },
+};
+type RuntimeOptions = { env?: Record<string, string | undefined>; parser?: ParseService; resolver?: DestinationResolver; dependencies?: SearchDependencies; jobs?: SearchJobs; identity?: (request: Request) => string; limiter?: IpLimiter; startLimiter?: IpLimiter; pollLimiter?: IpLimiter };
+export function createRuntime(options: RuntimeOptions = {}) {
+  const env = options.env ?? process.env;
+  const resolver = options.resolver ?? new DestinationResolver({ maptilerKey: env.NEXT_PUBLIC_MAPTILER_KEY });
+  const parser = options.parser ?? new ParseService({ provider: providerFromEnv(env), resolver });
+  const jobs = options.jobs ?? new SearchJobs();
+  const dependencies = options.dependencies ?? (env.SEARCH_FIXTURES === '1' ? fixtureDependencies : undefined);
+  // shortcut: one anonymous quota without trusted server identity, integrate A's trusted proxy adapter before production.
+  const identity = options.identity ?? (() => 'anonymous');
+  const limiter = options.limiter ?? new IpLimiter(60), startLimiter = options.startLimiter ?? new IpLimiter(10), pollLimiter = options.pollLimiter ?? new IpLimiter(120);
+  const limit = (request: Request) => limiter.check(identity(request));
+  const requireDependencies = () => { if (!dependencies) throw new ApiError(503, 'service_unavailable', 'Search temporarily unavailable'); return dependencies; };
+  const params = z.strictObject({ id: z.uuid() });
+  const token = z.strictObject({ token: z.string().regex(/^[A-Za-z0-9_-]{32,128}$/) });
+  const query = (request: Request, field: string) => {
+    const url = new URL(request.url);
+    if (url.searchParams.getAll(field).length !== 1) throw new ApiError(422, 'validation_error', 'Exactly one query value is required');
+    return z.strictObject({ [field]: z.string().min(1) }).parse(Object.fromEntries(url.searchParams))[field];
+  };
+  return {
+    jobs,
+    parse: jsonRoute({ name: 'search.parse', body: ParseRequestSchema, rateLimit: limit }, async (input, raw) => parser.parse(input, identity(raw))),
+    resolve: jsonRoute({ name: 'geo.resolve', rateLimit: limit }, async (_input, request) => resolver.resolve(z.string().trim().min(1).max(500).parse(query(request, 'q')))),
+    search: jsonRoute({ name: 'listings.search', body: SearchRequestSchema, rateLimit: limit }, async (request, raw) => {
+      const deps = requireDependencies();
+      if (request.intent.numericExtreme?.field === 'travel') {
+        startLimiter.check(identity(raw));
+        return jobs.start((signal, deadline) => searchPercentileCandidates(request, deps, { referenceYear: new Date().getUTCFullYear(), deadline, signal }));
+      }
+      try {
+        return request.intent.numericExtreme ? await searchPercentileCandidates(request, deps, { referenceYear: new Date().getUTCFullYear() }) : SearchResponseSchema.parse({ status: 'completed', ...await searchCandidates(request, deps) });
+      } catch (error) { if (error instanceof SearchUnavailable) throw new ApiError(503, 'service_unavailable', 'This search is temporarily unavailable'); throw error; }
+    }),
+    poll: jsonRoute<undefined, { params: Promise<{ token: string }> }>({ name: 'listings.search.jobs', rateLimit: request => pollLimiter.check(identity(request)) }, async (_input, _request, context) => jobs.poll(token.parse(await context.params).token)),
+    detail: jsonRoute<undefined, { params: Promise<{ id: string }> }>({ name: 'listings.detail', rateLimit: limit }, async (_input, request, context) => {
+      const id = params.parse(await context.params).id;
+      const encoded = query(request, 'intent');
+      if (encoded.length > 65536) throw new ApiError(422, 'validation_error', 'Intent exceeds 64 KiB');
+      let input: unknown; try { input = JSON.parse(encoded); } catch { throw new ApiError(422, 'validation_error', 'Malformed intent JSON'); }
+      const intent = SearchIntentSchema.parse(input);
+      if (intent.rawPrompt || Object.keys(intent.fieldSources).length || intent.droppedRequests.length) throw new ApiError(422, 'validation_error', 'Detail intent must redact rawPrompt, fieldSources and droppedRequests');
+      const deps = requireDependencies(), listing = deps.listings.find(l => l.id === id);
+      if (!listing) throw new ApiError(404, 'listing_not_found', 'Listing not found');
+      const owner = await deps.enrich(listing, intent);
+      const travel = owner.travel.map(row => TravelTimeRowSchema.parse(row)).filter(row => row.listingId === id);
+      for (const target of intent.travelTargets) if (target.resolved) for (const mode of targetModes(target)) if (!travel.some(row => row.targetId === target.id && row.mode === mode)) travel.push({ listingId: id, targetId: target.id, mode, minutes: null, distanceM: distanceM(listing.location, target.resolved), method: 'straight_line', poiId: null, computedAt: listing.lastSeenAt });
+      const scoring = { ...owner, travel, safety: intent.safety.enabled ? owner.safety : null };
+      await routeCandidateContexts(deps, [listing], intent.travelTargets.filter(t => t.kind === 'place'), new Map([[id, scoring]]));
+      // Synthetic detail geography only; live detail awaits owner area/building/duplicate contracts.
+      if (listing.dataStatus !== 'demo') throw new ApiError(503, 'service_unavailable', 'Listing details temporarily unavailable');
+      return DetailResponseSchema.parse({ listing, valuation: owner.valuation, travel: scoring.travel, safety: scoring.safety, matchScore: scoreListing(listing, intent, scoring), areas: areas.filter(a => a.id === listing.neighbourhoodId || a.id === listing.wardId), indicators: detailFixture.indicators.filter(i => i.areaId === listing.neighbourhoodId), duplicates: deps.listings.filter(l => l.duplicateOf === id) });
+    }),
+  };
+}
+type Runtime = ReturnType<typeof createRuntime>;
+const globalRuntime = globalThis as typeof globalThis & { __rentSearchRuntime?: Runtime };
+export const getRuntime = (): Runtime => globalRuntime.__rentSearchRuntime ??= createRuntime();

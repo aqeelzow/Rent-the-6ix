@@ -1,0 +1,29 @@
+import type { Listing, SearchIntent, Safety, TravelTimeRow, Valuation, AreaFilter } from '../schemas/index';
+import { homeCriteria } from './home-fit';
+import { distanceM, evaluateTarget } from './travel';
+export type FilterContext = { valuation?: Valuation; travel?: TravelTimeRow[]; safety?: Safety | null };
+function areaMatches(listing: Listing, area: AreaFilter): boolean {
+  if (area.kind === 'neighbourhood') return listing.neighbourhoodId === area.id;
+  if (area.kind === 'ward') return listing.wardId === area.id;
+  if (area.kind === 'near') return distanceM(listing.location, area.point) <= area.radiusM;
+  const [west, south, east, north] = area.bounds;
+  return listing.location.lng >= west && listing.location.lng <= east && listing.location.lat >= south && listing.location.lat <= north;
+}
+export function filterListing(listing: Listing, intent: SearchIntent, context: FilterContext = {}, hideUnconfirmed = false, cheapOnly = false) {
+  const notes: string[] = [];
+  let passes = listing.status === 'active' && listing.duplicateOf === null && (!intent.areas.length || intent.areas.some(a => areaMatches(listing, a)));
+  const check = (name: string, matches: boolean | null) => { if (matches === null) notes.push(`${name}: not confirmed`); else if (!matches) passes = false; };
+  const rent = intent.criteria.rent;
+  if (rent?.hard) check('rent', listing.monthlyRentCad >= (rent.value.min ?? 0) && listing.monthlyRentCad <= (rent.value.max ?? Infinity));
+  for (const criterion of homeCriteria(listing, intent)) if (criterion.hard) check(criterion.name, criterion.matches);
+  if (!cheapOnly) {
+    const fairness = intent.criteria.priceFairness;
+    if (fairness?.hard) check('priceFairness', !context.valuation || context.valuation.priceLabel === 'unknown' ? null : fairness.value.includes(context.valuation.priceLabel));
+    if (intent.safety.enabled && intent.safety.hard) check('safety', context.safety?.relativeRate == null ? null : context.safety.relativeRate <= 1);
+    for (const target of intent.travelTargets) if (target.hard) {
+      const state = evaluateTarget(target, context.travel ?? []).state;
+      check(`Travel to ${target.label}`, state === 'unknown' ? null : state === 'pass');
+    }
+  }
+  return { passes: passes && (!hideUnconfirmed || !notes.length), notes };
+}

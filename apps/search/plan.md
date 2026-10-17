@@ -1,12 +1,12 @@
 # Natural-language rental search — execution plan
 
-Status: agreed plan; implementation not started.
+Status: paused at the user’s request after completing fixture-backed API integration in `/tmp/rent-search-integration` on branch `b/search-pipeline-integration`. Resume from that worktree, not the older original workspace. Canonical gates and native production HTTP checks pass; owner integrations remain unavailable.
 
 ## Source of truth and scope
 
 Read `spec.md` before implementing this plan. The spec defines requirements; this plan defines execution order and records the user's clarification answers. If the two conflict, surface the discrepancy and reconcile it before implementing the affected behavior.
 
-Build the search pipeline within the planned Next.js app: prompt parsing, editable search intent, destination resolution, deterministic filtering and ranking, and travel integration. The repository currently contains documents only. A's scaffold and C/D's data services are dependencies. Imports, AI explanations and ward briefings are outside this execution scope.
+Build the search pipeline within the planned Next.js app: prompt parsing, editable search intent, destination resolution, deterministic filtering and ranking, and travel integration. A’s fetched main now provides the monorepo scaffold. C/D data services remain dependencies. Imports, AI explanations and ward briefings are outside this execution scope.
 
 ## Agreed clarifications
 
@@ -82,14 +82,54 @@ Implementation defaults: unstated criteria impose no constraints; household size
 - Build against fixtures until those services are available, then verify live integration.
 - Check official provider documentation and current library APIs during implementation.
 - Exact travel percentiles may exceed two minutes and must report unavailability honestly.
-- Implementation in the planned monorepo locations needs write access beyond the current `apps/search` workspace.
+- Canonical implementation is being validated in the writable isolated `/tmp/rent-search-integration` worktree, preserving the original workspace.
 
 ## Progress
 
-- [ ] Reconcile contracts and dependencies; write `shared.md`.
-- [ ] Define schemas and fixtures.
+2026-10-16 — Read root TEAM/PERSON_B/SPEC/PROGRESS/CLAUDE and requests to B in A/C/D handoffs. Wrote `shared.md`, `change-request.md` and current-state/API documentation in `DOCS.md`. The repository has documents only; A's scaffold and C/D implementations are unavailable. Canonical B paths and root SPEC/PERSON_B are outside this workspace's writable scope. Root single-mode travel conflicts with the agreed alternative-mode clarification; percentile/job/ambiguity contracts are not yet published. Step 1 remains open for required shared agreement and root updates; see CR-1–CR-5. Intermediate validations will use a small synthetic sample; the final shared 50-listing fixture requirement remains intact.
+
+- [x] Reconcile inspected contracts/dependencies and publish B root records; track outstanding owner/UI requests in `change-request.md`.
+- [x] Define and validate canonical shared schemas and 50 synthetic fixtures.
 - [ ] Implement parsing and destination resolution.
-- [ ] Implement deterministic search and scoring.
-- [ ] Implement percentile searches.
+  - [x] Draft provider, deterministic parser, resolution, cache/limiter and tests in canonical relative paths.
+  - [x] Publish B root contracts and mount in A’s fetched scaffold.
+  - [ ] Connect D-owned Address Points/ai_cache and verify live providers.
+- [ ] Integrate deterministic search with owner services.
+  - [x] Implement and verify canonical filtering, scoring and bounded ordinary orchestration with fixtures.
+  - [ ] Connect authoritative SQL, valuation, safety and travel adapters.
+- [ ] Integrate percentile searches with owner routing.
+  - [x] Implement and verify scalar/full-pool exact executors and bounded async jobs.
+  - [ ] Verify complete live D routing and real latency.
 - [ ] Expose APIs and integrate with team services.
+  - [x] Implement and verify staged native parse/resolve/search/context-detail routes and bounded async job polling against eight synthetic listings.
+  - [x] Mount canonical Next routes, publish B root contracts and verify native production HTTP behavior.
+  - [ ] Connect owner services, coordinate A’s destination/polling UI and verify live acceptance/latency.
 - [ ] Complete verification and record results.
+  - [x] Exercise staged APIs with fallback/mocked Gemini acceptance prompts and record synthetic ordinary/detail/async timing.
+  - [x] Run canonical typecheck, lint, 57 workspace tests, production build and native fixture HTTP smoke.
+  - [ ] Verify real provider/database/routing/deployed acceptance once dependencies are supplied.
+
+2026-10-16 — Feature 2 draft implemented at `packages/shared/{schemas,fixtures}` with canonical relative layout and no replacement app/package scaffold. Strict Zod schemas/types include the agreed alternative-mode, numeric-selector, structured destination and async-result payloads. Fifty synthetic listings, three synthetic areas, ordinary/safety/detail responses and an eight-listing intermediate sample validate. Seven focused node:test tests passed; strict TypeScript 5 check passed against temporary Zod 4/tsx dependencies. `DOCS.md` documents exact draft payloads, setup, assumptions and limitations. AreaFilter, safety and application travel-row shapes are explicitly draft extensions awaiting owner alignment; no DB definitions were invented. Feature 2 checkbox remains open pending canonical scaffold/access, publication and owner integration (CR-1–CR-4).
+
+
+2026-10-16 — Feature 3 draft implemented under `apps/web/src/lib/{ai,parse}`. Generic root AIProvider contract, Gemini REST/None fallback, one validation retry within a total 12-second deadline, known-place choices, injected Address Points → validated MapTiler fallback, bounded hash caches and per-IP limiter are implemented. Fallback covers all six local/root acceptance examples; studio search-only choice and explicitly labelled configured Downtown/Scarborough bounds extend B-owned draft intent without altering owner DB/Listing fields. Schema review removed an unsupported yearBuilt/yearBuiltSource paired-null invariant, preserving C's nullable input contract. Nineteen tests pass (seven schema plus twelve parser/provider/resolver/cache), strict TypeScript passes, provider calls are mocked and no live secrets used. `DOCS.md` contains setup, module contracts and verified limits. Canonical scaffold/root publication, live providers, owner Address Points/ai_cache and mounted routes remain externally pending; agreed user mode/percentile semantics need no repeated approval. Feature 3 local draft verification is complete, enabling feature 4 against the eight-row fixture sample.
+
+2026-10-16 — Root walkthrough regression fixed and verified: adding “10 min walk to a supermarket” refines existing close-groceries amenity into one hard timed grocery target; it neither creates a duplicate place nor adds walking as an alternative mode to the campus transit target. Added an exact walkthrough test; all 19 tests and strict typecheck pass.
+
+2026-10-16 — Feature4 local draft implemented in B-owned pure engine modules and injectable `lib/db/candidates.ts`, retaining the eight-row intermediate sample. Cheap filters, home-fit formulas, per-destination OR modes/AND destinations, unknown/hide semantics, factual score evidence and five-part renormalization are verified. Ordinary scoring caps500, routing caps100 with one shared3s budget; numeric rent/newest ordering precedes cap and shortest trips compares actual times. Full-pool hard enriched gates/derived numeric keys read injected cached fixture contexts; live SQL remains blocked on D's authoritative definitions. Safety score/valuation/caveats remain owner inputs, with no copied owner algorithms. Ten focused tests and strict TypeScript pass, including520-row pool/deadline tests. Feature4 local draft is ready for feature5; the overall checkbox remains open for canonical/live integration and owner contracts. No parser changes.
+
+2026-10-16 — Feature4 eligibility regression corrected: hide-unconfirmed now removes cheap hard-home unknowns before500-cap selection while preserving deferred travel confirmation. Eligible count evaluates the full contextual pool after routing/hiding. Eleven focused tests pass, including first500 unknown bedrooms followed by20 confirmed matches and exact hidden travel counts.
+
+2026-10-16 — Feature5 local draft implemented and verified in `lib/db/candidates-percentiles.ts` with pure `engine/score.ts` selection. Scalar selectors read/filter the full cached eligible pool before selection, route hard place targets before hide/selection under the shared3s budget, retain numeric order and allow >500 selected results. Explicit reference year makes building-age directions reproducible. Exact travel execution routes the full non-travel-eligible pool across all requested modes/destinations with one shared maximum120s deadline/abort signal, requires complete OTP rows and returns honest unavailable without partial exact results. Independent hard destinations apply before selection; mode OR/shortest selected target are verified. Seven focused percentile tests plus existing30 pass (37 total); strict TypeScript passes. DOCS.md documents contracts, edge cases and honest fixture/live limits. Feature5 local draft complete, enabling feature6 jobs/API dispatch; overall checkbox remains open for canonical scaffold/root publication and live D integration. No owner router/SQL/safety implementation or job scheduler added.
+
+2026-10-16 — Feature 6 staged API implementation verified in `lib/api/{json-route,jobs,runtime}.ts` and five native `app/api` routes. Root JSON/Zod422, shared/start/poll429 with Retry-After, sanitized500, absent-listing404 and expired/consumed/restarted-job410 are implemented. Explicit server fixture mode uses eight demo rows; default listing dependencies return503. Context detail requires redacted prompt metadata and reuses bounded ordinary routing/scoring. Exact travel jobs share globalThis runtime per process, use cryptographically opaque tokens, cap16 retained jobs, abort at120s, expire180s after submission including unpolled terminals, and remove after first terminal poll. No prompts/job payloads are persisted/logged. Seven API tests and strict TypeScript pass; all six local/root prompts run through API fallback and mocked Gemini REST. Synthetic20iteration median/p95milliseconds: parse0.20/3.70, ordinary1.14/1.75, scalar0.53/0.82, detail0.17/0.51, asyncmock2.34/2.67. DOCS specifies actual payloads/errors/setup/lifecycle/privacy and verified limits. Canonical A mounting/build/lint, root publication and C/D contracts/live integrations remain pending (CR-1–CR-5); overall integration and plan completion remain unchecked.
+
+Feature 6 final review — added positive student/family fixture matches (furnished studioCAD1,250; three-bedroom Scarborough-coordinate home with parking), so API acceptance is not vacuous. Shared `routeCandidateContexts` preserves ordinary routing behavior for search and detail, including stale detail status and duplicates; failure-to-match home filters does not discard detail travel facts. Final44-test suite and strict typecheck of all tests, benchmark and five route entries pass. DOCS top API status/table/error/lifecycle descriptions reconciled with current implementation, rather than only adding historical notes.
+
+2026-10-16 — Current feature only: reconciled B pipeline with fetched main `adbeb25` in isolated `/tmp/rent-search-integration`. Converted B tests to Vitest, web imports to shared package exports, and search/detail result payloads to top-level `id` equal to `listing.id`; exported A-compatible SearchResultItem and API error payload types without editing A's store. Canonical source replaces historical local staging paths. Root records were three-way merged preserving A/C changes. Gates and native Next fixture HTTP checks are in progress; live C/D adapters are still unavailable. User requested finishing this current integration feature, then stopping with handoff; no additional feature work is authorized for this run.
+
+2026-10-17 — Current integration feature production-build fix: removed `.js` suffixes from B local TypeScript imports/re-exports to match A's bundler style, and statically imported validated known-place JSON instead of reading an asset path with node:fs. Canonical web typecheck (including Next route typegen), lint and44 web Vitest tests pass under Node24. Prior13 shared tests/typecheck passed. Production build/native HTTP smoke remain the parent’s final integration checks; no new feature or A/C/D configuration changes were made.
+
+2026-10-17 — Current API feature complete; stopped at the user’s request before further features/integrations. Fetched main `adbeb25` and integrated B source in `/tmp/rent-search-integration`, branch `b/search-pipeline-integration`. A scaffold is present; no authoritative C/D implementation exists at that snapshot. Node24.22.0/pnpm10.34.7: workspace typecheck/lint,57 tests (13 shared,44 web), frozen offline install and fresh production Next16.4.2 build pass. Required web Zod dependency is a separate commit `2b2d641`; no owner algorithms or A UI were changed. Native production fixture HTTP checks cover all five routes, six fallback prompts (result counts4/8/6/2/4/1), positive student/family matches, detail score/travel consistency, campus ambiguity/representative point,422 errors, unknown410 jobs, opaque pending jobs, cross-route polling, honest routing_incomplete and consumed410. Local server stopped. Smoke artifact: `/tmp/rent-search-http-smoke.py`. Provider tests mock Gemini; external provider/DB/router/deployed behavior remains unverified. Prior progress entries describe historical staging, not current blockers.
+
+Resume environment: put `/tmp/rent-search-validation/node_modules/node/bin` and `/tmp/rent-search-validation/node_modules/.bin` first on PATH; run repository pnpm scripts from the integration worktree. Dependencies are installed; frozen lockfile store is `/tmp/rent-search-pnpm-store`. System Node22/global pnpm12 are unsuitable for this scaffold. The original branch `search` remains a dirty earlier publication checkpoint, including unrelated untracked root package manifests/node_modules; preserve those files and reconcile intentionally after resuming. Do not rerun the older publisher script or overwrite the verified integration from that checkpoint. Nothing pushed or merged.
