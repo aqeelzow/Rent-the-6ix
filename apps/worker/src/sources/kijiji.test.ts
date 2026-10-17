@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { kijijiPageUrl, parseKijiji } from "./kijiji.ts";
+import { kijijiPageUrl, parseKijiji, wholeUnitTitle } from "./kijiji.ts";
 
 // Same shape as Kijiji's __NEXT_DATA__ (checked 2026-10-16); values are made up.
 function page(listings: object[], extraHtml = "") {
@@ -76,6 +76,42 @@ describe("parseKijiji", () => {
     expect(parseKijiji(page([listing], links)).lastPage).toBe(174);
     expect(kijijiPageUrl(3)).toBe(
       "https://www.kijiji.ca/b-apartments-condos/city-of-toronto/page-3/c37l1700273",
+    );
+  });
+
+  it("reads Room Rentals entries (StandardListing, no attributes) as rooms", () => {
+    const room = {
+      __typename: "StandardListing",
+      id: "200",
+      title: "Furnished room near York U",
+      url: "https://www.kijiji.ca/v-room-rental-roommate/city-of-toronto/x/200",
+      price: { __typename: "StandardAmountPrice", amount: 95000 },
+      location: { address: "Toronto, ON", coordinates: { latitude: 43.77, longitude: -79.5 } },
+    };
+    const html = page(
+      [room],
+      `<a href="/b-room-rental-roommate/city-of-toronto/page-52/c36l1700273"></a>`,
+    );
+    const { listings, lastPage } = parseKijiji(html, "rooms");
+    expect(listings[0]).toMatchObject({
+      unitType: "room",
+      rentIsPerRoom: true,
+      monthlyRentCad: 950,
+    });
+    expect(lastPage).toBe(52);
+    const basement = { ...room, id: "201", title: "Triple Mint High Park Basement for Rent $1850" };
+    const [whole] = parseKijiji(page([basement]), "rooms").listings;
+    expect(whole).toMatchObject({ unitType: null, rentIsPerRoom: false });
+    expect(wholeUnitTitle("3 Bed 1 Bath Entire Private Unit for Rent", 2700)).toBe(true);
+    expect(wholeUnitTitle("Fully Furnished Scarborough townhome available", 3000)).toBe(true);
+    expect(wholeUnitTitle("GUARANTEED Peaceful Home with Centennial College", 760)).toBe(false);
+    expect(wholeUnitTitle("Rooms available in a quiet house near York", 800)).toBe(false);
+    expect(wholeUnitTitle("Shared basement accommodation", 700)).toBe(false);
+    expect(wholeUnitTitle("1 bedroom in a beautiful penthouse", 1350)).toBe(false);
+    expect(wholeUnitTitle("MasterBedroom in a Townhouse", 2500)).toBe(false);
+    expect(wholeUnitTitle("One bedroom basement unit for rent", 1300)).toBe(true);
+    expect(kijijiPageUrl(3, "rooms")).toBe(
+      "https://www.kijiji.ca/b-room-rental-roommate/city-of-toronto/page-3/c36l1700273",
     );
   });
 

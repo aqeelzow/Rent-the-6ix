@@ -11,6 +11,7 @@ const daysAgo = (d: number) => new Date(NOW.getTime() - d * 86_400_000).toISOStr
 
 const listing: CaveatListing = {
   title: "Bright 1 bedroom",
+  monthlyRentCad: 2250,
   excerpt: "Steps to the subway.",
   locationPrecision: "exact",
   lastSeenAt: daysAgo(1),
@@ -94,6 +95,24 @@ describe("caveats", () => {
     const [c] = caveats(listing, { ...ctx, sameTextElsewhere: 2 });
     expect(c).toMatchObject({ code: "duplicate_text_elsewhere", severity: "warning" });
     expect(c.explanation).toContain("2 other listings");
+  });
+
+  it("price_dropped when the rent is $25+ below the first one seen", () => {
+    expect(codes({}, { firstSeen: { rentCad: 2270, at: "2026-10-01T00:00:00Z" } })).toEqual([]);
+    expect(codes({}, { firstSeen: null })).toEqual([]);
+    const [c] = caveats(listing, {
+      ...ctx,
+      firstSeen: { rentCad: 2400, at: "2026-10-01T05:00:00Z" },
+    });
+    expect(c).toMatchObject({ code: "price_dropped", severity: "info" });
+    expect(c.explanation).toBe(
+      "The asking rent dropped from $2,400 to $2,250 since 2026-10-01. A listing that's been reduced may be open to negotiation.",
+    );
+  });
+
+  it("deposit_before_viewing from the flag stored at ingest, even when the excerpt is clean", () => {
+    expect(codes({ depositBeforeViewing: true })).toEqual(["deposit_before_viewing"]);
+    expect(codes({ depositBeforeViewing: false })).toEqual([]);
   });
 
   it("orders most severe first", () => {

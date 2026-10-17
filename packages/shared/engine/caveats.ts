@@ -2,6 +2,9 @@
 // Caveat text lives only here. Scam-related caveats are indicators, never accusations.
 // TODO(P0.5): switch the input/output types to B's `Listing` / `Caveat` schemas when they land.
 import { CAVEATS as C } from "./config";
+import { asksForMoneyBeforeViewing } from "./scam";
+
+export { asksForMoneyBeforeViewing };
 import type { Tri, Valuation } from "./valuation";
 
 export type CaveatSeverity = "info" | "warning" | "high";
@@ -14,6 +17,7 @@ export type CaveatCode =
   | "stale"
   | "fields_unknown"
   | "rentsafeto_low"
+  | "price_dropped"
   | "insufficient_comparables";
 
 export interface Caveat {
@@ -26,6 +30,7 @@ export interface Caveat {
 /** The listing fields caveats read. */
 export interface CaveatListing {
   title: string;
+  monthlyRentCad: number;
   excerpt: string;
   locationPrecision: "exact" | "street" | "area";
   /** ISO timestamp. */
@@ -35,6 +40,8 @@ export interface CaveatListing {
   laundryInSuite: Tri;
   parking: Tri;
   airConditioning: "central" | "yes" | "no" | "unknown";
+  /** Stored at ingest from the full description; the excerpt is checked too. */
+  depositBeforeViewing?: boolean;
 }
 
 export interface CaveatContext {
@@ -43,6 +50,8 @@ export interface CaveatContext {
   building: { latestScore: number | null; scoreDate: string | null } | null;
   /** Other listings with the same description at a different address or price (from SQL). */
   sameTextElsewhere: number;
+  /** The first asking rent seen for this listing (listing_observations), if it's stored. */
+  firstSeen?: { rentCad: number; at: string } | null;
   now: Date;
 }
 
@@ -53,7 +62,10 @@ const DAY_MS = 86_400_000;
 export function caveats(listing: CaveatListing, ctx: CaveatContext): Caveat[] {
   const out: Caveat[] = [];
 
-  if (asksForMoneyBeforeViewing(`${listing.title} ${listing.excerpt}`))
+  if (
+    listing.depositBeforeViewing ||
+    asksForMoneyBeforeViewing(`${listing.title} ${listing.excerpt}`)
+  )
     out.push({
       severity: "high",
       code: "deposit_before_viewing",
@@ -119,6 +131,15 @@ export function caveats(listing: CaveatListing, ctx: CaveatContext): Caveat[] {
       explanation: `The building scored ${Math.round(score)}% in its latest City of Toronto RentSafeTO evaluation${ctx.building?.scoreDate ? ` (${ctx.building.scoreDate})` : ""}. Buildings under ${C.rentSafeToLowScore}% are evaluated every year.`,
     });
 
+  const first = ctx.firstSeen;
+  if (first && first.rentCad - listing.monthlyRentCad >= C.priceDropMinCad)
+    out.push({
+      severity: "info",
+      code: "price_dropped",
+      title: "Price dropped",
+      explanation: `The asking rent dropped from $${first.rentCad.toLocaleString("en-CA")} to $${listing.monthlyRentCad.toLocaleString("en-CA")} since ${first.at.slice(0, 10)}. A listing that's been reduced may be open to negotiation.`,
+    });
+
   if (ctx.valuation?.status === "insufficient_data")
     out.push({
       severity: "info",
@@ -128,24 +149,6 @@ export function caveats(listing: CaveatListing, ctx: CaveatContext): Caveat[] {
     });
 
   return out.sort((a, b) => SEVERITY_ORDER[a.severity] - SEVERITY_ORDER[b.severity]);
-}
-
-// A money word and a "before the viewing" phrase in the same sentence, in either order.
-const MONEY = String.raw`\b(?:deposit|e-?transfer|etransfer|interac|first (?:and|&) last|payment|wire|western union|gift cards?|bitcoin|crypto)\b`;
-const BEFORE_VIEWING = String.raw`\b(?:before|prior to|to (?:book|schedule|arrange|secure|hold|reserve))\b[^.!?]{0,40}?\b(?:view(?:ing)?|showing|visit|tour|see (?:it|the (?:unit|place|apartment))|keys?)\b`;
-const MONEY_BEFORE_VIEWING = new RegExp(
-  `${MONEY}[^.!?]{0,80}?${BEFORE_VIEWING}|${BEFORE_VIEWING}[^.!?]{0,80}?${MONEY}`,
-  "i",
-);
-
-// "Send the deposit and I'll mail you the keys": the landlord never shows the unit.
-const KEYS_BY_MAIL = /\b(?:mail|courier|ship|post)(?:ed)? (?:you )?the keys?\b/i;
-
-export function asksForMoneyBeforeViewing(text: string): boolean {
-  return (
-    MONEY_BEFORE_VIEWING.test(text) ||
-    (KEYS_BY_MAIL.test(text) && new RegExp(MONEY, "i").test(text))
-  );
 }
 
 const FIELD_NAMES: [keyof CaveatListing, string][] = [

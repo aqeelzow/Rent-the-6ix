@@ -3,7 +3,10 @@
 // normalize/scrub/geocode turn it into a shared `Listing`.
 import type { Session } from "../lib/fetch.ts";
 
-export type SourceId = "kijiji" | "torontorentals" | "rentals_ca" | "zillow" | "realtor_ca";
+/** Sources with a scraping adapter. */
+export type AdapterId = "kijiji" | "torontorentals" | "rentals_ca" | "zillow" | "realtor_ca";
+/** Every source a stored listing can have; `manual` rows come from db/seed/manual.csv. */
+export type SourceId = AdapterId | "manual";
 
 /** true / false when the source says so, null when it doesn't (unknown is not "no"). */
 export type TriState = boolean | null;

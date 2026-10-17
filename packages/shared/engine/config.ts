@@ -59,4 +59,6 @@ export const CAVEATS = {
   minUnknownFields: 2,
   /** rentsafeto_low: below the City's threshold for yearly evaluation. */
   rentSafeToLowScore: 66,
+  /** price_dropped: the asking rent is at least this much below the first one seen. */
+  priceDropMinCad: 25,
 } as const;

@@ -73,6 +73,17 @@ describe("normalize: not housing, rooms, implausible rents (seen in TigerData)",
         .unitType,
     ).toBe("room");
     expect(norm({ title: "Bright 2 bedroom, rooms are spacious" }).unitType).toBeNull();
+    expect(
+      norm({
+        title: "FURNISHED BASEMENT PERSONAL ROOM+SHARED KITCHEN",
+        unitType: "basement-apartment",
+        monthlyRentCad: 820,
+      }).unitType,
+    ).toBe("room");
+    expect(
+      norm({ title: "Renovated basement apartment, 2 rooms", unitType: "basement-apartment" })
+        .unitType,
+    ).toBe("basement");
   });
 
   it("drops whole units under $600; rooms keep the $300 floor", () => {
@@ -229,6 +240,16 @@ describe("normalize: text rules fill the gaps", () => {
     ).toBe("2027-01-15");
     expect(norm({ description: "Month-to-month ok" }).leaseTerm).toBe("month-to-month");
     expect(norm({ availableFrom: "2026-11-31" }).availableFrom).toBeNull();
+  });
+});
+
+describe("normalize: scam indicator from the full description", () => {
+  it("flags money before a viewing even past the 280-char excerpt", () => {
+    const long = `${"Bright unit with lots of light. ".repeat(12)}E-transfer the deposit before viewing.`;
+    const out = norm({ description: long });
+    expect(out.excerpt).not.toMatch(/deposit/);
+    expect(out.depositBeforeViewing).toBe(true);
+    expect(norm({ description: "Deposit due at lease signing." }).depositBeforeViewing).toBe(false);
   });
 });
 

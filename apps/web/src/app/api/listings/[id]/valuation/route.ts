@@ -2,7 +2,8 @@
 import { z } from "zod";
 import { ApiError, jsonRoute } from "../../../../../lib/api/json-route";
 import { getClient } from "../../../../../lib/db";
-import { listingValuation, toApiValuation } from "../../../../../lib/db/valuation";
+import { listingValuation } from "../../../../../lib/db/valuation";
+import { ValuationSchema } from "../../../../../../../../packages/shared/schemas/index";
 
 export const runtime = "nodejs";
 
@@ -16,6 +17,7 @@ export const GET = jsonRoute<undefined, { params: Promise<{ id: string }> }>(
     if (!sql) throw new ApiError(503, "service_unavailable", "Valuations temporarily unavailable");
     const valuation = await listingValuation(sql, id);
     if (!valuation) throw new ApiError(404, "listing_not_found", "Listing not found");
-    return toApiValuation(valuation);
+    // The shared contract is checked on every response.
+    return ValuationSchema.parse(valuation);
   },
 );
