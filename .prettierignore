@@ -15,3 +15,5 @@ next-env.d.ts
 # Saved source pages and snapshots
 apps/worker/fixtures/
 db/snapshots/
+# Copied from node_modules at dev/build time
+apps/web/public/maplibre/
