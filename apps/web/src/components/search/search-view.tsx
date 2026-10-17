@@ -248,6 +248,7 @@ export function SearchView({ prompt, shared }: { prompt: string | null; shared: 
                     result={result}
                     targets={intent?.travelTargets ?? []}
                     safetyOn={intent?.safety.enabled ?? false}
+                    acInSearch={intent?.criteria.airConditioning !== undefined}
                     now={now}
                   />
                 </li>
@@ -348,6 +349,7 @@ function MapListingCard({
           result={result}
           targets={intent?.travelTargets ?? []}
           safetyOn={intent?.safety.enabled ?? false}
+          acInSearch={intent?.criteria.airConditioning !== undefined}
           now={now}
         />
       </div>
