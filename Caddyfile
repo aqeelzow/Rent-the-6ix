@@ -1,0 +1,44 @@
+# Caddyfile — owner: D (P0.9)
+#
+# One site, TLS terminated by Caddy, everything proxied to the Next.js container.
+# SITE_HOST comes from .env: a domain if there is one, otherwise
+# <ip-with-dashes>.sslip.io (e.g. 203-0-113-7.sslip.io), which resolves to the
+# instance's public IP and gets a real Let's Encrypt certificate.
+#
+# `/status` is not gated: it is the judge-facing page (SPEC 19).
+
+{$SITE_HOST} {
+	encode zstd gzip
+
+	# Uploads and pasted HTML are small by design (SPEC 10.5); a low ceiling is a cheap
+	# guard against junk requests.
+	request_body {
+		max_size 2MB
+	}
+
+	reverse_proxy web:3000 {
+		# Tell the app the real scheme and client IP; Next only trusts these from the
+		# proxy, which is the only thing that can reach it.
+		header_up X-Forwarded-Proto {scheme}
+		header_up X-Real-IP {remote_host}
+		health_uri /status
+		health_interval 30s
+		health_timeout 5s
+	}
+
+	header {
+		X-Content-Type-Options nosniff
+		Referrer-Policy strict-origin-when-cross-origin
+		X-Frame-Options DENY
+		-Server
+	}
+
+	# Access logs go to `docker compose logs caddy`, which is where a 502 gets explained.
+	log {
+		output stdout
+		format console
+	}
+
+	@static path /_next/static/* /favicon.ico
+	header @static Cache-Control "public, max-age=31536000, immutable"
+}

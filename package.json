@@ -14,7 +14,11 @@
     "test": "pnpm -r --if-present test",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
+    "db:migrate": "node db/migrate.mjs",
     "ingest:once": "pnpm --filter worker ingest:once"
+  },
+  "dependencies": {
+    "postgres": "^3.4.5"
   },
   "devDependencies": {
     "next": "16.4.2",

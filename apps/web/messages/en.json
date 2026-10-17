@@ -71,5 +71,23 @@
   "search": {
     "title": "Results",
     "yourRequest": "Your request"
+  },
+  "status": {
+    "title": "System status",
+    "database": "TigerData database",
+    "connected": "Connected",
+    "notConnected": "Not connected",
+    "notConfigured": "Not configured",
+    "connectionFailed": "Connection failed",
+    "databaseName": "Database",
+    "migrations": "Applied migrations",
+    "extensions": "Extensions",
+    "listingCount": "Listings",
+    "observations": "Listing observations",
+    "sources": "Data sources",
+    "neighbourhoods": "Neighbourhoods",
+    "wards": "Wards",
+    "notLoaded": "Not loaded",
+    "comingSoon": "Other system checks will appear here as those services are connected."
   }
 }

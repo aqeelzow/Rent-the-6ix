@@ -1,79 +1,131 @@
 # DEPLOY.md
 
-How RentThe6ix runs in production: one Vultr instance with Docker Compose (web, worker, OpenTripPlanner, Caddy) talking to a TigerData service. Owner: **D**. This is a starter; correct each step as you actually do it (P0.9) and record the real values in `PROGRESS.md` → Environment.
+How RentThe6ix runs in production: one Vultr instance running Docker Compose (Caddy,
+`web`, `worker`, and `otp` behind a profile) talking to a TigerData service. Owner: **D**.
 
-> Check current docs as you go: Tiger Cloud, Vultr, Docker, Caddy, OpenTripPlanner 2. Commands below are the expected shape, not guaranteed verbatim.
+Status: everything in this file is built and tested locally (Windows, Docker 29.2.1) except
+the parts that need the instance itself — they are marked **[needs instance]**. Record real
+values in `PERSON_D.md` → Environment.
 
-## 1. TigerData (Tiger Cloud)
+```
+Caddyfile              TLS + reverse proxy, everything to web:3000
+docker-compose.yml     caddy, web, worker, otp (profile "otp")
+Dockerfile             two targets: `web` (Next standalone) and `worker` (runs TS directly)
+.dockerignore          keeps secrets, node_modules, OTP data and scraped snapshots out
+deploy.sh              one-command deploy over SSH
+```
 
-1. Create a service in the Tiger Cloud console (free plan is fine for the hackathon), in the region closest to the Vultr instance (both in North America East).
-2. Copy the connection string → `DATABASE_URL` (with `sslmode=require`). Share it privately with the team.
-3. Apply migrations from your machine:
+The app is one image family built from the repo root, because pnpm workspaces need the whole
+tree to resolve `@rentthe6ix/shared`. Next is built with `output: "standalone"`, so the `web`
+image ships only the server bundle; the entry point is `apps/web/server.js` and
+`outputFileTracingRoot` is the repo root.
+
+## 1. TigerData (done — P0.8)
+
+1. Service `ha5vgeeas8` (Tiger Cloud, region `x2mp9efr75`), database `tsdb`, user `tsdbadmin`.
+   TLS required.
+2. Connection string → `DATABASE_URL` in `.env.local` (dev) and `.env` (instance). It is
+   git-ignored; share it with the team privately, never in the repo or a public channel.
+   `tiger db uri --with-password` prints it without a copy step — note it emits
+   `postgresql://`, not `postgres://`.
+3. Migrations applied and verified: `postgis 3.6.4`, `timescaledb 2.30.2`, `pg_trgm 1.6`;
+   14 tables plus `schema_migrations`; `listing_observations` is a hypertable with 7-day
+   chunks; 10 GiST/trigram indexes.
+4. Re-apply after a pull: `pnpm db:migrate`. Files are applied once each, in order, one
+   transaction per file; `schema_migrations` records a checksum and the runner **refuses** to
+   run a file whose contents changed. Every schema change is a new `00N_*.sql`.
+
+No local `psql`? Use the Tiger CLI: `tiger db query --command "select 1"` or
+`tiger db query --file path.sql` for a multi-statement file.
+
+## 2. Vultr instance **[needs instance]**
+
+1. Cloud Compute, **Ubuntu 24.04 LTS, 4 vCPU / 8 GB, 80 GB SSD**, region in North America
+   East (same side as TigerData). Add your SSH key. 8 GB is not padding: OTP wants 4–6 GB.
+2. Firewall (Vultr console): SSH (22) from your IP only, 80 and 443 from anywhere.
+3. SSH in and install Docker:
    ```bash
-   pnpm db:migrate        # runs db/migrations/*.sql in order
+   curl -fsSL https://get.docker.com | sh
+   sudo usermod -aG docker "$USER" && newgrp docker
+   sudo mkdir -p /srv && sudo chown "$USER" /srv
+   git clone <team-repo-url> /srv/rentthe6ix && cd /srv/rentthe6ix
    ```
-   Migration 001 enables `postgis`, `timescaledb` and `pg_trgm`. If an extension isn't available on the plan, stop and tell the team.
-
-## 2. Vultr instance
-
-1. Create a Cloud Compute instance: Ubuntu LTS, **4 vCPU / 8 GB** (OTP needs ~4–6 GB for Toronto with all four modes), region near the TigerData service. Add your SSH key.
-2. SSH in, then:
-   ```bash
-   curl -fsSL https://get.docker.com | sh          # Docker Engine + Compose plugin
-   sudo usermod -aG docker $USER && newgrp docker
-   git clone https://github.com/<org>/rentthe6ix.git && cd rentthe6ix
-   cp .env.example .env && nano .env              # fill in every value (SPEC 20)
+4. Create `/srv/rentthe6ix/.env` manually (the team intentionally does not track an
+   `.env.example`; see `SPEC.md` section 20) and fill it in. `SITE_HOST` is the extra deploy key:
    ```
-3. Open ports 80 and 443 in the Vultr firewall (and nothing else except SSH).
+   SITE_HOST=203-0-113-7.sslip.io     # the instance IP with dots → dashes
+   DATABASE_URL=postgresql://…?sslmode=require
+   AI_PROVIDER=gemini
+   GEMINI_API_KEY=…
+   ```
+   `chmod 600 .env`. `.env` must exist before any `docker compose` command: Compose fails
+   loudly without it, which is deliberate.
+5. `SITE_HOST` may be a real domain (A record → instance IP) once one exists; nothing else
+   changes. `sslip.io` resolves to the IP embedded in the name, so Caddy can complete an ACME
+   challenge for a real certificate with no domain.
 
-## 3. HTTPS
+## 3. First deploy **[needs instance]**
 
-- With a domain: point an A record at the instance IP and put the domain in `Caddyfile`.
-- Without one: use `<ip-with-dashes>.sslip.io` (e.g. `203-0-113-7.sslip.io`) in `Caddyfile`; Caddy gets a certificate automatically.
+```bash
+cd /srv/rentthe6ix
+docker compose up -d --build     # web + worker + caddy; otp stays out (profile)
+docker compose ps
+curl -I https://"$SITE_HOST"
+```
 
-## 4. OpenTripPlanner graph
+Expected: `web` reports `(healthy)`, `caddy` serves the landing page over TLS, and
+`http://` redirects with 308. `worker` currently exits 0 ("no jobs registered yet"), so it
+shows as `exited` — that is why its restart policy is `on-failure`, not `unless-stopped`.
+It comes back automatically once C's scheduler loop keeps it running.
 
-Build once on the instance and keep it on disk (`otp/graphs/`, git-ignored). Rebuild only when GTFS or OSM changes.
+`web` has no published host port; only Caddy is reachable from outside. Caddy's health check
+hits `/status` inside the network.
 
-1. Download inputs into `otp/data/`:
-   - TTC GTFS from the City's open data portal ("TTC Routes and Schedules").
-   - Ontario OSM extract from Geofabrik (`ontario-latest.osm.pbf`).
-2. Clip OSM to Toronto + ~10 km so the graph fits in memory:
+## 4. OpenTripPlanner graph **[needs instance, S2]**
+
+Built once, kept on disk, never rebuilt on deploy.
+
+1. Inputs into `otp/data/`: TTC GTFS ("TTC Routes and Schedules") and Geofabrik
+   `ontario-latest.osm.pbf`.
+2. Clip OSM so the graph fits comfortably in 6 GB:
    ```bash
    sudo apt-get install -y osmium-tool
-   osmium extract -b -79.77,43.49,-78.99,43.95 otp/data/ontario-latest.osm.pbf -o otp/data/toronto.osm.pbf
+   osmium extract -b -79.77,43.49,-78.99,43.95 otp/data/ontario-latest.osm.pbf \
+     -o otp/data/toronto.osm.pbf
    rm otp/data/ontario-latest.osm.pbf
    ```
-3. Build and save the graph (`pnpm otp:build` wraps this): run the official OpenTripPlanner 2 image or jar with `--build --save` on `otp/data`, giving Java ~6 GB of heap. Then the `otp` service in Compose runs with `--load --serve`.
-4. Smoke-test one route per mode (transit, walk, bike, car) between Union Station and UofT St. George; record the times in `PROGRESS.md` Handoff notes.
+3. Build with `--build --save` into `otp/graphs/` (Java heap ~6 GB), then start the service:
+   ```bash
+   docker compose --profile otp up -d otp
+   docker compose logs -f otp        # wait for "Grizzly server running"
+   ```
+   Pin the image with `OTP_IMAGE` in `.env` if `2.7.0` is not the tag you built against.
+4. Smoke-test one route per mode between Union Station and UofT St. George; record the times
+   in `PERSON_D.md` → Handoff notes. Until `otp` is up, travel times fall back to labelled
+   straight-line distance and the app must still work.
 
-## 5. Start everything
+## 5. Data loads **[needs instance]**
 
 ```bash
-docker compose up -d --build
-docker compose ps
-docker compose logs -f web
+docker compose exec worker node apps/worker/src/civic/<loader>.ts   # as loaders land
+docker compose exec worker node apps/worker/src/index.ts            # or the scheduled run
 ```
-
-Then from the instance (or your machine with `DATABASE_URL` set):
-
-```bash
-pnpm data:civic          # civic data, POIs, RentSafeTO, crime rates, benchmarks
-pnpm ingest:once         # first listing run (C)
-pnpm travel:precompute   # travel times (long; runs in the worker in the background)
-```
-
-Check `https://<host>/status`: database counts, last ingest per source, travel times by OTP, AI status.
 
 ## 6. Deploying updates
 
-`main` must always be deployable. To deploy:
+From your machine, with the instance reachable:
 
 ```bash
-./deploy.sh              # ssh to the instance, git pull, docker compose up -d --build web worker
+DEPLOY_HOST=root@203.0.113.7 SITE_HOST=203-0-113-7.sslip.io ./deploy.sh
 ```
 
-(or the GitHub Action, if D sets one up). Never rebuild `otp` on deploy.
+It SSHes in, `git fetch` + `git reset --hard origin/main` (the box mirrors `main`; never
+edit files there), rebuilds `web worker` with the cache, recreates the containers with
+`--remove-orphans`, then polls `https://$SITE_HOST/` until it answers. `NO_HEALTHCHECK=1`
+skips the poll; `SERVICES` and `DEPLOY_PATH` override the defaults. Never rebuilds `otp`.
+
+`DEPLOY_HOST` must be exported in the environment or written into your shell profile; the
+script fails fast with a message if it is missing.
 
 ## 7. Before the demo
 
@@ -81,8 +133,24 @@ Check `https://<host>/status`: database counts, last ingest per source, travel t
 - [ ] Travel precompute at ~100% OTP on `/status` (D, P5.2)
 - [ ] 25 ward briefings and the demo prompts cached (B, P3.3–P3.4)
 - [ ] Demo runs on the deployed URL on a phone and a laptop (P5.7)
-- [ ] Gemini key and `DATABASE_URL` only in `.env` on the instance, not in the repo
+- [ ] `GEMINI_API_KEY` and `DATABASE_URL` only in `/srv/rentthe6ix/.env`, never in git
+
+## 8. Troubleshooting
+
+| Symptom | Where to look |
+| --- | --- |
+| 502 from Caddy | `docker compose logs --tail=50 web` — usually a boot crash or a bad `DATABASE_URL` |
+| `web` stuck `starting` | `docker compose logs web`; the health check fetches `/status` on `$PORT` |
+| Certificate not issued | `docker compose logs caddy`; `SITE_HOST` must resolve to this box, and 80/443 must be open |
+| Compose aborts immediately | `.env` missing next to `docker-compose.yml`, or `SITE_HOST` unset |
+| Worker restarts in a loop | It is crashing (exit ≠ 0); `docker compose logs worker` |
+| `pnpm install` fails in the build | A new workspace package needs its `package.json` added to the `deps` stage in the Dockerfile |
 
 ## Environment variables
 
-See `.env.example` and `SPEC.md` section 20. On the instance they live in `.env` next to `docker-compose.yml`.
+Use `SPEC.md` section 20 as the canonical list. Create `.env` beside `docker-compose.yml`
+with the values needed for this deployment; never commit it. At minimum set `SITE_HOST`,
+`DATABASE_URL` (with `sslmode=require`), and `AI_PROVIDER`. If using Gemini, also set
+`GEMINI_API_KEY`. `OTP_URL` defaults to `http://otp:8080` in Compose. `NEXT_PUBLIC_*` values
+are inlined at build time — pass them as build args (Compose already does for
+`NEXT_PUBLIC_MAPTILER_KEY`), not just as runtime env.

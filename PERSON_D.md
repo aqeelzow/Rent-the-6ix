@@ -6,15 +6,24 @@ Task ids match `PROGRESS.md`; task details are in `SPEC.md`.
 
 ## Current state
 
-- **Current task:** none in progress
-- **Status:** not started   <!-- not started | in progress | blocked | at sync point -->
-- **Next action:** P0.8 Tiger Cloud service + migrations, P0.9 Vultr instance + placeholder deploy; P0.4 dataset link check in parallel.
-- **Blockers / needs from others:** A's scaffold (P0.1) for the placeholder app.
-- **Last updated:** 2026-10-15 (file created from SPEC)
+- **Current task:** P0.9 Vultr instance + placeholder deploy
+- **Status:** blocked   <!-- not started | in progress | blocked | at sync point -->
+- **Next action:** P0.9 — the whole stack is written and tested locally; what is left is the instance itself (create it, clone, `.env`, `docker compose up -d --build`, record the URL). P0.4 is done.
+- **Blockers / needs from others:** a Vultr instance (account access) — nothing else. Also: this folder still has **no `.git`** (it inherits the `LeetCode-Problems` origin), so nothing can be committed or pushed yet.
+- **Last updated:** 2026-10-17 (P0.8 verified live; P0.9 stack built and tested locally)
 
 ## Handoff notes
 
 > Where an unfinished task stopped, gotchas, things to verify. Replace each session.
+
+- **Migrations are live (P0.8).** 001–003 applied to the TigerData service; `schema_migrations` records the checksum of each, and `db/migrate.mjs` **refuses to run a file whose checksum changed**. Once 002 is merged, every schema change is a new `004_*.sql` — never an edit.
+- **No local `psql` on D's machine.** Use the Tiger CLI instead: `tiger db uri --with-password` (note: emits `postgresql://`, not `postgres://`), `tiger db query --command "select …"`, `tiger db query --file path.sql` for multi-statement files. `tiger` lives at `%LOCALAPPDATA%\Programs\TigerCLI\tiger.exe`. The CLI runs multi-statement files in one implicit transaction and commits on success — for throwaway checks, open with `BEGIN` and end with `ROLLBACK`.
+- **Smoke-tested end to end** (rolled back): insert a listing omitting `location_precision` → defaults to `'area'`; KNN `<->` on `geography` returns metres (Parkdale→Union ≈ 4,860 m); `listing_observations` accepts rows and the first-vs-latest rent query works. Tables are empty and ready for real data.
+- **`location_precision` default is `'area'`** — the least precise legal value. It originally defaulted to `'approx'`, which its own CHECK rejected; every insert would have failed. Keep new enum-ish columns' defaults inside their permitted sets.
+- **Deployment stack is written and locally proven (P0.9).** `docker compose up -d --build` on this Windows machine brought up `web` (healthy), `worker` (exits 0 until C's loop lands — hence `restart: on-failure`) and `caddy` serving HTTPS with the security headers; `http://` → 308. Both image targets build; Next's standalone bundle lands at `apps/web/server.js`. What remains is the instance: create it, `git clone` into `/srv/rentthe6ix`, write `.env` (needs `SITE_HOST`, now in `.env.example`), run the same command, then `DEPLOY_HOST=… SITE_HOST=… ./deploy.sh` for every update afterwards. `deploy.sh` has only been syntax-checked, not run.
+- **`docker compose` needs `.env` to exist** next to the compose file, and `SITE_HOST` has no default — both fail loudly on purpose. The OTP service sits behind the `otp` profile so a missing or stale graph can never break a deploy; `deploy.sh` rebuilds only `web worker`.
+- **Dataset links verified (P0.4).** `docs/datasets.md` has the exact resource URLs, formats and licences. Three corrections matter for the loaders: TPS crime rates are at `data.tps.ca` now (wide format: 158 neighbourhood rows × 222 columns, `*_RATE_2014…2025`), the RentSafeTO evaluation dataset is **not** retired, and the 2021 Neighbourhood Profiles are **XLSX only** (transposed sheet). The City portal returns HTTP 200 for *any* slug — never check a City link by status code, use the CKAN API.
+- **Toolchain on D's machine:** Node 22.16 against the repo's `engines: >=24` (installs fine, `next build` is the risk); corepack's pnpm cache is broken — use `npx pnpm@12.14.0 <script>`.
 
 - **OTP is on the critical path** (SPEC 7.4). Start the graph build in Phase 1, not later: TTC GTFS + Geofabrik Ontario extract clipped to Toronto + 10 km (osmium), all four modes. Needs ~4–6 GB RAM, so the Vultr instance is 4 vCPU / 8 GB. Build once, keep the graph on disk. If OTP isn't working by S3, everything falls back to labelled straight-line distance; tell the team at once.
 - **Driving is free-flow** (no traffic, no parking). Return it with `method: 'otp'` and the label "driving, no traffic".
@@ -38,9 +47,9 @@ Task ids match `PROGRESS.md`; task details are in `SPEC.md`.
 Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked · `[-]` dropped. **Core** = needed for the demo. **Stretch** = drop first if behind.
 
 ### Before S1 (H0–H3) — Infra · Core
-- [ ] P0.8 Tiger Cloud service (same region as Vultr); migrations 001 extensions (`postgis`, `timescaledb`, `pg_trgm`), 002 core tables (incl. `travel_times`, `ai_cache`, `sources`), 003 hypertable `listing_observations`
-- [ ] P0.9 Vultr instance (4 vCPU / 8 GB), Docker Compose (`web`, `worker`, `otp`, Caddy), HTTPS, placeholder deployed, `deploy.sh` or GitHub Action; follow and correct the starter `DEPLOY.md` — record the URL below
-- [ ] P0.4 Verify every dataset link in SPEC 8.1–8.2; fix the spec where a slug changed
+- [x] P0.8 Tiger Cloud service (same region as Vultr); migrations 001 extensions (`postgis`, `timescaledb`, `pg_trgm`), 002 core tables (incl. `travel_times`, `ai_cache`, `sources`), 003 hypertable `listing_observations` — applied 2026-10-17, verified live
+- [~] P0.9 Vultr instance (4 vCPU / 8 GB), Docker Compose (`web`, `worker`, `otp`, Caddy), HTTPS, placeholder deployed, `deploy.sh` or GitHub Action; follow and correct the starter `DEPLOY.md` — record the URL below. **Files done and tested locally** (`Dockerfile`, `docker-compose.yml`, `Caddyfile`, `deploy.sh`, `.dockerignore`, rewritten `DEPLOY.md`); **left: create the instance, `SITE_HOST`, first deploy**.
+- [x] P0.4 Verify every dataset link in SPEC 8.1–8.2; fix the spec where a slug changed — done 2026-10-16, recorded in `docs/datasets.md`
 
 ### S1 → S2 (H3–H12) — Civic data & router · Core
 - [ ] P1.10 Neighbourhoods (158) and wards (25) boundaries
@@ -104,5 +113,5 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked · `[-]` 
 
 - **Deployed URL:** (record here)
 - **Vultr instance:** (region, plan, IP)
-- **TigerData service:** (region, service id; `DATABASE_URL` in team password manager, not in git)
+- **TigerData service:** id `ha5vgeeas8`, created 2026-10-17, region `x2mp9efr75` (Tiger Cloud); host `ha5vgeeas8.x2mp9efr75.tsdb.cloud.timescale.com:31237`, db `tsdb`, user `tsdbadmin`, TLS required. `DATABASE_URL` lives in `.env.local` on D's machine (git-ignored) — send it to the team privately, never in git. Applied: `postgis 3.6.4`, `timescaledb 2.30.2`, `pg_trgm 1.6`.
 - **Env vars on the instance:** everything in SPEC 20.
