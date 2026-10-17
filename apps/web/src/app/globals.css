@@ -60,6 +60,11 @@
   --score-travel: oklch(0.55 0.15 295);
   --score-home: oklch(0.72 0.13 70);
   --score-safety: oklch(0.6 0.03 257);
+
+  /* Listing dashboard hero: the landing's night-sky ink with cream text */
+  --hero: #120f2e;
+  --hero-foreground: #fbf6ec;
+  --hero-muted: #b9b3dc;
 }
 
 @theme inline {
@@ -104,6 +109,9 @@
   --color-score-travel: var(--score-travel);
   --color-score-home: var(--score-home);
   --color-score-safety: var(--score-safety);
+  --color-hero: var(--hero);
+  --color-hero-foreground: var(--hero-foreground);
+  --color-hero-muted: var(--hero-muted);
 
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);

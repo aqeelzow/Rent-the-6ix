@@ -1,23 +1,26 @@
 "use client";
 
-import { CircleHelp, ExternalLink, Sparkles } from "lucide-react";
-import Link from "next/link";
-import { useEffect, useState } from "react";
-import { modeIcons } from "@/components/mode-icons";
-import { SafetyInfoButton } from "@/components/safety/safety-info";
-import { PriceBadge } from "@/components/results/price-badge";
 import {
-  daysSince,
-  plainHardFilterNote,
-  priceSummary,
-  yearSpan,
-} from "@/components/results/card-data";
+  ChevronDown,
+  CircleHelp,
+  ExternalLink,
+  Info,
+  OctagonAlert,
+  Sparkles,
+  TriangleAlert,
+} from "lucide-react";
+import Link from "next/link";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { useEffect, useState } from "react";
+import { SafetyInfoButton } from "@/components/safety/safety-info";
+import { daysSince, plainHardFilterNote, yearSpan } from "@/components/results/card-data";
 import { formatDaysAgo } from "@/lib/format/date";
 import { t, type MessageKey } from "@/lib/format/messages";
 import { formatCad, formatCount } from "@/lib/format/number";
 import { redactIntent } from "@/lib/store/actions";
 import type { DetailResponse, SearchIntent, SearchResultItem } from "@/lib/store/types";
-import { homeFields, scoreBreakdown, travelTable, type ModeTime } from "./detail-data";
+import { AdjustmentBars, PricePosition, TravelBars } from "./detail-charts";
+import { homeFields, scoreBreakdown, travelTable } from "./detail-data";
 
 // The sections of the listing detail page, in SPEC 11.3 order. Every figure comes from B's,
 // C's or D's data; these components only word and arrange it.
@@ -44,16 +47,18 @@ const caveatStyles = {
 export function DetailSection({
   id,
   title,
+  className = "",
   children,
 }: {
   id: string;
   title: string;
+  className?: string;
   children: React.ReactNode;
 }) {
   return (
     <section
       aria-labelledby={`${id}-title`}
-      className="bg-card flex flex-col gap-4 rounded-xl border p-4 sm:p-5"
+      className={`bg-card flex min-w-0 flex-col gap-4 rounded-2xl border p-5 ${className}`}
     >
       <h2 id={`${id}-title`} className="text-lg font-semibold tracking-tight">
         {title}
@@ -67,64 +72,67 @@ export function DetailSection({
 export function WhyItRanks({
   result,
   intent,
+  className,
 }: {
   result: SearchResultItem;
   intent: SearchIntent | null;
+  className?: string;
 }) {
-  const { total, parts, omitted } = scoreBreakdown(result.matchScore);
+  const { parts, omitted } = scoreBreakdown(result.matchScore);
   return (
-    <DetailSection id="why" title={l("sections.why")}>
+    <DetailSection id="why" title={l("sections.why")} className={className}>
       <ExplanationSlot listingId={result.listing.id} intent={intent} />
-      <p className="figures text-2xl font-semibold">{l("why.total", { total })}</p>
-      <div aria-hidden className="bg-muted flex h-3 overflow-hidden rounded-full">
+      <ul className="flex flex-col gap-1">
         {parts.map((part) => (
-          <span
-            key={part.id}
-            className={`${partColors[part.id]} h-full`}
-            style={{ width: `${part.points}%` }}
-          />
-        ))}
-      </div>
-      <ul className="flex flex-col gap-4">
-        {parts.map((part) => (
-          <li key={part.id} className="flex flex-col gap-1.5">
-            <div className="flex items-baseline justify-between gap-3">
-              <span className="flex items-center gap-2 font-medium">
-                <span aria-hidden className={`size-3 rounded-sm ${partColors[part.id]}`} />
-                {t(`results.parts.${part.id}` as MessageKey)}
-              </span>
-              <span className="figures text-muted-foreground text-sm">
-                {l("why.part", {
-                  score: formatCount(part.score),
-                  weight: formatCount(part.effectiveWeight * 100),
-                })}{" "}
-                ={" "}
-                <span className="text-foreground font-semibold">
-                  {l("why.points", { points: formatCount(part.points) })}
+          <li key={part.id}>
+            <details className="group">
+              <summary className="hover:bg-muted/60 -mx-2 flex cursor-pointer list-none flex-col gap-1.5 rounded-lg px-2 py-1.5 [&::-webkit-details-marker]:hidden">
+                <span className="flex items-center justify-between gap-3">
+                  <span className="flex items-center gap-2 font-medium">
+                    <span aria-hidden className={`size-2.5 rounded-full ${partColors[part.id]}`} />
+                    {t(`results.parts.${part.id}` as MessageKey)}
+                  </span>
+                  <span className="figures flex items-center gap-1 text-sm font-semibold">
+                    {l("why.points", { points: formatCount(part.points) })}
+                    <ChevronDown
+                      aria-hidden
+                      className="text-muted-foreground size-4 transition-transform group-open:rotate-180"
+                    />
+                  </span>
                 </span>
-              </span>
-            </div>
-            <div aria-hidden className="bg-muted h-1.5 overflow-hidden rounded-full">
-              <div
-                className={`${partColors[part.id]} h-full`}
-                style={{ width: `${part.score}%` }}
-              />
-            </div>
-            {part.evidence.length > 0 && (
-              <ul className="text-muted-foreground list-disc pl-5 text-sm">
-                {part.evidence.map((line) => (
-                  <li key={line}>{line}</li>
-                ))}
-              </ul>
-            )}
+                <span aria-hidden className="bg-muted block h-2 overflow-hidden rounded-full">
+                  <span
+                    className={`${partColors[part.id]} block h-full rounded-full`}
+                    style={{ width: `${part.score}%` }}
+                  />
+                </span>
+              </summary>
+              <div className="text-muted-foreground flex flex-col gap-1 px-2 pt-1 pb-2 text-sm">
+                <p className="figures">
+                  {l("why.part", {
+                    score: formatCount(part.score),
+                    weight: formatCount(part.effectiveWeight * 100),
+                  })}
+                </p>
+                {part.evidence.length > 0 && (
+                  <ul className="list-disc pl-5">
+                    {part.evidence.map((line) => (
+                      <li key={line}>{line}</li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </details>
           </li>
         ))}
       </ul>
-      <p className="text-muted-foreground text-xs">
-        {l("why.sum")}
-        {omitted.length > 0 &&
-          ` ${l("why.omitted", { parts: omitted.map((id) => t(`results.parts.${id}` as MessageKey)).join(", ") })}`}
-      </p>
+      {omitted.length > 0 && (
+        <p className="text-muted-foreground text-xs">
+          {l("why.omitted", {
+            parts: omitted.map((id) => t(`results.parts.${id}` as MessageKey)).join(", "),
+          })}
+        </p>
+      )}
     </DetailSection>
   );
 }
@@ -171,58 +179,64 @@ function ExplanationSlot({
 }
 
 /** P2.31: price label, estimate, range, difference, confidence, comparables, adjustments, benchmark. */
-export function RentCheck({ result, now }: { result: SearchResultItem; now: number }) {
+export function RentCheck({
+  result,
+  now,
+  className,
+}: {
+  result: SearchResultItem;
+  now: number;
+  className?: string;
+}) {
   const { valuation, listing } = result;
-  const summary = priceSummary(valuation);
   const comparables = [...valuation.comparables]
     .sort((a, b) => a.distanceM - b.distanceM)
     .slice(0, 10);
 
   return (
-    <DetailSection id="rent" title={l("sections.rent")}>
-      <PriceBadge valuation={valuation} />
-      {valuation.status === "ok" && summary.label !== "unknown" ? (
-        <dl className="figures grid gap-3 sm:grid-cols-3">
-          <div>
-            <dt className="text-muted-foreground text-sm">{l("rent.estimate")}</dt>
-            <dd className="text-xl font-semibold">{formatCad(valuation.estimatedRentCad!)}</dd>
-          </div>
-          <div>
-            <dt className="text-muted-foreground text-sm">{l("rent.range")}</dt>
-            <dd className="text-xl font-semibold">
-              {formatCad(valuation.lowCad!)}–{formatCad(valuation.highCad!)}
-            </dd>
-          </div>
-          <div>
-            <dt className="text-muted-foreground text-sm">{l("rent.difference")}</dt>
-            <dd className="font-medium">
-              {summary.direction === "in_line"
-                ? l("rent.inLine")
-                : l(`rent.${summary.direction}`, {
-                    amount: formatCad(Math.abs(valuation.differenceCad!)),
-                    percent: formatCount(summary.percent),
-                  })}
-            </dd>
-          </div>
-        </dl>
-      ) : null}
-      <p className="text-sm">
-        {valuation.status === "ok"
-          ? l("rent.basis", {
-              count: formatCount(valuation.comparableCount),
-              km: km(valuation.radiusM),
-              days: valuation.windowDays,
-              confidence: t(`results.price.confidence.${valuation.confidence}` as MessageKey),
-            })
-          : l("rent.thin", {
-              count: formatCount(valuation.comparableCount),
-              km: km(valuation.radiusM),
-            })}
-      </p>
+    <DetailSection id="rent" title={l("sections.rent")} className={className}>
+      {valuation.status === "ok" ? (
+        <ul className="figures flex flex-wrap gap-2 text-sm">
+          {[
+            l("rent.chipCount", { count: formatCount(valuation.comparableCount) }),
+            l("rent.chipRadius", { km: km(valuation.radiusM) }),
+            l("rent.chipDays", { days: valuation.windowDays }),
+            t(`results.price.confidence.${valuation.confidence}` as MessageKey),
+          ].map((chip) => (
+            <li key={chip} className="bg-muted rounded-full px-3 py-1">
+              {chip}
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="text-muted-foreground text-sm">
+          {l("rent.thin", { count: formatCount(valuation.comparableCount) })}
+        </p>
+      )}
+
+      {valuation.comparables.length > 0 && (
+        <PricePosition valuation={valuation} rent={listing.monthlyRentCad} />
+      )}
+
+      {valuation.adjustments.length > 0 && (
+        <div className="flex flex-col gap-2">
+          <h3 className="text-sm font-medium">{l("rent.adjustments")}</h3>
+          <AdjustmentBars adjustments={valuation.adjustments} />
+        </div>
+      )}
+
+      {valuation.benchmark && (
+        <p className="figures text-sm">
+          {l("rent.benchmarkValue", {
+            label: valuation.benchmark.label,
+            value: formatCad(valuation.benchmark.valueCad),
+            period: valuation.benchmark.period,
+          })}
+        </p>
+      )}
 
       {comparables.length > 0 && (
-        <div className="flex flex-col gap-2">
-          <h3 className="font-medium">{l("rent.comparables")}</h3>
+        <Disclosure label={l("rent.comparables", { count: formatCount(comparables.length) })}>
           <div className="overflow-x-auto">
             <table className="figures w-full text-sm">
               <thead className="text-muted-foreground text-left">
@@ -258,135 +272,97 @@ export function RentCheck({ result, now }: { result: SearchResultItem; now: numb
               </tbody>
             </table>
           </div>
-          <p className="text-muted-foreground text-xs">{l("rent.mapNote")}</p>
-        </div>
+        </Disclosure>
       )}
+      <p className="text-muted-foreground text-xs">
+        {l("rent.asking")}
+        {listing.rentIsPerRoom && ` ${t("results.perRoom")}`}
+      </p>
+    </DetailSection>
+  );
+}
 
-      {valuation.adjustments.length > 0 && (
-        <div className="flex flex-col gap-1">
-          <h3 className="font-medium">{l("rent.adjustments")}</h3>
-          <ul className="figures text-sm">
-            {valuation.adjustments.map((adjustment) => (
-              <li key={adjustment.label} className="flex justify-between gap-3">
-                <span>{adjustment.label}</span>
-                <span>
-                  {adjustment.amountCad > 0 ? "+" : "−"}
-                  {formatCad(Math.abs(adjustment.amountCad))}
-                </span>
+/** A quiet "show more" row: hidden detail stays one tap away without taking up the page. */
+export function Disclosure({
+  label,
+  children,
+}: {
+  label: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  return (
+    <details className="group border-t pt-3">
+      <summary className="text-muted-foreground hover:text-foreground flex cursor-pointer list-none items-center gap-1.5 text-sm font-medium [&::-webkit-details-marker]:hidden">
+        <ChevronDown aria-hidden className="size-4 transition-transform group-open:rotate-180" />
+        {label}
+      </summary>
+      <div className="pt-3">{children}</div>
+    </details>
+  );
+}
+
+/** P2.33: the unit's facts. Known ones are tiles; unknowns fold into one "not stated" row. */
+export function TheHome({ result, className }: { result: SearchResultItem; className?: string }) {
+  const fields = homeFields(result.listing);
+  const known = fields.filter((field) => field.value);
+  const unknown = fields.filter((field) => !field.value);
+  return (
+    <DetailSection id="home" title={l("sections.home")} className={className}>
+      {known.length > 0 && (
+        <dl className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-4">
+          {known.map((field) => (
+            <div key={field.key} className="bg-accent flex flex-col gap-0.5 rounded-xl p-3">
+              <dt className="text-muted-foreground text-xs">{field.label}</dt>
+              <dd className="figures font-semibold">
+                {field.value}
+                {field.aiRead && (
+                  <span className="text-muted-foreground block text-xs font-normal">
+                    {l("values.aiRead")}
+                  </span>
+                )}
+              </dd>
+            </div>
+          ))}
+        </dl>
+      )}
+      {unknown.length > 0 && (
+        <Disclosure label={l("home.notStated", { count: formatCount(unknown.length) })}>
+          <ul className="flex flex-wrap gap-2">
+            {unknown.map((field) => (
+              <li
+                key={field.key}
+                className="text-muted-foreground flex items-center gap-1.5 rounded-full border px-3 py-1 text-sm"
+              >
+                <CircleHelp aria-hidden className="size-3.5" />
+                {field.label}
+                <span className="sr-only">: {l("values.notStated")}</span>
               </li>
             ))}
           </ul>
-        </div>
-      )}
-
-      <div className="flex flex-col gap-1 text-sm">
-        <h3 className="font-medium">{l("rent.benchmark")}</h3>
-        <p className={valuation.benchmark ? "figures" : "text-muted-foreground"}>
-          {valuation.benchmark
-            ? l("rent.benchmarkValue", {
-                label: valuation.benchmark.label,
-                value: formatCad(valuation.benchmark.valueCad),
-                period: valuation.benchmark.period,
-              })
-            : l("rent.benchmarkNone")}
-        </p>
-      </div>
-      <p className="text-muted-foreground text-xs">{l("rent.asking")}</p>
-      {listing.rentIsPerRoom && (
-        <p className="text-muted-foreground text-xs">{t("results.perRoom")}</p>
+          <p className="text-muted-foreground mt-2 text-xs">{l("home.askLandlord")}</p>
+        </Disclosure>
       )}
     </DetailSection>
   );
-}
-
-/** P2.33: every unit field; unknowns say "Not stated", never "no". */
-export function TheHome({ result }: { result: SearchResultItem }) {
-  return (
-    <DetailSection id="home" title={l("sections.home")}>
-      <dl className="grid gap-x-6 gap-y-3 sm:grid-cols-2">
-        {homeFields(result.listing).map((field) => (
-          <div key={field.key} className="flex flex-col">
-            <dt className="text-muted-foreground text-sm">{field.label}</dt>
-            <dd className="figures">
-              {field.value ?? (
-                <span className="text-muted-foreground flex items-center gap-1.5">
-                  <CircleHelp aria-hidden className="size-3.5" />
-                  {l("values.notStated")}
-                </span>
-              )}
-              {field.value && field.aiRead && (
-                <span className="text-muted-foreground ml-2 text-xs">({l("values.aiRead")})</span>
-              )}
-            </dd>
-          </div>
-        ))}
-      </dl>
-    </DetailSection>
-  );
-}
-
-function modeTimeText(time: ModeTime): string {
-  if (time.kind === "routed") {
-    return l(time.mode === "drive" ? "travel.routedDrive" : "travel.routed", {
-      minutes: formatCount(time.minutes),
-    });
-  }
-  if (time.kind === "straight_line") return l("travel.straightLine", { km: km(time.distanceM) });
-  return l("travel.missing");
 }
 
 /** P2.32: each travel target in all four modes; the renter's mode highlighted; honest labels. */
 export function GettingAround({
   result,
   targets,
+  className,
 }: {
   result: SearchResultItem;
   targets: SearchIntent["travelTargets"];
+  className?: string;
 }) {
   const table = travelTable(targets, result.travel);
   return (
-    <DetailSection id="travel" title={l("sections.travel")}>
+    <DetailSection id="travel" title={l("sections.travel")} className={className}>
       {table.length === 0 ? (
         <p className="text-muted-foreground text-sm">{l("travel.none")}</p>
       ) : (
-        <ul className="flex flex-col gap-4">
-          {table.map((target) => (
-            <li key={target.id} className="flex flex-col gap-2">
-              <h3 className="font-medium">{target.label}</h3>
-              <ul className="grid gap-1.5 sm:grid-cols-2">
-                {target.modes.map((time) => {
-                  const Icon = modeIcons[time.mode];
-                  const chosen = target.chosen.includes(time.mode);
-                  return (
-                    <li
-                      key={time.mode}
-                      className={`flex items-center justify-between gap-2 rounded-lg border px-3 py-2 text-sm ${chosen ? "border-primary" : ""}`}
-                    >
-                      <span className="flex items-center gap-2">
-                        <Icon aria-hidden className="text-muted-foreground size-4" />
-                        <span className="capitalize">
-                          {t(`filters.modes.${time.mode}` as MessageKey)}
-                        </span>
-                        {chosen && (
-                          <span className="bg-primary text-primary-foreground rounded-full px-1.5 py-px text-[0.65rem] font-medium">
-                            {l("travel.chosen")}
-                          </span>
-                        )}
-                      </span>
-                      <span
-                        className={
-                          time.kind === "routed" ? "figures font-medium" : "text-muted-foreground"
-                        }
-                      >
-                        {modeTimeText(time)}
-                      </span>
-                    </li>
-                  );
-                })}
-              </ul>
-            </li>
-          ))}
-        </ul>
+        <TravelBars table={table} />
       )}
       <p className="text-muted-foreground text-xs">{l("travel.note")}</p>
     </DetailSection>
@@ -394,10 +370,16 @@ export function GettingAround({
 }
 
 /** Safety (only when the renter turned it on): the rate as given, always with its caveats. */
-export function SafetySection({ result }: { result: SearchResultItem }) {
+export function SafetySection({
+  result,
+  className,
+}: {
+  result: SearchResultItem;
+  className?: string;
+}) {
   const { safety } = result;
   return (
-    <DetailSection id="safety" title={l("sections.safety")}>
+    <DetailSection id="safety" title={l("sections.safety")} className={className}>
       <p className="figures text-sm">
         {safety && safety.relativeRate !== null
           ? l("safety.rate", {
@@ -424,12 +406,41 @@ export function SafetySection({ result }: { result: SearchResultItem }) {
   );
 }
 
-/** P2.34: the RentSafeTO record (D's data; not delivered yet, so an honest placeholder). */
-export function BuildingSection() {
+/**
+ * Sections whose data isn't loaded yet (the RentSafeTO record, area facts, the city benchmark),
+ * folded into one quiet row so they stay findable without filling the page with placeholders.
+ */
+export function NotYetAvailable({
+  result,
+  extras,
+}: {
+  result: SearchResultItem;
+  extras: DetailResponse | null;
+}) {
+  const areaEmpty = !extras?.areas?.length && !extras?.indicators?.length;
+  const missing = [
+    { id: "building", title: l("sections.building"), text: l("building.none") },
+    ...(areaEmpty ? [{ id: "area", title: l("sections.area"), text: l("area.none") }] : []),
+    ...(result.valuation.benchmark
+      ? []
+      : [{ id: "benchmark", title: l("rent.benchmark"), text: l("rent.benchmarkNone") }]),
+  ];
   return (
-    <DetailSection id="building" title={l("sections.building")}>
-      <p className="text-muted-foreground text-sm">{l("building.none")}</p>
-    </DetailSection>
+    <section
+      aria-label={l("missing.aria")}
+      className="bg-card rounded-2xl border border-dashed px-5 py-3"
+    >
+      <Disclosure label={l("missing.title", { count: formatCount(missing.length) })}>
+        <dl className="flex flex-col gap-3 text-sm">
+          {missing.map((item) => (
+            <div key={item.id}>
+              <dt className="font-medium">{item.title}</dt>
+              <dd className="text-muted-foreground">{item.text}</dd>
+            </div>
+          ))}
+        </dl>
+      </Disclosure>
+    </section>
   );
 }
 
@@ -441,89 +452,140 @@ function indicatorLabel(id: string): string {
 }
 
 /** P2.34: neighbourhood and ward with their indicators (SPEC 9.1), from the detail route. */
-export function AreaCard({ extras }: { extras: DetailResponse | null }) {
+export function AreaCard({
+  extras,
+  className,
+}: {
+  extras: DetailResponse | null;
+  className?: string;
+}) {
   const areas = extras?.areas ?? [];
   const indicators = extras?.indicators ?? [];
+  // With nothing loaded, the area folds into NotYetAvailable instead.
+  if (areas.length === 0 && indicators.length === 0) return null;
   return (
-    <DetailSection id="area" title={l("sections.area")}>
-      {areas.length === 0 && indicators.length === 0 ? (
-        <p className="text-muted-foreground text-sm">{l("area.none")}</p>
-      ) : (
-        <>
-          {areas.length > 0 && (
-            <p className="font-medium">{areas.map((area) => area.name).join(" · ")}</p>
-          )}
-          <dl className="flex flex-col gap-3">
-            {indicators.map((indicator) => (
-              <div key={`${indicator.areaId}-${indicator.indicatorId}`} className="flex flex-col">
-                <dt className="text-sm">{indicatorLabel(indicator.indicatorId)}</dt>
-                <dd className="figures font-medium">
-                  {indicator.value === null
-                    ? t("results.price.unknown")
-                    : l("area.indicator", {
-                        value: decimal.format(indicator.value),
-                        unit: indicator.unit,
-                      })}
-                  <span className="text-muted-foreground block text-xs font-normal">
-                    {l("area.source", { period: indicator.period, source: indicator.sourceId })}
-                    {indicator.sampleSize !== undefined &&
-                      ` · ${l("area.sample", { n: formatCount(indicator.sampleSize) })}`}
-                  </span>
-                </dd>
-              </div>
-            ))}
-          </dl>
-        </>
-      )}
+    <DetailSection id="area" title={l("sections.area")} className={className}>
+      <>
+        {areas.length > 0 && (
+          <p className="font-medium">{areas.map((area) => area.name).join(" · ")}</p>
+        )}
+        <dl className="grid gap-2 sm:grid-cols-2">
+          {indicators.map((indicator) => (
+            <div
+              key={`${indicator.areaId}-${indicator.indicatorId}`}
+              className="bg-accent flex flex-col rounded-xl p-3"
+            >
+              <dt className="text-sm">{indicatorLabel(indicator.indicatorId)}</dt>
+              <dd className="figures font-medium">
+                {indicator.value === null
+                  ? t("results.price.unknown")
+                  : l("area.indicator", {
+                      value: decimal.format(indicator.value),
+                      unit: indicator.unit,
+                    })}
+                <span className="text-muted-foreground block text-xs font-normal">
+                  {l("area.source", { period: indicator.period, source: indicator.sourceId })}
+                  {indicator.sampleSize !== undefined &&
+                    ` · ${l("area.sample", { n: formatCount(indicator.sampleSize) })}`}
+                </span>
+              </dd>
+            </div>
+          ))}
+        </dl>
+      </>
     </DetailSection>
   );
 }
 
-/** Things to check (SPEC 7.7): every caveat with its severity and plain explanation. */
-export function ThingsToCheck({ result }: { result: SearchResultItem }) {
+/**
+ * Things to check (SPEC 7.7) as one banner across the page: each caveat is a short pill, and
+ * hovering or tapping it opens the full explanation. Must-haves we couldn't confirm sit beside them.
+ */
+export function ThingsToCheck({
+  result,
+  className,
+}: {
+  result: SearchResultItem;
+  className?: string;
+}) {
   const { caveats, hardFilterNotes } = result.matchScore;
+  const pills = [
+    ...caveats.map((caveat) => ({
+      key: caveat.code,
+      severity: caveat.severity,
+      title: caveat.title,
+      detail: caveat.explanation,
+    })),
+    ...hardFilterNotes.map((note) => ({
+      key: note,
+      severity: "warning" as const,
+      title: l("check.unconfirmed"),
+      detail: plainHardFilterNote(note),
+    })),
+  ];
   return (
-    <>
-      <DetailSection id="check" title={l("sections.check")}>
-        {caveats.length === 0 ? (
-          <p className="text-muted-foreground text-sm">{l("check.none")}</p>
-        ) : (
-          <ul className="flex flex-col gap-3">
-            {caveats.map((caveat) => (
-              <li key={caveat.code} className="flex flex-col items-start gap-1">
-                <span
-                  className={`rounded-md px-2 py-0.5 text-xs font-medium ${caveatStyles[caveat.severity]}`}
-                >
-                  {caveat.title}
-                </span>
-                <span className="text-sm">{caveat.explanation}</span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </DetailSection>
-      {hardFilterNotes.length > 0 && (
-        <DetailSection id="unconfirmed" title={l("sections.unconfirmed")}>
-          <ul className="text-caveat-warning-foreground list-disc pl-5 text-sm">
-            {hardFilterNotes.map((note) => (
-              <li key={note}>{plainHardFilterNote(note)}</li>
-            ))}
-          </ul>
-        </DetailSection>
+    <section
+      aria-labelledby="check-title"
+      className={`bg-card flex flex-wrap items-center gap-x-4 gap-y-2 rounded-2xl border px-5 py-3 ${className ?? ""}`}
+    >
+      <h2 id="check-title" className="font-semibold">
+        {l("sections.check")}
+      </h2>
+      {pills.length === 0 ? (
+        <p className="text-muted-foreground text-sm">{l("check.none")}</p>
+      ) : (
+        <ul className="flex flex-wrap gap-2">
+          {pills.map((pill) => (
+            <li key={pill.key}>
+              <CheckPill severity={pill.severity} title={pill.title} detail={pill.detail} />
+            </li>
+          ))}
+        </ul>
       )}
-    </>
+    </section>
+  );
+}
+
+const severityIcons = { info: Info, warning: TriangleAlert, high: OctagonAlert } as const;
+
+function CheckPill({
+  severity,
+  title,
+  detail,
+}: {
+  severity: keyof typeof caveatStyles;
+  title: string;
+  detail: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const Icon = severityIcons[severity];
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger
+        onPointerEnter={(event) => event.pointerType === "mouse" && setOpen(true)}
+        onPointerLeave={(event) => event.pointerType === "mouse" && setOpen(false)}
+        className={`focus-visible:ring-ring/50 flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-medium outline-none focus-visible:ring-3 ${caveatStyles[severity]}`}
+      >
+        <Icon aria-hidden className="size-3.5" />
+        {title}
+      </PopoverTrigger>
+      <PopoverContent align="start" className="w-80 text-sm">
+        <p className="mb-1 font-semibold">{title}</p>
+        <p className="text-muted-foreground">{detail}</p>
+      </PopoverContent>
+    </Popover>
   );
 }
 
 /** "View on Kijiji" — renters contact landlords on the source site (SPEC 2.6). */
-export function SourceButton({ result }: { result: SearchResultItem }) {
+export function SourceButton({ result, onDark }: { result: SearchResultItem; onDark?: boolean }) {
   const source = t(`results.sources.${result.listing.source}` as MessageKey);
   return (
     <a
       href={result.listing.sourceUrl}
       target="_blank"
       rel="noopener noreferrer"
-      className="bg-primary text-primary-foreground focus-visible:ring-ring/50 inline-flex h-10 items-center gap-2 rounded-lg px-4 text-sm font-medium outline-none hover:opacity-90 focus-visible:ring-3"
+      className={`focus-visible:ring-ring/50 inline-flex h-10 items-center gap-2 rounded-full px-5 text-sm font-semibold outline-none hover:opacity-90 focus-visible:ring-3 ${onDark ? "bg-hero-foreground text-hero" : "bg-primary text-primary-foreground"}`}
     >
       {l("viewOnSource", { source })}
       <ExternalLink aria-hidden className="size-4" />
