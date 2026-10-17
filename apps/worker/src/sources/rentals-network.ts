@@ -3,9 +3,11 @@
 // embeds the same results in the page (`App.store.search = { response: … }`) with a few fields
 // renamed, which `findEmbeddedResults` maps to the same shape.
 // One building has several floor plans; each floor plan becomes one RawListing.
-// The building's contact (name, phone, email) and photos are never read.
+// The building's contact (name, phone, email, photo) and promotion banners are never read; only the
+// listing's own cover photo link is kept (hot-linked, SPEC 8.5).
 import {
   emptyRawListing,
+  httpsUrl,
   NoResultsError,
   type RawListing,
   type SourceAdapter,
@@ -41,6 +43,20 @@ interface RentalNode {
   building?: { yearBuilt?: number | null } | null;
   petOptions?: string[] | null;
   floorPlans?: FloorPlan[] | null;
+  /** The cover photo, in several sizes (torontorentals); rentals.ca only has `images`. */
+  image?: Photo | null;
+  images?: Photo[] | null;
+}
+
+interface Photo {
+  scales?: { name?: string; url?: string }[] | null;
+}
+
+/** "medium" is already full size (1348 × 900 on 2026-10-17, same as "large"); "small" is 539 px. */
+export function coverPhoto(node: Pick<RentalNode, "image" | "images">): string | null {
+  const scales = (node.image ?? node.images?.[0])?.scales ?? [];
+  const by = (name: string) => scales.find((s) => s.name === name)?.url;
+  return httpsUrl(by("medium") ?? by("large") ?? by("small"));
 }
 
 interface RentalListingsPage {
@@ -72,6 +88,7 @@ interface EmbeddedNode {
   address?: { street?: string | null; postalCode?: string | null } | null;
   building?: { yearBuilt?: number | null } | null;
   petOptions?: string[] | null;
+  images?: Photo[] | null;
   floorPlans?:
     | {
         beds?: number | null;
@@ -128,6 +145,7 @@ export function findEmbeddedResults(html: string): RentalListingsPage | null {
             address: { street: n.address?.street, postalCode: n.address?.postalCode },
             building: { yearBuilt: n.building?.yearBuilt ?? null },
             petOptions: n.petOptions ?? null,
+            images: n.images ?? null,
             floorPlans: (n.floorPlans ?? []).map((f) => ({
               // A den shows as half a bedroom, as on torontorentals ("1.5" = 1 + den).
               beds: f.beds === null || f.beds === undefined ? null : f.beds + (f.den ? 0.5 : 0),
@@ -152,6 +170,7 @@ export function parseRentalListings(
   const listings: RawListing[] = [];
   for (const { node } of page.data?.rentalListings?.edges ?? []) {
     const plans = node.floorPlans ?? [];
+    const photo = coverPhoto(node);
     plans.forEach((plan, i) => {
       if (!plan.rent) return;
       const beds = plan.beds ?? null;
@@ -182,6 +201,7 @@ export function parseRentalListings(
         lng: node.location?.[0] ?? null,
         lat: node.location?.[1] ?? null,
         postedAt: node.modified ?? node.created ?? null,
+        imageUrl: photo,
       });
     });
   }
