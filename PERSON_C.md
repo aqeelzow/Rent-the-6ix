@@ -87,7 +87,7 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked · `[-]` 
 - [x] P2.5 Valuation cache (6 h) + `/api/listings/[id]/valuation`
 
 ### S3 → S4 (H16–H24) — Volume & caveats · Core
-- [ ] P3.30 ≥ 1,500 active listings across ≥ 2 sources
+- [x] P3.30 ≥ 1,500 active listings across ≥ 2 sources (2026-10-17: ~16,900 active non-duplicate across 5 sources)
 - [~] P3.31 Worker schedule (every 6 h), freshness/status job, `pnpm ingest:once`, last-ingest stats for `/status`
 - [x] P3.32 `caveats()`: approx location, stale, fields unknown, RentSafeTO low score, insufficient comparables, `rent_far_below`, `deposit_before_viewing`, `duplicate_text_elsewhere` + tests
 - [~] P3.33 `manual.csv` source as the demo backup (20–40 hand-checked rows)
