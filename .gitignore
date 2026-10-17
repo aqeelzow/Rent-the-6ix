@@ -1,0 +1,28 @@
+# dependencies & builds
+node_modules/
+.next/
+dist/
+coverage/
+.turbo/
+*.tsbuildinfo
+
+# secrets (the repo is public at submission)
+.env
+.env.*
+!.env.example
+
+# scraped content and snapshots stay off GitHub (SPEC 8.5)
+db/snapshots/
+apps/worker/fixtures/raw/
+apps/worker/.cache/
+*.html.gz
+
+# OpenTripPlanner inputs and graph (large; built on the server)
+otp/data/
+otp/graphs/
+*.osm.pbf
+*.obj
+
+# misc
+.DS_Store
+*.log
