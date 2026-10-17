@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
-import { getDatabaseStatus } from "@/lib/db";
+import { SourceHealthSection } from "@/components/status/source-health";
+import { getClient, getDatabaseStatus } from "@/lib/db";
+import { loadSourceHealth, type SourceHealth } from "@/lib/db/source-health";
 import { t } from "@/lib/format/messages";
 
 export const metadata: Metadata = { title: t("layout.footer.status") };
@@ -15,8 +17,19 @@ function StatusRow({ label, value }: { label: string; value: string | number }) 
   );
 }
 
+/** Listing-source health (C, P5.5c); null when it can't be read, so the page still renders. */
+async function sourceHealth(): Promise<SourceHealth[] | null> {
+  try {
+    const sql = getClient();
+    return sql ? await loadSourceHealth(sql) : null;
+  } catch {
+    return null;
+  }
+}
+
 export default async function StatusPage() {
   const status = await getDatabaseStatus();
+  const sources = status.connected ? await sourceHealth() : null;
   const state = !status.configured
     ? t("status.notConfigured")
     : status.connected
@@ -62,6 +75,7 @@ export default async function StatusPage() {
           </dl>
         )}
       </section>
+      {status.connected && <SourceHealthSection sources={sources} />}
       <p className="text-muted-foreground text-sm">{t("status.comingSoon")}</p>
     </div>
   );
