@@ -103,7 +103,7 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked · `[-]` 
 
 ### S3 → S4 (H16–H24) — Civic layer & flows · Core
 - [ ] P3.20 Explorer `/areas`: choropleth (158 neighbourhoods / 25 wards), one indicator at a time, quantile legend with city value, area side panel with sources
-- [ ] P3.21 Ward page: B's briefing, the indicator table it was written from, election info box
+- [~] P3.21 Ward page: B's briefing, the indicator table it was written from, election info box (page, election box and `/areas` ward links done; briefing waits for B's P3.3, figures and ward names for D)
 - [ ] P3.22 Paste a listing: text or URL input, B's import route, scored result card, fallback form when extraction is partial
 - [x] P3.23 Safety UI: switch and limit slider in filters and on results, rate on cards and detail, caveats sheet ("How this works")
 - [x] P3.24 Shortlist in `localStorage` (try/catch), "Clear my data", share search as URL
@@ -154,6 +154,7 @@ Status checked 2026-10-17 against `main` at `147c74b`.
 | Layout shell, tokens | `apps/web/src/app/layout.tsx`, `src/app/globals.css`, `src/components/ui/*` | shadcn (Radix base, nova preset); tokens `price-*`, `caveat-*`, `score-*`; `figures` utility for numbers; light only |
 | Store | `apps/web/src/lib/store/searchSlice.ts` (+ test), `store.ts`, `types.ts`, `persist.ts` (+ test: browser storage), `share.ts` (+ test: share links) | intent, parse info, results, eligibleCount, notices, hideUnconfirmed, shortlist, selection; types re-exported from B's schemas |
 | Shortlist | `src/app/shortlist/page.tsx`, `src/components/shortlist/` (`shortlist-view.tsx`, `shortlist-count.tsx` in the header, `store-persistence.tsx` mounted in the layout), `src/components/search/share-search.tsx` | entries keep a `SavedListing` snapshot (rent, rooms, title, source as saved); keys `rentthe6ix.shortlist.v1` and `rentthe6ix.lastSearch.v1`; share link `/search?q=<prompt>&s=<base64url intent>`; strings under `shortlist` and `search.share` |
+| Ward page | `src/app/areas/ward/[n]/page.tsx`, `src/components/areas/` (`ward-view.tsx`, `election-box.tsx`, `election.ts` + test), ward links on `src/app/areas/page.tsx` | election facts and official links in `election.ts` (checked 2026-10-17); strings under `areas` |
 | Layout shell | `src/components/layout/*` (header, mobile menu, footer, page placeholder) | nav links in `nav-links.ts` |
 | Strings | `apps/web/messages/en.json`, `src/lib/format/messages.ts` (+ test) | typed `t("ns.key", params?)` |
 | Landing | `src/app/page.tsx`, `src/components/search/prompt-box.tsx` | next/form GET to `/search?q=`; Enter submits, Shift+Enter adds a line; `/?q=…#start` prefills the box below the scenes (used by "Change request") |

@@ -615,5 +615,30 @@
       "cancel": "Cancel",
       "done": "Your shortlist and last search were removed from this browser."
     }
+  },
+  "areas": {
+    "mapPending": "The neighbourhood map is still being built. It will show one indicator at a time for the 158 neighbourhoods or 25 wards, with its source.",
+    "wardsTitle": "Ward pages",
+    "wardsIntro": "Each of Toronto’s 25 city wards has a page with official election information. Housing briefings are on the way.",
+    "ward": {
+      "title": "Ward {n}",
+      "intro": "One of Toronto’s 25 city wards. Figures describe the whole ward, not a street, a building or the people who live there.",
+      "briefingTitle": "Housing in your ward",
+      "briefingPending": "This briefing isn’t ready yet. It will be three short paragraphs on rents and affordability, housing stock and conditions, and growth and development, written only from the figures below. Every number in it is checked against those figures.",
+      "figuresTitle": "The figures behind it",
+      "figuresPending": "Ward figures aren’t loaded yet. Each one will show this ward, the city, the period it covers and its source."
+    },
+    "election": {
+      "title": "Municipal election: {date}",
+      "hours": "Voting places are open 10 a.m. to 8 p.m. on election day.",
+      "advanceUpcoming": "Advance voting: {dates}, 10 a.m. to 7 p.m.",
+      "advancePast": "Advance voting ran {dates}.",
+      "myVote": "Find where and when to vote (MyVote)",
+      "candidates": "Official candidate list",
+      "keyDates": "Key election dates",
+      "resultsTitle": "Municipal election results",
+      "results": "Official results from the City of Toronto",
+      "note": "From the City of Toronto’s election pages. RentThe6ix doesn’t summarize, compare or rank candidates or platforms."
+    }
   }
 }
