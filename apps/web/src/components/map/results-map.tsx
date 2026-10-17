@@ -1,5 +1,6 @@
 "use client";
 
+import type { FeatureCollection } from "geojson";
 import "maplibre-gl/dist/maplibre-gl.css";
 import type {
   ExpressionSpecification,
@@ -43,6 +44,9 @@ const bandColor: ExpressionSpecification = [
  * Results map (SPEC 12): clustered pins, listing uncertainty circles, configured search areas and
  * place pins. Hover and select are shared with the list through the store.
  */
+/** The highlighted listing's ring: the dashboard's navy, darker than every score band. */
+const ACTIVE_COLOR = "#120f2e";
+
 /** How close the map comes in on a listing hovered in the list (street level). */
 const HOVER_ZOOM = 14.5;
 
@@ -167,9 +171,34 @@ export function ResultsMap({ className = "" }: { className?: string }) {
     if (!ready || !map) return;
     const ids = [hovered, selected].filter((id): id is string => id !== null);
     const filter: FilterSpecification = ["in", ["get", "id"], ["literal", ids]];
-    map.setFilter("pins-active", ["all", ["!", ["has", "point_count"]], filter]);
+    const pinFilter: FilterSpecification = ["all", ["!", ["has", "point_count"]], filter];
+    map.setFilter("pins-active", pinFilter);
+    map.setFilter("approx-active-fill", filter);
     map.setFilter("approx-active", filter);
-  }, [ready, hovered, selected]);
+    // A halo and centre dot mark each highlighted listing, approximate circles included.
+    const focus: FeatureCollection = {
+      type: "FeatureCollection",
+      features: results
+        .filter((result) => ids.includes(result.listing.id))
+        .map((result) => ({
+          type: "Feature",
+          properties: {},
+          geometry: {
+            type: "Point",
+            coordinates: [result.listing.location.lng, result.listing.location.lat],
+          },
+        })),
+    };
+    (map.getSource("focus") as GeoJSONSource | undefined)?.setData(focus);
+    // Fade every other listing while one is pointed at, so the active one stands out.
+    const active: ExpressionSpecification = ["in", ["get", "id"], ["literal", ids]];
+    const faded = (on: number, off: number): ExpressionSpecification | number =>
+      ids.length ? ["case", active, on, off] : on;
+    map.setPaintProperty("pins", "circle-opacity", faded(1, 0.3));
+    map.setPaintProperty("pins", "circle-stroke-opacity", faded(1, 0.3));
+    map.setPaintProperty("approx-fill", "fill-opacity", faded(0.25, 0.08));
+    map.setPaintProperty("approx-line", "line-opacity", faded(1, 0.3));
+  }, [ready, hovered, selected, results]);
 
   return (
     <div className={`bg-muted relative ${className}`}>
@@ -236,11 +265,18 @@ function addLayers(map: MapLibreMap) {
     paint: { "line-color": bandColor, "line-width": 1.5 },
   });
   map.addLayer({
+    id: "approx-active-fill",
+    type: "fill",
+    source: "approx",
+    filter: ["in", ["get", "id"], ["literal", []]],
+    paint: { "fill-color": ACTIVE_COLOR, "fill-opacity": 0.35 },
+  });
+  map.addLayer({
     id: "approx-active",
     type: "line",
     source: "approx",
     filter: ["in", ["get", "id"], ["literal", []]],
-    paint: { "line-color": "#0f172b", "line-width": 3 },
+    paint: { "line-color": ACTIVE_COLOR, "line-width": 4 },
   });
   map.addLayer({
     id: "clusters",
@@ -286,9 +322,33 @@ function addLayers(map: MapLibreMap) {
     filter: ["in", ["get", "id"], ["literal", []]],
     paint: {
       "circle-color": bandColor,
-      "circle-radius": 10,
-      "circle-stroke-color": "#0f172b",
-      "circle-stroke-width": 3,
+      "circle-radius": 11,
+      "circle-stroke-color": ACTIVE_COLOR,
+      "circle-stroke-width": 4,
+    },
+  });
+  map.addSource("focus", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
+  map.addLayer({
+    id: "focus-halo",
+    type: "circle",
+    source: "focus",
+    paint: {
+      "circle-color": ACTIVE_COLOR,
+      "circle-opacity": 0.15,
+      "circle-radius": 26,
+      "circle-stroke-color": ACTIVE_COLOR,
+      "circle-stroke-width": 2.5,
+    },
+  });
+  map.addLayer({
+    id: "focus-dot",
+    type: "circle",
+    source: "focus",
+    paint: {
+      "circle-color": ACTIVE_COLOR,
+      "circle-radius": 6,
+      "circle-stroke-color": "#ffffff",
+      "circle-stroke-width": 2,
     },
   });
 }
