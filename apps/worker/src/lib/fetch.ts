@@ -79,6 +79,9 @@ export async function openSession(options: SessionOptions = {}): Promise<Session
     };
     page.on("response", onResponse);
     try {
+      // A URL that differs only by #hash is a same-page navigation: no load, no new requests.
+      // Leave the page first so the site loads (and fetches its results) again.
+      if (withoutHash(page.url()) === withoutHash(url)) await page.goto("about:blank");
       const response = await page.goto(url, { waitUntil: "domcontentloaded", timeout: 30_000 });
       const status = response?.status() ?? 0;
       const title = await page.title();
@@ -113,4 +116,8 @@ export async function openSession(options: SessionOptions = {}): Promise<Session
 
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function withoutHash(url: string) {
+  return url.split("#")[0];
 }
