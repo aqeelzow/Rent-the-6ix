@@ -122,7 +122,9 @@
       "copied": "Link copied. Anyone with it sees this search with your filters.",
       "manual": "Copy this link to share the search:"
     },
-    "lastSearch": "Continue your last search"
+    "lastSearch": "Continue your last search",
+    "cancelEdit": "Cancel",
+    "runEdit": "Search"
   },
   "status": {
     "title": "System status",
@@ -438,11 +440,10 @@
     "notConfirmed": "Not confirmed: {items}",
     "sources": {
       "kijiji": "Kijiji",
-      "torontorentals": "TorontoRentals.com",
+      "torontorentals": "TorontoRentals",
       "rentals_ca": "Rentals.ca",
       "zillow": "Zillow",
       "realtor_ca": "Realtor.ca",
-      "torontorentals": "TorontoRentals",
       "manual": "Hand-checked",
       "pasted": "Pasted by you"
     },

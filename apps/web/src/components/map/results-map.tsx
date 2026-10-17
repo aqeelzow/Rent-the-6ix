@@ -43,6 +43,9 @@ const bandColor: ExpressionSpecification = [
  * Results map (SPEC 12): clustered pins, listing uncertainty circles, configured search areas and
  * place pins. Hover and select are shared with the list through the store.
  */
+/** How close the map comes in on a listing hovered in the list (street level). */
+const HOVER_ZOOM = 14.5;
+
 export function ResultsMap({ className = "" }: { className?: string }) {
   const container = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MapLibreMap | null>(null);
@@ -121,6 +124,42 @@ export function ResultsMap({ className = "" }: { className?: string }) {
     const bounds = boundsOf(results, places, searchAreas ?? []);
     if (bounds) map.fitBounds(bounds, { padding: 48, maxZoom: 15, duration: 0 });
   }, [ready, results, targets, searchAreas]);
+
+  // Hovering a card in the list zooms the map to that listing, after a short pause so scrolling
+  // past cards doesn't swing the map around; leaving the list returns to the view from before.
+  // Hovers that start on the map itself never move it.
+  const homeView = useRef<{ center: [number, number]; zoom: number } | null>(null);
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!ready || !map || map.getContainer().matches(":hover")) return;
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const listing = hovered ? results.find((r) => r.listing.id === hovered)?.listing : undefined;
+    const timer = window.setTimeout(
+      () => {
+        if (listing) {
+          if (!homeView.current) {
+            const center = map.getCenter();
+            homeView.current = { center: [center.lng, center.lat], zoom: map.getZoom() };
+          }
+          map.easeTo({
+            center: [listing.location.lng, listing.location.lat],
+            zoom: Math.max(map.getZoom(), HOVER_ZOOM),
+            duration: reduce ? 0 : 600,
+          });
+        } else if (homeView.current) {
+          map.easeTo({ ...homeView.current, duration: reduce ? 0 : 600 });
+          homeView.current = null;
+        }
+      },
+      listing ? 250 : 600,
+    );
+    return () => window.clearTimeout(timer);
+  }, [ready, hovered, results]);
+
+  // New results replace the view to return to.
+  useEffect(() => {
+    homeView.current = null;
+  }, [results]);
 
   // Hover and selection from the list highlight the matching pin or circle.
   useEffect(() => {
@@ -308,7 +347,10 @@ function Legend() {
       </p>
       <p className="text-muted-foreground">{t("results.map.approx")}</p>
       <p className="flex items-center gap-1.5">
-        <span aria-hidden className="size-3 border border-dashed border-[#795bbf] bg-[#795bbf]/10" />
+        <span
+          aria-hidden
+          className="size-3 border border-dashed border-[#795bbf] bg-[#795bbf]/10"
+        />
         {t("results.map.searchArea")}
       </p>
     </div>

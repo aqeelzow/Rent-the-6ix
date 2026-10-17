@@ -2,6 +2,7 @@
 
 import { AlertCircle, ChevronRight, Info, List, LoaderCircle, MapIcon, X } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ResultsMap } from "@/components/map/results-map";
@@ -13,6 +14,7 @@ import {
   preferredAreaReference,
 } from "@/components/results/travel-facts-data";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Textarea } from "@/components/ui/textarea";
 import { useMediaQuery } from "@/components/use-media-query";
 import { FilterChips } from "./filter-chips";
 import { FiltersPanel } from "./filters-panel";
@@ -79,6 +81,8 @@ export function SearchView({ prompt, shared }: { prompt: string | null; shared: 
   const desktop = useMediaQuery("(min-width: 1024px)");
   const [mobileView, setMobileView] = useState<"list" | "map">("list");
   const busySince = useAppStore((s) => s.busySince);
+  // "Change request" edits the words in place instead of going back to the landing page.
+  const [editing, setEditing] = useState(false);
   const elapsed = useElapsedSeconds(busySince);
   // "Closest to my area" and "lowest-carbon trips" reorder the results already on screen, so they
   // never cost another search (a server-side sort is requested in PERSON_D.md for B to add).
@@ -151,16 +155,23 @@ export function SearchView({ prompt, shared }: { prompt: string | null; shared: 
           <h2 id="request-label" className="text-muted-foreground text-sm font-medium">
             {t("search.yourRequest")}
           </h2>
-          <p className="mt-1">{prompt}</p>
-          <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1">
-            <Link
-              href={`/?q=${encodeURIComponent(prompt)}#start`}
-              className="text-primary text-sm font-medium underline-offset-4 hover:underline"
-            >
-              {t("search.editRequest")}
-            </Link>
-            {intent?.rawPrompt === prompt && <ShareSearch />}
-          </div>
+          {editing ? (
+            <RequestEditor prompt={prompt} onDone={() => setEditing(false)} />
+          ) : (
+            <>
+              <p className="mt-1">{prompt}</p>
+              <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1">
+                <button
+                  type="button"
+                  onClick={() => setEditing(true)}
+                  className="text-primary text-sm font-medium underline-offset-4 hover:underline"
+                >
+                  {t("search.editRequest")}
+                </button>
+                {intent?.rawPrompt === prompt && <ShareSearch />}
+              </div>
+            </>
+          )}
         </section>
 
         {intent && intent.rawPrompt === prompt && (
@@ -404,4 +415,55 @@ function useElapsedSeconds(since: number | null): number {
     return () => clearInterval(timer);
   }, [since]);
   return since === null ? 0 : Math.max(0, Math.floor((now - since) / 1000));
+}
+
+/** The request, editable in place: Enter (or Search) runs the new words; Escape cancels. */
+function RequestEditor({ prompt, onDone }: { prompt: string; onDone: () => void }) {
+  const router = useRouter();
+  const [value, setValue] = useState(prompt);
+  const submit = () => {
+    const next = value.trim();
+    onDone();
+    if (next && next !== prompt) router.push(`/search?q=${encodeURIComponent(next)}`);
+  };
+  return (
+    <form
+      className="mt-2 flex flex-col gap-2"
+      onSubmit={(event) => {
+        event.preventDefault();
+        submit();
+      }}
+    >
+      <Textarea
+        aria-labelledby="request-label"
+        value={value}
+        onChange={(event) => setValue(event.target.value)}
+        autoFocus
+        onFocus={(event) => {
+          const end = event.currentTarget.value.length;
+          event.currentTarget.setSelectionRange(end, end);
+        }}
+        onKeyDown={(event) => {
+          if (event.key === "Escape") onDone();
+          // Enter searches; Shift+Enter adds a line.
+          if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
+            event.preventDefault();
+            submit();
+          }
+        }}
+        required
+        maxLength={4000}
+        rows={3}
+        className="min-h-20 resize-y text-base md:text-base"
+      />
+      <div className="flex justify-end gap-2">
+        <Button type="button" variant="ghost" size="sm" onClick={onDone}>
+          {t("search.cancelEdit")}
+        </Button>
+        <Button type="submit" size="sm" disabled={!value.trim()}>
+          {t("search.runEdit")}
+        </Button>
+      </div>
+    </form>
+  );
 }
