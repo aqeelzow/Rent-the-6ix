@@ -1,5 +1,7 @@
+import { Bookmark } from "lucide-react";
 import Link from "next/link";
 import { CnTower } from "@/components/brand/cn-tower";
+import { ShortlistCount } from "@/components/shortlist/shortlist-count";
 import { t } from "@/lib/format/messages";
 import { MobileNav } from "./mobile-nav";
 import { navLinks } from "./nav-links";
@@ -33,10 +35,22 @@ export function SiteHeader() {
             >
               <Icon aria-hidden className="size-4" />
               {t(label)}
+              {href === "/shortlist" && <ShortlistCount />}
             </Link>
           ))}
         </nav>
-        <MobileNav />
+        <div className="flex items-center gap-1 md:hidden">
+          {/* The shortlist stays one tap away on phones, not only inside the menu. */}
+          <Link
+            href="/shortlist"
+            className="hover:bg-accent focus-visible:ring-ring/50 flex h-10 items-center gap-1.5 rounded-md px-2.5 outline-none focus-visible:ring-3"
+          >
+            <Bookmark aria-hidden className="size-5" />
+            <span className="sr-only">{t("layout.nav.shortlist")}</span>
+            <ShortlistCount />
+          </Link>
+          <MobileNav />
+        </div>
       </div>
     </header>
   );

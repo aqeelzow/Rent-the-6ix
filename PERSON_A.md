@@ -6,12 +6,12 @@ Task ids match `PROGRESS.md`; task details are in `SPEC.md`.
 
 ## Current state
 
-- **Current task:** none in progress (P3.23 safety UI done, including the limit slider)
+- **Current task:** none in progress. P3.24 done; P3.21 and P3.22 built as far as they can go without B's routes
 - **Status:** S3→S4
-- **Branch:** `a/P1.30-keep-prompt` ("Change request" keeps the prompt), PR #23. The safety work (D's P2.13 and B's P2.24 drafts plus A's P3.23) is merged as PR #22; D and B still review their parts on `main`.
-- **Next action:** merge PR #23. Then P3.24 shortlist in `localStorage` + "Clear my data" + share search as URL (no dependencies), then P3.20/P3.21/P3.22 as D's areas API and B's briefing/import routes land.
+- **Branch:** `a/P3.24-shortlist` (P3.24, then P3.21/P3.22). The safety work (PR #22) and "Change request" keeps the prompt (PR #23) are merged.
+- **Next action:** push `a/P3.24-shortlist` and open a PR. Then finish P3.21/P3.22 when B publishes the briefing and import contracts (see Requests to B). P3.20 explorer waits for D's P3.10 and for non-crime indicators (only `crime:*` is loaded, so a choropleth now would be a crime map, against SPEC 9.4).
 - **Blockers / needs from others:** see "Depends on others". The detail page shows "not available yet" for the building record, area facts, benchmark, the comparables map and travel times other than straight-line, until D (and C for comparable coordinates) deliver.
-- **Last updated:** 2026-10-17 (safety slider verified live: a 0.8× limit gives 999 eligible listings, all at or below 0.8×)
+- **Last updated:** 2026-10-17 (shortlist, share link, ward page and paste page verified in the browser at 375 and 1280 px)
 
 ## Handoff notes
 
@@ -67,6 +67,7 @@ Task ids match `PROGRESS.md`; task details are in `SPEC.md`.
 - **To B (parse, 2026-10-17, seen with Gemini on):** (a) Gemini sometimes moves an explicit request into `droppedRequests` with an invented reason, e.g. "under 1800" → "Rent limit below minimum supported market threshold". No such threshold exists in our code, and the renter's rent cap is silently lost; "under $1,300" was also lost once for the student prompt. Explicit numbers the fallback parser can read should never be dropped; consider merging `fallbackParse` criteria into the AI result. (b) `cleanAIIntent` correctly deletes criteria Gemini invented without a source phrase (parking, laundryInSuite, utilitiesIncluded, leaseTerm), but then pushes each into `droppedRequests` under its internal field name. The UI then shows them as "requests we couldn't use" though the renter never asked for them. Log or discard guardrail removals instead of returning them as dropped requests.
 - **To D (safety, branch `a/P3.23-safety`, for your review):** at the user's request, A drafted your P2.13 functions. `packages/shared/engine/safety.ts` has `safetyFor(rates, cityRates)`, `safetyScore(relativeRate)`, `cityRates()` and the caveat text, with tunables in a new D section of `engine/config.ts`. `apps/web/src/lib/db/safety.ts` has the lookup over your `crime:*` indicators, cached per process. Please review, adopt or replace, and tick P2.13. (1) The city rate is the plain average of the 158 neighbourhood rates, and a caveat says so, because no population is loaded. If you load neighbourhood population (the TPS file has it) as `area_indicators` id `population`, the lookup switches to the exact population-weighted rate automatically. (2) `/api/areas/[kind]/[id]/safety` is still not written.
 - **To B (safety wiring, same branch):** `sqlSearchDependencies(client, crimeTable)` now attaches D's `safety` and `safetyScore` in `enrich()` when `intent.safety.enabled`. A missing table leaves safety unknown and never fails the search. A hard "below the city rate" search took ~111 s live because it reads full context for every candidate. The qualifying neighbourhood ids are known up front, so this could be a cheap SQL filter in `candidates-sql`. Your EXT-2 in `apps/search/change-request.md` can be updated. **Contract change for your review:** `SearchIntent.safety.maxRelativeRate?` (≤ 5), set only by A's slider. The hard filter in `engine/filters.ts` uses it and falls back to `SAFETY.hardMaxRelativeRate` (1), and `parse/clean.ts` deletes it from AI output.
+- **To B (P3.22 paste, P3.21 ward briefing):** `/paste` already calls `POST /api/listings/import` with `{ text } | { url }` plus `intent` (redacted like detail requests: no prompt, phrases or dropped requests). It treats a 200 as `{ result: SearchResult }`; extra fields are fine. Please confirm or send the real shape, including how a partial extraction is reported (which fields are missing), so A can build the fallback form. A bare 404/405/501 shows "not available yet". For the ward page, tell A the briefing route's response (`GET /api/areas/ward/[id]/briefing`?). D's ward ids are `01`–`25`; the page URL uses the plain number.
 - **To C:** `Valuation.comparables` has no coordinates, so the rent check can't map them (SPEC 11.3 "comparables table and mini map"). Add `location: { lng, lat }` per comparable, or tell me where to get it. Also, real data I noticed: the top result for "2 bedroom near UofT" was "Waterloo Finished Basement for rent - $750" with `bedrooms: null` at George Street, Toronto. Worth a look in the normalizer.
 - **To D:** `apps/web/src/lib/server-only.test.ts` is a stub, but its `.test.ts` name makes Vitest collect it as an empty test file (hidden by `--passWithNoTests`). Rename it, e.g. `server-only.stub.ts`, and update the alias in `vitest.config.ts`. The `/status` page you built is in A's area; fine to keep, just tell me before changing its layout.
 - **To C:** one or two real listings with full fields early (any source) so the detail page can be checked against reality, not just fixtures.
@@ -103,10 +104,10 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked · `[-]` 
 
 ### S3 → S4 (H16–H24) — Civic layer & flows · Core
 - [ ] P3.20 Explorer `/areas`: choropleth (158 neighbourhoods / 25 wards), one indicator at a time, quantile legend with city value, area side panel with sources
-- [ ] P3.21 Ward page: B's briefing, the indicator table it was written from, election info box
-- [ ] P3.22 Paste a listing: text or URL input, B's import route, scored result card, fallback form when extraction is partial
+- [~] P3.21 Ward page: B's briefing, the indicator table it was written from, election info box (page, election box and `/areas` ward links done; briefing waits for B's P3.3, figures and ward names for D)
+- [~] P3.22 Paste a listing: text or URL input, B's import route, scored result card, fallback form when extraction is partial (input, link check, import call, "not available yet" and a draft result card done; fallback form and the real response shape wait for B's P3.2)
 - [x] P3.23 Safety UI: switch and limit slider in filters and on results, rate on cards and detail, caveats sheet ("How this works")
-- [ ] P3.24 Shortlist in `localStorage` (try/catch), "Clear my data", share search as URL
+- [x] P3.24 Shortlist in `localStorage` (try/catch), "Clear my data", share search as URL
 
 ### S4 → S5 (H22–H30) — P1 · Stretch
 - [ ] P4.20 Compare page (up to 4 listings, SPEC 11.5)
@@ -152,7 +153,10 @@ Status checked 2026-10-17 against `main` at `147c74b`.
 | Feature | Key files | Notes |
 | --- | --- | --- |
 | Layout shell, tokens | `apps/web/src/app/layout.tsx`, `src/app/globals.css`, `src/components/ui/*` | shadcn (Radix base, nova preset); tokens `price-*`, `caveat-*`, `score-*`; `figures` utility for numbers; light only |
-| Store | `apps/web/src/lib/store/searchSlice.ts` (+ test), `store.ts`, `types.ts` | intent, parse info, results, eligibleCount, notices, hideUnconfirmed, shortlist, selection; types re-exported from B's schemas |
+| Store | `apps/web/src/lib/store/searchSlice.ts` (+ test), `store.ts`, `types.ts`, `persist.ts` (+ test: browser storage), `share.ts` (+ test: share links) | intent, parse info, results, eligibleCount, notices, hideUnconfirmed, shortlist, selection; types re-exported from B's schemas |
+| Shortlist | `src/app/shortlist/page.tsx`, `src/components/shortlist/` (`shortlist-view.tsx`, `shortlist-count.tsx` in the header, `store-persistence.tsx` mounted in the layout), `src/components/search/share-search.tsx` | entries keep a `SavedListing` snapshot (rent, rooms, title, source as saved); keys `rentthe6ix.shortlist.v1` and `rentthe6ix.lastSearch.v1`; share link `/search?q=<prompt>&s=<base64url intent>`; strings under `shortlist` and `search.share` |
+| Ward page | `src/app/areas/ward/[n]/page.tsx`, `src/components/areas/` (`ward-view.tsx`, `election-box.tsx`, `election.ts` + test), ward links on `src/app/areas/page.tsx` | election facts and official links in `election.ts` (checked 2026-10-17); strings under `areas` |
+| Paste a listing | `src/app/paste/page.tsx`, `src/components/paste/` (`paste-view.tsx`, `paste-input.ts` + test), `importPastedListing` in `src/lib/store/actions.ts`, `useLastSearch` in `src/lib/store/use-last-search.ts` | draft response `{ result: SearchResult }` until B confirms; strings under `paste` |
 | Layout shell | `src/components/layout/*` (header, mobile menu, footer, page placeholder) | nav links in `nav-links.ts` |
 | Strings | `apps/web/messages/en.json`, `src/lib/format/messages.ts` (+ test) | typed `t("ns.key", params?)` |
 | Landing | `src/app/page.tsx`, `src/components/search/prompt-box.tsx` | next/form GET to `/search?q=`; Enter submits, Shift+Enter adds a line; `/?q=…#start` prefills the box below the scenes (used by "Change request") |
