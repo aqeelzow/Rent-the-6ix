@@ -919,17 +919,8 @@
       "transitUnknown": "Transit not counted (no published factor for Toronto)",
       "transitUnknownDrive": "Transit not counted (no published factor) — ≈ {co2e} if you drove",
       "unrouted": "Emissions need routed travel times — not estimated yet",
-      "open": "How carbon is counted",
       "sortLabel": "Lowest-carbon trips first",
-      "sortHint": "Reorders the results on this page; the search itself is unchanged",
-      "title": "How we count travel carbon",
-      "what": "Direct operational emissions for the trips you asked about — the journey to your saved places, one way.",
-      "method": "Walking and cycling are counted as no direct emissions. Driving uses 2023 average Canadian gasoline-car fuel use with the US EPA combustion factor, at one occupant. Transit is left out because no per-passenger-kilometre figure is published for Toronto, and distances shown as straight-line are never converted into emissions. The yearly figure assumes {days} commute days, travelling both ways.",
-      "factorsTitle": "What each mode counts as",
-      "factorValue": "{grams} g CO₂e per km",
-      "factorUnknown": "not quantified",
-      "source": "source",
-      "caveatsTitle": "What this does not include"
+      "sortHint": "Reorders the results on this page; the search itself is unchanged"
     }
   },
   "dataPage": {
