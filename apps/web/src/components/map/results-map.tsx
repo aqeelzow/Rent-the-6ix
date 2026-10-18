@@ -808,30 +808,35 @@ function Legend() {
   const bands: ScoreBand[] = ["high", "mid", "low"];
   return (
     // Bottom-left above the scale bar; the attribution box opens at bottom-right.
-    <div className="bg-card/95 absolute bottom-9 left-2 flex flex-col gap-1 rounded-lg border p-2 text-xs shadow-sm">
-      <p className="font-medium">{t("results.map.legendTitle")}</p>
-      {bands.map((band) => (
-        <p key={band} className="flex items-center gap-1.5">
+    <details className="bg-card/95 absolute bottom-9 left-2 rounded-lg border text-xs shadow-sm">
+      <summary className="focus-visible:ring-ring/50 flex cursor-pointer items-center gap-1.5 rounded-md px-2.5 py-1.5 font-medium outline-none hover:bg-accent focus-visible:ring-3">
+        <Layers aria-hidden className="size-3.5" />
+        {t("results.map.legendTitle")}
+      </summary>
+      <div className="flex flex-col gap-1 px-2.5 pt-1 pb-2.5">
+        {bands.map((band) => (
+          <p key={band} className="flex items-center gap-1.5">
+            <span
+              aria-hidden
+              className="size-3 rounded-full border-2 border-white"
+              style={{ background: BAND_COLORS[band] }}
+            />
+            {t(`results.map.${band}` as MessageKey)}
+          </p>
+        ))}
+        <p className="flex items-center gap-1.5">
+          <span aria-hidden className="size-3 rounded-full" style={{ background: PLACE_COLOR }} />
+          {t("results.map.place")}
+        </p>
+        <p className="flex items-center gap-1.5">
           <span
             aria-hidden
             className="size-3 rounded-full border-2 border-white"
-            style={{ background: BAND_COLORS[band] }}
+            style={{ background: BAND_COLORS.high, opacity: APPROX_OPACITY }}
           />
-          {t(`results.map.${band}` as MessageKey)}
+          {t("results.map.approx")}
         </p>
-      ))}
-      <p className="flex items-center gap-1.5">
-        <span aria-hidden className="size-3 rounded-full" style={{ background: PLACE_COLOR }} />
-        {t("results.map.place")}
-      </p>
-      <p className="flex items-center gap-1.5">
-        <span
-          aria-hidden
-          className="size-3 rounded-full border-2 border-white"
-          style={{ background: BAND_COLORS.high, opacity: APPROX_OPACITY }}
-        />
-        {t("results.map.approx")}
-      </p>
-    </div>
+      </div>
+    </details>
   );
 }
