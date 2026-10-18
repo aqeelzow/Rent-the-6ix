@@ -44,7 +44,7 @@ test('parse input includes authoritative catalogue and known labels; catalogue c
   let calls = 0, catalogue = areas;
   const service = new ParseService({ cache: new MemoryCache(), civicAreas: async () => catalogue, provider: {
     generateStructured: async <T>(request: { system: string }) => {
-      calls++; assert.match(request.system, /"id":"095"/); assert.match(request.system, /UofT St\. George campus representative point/);
+      calls++; assert.match(request.system, /"id":"095"/); assert.match(request.system, /UofT St\. George campus/);
       return fallbackParse('in Annex', undefined, catalogue) as T;
     }, generateText: async () => '',
   } });

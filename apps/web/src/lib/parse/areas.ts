@@ -12,7 +12,7 @@ import type { AddressLookup } from "./resolve";
  * blank — the router never gets a coordinate to route to. The City's own area tables are already
  * loaded, so the name is matched here before geocoding is ever needed.
  *
- * The answer is always a representative point, labelled as such: the centroid of the matched area
+ * The answer is always a representative point (`representativePoint: true`): the centroid of the matched area
  * (or of every area the query names), never a doorway.
  */
 
@@ -76,8 +76,8 @@ export function areaResolution(query: string, rows: readonly unknown[]): Destina
   const lng = mean(best.map((row) => row.lng));
   const label =
     best.length === 1
-      ? `${best[0].name} ${best[0].kind} representative point`
-      : `${query} area representative point`;
+      ? `${best[0].name} ${best[0].kind}`
+      : `${query} area`;
   return {
     status: "resolved",
     query,

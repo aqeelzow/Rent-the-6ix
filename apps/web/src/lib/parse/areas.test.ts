@@ -21,7 +21,7 @@ test("an area name the query is part of resolves to that area's labelled centroi
     lat: 43.637,
     source: "known_place",
     representativePoint: true,
-    label: "Fort York-Liberty Village neighbourhood representative point",
+    label: "Fort York-Liberty Village neighbourhood",
   });
 });
 
@@ -34,7 +34,7 @@ test("a name covering several areas averages them instead of picking one", () =>
   if (result?.status !== "resolved") return;
   assert.equal(result.destination.resolved.lat, 43.765);
   assert.equal(result.destination.resolved.lng, -79.27);
-  assert.equal(result.destination.label, "scarborough area representative point");
+  assert.equal(result.destination.label, "scarborough area");
 });
 
 test("an exact name is not diluted by looser matches", () => {
@@ -45,7 +45,7 @@ test("an exact name is not diluted by looser matches", () => {
   assert.equal(result?.status, "resolved");
   if (result?.status !== "resolved") return;
   assert.equal(result.destination.resolved.lat, 43.668);
-  assert.equal(result.destination.label, "Annex neighbourhood representative point");
+  assert.equal(result.destination.label, "Annex neighbourhood");
 });
 
 test("an area nobody matched stays unresolved so the next lookup can answer", () => {
