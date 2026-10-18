@@ -773,7 +773,7 @@
         "elementary": "elementary",
         "secondary": "secondary"
       },
-      "note": "Straight-line distances, not walking or transit routes. Travel times are under Getting around.",
+      "note": "Straight-line distances, not walking or transit routes.",
       "approximate": "This listing's exact address isn't public, so distances are approximate.",
       "unavailable": "Nearby places aren't available right now.",
       "nearest": {
