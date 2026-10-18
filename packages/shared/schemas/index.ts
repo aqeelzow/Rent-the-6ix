@@ -126,7 +126,8 @@ export const MatchScoreSchema = z.strictObject({ total: nonnegative.int().max(10
 export const DestinationChoiceSchema = z.strictObject({ id: text, label: text, resolved: ResolvedDestinationSchema });
 export const DestinationResolutionSchema = z.discriminatedUnion('status', [
   z.strictObject({ status: z.literal('resolved'), query: text, destination: DestinationChoiceSchema }),
-  z.strictObject({ status: z.literal('ambiguous'), query: text, choices: z.array(DestinationChoiceSchema).min(2) }),
+  // A single plausible candidate also needs confirmation when it cannot be resolved confidently.
+  z.strictObject({ status: z.literal('ambiguous'), query: text, choices: z.array(DestinationChoiceSchema).min(1) }),
   z.strictObject({ status: z.literal('unavailable'), query: text, reason: text }),
 ]);
 export const ParseRequestSchema = z.strictObject({ prompt: text.max(4000) });
@@ -189,3 +190,14 @@ export const AreaFactsSchema = z.strictObject({
 });
 export type AreaFact = z.infer<typeof AreaFactSchema>;
 export type AreaFacts = z.infer<typeof AreaFactsSchema>;
+// One indicator for every area, with simplified outlines (D's P3.10 choropleth; drafted by A for D's review).
+// For `crime`, `value` is the neighbourhood's police-reported rate ÷ the city's (SPEC 7.6) and the caveats travel with it.
+export const AreaChoroplethSchema = z.strictObject({
+  kind: z.enum(['neighbourhood', 'ward']), indicator: text, unit: text, period: text.nullable(), cityValue: z.number().finite().nullable(),
+  sourceId: text.nullable(), caveats: z.array(CaveatSchema),
+  features: z.array(z.strictObject({
+    id: text, name: text, value: z.number().finite().nullable(),
+    geometry: z.strictObject({ type: z.literal('MultiPolygon'), coordinates: z.array(z.array(z.array(z.array(z.number())))) }),
+  })),
+});
+export type AreaChoropleth = z.infer<typeof AreaChoroplethSchema>;

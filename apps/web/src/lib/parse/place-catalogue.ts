@@ -72,7 +72,7 @@ export class PlaceCatalogue {
         const metadata = old.find(p => p.group);
         const entity: PlaceEntity = { ...(metadata ? { group: metadata.group, primary: metadata.primary } : {}), ...cluster[0], sourceIds: cluster.map(p => p.id) };
         coordinates.set(entity, cluster);
-        const aliases = new Set([...cluster, ...old].flatMap(p => [p.label, baseName(p.label), ...p.aliases, ...intersectionNames(p.label)]));
+        const aliases = new Set([...cluster, ...old].flatMap(p => [p.label, baseName(p.label), `${baseName(p.label)} representative point`, ...p.aliases, ...intersectionNames(p.label)]));
         entity.aliases = [...aliases];
         for (const alias of aliases) this.addName(normalizePlace(alias), entity);
         if (entity.group) this.groups.set(entity.group, [...this.groups.get(entity.group) ?? [], entity]);

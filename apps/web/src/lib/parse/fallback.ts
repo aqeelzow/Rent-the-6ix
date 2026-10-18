@@ -2,7 +2,8 @@ import { SearchIntentSchema, type SearchIntent, type TravelTarget, type AreaFilt
 
 import { civicAreaMatches, type CivicArea } from './civic-areas';
 import { normalizePlace as normalizePlaceName } from './place-name';
-import { placeCatalogue } from './place-catalogue';
+import { placeCatalogue, type PlaceMention } from './place-catalogue';
+import { namedParkMentions } from './named-parks';
 
 // shortcut: configured search boxes are approximate, replace with agreed D-owned geographic areas when available.
 export const configuredAreas: Record<string, AreaFilter> = {
@@ -90,7 +91,10 @@ export function fallbackParse(rawPrompt: string, now = new Date(), catalogue: Ci
     const newest = rawPrompt.match(/\b(?:newest listings?|latest listings?|most recently (?:listed|seen)|recently listed|newest first)\b/i);
     if (value || newest) { intent.sortBy = value ? 'best_value' : 'newest'; source('sortBy', (value ?? newest)![0]); }
   }
-  const matchedPlaces = placeCatalogue.mentions(rawPrompt).filter(match => !intent.areas.length || !configuredAreas[normalizePlaceName(match.query)]);
+  const matchedPlaces = [...placeCatalogue.mentions(rawPrompt), ...namedParkMentions(rawPrompt).map(park => ({ start: park.index, end: park.index + park.phrase.length, query: park.phrase }))]
+    .filter(match => !intent.areas.length || !configuredAreas[normalizePlaceName(match.query)])
+    .sort((a, b) => a.start - b.start || b.end - a.end)
+    .reduce<PlaceMention[]>((matches, match) => { if (!matches.length || match.start >= matches[matches.length - 1].end) matches.push(match); return matches; }, []);
   const placeCount = matchedPlaces.length;
   const placeContext = rawPrompt.replace(/\d+\s*(?:minutes?|mins?)\s+(?:by\s+)?(?:transit|drive|walk|bike|car|walking|biking)\s+to\s+(?:(?:a|the|nearest)\s+)?(?:supermarkets?|grocer(?:y|ies)|public schools?|schools?|parks?|subway|librar(?:y|ies)|pharmac(?:y|ies)|clinics?)\b/gi, '');
   const globalModes = placeCount <= 1 ? modes(placeContext) : [];

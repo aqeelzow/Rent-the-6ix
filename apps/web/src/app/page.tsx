@@ -1,4 +1,4 @@
-import { ArrowDown, ArrowRight, ClipboardPaste, MapIcon } from "lucide-react";
+import { ArrowDown, ArrowRight, MapIcon } from "lucide-react";
 import Link from "next/link";
 import { HeroScene, SayScene, StreetcarScene } from "@/components/landing/scenes";
 import { ScrollScenes } from "@/components/landing/scroll-scenes";
@@ -10,7 +10,6 @@ const examples = ["student", "couple", "family"] as const;
 
 const secondary = [
   { href: "/areas", id: "areas", icon: MapIcon },
-  { href: "/paste", id: "paste", icon: ClipboardPaste },
 ] as const;
 
 function searchHref(prompt: string) {

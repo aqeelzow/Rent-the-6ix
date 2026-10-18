@@ -1,11 +1,11 @@
-import type { FeatureCollection, Point, Polygon } from "geojson";
+import type { FeatureCollection, MultiPolygon, Point, Polygon } from "geojson";
 import {
   distanceM,
   estimateTravelMinutes,
   targetDistanceM,
   targetModes,
 } from "@rentthe6ix/shared/engine/travel";
-import type { SearchIntent, SearchResultItem } from "@/lib/store/types";
+import type { AreaChoropleth, SearchIntent, SearchResultItem } from "@/lib/store/types";
 
 // GeoJSON for the results map (SPEC 12). Pure, so it's tested without a browser.
 
@@ -46,7 +46,11 @@ export function scoreBand(total: number): ScoreBand {
 }
 
 type Position = [number, number];
-type Props = { id: string; band: ScoreBand; total: number };
+/**
+ * `approx`: the location is street- or area-level, so the dot is drawn lighter; `radiusM` is how
+ * far the unit may be from the dot (0 for a confirmed address).
+ */
+type Props = { id: string; band: ScoreBand; total: number; approx: boolean; radiusM: number };
 export type PointCollection = FeatureCollection<Point, Props>;
 export type AreaCollection = FeatureCollection<Polygon, Props>;
 
@@ -67,7 +71,10 @@ export function circlePolygon(
   return ring;
 }
 
-/** Exact listings become clustered pins; street- or area-level ones become circles. */
+/**
+ * Every listing is a clustered dot. Street- or area-level ones also get their approximate-area
+ * circle, which the map shows only for the listing that's selected or hovered.
+ */
 export function resultsToGeoJSON(results: SearchResultItem[]): {
   points: PointCollection;
   areas: AreaCollection;
@@ -79,15 +86,17 @@ export function resultsToGeoJSON(results: SearchResultItem[]): {
       id: listing.id,
       band: scoreBand(matchScore.total),
       total: matchScore.total,
+      approx: listing.locationPrecision !== "exact",
+      radiusM:
+        listing.locationPrecision === "exact" ? 0 : APPROX_RADIUS_M[listing.locationPrecision],
     };
-    if (listing.locationPrecision === "exact") {
-      points.features.push({
-        type: "Feature",
-        id: listing.id,
-        properties,
-        geometry: { type: "Point", coordinates: [listing.location.lng, listing.location.lat] },
-      });
-    } else {
+    points.features.push({
+      type: "Feature",
+      id: listing.id,
+      properties,
+      geometry: { type: "Point", coordinates: [listing.location.lng, listing.location.lat] },
+    });
+    if (listing.locationPrecision !== "exact") {
       areas.features.push({
         type: "Feature",
         id: listing.id,
@@ -206,4 +215,32 @@ export function boundsOf(
     north = Math.max(north, lat + dLat);
   }
   return [west, south, east, north];
+}
+
+// Crime layer (opt-in, SPEC 7.6 as changed 2026-10-17): neighbourhoods shaded by police-reported
+// major crime relative to the city, green (below the city) through yellow to red (well above),
+// as the user asked. The city rate (1.0×) is the boundary between green and yellow. Labels and
+// the hover readout carry the numbers, so the colours are never the only cue.
+export const CRIME_STEPS = [0.5, 1, 1.5, 2] as const;
+export const CRIME_COLORS = ["#1a9850", "#91cf60", "#fee08b", "#fc8d59", "#d73027"] as const;
+export const CRIME_NO_DATA = "#d4d4d4";
+
+/** Which of the five bands a relative rate falls in (0 = under 0.5×, 4 = 2× or more). */
+export function crimeBand(value: number): number {
+  return CRIME_STEPS.filter((step) => value >= step).length;
+}
+
+/** The choropleth as GeoJSON for MapLibre; `value` stays null where TPS has no rate. */
+export function choroplethToGeoJSON(
+  layer: AreaChoropleth,
+): FeatureCollection<MultiPolygon, { id: string; name: string; value: number | null }> {
+  return {
+    type: "FeatureCollection",
+    features: layer.features.map((feature) => ({
+      type: "Feature",
+      id: feature.id,
+      properties: { id: feature.id, name: feature.name, value: feature.value },
+      geometry: feature.geometry as MultiPolygon,
+    })),
+  };
 }

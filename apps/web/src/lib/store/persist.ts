@@ -3,6 +3,7 @@ import { z } from "zod";
 import type { ShortlistEntry } from "./searchSlice";
 import { appStore } from "./store";
 import type { SearchIntent } from "./types";
+import { namedParkMentions } from "../parse/named-parks";
 
 // Browser storage (SPEC 15): the shortlist and the last search live only in this browser, never on
 // the server. Storage can be missing, full or blocked (private windows, previews), so every read
@@ -48,6 +49,14 @@ const LastSearchSchema = z.object({
 });
 
 export type LastSearch = z.infer<typeof LastSearchSchema>;
+
+/** Failed basic interpretations must not bypass parser fixes on later visits. Preserve renter edits. */
+export function needsReinterpretation(intent: SearchIntent): boolean {
+  if (Object.values(intent.fieldSources).some(source => source.source === 'user')) return false;
+  return intent.droppedRequests.some(request => request.phrase === intent.rawPrompt && request.reason === 'Basic parser could not identify supported constraints; edit filters or clarify.') ||
+    intent.travelTargets.some(target => target.kind === 'amenity' && target.category === 'park') &&
+    namedParkMentions(intent.rawPrompt).some(park => !intent.travelTargets.some(target => target.kind === 'place' && target.query?.toLowerCase().includes(park.phrase.toLowerCase())));
+}
 
 /** `localStorage`, or null where the browser blocks it. */
 export function browserStorage(): Storage | null {
@@ -115,7 +124,7 @@ export function writeLastSearch(
   search: { intent: SearchIntent; hideUnconfirmed: boolean },
   storage = browserStorage(),
 ): void {
-  if (!search.intent.rawPrompt) return;
+  if (!search.intent.rawPrompt || needsReinterpretation(search.intent)) return;
   writeJson(storage, LAST_SEARCH_KEY, { ...search, savedAt: new Date().toISOString() });
 }
 

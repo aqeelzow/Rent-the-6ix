@@ -177,7 +177,7 @@ export function ShortlistView() {
         <div className="flex flex-col items-start gap-3">
           <p>{s("empty")}</p>
           <Button asChild>
-            <Link href="/">{s("startSearch")}</Link>
+            <Link href="/#start">{s("startSearch")}</Link>
           </Button>
         </div>
       ) : (

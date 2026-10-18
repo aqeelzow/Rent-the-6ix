@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertCircle, ChevronRight, Info, List, LoaderCircle, MapIcon, X } from "lucide-react";
+import { AlertCircle, List, LoaderCircle, MapIcon, X } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
@@ -18,13 +18,14 @@ import { Textarea } from "@/components/ui/textarea";
 import { useMediaQuery } from "@/components/use-media-query";
 import { FilterChips } from "./filter-chips";
 import { FiltersPanel } from "./filters-panel";
+import { DestinationChoices } from "./destination-choices";
 import { ShareSearch } from "./share-search";
 import { SortSelect } from "./sort-select";
 import { commuteCarbon } from "@rentthe6ix/shared/engine/carbon";
 import { t, type MessageKey } from "@/lib/format/messages";
 import { formatCount } from "@/lib/format/number";
 import { parseAndSearch, restoreSearch, runSearch } from "@/lib/store/actions";
-import { readLastSearch } from "@/lib/store/persist";
+import { needsReinterpretation, readLastSearch } from "@/lib/store/persist";
 import { decodeSharedSearch } from "@/lib/store/share";
 import { useLastSearch } from "@/lib/store/use-last-search";
 import { appStore, useAppStore } from "@/lib/store/store";
@@ -70,8 +71,6 @@ export function SearchView({ prompt, shared }: { prompt: string | null; shared: 
   const error = useAppStore((s) => s.error);
   const results = useAppStore((s) => s.results);
   const eligibleCount = useAppStore((s) => s.eligibleCount);
-  const parser = useAppStore((s) => s.parser);
-  const parseNotice = useAppStore((s) => s.parseNotice);
   const notices = useAppStore((s) => s.notices);
   const selectedId = useAppStore((s) => s.selectedListingId);
   const setSelected = useAppStore((s) => s.setSelectedListingId);
@@ -119,7 +118,8 @@ export function SearchView({ prompt, shared }: { prompt: string | null; shared: 
     // Coming back to a prompt that's already been read keeps its edited filters (Back from a
     // listing included). Otherwise a shared link's filters, then this browser's last search for
     // the same words (a reload), and only then the parser.
-    if (appStore.getState().intent?.rawPrompt === prompt) return;
+    const current = appStore.getState().intent;
+    if (current?.rawPrompt === prompt && !needsReinterpretation(current)) return;
     const last = readLastSearch();
     const saved =
       (shared ? decodeSharedSearch(shared, prompt) : null) ??
@@ -155,23 +155,21 @@ export function SearchView({ prompt, shared }: { prompt: string | null; shared: 
           <h2 id="request-label" className="text-muted-foreground text-sm font-medium">
             {t("search.yourRequest")}
           </h2>
-          {editing ? (
-            <RequestEditor prompt={prompt} onDone={() => setEditing(false)} />
-          ) : (
-            <>
-              <p className="mt-1">{prompt}</p>
-              <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1">
-                <button
-                  type="button"
-                  onClick={() => setEditing(true)}
-                  className="text-primary text-sm font-medium underline-offset-4 hover:underline"
-                >
-                  {t("search.editRequest")}
-                </button>
-                {intent?.rawPrompt === prompt && <ShareSearch />}
-              </div>
-            </>
-          )}
+          <p className="mt-1">{prompt}</p>
+          <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1">
+            <Link
+              href={`/?q=${encodeURIComponent(prompt)}#start`}
+              className="text-primary text-sm font-medium underline-offset-4 hover:underline"
+            >
+              {t("search.editRequest")}
+            </Link>
+            {intent?.rawPrompt === prompt && <ShareSearch />}
+            {intent?.rawPrompt === prompt && intent.droppedRequests.length > 0 && (
+              <Button variant="ghost" size="sm" disabled={busy} onClick={() => void parseAndSearch(prompt)}>
+                {t("search.reinterpret")}
+              </Button>
+            )}
+          </div>
         </section>
 
         {intent && intent.rawPrompt === prompt && (
@@ -183,10 +181,16 @@ export function SearchView({ prompt, shared }: { prompt: string | null; shared: 
               <SortSelect />
             </div>
             <FilterChips intent={intent} />
+            <DestinationChoices />
           </>
         )}
 
         <div aria-live="polite" className="flex flex-col gap-4">
+          {status === "idle" && intent && needsReinterpretation(intent) && (
+            <p className="bg-caveat-warning text-caveat-warning-foreground rounded-lg px-3 py-2 text-sm">
+              {t("search.uninterpreted")}
+            </p>
+          )}
           {busy && (
             <div className="text-muted-foreground flex flex-col gap-0.5 text-sm">
               <p className="figures flex items-center gap-2">
@@ -216,40 +220,6 @@ export function SearchView({ prompt, shared }: { prompt: string | null; shared: 
                 {t("search.retry")}
               </Button>
             </div>
-          )}
-
-          {parser === "fallback" && parseNotice && status !== "parsing" && (
-            <p className="bg-caveat-info text-caveat-info-foreground flex items-start gap-2 rounded-lg px-3 py-2 text-sm">
-              <Info aria-hidden className="mt-0.5 size-4 shrink-0" />
-              <span>
-                <span className="font-medium">{t("search.basicSearch")}.</span> {parseNotice}
-              </span>
-            </p>
-          )}
-
-          {intent && intent.droppedRequests.length > 0 && status !== "parsing" && (
-            // Collapsed by default; the details open on tap.
-            <details className="group rounded-lg border border-dashed px-3 py-2 text-sm">
-              <summary className="flex cursor-pointer list-none items-center gap-1.5 font-medium [&::-webkit-details-marker]:hidden">
-                <ChevronRight
-                  aria-hidden
-                  className="size-4 shrink-0 transition-transform group-open:rotate-90"
-                />
-                {t(
-                  intent.droppedRequests.length === 1 ? "search.droppedOne" : "search.droppedMany",
-                  {
-                    count: formatCount(intent.droppedRequests.length),
-                  },
-                )}
-              </summary>
-              <ul className="text-muted-foreground mt-2 list-disc pl-5">
-                {intent.droppedRequests.map((dropped) => (
-                  <li key={dropped.phrase}>
-                    “{dropped.phrase}”: {dropped.reason}
-                  </li>
-                ))}
-              </ul>
-            </details>
           )}
         </div>
 

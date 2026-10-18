@@ -1,5 +1,6 @@
 "use client";
 
+import { ChevronDown } from "lucide-react";
 import { useId } from "react";
 import {
   carbonComparable,
@@ -50,37 +51,44 @@ export function SortSelect() {
       <label htmlFor={id} className="text-muted-foreground text-sm">
         {t("filters.panel.sortBy")}
       </label>
-      <select
-        id={id}
-        value={value}
-        onChange={(event) => {
-          const next = event.target.value as Choice;
-          if (next === "carbon" || next === "distance") {
-            setResultOrder(next);
-            return;
-          }
-          setResultOrder("server");
-          if (next === intent.sortBy) return;
-          updateIntent((current) => ({
-            ...current,
-            sortBy: next,
-            fieldSources: { ...current.fieldSources, sortBy: { source: "user" } },
-          }));
-          void runSearch();
-        }}
-        className="border-input bg-card focus-visible:ring-ring/50 h-9 rounded-full border pr-8 pl-3.5 text-sm font-medium outline-none focus-visible:ring-3"
-      >
-        {sorts.map((sort) => (
-          <option key={sort} value={sort}>
-            {t(`filters.sortOptions.${sort}` as MessageKey)}
-          </option>
-        ))}
-        {locals.map((local) => (
-          <option key={local} value={local}>
-            {t(`filters.sortOptions.${local === "carbon" ? "lowest_carbon" : "closest_area"}`)}
-          </option>
-        ))}
-      </select>
+      {/* Our own chevron: the browser's arrow sits flush against the rounded edge. */}
+      <div className="relative">
+        <select
+          id={id}
+          value={value}
+          onChange={(event) => {
+            const next = event.target.value as Choice;
+            if (next === "carbon" || next === "distance") {
+              setResultOrder(next);
+              return;
+            }
+            setResultOrder("server");
+            if (next === intent.sortBy) return;
+            updateIntent((current) => ({
+              ...current,
+              sortBy: next,
+              fieldSources: { ...current.fieldSources, sortBy: { source: "user" } },
+            }));
+            void runSearch();
+          }}
+          className="border-input bg-card focus-visible:ring-ring/50 h-9 cursor-pointer appearance-none rounded-full border pr-9 pl-3.5 text-sm font-medium outline-none focus-visible:ring-3"
+        >
+          {sorts.map((sort) => (
+            <option key={sort} value={sort}>
+              {t(`filters.sortOptions.${sort}` as MessageKey)}
+            </option>
+          ))}
+          {locals.map((local) => (
+            <option key={local} value={local}>
+              {t(`filters.sortOptions.${local === "carbon" ? "lowest_carbon" : "closest_area"}`)}
+            </option>
+          ))}
+        </select>
+        <ChevronDown
+          aria-hidden
+          className="text-muted-foreground pointer-events-none absolute top-1/2 right-3 size-4 -translate-y-1/2"
+        />
+      </div>
     </div>
   );
 }

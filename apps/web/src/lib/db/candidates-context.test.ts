@@ -15,7 +15,7 @@ const listing: Listing = { ...sampleListings[0], monthlyRentCad: 2000, bedrooms:
 const rowFor = (value: Listing) => ({ ...Object.fromEntries(Object.entries(value).filter(([key]) => key !== 'location').map(([key, val]) => [key.replace(/[A-Z]/g, c => `_${c.toLowerCase()}`), val])), lng: value.location.lng, lat: value.location.lat });
 const five = () => [2400, 2450, 2500, 2550, 2600].map((rent, i) => ({ ...rowFor(listing), id: sampleListings[i + 1].id, monthly_rent_cad: rent, distance_m: 100 + i, last_seen_at: new Date(), duplicate_of: null, building_key: `building-${i}` }));
 type Sql = NonNullable<ReturnType<typeof ClientFactory>>;
-function client(options: { candidates?: unknown[]; observations?: unknown[]; comparables?: unknown[]; query?: () => Promise<unknown[]> } = {}) {
+function client(options: { candidates?: unknown[]; observations?: unknown[]; comparables?: unknown[]; pool?: unknown[]; query?: () => Promise<unknown[]>; unsafeQuery?: () => Promise<unknown[]> } = {}) {
   const sql = vi.fn((strings: TemplateStringsArray) => {
     const text = strings.join('?');
     if (!text.includes('SELECT')) return { fragment: text };
@@ -24,7 +24,16 @@ function client(options: { candidates?: unknown[]; observations?: unknown[]; com
     if (text.includes('listing_observations')) return Promise.resolve(options.observations ?? [{ deposit: true, asking_rent_cad: 2200, observed_at: new Date('2026-10-01') }]);
     throw new Error('Unexpected SQL');
   });
-  const unsafe = vi.fn((text: string, parameters?: unknown[]) => parameters ? Promise.resolve(text.includes('FROM neighbourhoods') || text.includes('FROM area_indicators') || text.includes('FROM buildings WHERE') || text.includes('WHERE duplicate_of =') ? [] : options.candidates ?? [rowFor(listing)]) : text);
+  // Batched reads used by ordinary search: one comparable pool, one stored-facts query, one buildings query.
+  const unsafe = vi.fn((text: string, parameters?: unknown[]) => {
+    if (!parameters) return text;
+    if (options.unsafeQuery) return options.unsafeQuery();
+    if (text.includes('FROM listings c')) return Promise.resolve(options.pool ?? five());
+    if (text.includes('listing_observations')) return Promise.resolve((parameters[0] as string[]).map(id => ({ id, deposit: true, asking_rent_cad: 2200, observed_at: new Date('2026-10-01'), benchmarks: null })));
+    if (text.includes('FROM buildings WHERE')) return Promise.resolve([]);
+    if (text.includes('FROM neighbourhoods') || text.includes('FROM area_indicators') || text.includes('WHERE duplicate_of =')) return Promise.resolve([]);
+    return Promise.resolve(options.candidates ?? [rowFor(listing)]);
+  });
   Object.assign(sql, { unsafe });
   return { sql: sql as unknown as Sql, tagged: sql, unsafe };
 }
@@ -45,7 +54,9 @@ test('default SQL runtime consumes actual C context, cached valuation and stored
   assert.equal(result.safety, null);
   const rejected = await api.search(http({ ...request, intent: { ...request.intent, criteria: { priceFairness: { hard: true, value: ['overpriced'] } } } }), undefined);
   assert.equal((await rejected.json()).results.length, 0);
-  assert.equal(db.tagged.mock.calls.filter(([s]) => s.join('?').includes('FROM listings c')).length, 1);
+  // One comparable-pool read serves every candidate instead of one per listing.
+  assert.equal(db.unsafe.mock.calls.filter(([s]) => s.includes('FROM listings c')).length, 1);
+  assert.equal(result.valuation.comparables.length, 3);
   const detail = await api.detail(new Request(`http://localhost/api/listings/${listing.id}?intent=${encodeURIComponent(JSON.stringify(baseIntent))}`), { params: Promise.resolve({ id: listing.id }) });
   assert.equal(detail.status, 200);
   const detailBody = await detail.json(); assert.equal(detailBody.listing.id, listing.id); assert.deepEqual(detailBody.areas, []); assert.deepEqual(detailBody.indicators, []); assert.deepEqual(detailBody.duplicates, []); assert.equal(detailBody.valuation.estimatedRentCad, 2500);
@@ -61,7 +72,7 @@ test('default config gate retains missing-config 503 and fixture opt-in wins ove
   const resolved = await invalid.resolve(new Request('http://localhost/api/geo/resolve?q=Union%20Station'), undefined); assert.equal(resolved.status, 200);
 });
 test('SQL context failures and malformed owner results return private 503 responses', async () => {
-  for (const db of [client({ candidates: [{}] }), client({ query: async () => { throw new Error('secret database message'); } }), client({ comparables: five().map(row => ({ ...row, monthly_rent_cad: NaN })) })]) {
+  for (const db of [client({ candidates: [{}] }), client({ unsafeQuery: async () => { throw new Error('secret database message'); } }), client({ pool: five().map(row => ({ ...row, monthly_rent_cad: NaN })) })]) {
     clearValuationCache();
     const api = createRuntime({ dependencies: sqlSearchDependencies(() => db.sql), env: {} });
     const response = await api.search(http(input), undefined); assert.equal(response.status, 503); assert.doesNotMatch(JSON.stringify(await response.json()), /secret/);

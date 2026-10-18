@@ -8,6 +8,7 @@ import { VALUATION } from "../../../../../packages/shared/engine/config";
 import { benchmarkFor, type BenchmarkRow } from "../../../../../packages/shared/engine/benchmark";
 import { caveats, type Caveat } from "../../../../../packages/shared/engine/caveats";
 import type { Listing } from "../../../../../packages/shared/schemas/index";
+import { distanceM } from "../../../../../packages/shared/engine/travel";
 import {
   sameEraShare,
   valuate,
@@ -274,4 +275,218 @@ export async function listingContext(
       },
     ),
   };
+}
+
+// --- Batched contexts (ordinary search) ---------------------------------------------------
+//
+// A search values up to 500 candidates. Asking the database for each one separately is what made
+// the first search slow: three round trips per listing over a two-connection pool. The pool of
+// possible comparables is small (a few thousand active listings), so read it once with their
+// coordinates and answer every subject from it in memory. One query per search instead of 500.
+
+/** A comparable pool row with the coordinates needed to measure it from any subject. */
+type PoolComparable = ComparableCandidate & { lng: number; lat: number };
+
+const numberOrNull = (value: unknown): number | null => value === null || value === undefined ? null : Number(value);
+
+function subjectOfListing(listing: Listing): ValuationSubject {
+  return {
+    id: listing.id,
+    monthlyRentCad: listing.monthlyRentCad,
+    unitType: listing.unitType,
+    bedrooms: listing.bedrooms,
+    bathrooms: listing.bathrooms,
+    sqft: listing.sqft,
+    yearBuilt: listing.yearBuilt,
+    utilitiesIncluded: listing.utilitiesIncluded,
+    parking: listing.parking,
+    furnished: listing.furnished,
+    laundryInSuite: listing.laundryInSuite,
+  };
+}
+
+function poolComparable(row: Record<string, unknown>): PoolComparable | null {
+  const id = typeof row.id === 'string' ? row.id : null;
+  const rent = numberOrNull(row.monthly_rent_cad);
+  const lng = numberOrNull(row.lng), lat = numberOrNull(row.lat);
+  if (!id || rent === null || lng === null || lat === null || !(row.last_seen_at instanceof Date)) return null;
+  return {
+    id,
+    monthlyRentCad: rent,
+    unitType: (row.unit_type ?? null) as UnitType | null,
+    bedrooms: numberOrNull(row.bedrooms),
+    bathrooms: numberOrNull(row.bathrooms),
+    sqft: numberOrNull(row.sqft),
+    yearBuilt: numberOrNull(row.year_built),
+    utilitiesIncluded: (row.utilities_included ?? 'unknown') as Utilities,
+    parking: (row.parking ?? 'unknown') as Tri,
+    furnished: (row.furnished ?? 'unknown') as Tri,
+    laundryInSuite: (row.laundry_in_suite ?? 'unknown') as Tri,
+    lastSeenAt: row.last_seen_at.toISOString(),
+    duplicateOf: (row.duplicate_of ?? null) as string | null,
+    buildingKey: (row.building_key ?? null) as string | null,
+    lng,
+    lat,
+    distanceM: 0,
+  };
+}
+
+/**
+ * Every listing that could be a comparable for any of `subjects`, with coordinates.
+ * The SQL filters are the same ones `candidatesNear` applies per subject; distance, the widest
+ * radius and the nearest-first limit are applied in `comparablesFor`.
+ */
+export async function comparablePool(sql: Sql, subjects: readonly Listing[], now: Date): Promise<PoolComparable[]> {
+  const bedrooms = [...new Set(subjects.filter(listing => listing.unitType !== 'room' && listing.bedrooms !== null).map(listing => listing.bedrooms!))];
+  const classFilter = bedrooms.length ? `(c.unit_type = 'room' OR c.bedrooms = ANY($2::int[]))` : `c.unit_type = 'room'`;
+  const statement = `
+    SELECT ${FIELDS('c')},
+      ST_X(c.location::geometry) AS lng, ST_Y(c.location::geometry) AS lat,
+      c.last_seen_at, c.duplicate_of,
+      coalesce(c.building_id, c.address_point_id,
+        'pt:' || round(ST_X(c.location::geometry)::numeric, 4) || ':' || round(ST_Y(c.location::geometry)::numeric, 4)) AS building_key
+    FROM listings c
+    WHERE c.status IN ('active', 'stale')
+      AND c.duplicate_of IS NULL
+      AND c.last_seen_at >= $1::timestamptz - make_interval(days => ${VALUATION.windowDays})
+      AND ${classFilter}`;
+  const parameters: (string | number[])[] = bedrooms.length ? [now.toISOString(), bedrooms] : [now.toISOString()];
+  const rows = await sql.unsafe(statement, parameters);
+  if (!Array.isArray(rows)) throw new Error('Invalid comparable rows');
+  return rows.map(row => poolComparable(row as Record<string, unknown>)).filter((row): row is PoolComparable => row !== null);
+}
+
+/** The pool sorted by latitude; lets one subject skip the rest of the city with a binary search. */
+export function comparablePoolIndex(pool: readonly PoolComparable[]): PoolComparable[] {
+  return [...pool].sort((a, b) => a.lat - b.lat);
+}
+
+/** First index whose latitude is at least `value`; `index` is sorted by latitude. */
+function firstAtOrAbove(index: readonly PoolComparable[], value: number): number {
+  let low = 0, high = index.length;
+  while (low < high) {
+    const middle = (low + high) >> 1;
+    if (index[middle].lat < value) low = middle + 1; else high = middle;
+  }
+  return low;
+}
+
+/** The nearest comparables for one subject, in the same order and with the same cap as `candidatesNear`. */
+export function comparablesFor(subject: Listing, index: readonly PoolComparable[]): ComparableCandidate[] {
+  const wanted = subjectOfListing(subject);
+  if (wanted.unitType !== 'room' && wanted.bedrooms === null) return [];
+  const widest = VALUATION.radiiM[VALUATION.radiiM.length - 1];
+  // A cheap latitude/longitude box rejects most of the city before trigonometry. Without it every
+  // subject measured its distance to every active two-bedroom listing in Toronto.
+  const latSpan = widest / 111_320;
+  const lngSpan = latSpan / Math.max(0.1, Math.cos((subject.location.lat * Math.PI) / 180));
+  const nearby: PoolComparable[] = [];
+  const north = subject.location.lat + latSpan;
+  for (let i = firstAtOrAbove(index, subject.location.lat - latSpan); i < index.length && index[i].lat <= north; i++) {
+    const candidate = index[i];
+    if (candidate.id === wanted.id) continue;
+    if (wanted.unitType === 'room' ? candidate.unitType !== 'room' : candidate.unitType === 'room' || candidate.bedrooms !== wanted.bedrooms) continue;
+    if (Math.abs(candidate.lat - subject.location.lat) > latSpan || Math.abs(candidate.lng - subject.location.lng) > lngSpan) continue;
+    // The SQL pool already applied the window and duplicate filters; the engine re-checks both.
+    const metres = distanceM(subject.location, candidate);
+    if (metres > widest) continue;
+    nearby.push({ ...candidate, distanceM: metres });
+  }
+  nearby.sort((a, b) => a.distanceM - b.distanceM);
+  return nearby.slice(0, CANDIDATE_LIMIT);
+}
+
+/** Stored facts caveats need, read for every candidate in one query. */
+type StoredFacts = {
+  deposit: boolean | null;
+  asking_rent_cad: number | null;
+  observed_at: Date | null;
+  benchmarks?: BenchmarkRow[] | null;
+};
+type BuildingFact = { latest_score: string | number | null; score_date: Date | null };
+
+/**
+ * The same valuation and caveats as `listingContext`, for many listings and three queries.
+ * Callers that value one listing keep `listingContext`; search uses this.
+ */
+export async function listingContexts(
+  sql: Sql,
+  listings: readonly Listing[],
+  now = new Date(),
+  benchmark?: Benchmark | null,
+): Promise<Map<string, { valuation: Valuation; caveats: Caveat[] }>> {
+  const result = new Map<string, { valuation: Valuation; caveats: Caveat[] }>();
+  if (!listings.length) return result;
+  const keyOf = (listing: Listing) => `${listing.id}:${listing.monthlyRentCad}`;
+  const fresh = listings.filter(listing => !cached(keyOf(listing), now));
+  const computed = new Map<string, { valuation: Valuation; candidates: ComparableCandidate[] }>();
+
+  // Stored facts and building scores do not depend on the comparable pool, so they are read in
+  // parallel with it instead of after it.
+  const ids = listings.map(listing => listing.id);
+  const buildingIds = [...new Set(listings.map(listing => listing.buildingId).filter((id): id is string => id !== null))];
+  const facts = Promise.all([
+    sql.unsafe(
+      `SELECT l.id, (to_jsonb(l) ->> 'deposit_before_viewing')::boolean AS deposit,
+        o.asking_rent_cad, o.observed_at, ${BENCHMARK_ROWS}
+      FROM listings l
+      LEFT JOIN LATERAL (
+        SELECT asking_rent_cad, observed_at FROM listing_observations
+        WHERE listing_id = l.id ORDER BY observed_at LIMIT 1) o ON true
+      WHERE l.id = ANY($1::uuid[])`,
+      [ids],
+    ),
+    buildingIds.length
+      ? sql.unsafe(`SELECT id, latest_score, score_date FROM buildings WHERE id = ANY($1::text[])`, [buildingIds])
+      : Promise.resolve([]),
+  ]);
+  // Observed below; if the comparable read fails first this rejection must not go unhandled.
+  facts.catch(() => {});
+  if (fresh.length) {
+    const index = comparablePoolIndex(await comparablePool(sql, fresh, now));
+    for (const listing of fresh) {
+      const candidates = comparablesFor(listing, index);
+      computed.set(keyOf(listing), { valuation: valuate(subjectOfListing(listing), candidates, null, now), candidates });
+    }
+  }
+  const [storedRows, buildingRows] = await facts;
+  if (!Array.isArray(storedRows) || !Array.isArray(buildingRows)) throw new Error('Invalid context rows');
+  const stored = new Map(storedRows.map(row => [(row as unknown as { id: string }).id, row as unknown as StoredFacts]));
+  const buildings = new Map(buildingRows.map(row => [(row as unknown as { id: string }).id, row as unknown as BuildingFact]));
+
+  for (const listing of listings) {
+    const key = keyOf(listing);
+    const facts = stored.get(listing.id);
+    const freshValue = computed.get(key);
+    let valuation = freshValue?.valuation ?? cached(key, now)!;
+    if (freshValue) {
+      valuation = { ...valuation, benchmark: benchmarkOf(listing, facts?.benchmarks, benchmark) };
+      remember(key, now, valuation);
+      eraShares.set(key, sameEraShare(listing, valuation, freshValue.candidates));
+    }
+    const building = listing.buildingId ? buildings.get(listing.buildingId) : undefined;
+    result.set(listing.id, {
+      valuation,
+      caveats: caveats(
+        { ...listing, depositBeforeViewing: facts?.deposit ?? false },
+        {
+          valuation,
+          building: building
+            ? {
+                latestScore: building.latest_score === null ? null : Number(building.latest_score),
+                scoreDate: building.score_date?.toISOString().slice(0, 10) ?? null,
+              }
+            : null,
+          sameTextElsewhere: 0,
+          sameEraShare: eraShares.get(key) ?? null,
+          firstSeen:
+            facts?.asking_rent_cad && facts.observed_at
+              ? { rentCad: facts.asking_rent_cad, at: facts.observed_at.toISOString() }
+              : null,
+          now,
+        },
+      ),
+    });
+  }
+  return result;
 }

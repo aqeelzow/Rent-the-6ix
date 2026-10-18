@@ -44,7 +44,7 @@ test('parse input includes authoritative catalogue and known labels; catalogue c
   let calls = 0, catalogue = areas;
   const service = new ParseService({ cache: new MemoryCache(), civicAreas: async () => catalogue, provider: {
     generateStructured: async <T>(request: { system: string }) => {
-      calls++; assert.match(request.system, /"id":"095"/); assert.match(request.system, /UofT St\. George campus representative point/);
+      calls++; assert.match(request.system, /"id":"095"/); assert.match(request.system, /UofT St\. George campus/);
       return fallbackParse('in Annex', undefined, catalogue) as T;
     }, generateText: async () => '',
   } });
@@ -66,10 +66,11 @@ test('catalogue read validates rows, bounds latency, shares unfinished reads and
   assert.deepEqual(await slow(), []); assert.deepEqual(await slow(), []); assert.equal(calls, 1);
   finish(areas); await new Promise(resolve => setTimeout(resolve, 0)); assert.deepEqual(await slow(), areas);
 });
-test('omitted grounded area falls back and unavailable catalogue stays visible', async () => {
+test('omitted grounded area is added deterministically and unavailable catalogue stays visible', async () => {
   const provider = { generateStructured: async <T>() => fallbackParse('under $2500') as T, generateText: async () => '' };
   const parsed = await new ParseService({ civicAreas: async () => areas, provider }).parse({ prompt: 'under $2500 in Annex' }, 'test');
-  assert.equal(parsed.parser, 'fallback'); assert.deepEqual(parsed.intent.areas, [{ kind: 'neighbourhood', id: '095' }]);
+  // The area is a keyword fact; it is restored on the AI interpretation instead of rejecting it.
+  assert.equal(parsed.parser, 'gemini'); assert.deepEqual(parsed.intent.areas, [{ kind: 'neighbourhood', id: '095' }]);
   const ambiguous = await new ParseService({ civicAreas: async () => areas, provider }).parse({ prompt: 'in Shared Name under $2500' }, 'test');
   assert.equal(ambiguous.parser, 'fallback'); assert.ok(ambiguous.intent.droppedRequests.some(d => /ambiguous/.test(d.reason)));
   const unavailable = await new ParseService({ civicAreas: async () => [] }).parse({ prompt: 'under $2500 in Annex' }, 'test');

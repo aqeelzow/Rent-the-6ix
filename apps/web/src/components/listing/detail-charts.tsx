@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { t, type MessageKey } from "@/lib/format/messages";
 import { formatCad, formatCount } from "@/lib/format/number";
@@ -34,6 +35,7 @@ function ticks(min: number, max: number, count = 5): number[] {
  */
 export function PricePosition({ valuation, rent }: { valuation: Valuation; rent: number }) {
   const [active, setActive] = useState<number | null>(null);
+  const router = useRouter();
   // Draw at the container's real width so labels keep their size on phones.
   const frame = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(720);
@@ -144,16 +146,32 @@ export function PricePosition({ valuation, rent }: { valuation: Valuation; rent:
             </g>
           )}
           {placed.map(({ c, index, cx, row }) => (
-            <circle
+            // Each dot opens that comparable's own listing, so the estimate can be checked.
+            <a
               key={c.listingId}
-              cx={cx}
-              cy={rowY(row)}
-              r={active === index ? R + 2 : R}
-              className="fill-score-safety stroke-card cursor-default"
-              strokeWidth="2"
-              onPointerEnter={() => setActive(index)}
-              onPointerLeave={() => setActive(null)}
-            />
+              href={`/listing/${c.listingId}`}
+              aria-label={l("chart.openComparable", {
+                adjusted: formatCad(c.adjustedRentCad),
+                km: km(c.distanceM),
+              })}
+              onClick={(event) => {
+                if (event.metaKey || event.ctrlKey || event.shiftKey) return;
+                event.preventDefault();
+                router.push(`/listing/${c.listingId}`);
+              }}
+              onFocus={() => setActive(index)}
+              onBlur={() => setActive(null)}
+            >
+              <circle
+                cx={cx}
+                cy={rowY(row)}
+                r={active === index ? R + 2 : R}
+                className="fill-score-safety stroke-card cursor-pointer"
+                strokeWidth="2"
+                onPointerEnter={() => setActive(index)}
+                onPointerLeave={() => setActive(null)}
+              />
+            </a>
           ))}
           <g>
             <line

@@ -1,4 +1,4 @@
-import { ListingSchema, SearchRequestSchema, SearchResultSchema, TravelTimeRowSchema, type DetailResponse, type Listing, type SearchRequest, type SearchResult, type TravelTarget, type TravelTimeRow } from '../../../../../packages/shared/schemas/index';
+import { SearchRequestSchema, SearchResultSchema, TravelTimeRowSchema, type DetailResponse, type Listing, type SearchRequest, type SearchResult, type TravelTarget, type TravelTimeRow } from '../../../../../packages/shared/schemas/index';
 import { engineConfig } from '../../../../../packages/shared/engine/config';
 import { filterListing, type FilterContext } from '../../../../../packages/shared/engine/filters';
 import { bestMatchOrder, scoreListing, tieBreak, type ScoreContext, type TieSide } from '../../../../../packages/shared/engine/score';
@@ -13,6 +13,9 @@ export type SearchDependencies = {
   filterContext?: (listing: Listing, intent: SearchRequest['intent']) => Promise<FilterContext>;
   // Full-pool fairness/numeric ordering also use the owner context.
   enrich: (listing: Listing, intent: SearchRequest['intent'], signal?: AbortSignal) => Promise<ScoreContext>;
+  // Same contexts for many listings in a few queries; ordinary search uses it so latency does
+  // not grow with the candidate count. Falls back to `enrich` when absent.
+  enrichMany?: (listings: readonly Listing[], intent: SearchRequest['intent'], signal?: AbortSignal) => Promise<Map<string, ScoreContext>>;
   // Optional and off by default: travel is answered by straight-line distance, and a router only
   // replaces those rows when a deployment explicitly switches it on.
   routeTimes?: (origins: Listing[], targets: TravelTarget[], mode: TravelTimeRow['mode'], budgetMs: number, signal: AbortSignal) => Promise<TravelTimeRow[]>;
@@ -35,6 +38,15 @@ export async function mapCandidatePool<T>(listings: readonly Listing[], operatio
   return results;
 }
 const part = (result: SearchResult, id: 'value') => result.matchScore.parts.find(p => p.id === id)?.score ?? -Infinity;
+/**
+ * Search results carry the price label and its counts, not the full comparable list: 500 cards of
+ * every comparable made the response ~19 MB and was the largest remaining cost in a search. The
+ * detail endpoint, where the comparables table lives, still returns the whole list.
+ */
+export const SEARCH_COMPARABLE_LIMIT = 3;
+export function searchValuation(valuation: SearchResult['valuation']): SearchResult['valuation'] {
+  return valuation.comparables.length <= SEARCH_COMPARABLE_LIMIT ? valuation : { ...valuation, comparables: valuation.comparables.slice(0, SEARCH_COMPARABLE_LIMIT) };
+}
 /**
  * Mean estimated time to the search's targets, the figure `shortest_trips` orders by. An unmeasured
  * listing returns Infinity, so "nothing is known about this one" never sorts as if it were close.
@@ -91,7 +103,9 @@ export async function searchCandidates(input: SearchRequest, dependencies: Searc
   if (intent.numericExtreme) throw new SearchUnavailable('Percentile selection requires the full-pool percentile pipeline');
   if (intent.sortBy === 'lowest_true_cost') throw new SearchUnavailable('True monthly cost requires D-owned affordability data');
   const source = dependencies.loadCandidates ? await dependencies.loadCandidates(request) : dependencies.listings;
-  const pool = source.map(l => ListingSchema.parse(l)).filter(l => filterListing(l, intent, {}, request.hideUnconfirmed, true).passes);
+  // The SQL loader has already validated its rows with ListingSchema; fixtures are typed. Parsing
+  // the whole pool again here doubled the cost of the largest read for no extra safety.
+  const pool = source.filter(l => filterListing(l, intent, {}, request.hideUnconfirmed, true).passes);
   // Numeric listing sorts operate on the entire cheap-filtered pool before expensive enrichment.
   if (intent.sortBy === 'lowest_rent' || intent.sortBy === 'newest') pool.sort((a, b) => intent.sortBy === 'lowest_rent' ? a.monthlyRentCad - b.monthlyRentCad || tieBreak(tieSide(a), tieSide(b)) : Date.parse(b.lastSeenAt) - Date.parse(a.lastSeenAt) || tieBreak(tieSide(a), tieSide(b)));
   // Confirm hard listing facts before the ordinary candidate cap.
@@ -116,20 +130,31 @@ export async function searchCandidates(input: SearchRequest, dependencies: Searc
     if (intent.sortBy === 'best_match') eligiblePool.sort((a, b) => filterListing(a, intent, filterContexts.get(a.id)).notes.length - filterListing(b, intent, filterContexts.get(b.id)).notes.length || tieBreak(tieSide(a), tieSide(b)));
   }
   const contextPool = fullContextRequired ? eligiblePool : eligiblePool.slice(0, engineConfig.candidateLimit);
-  const enriched = await mapCandidatePool(contextPool, async listing => {
-      const owner = await dependencies.enrich(listing, intent);
-      const travel = owner.travel.map(row => TravelTimeRowSchema.parse(row)).filter(row => row.listingId === listing.id);
-      for (const target of intent.travelTargets) if (target.resolved) for (const mode of targetModes(target)) {
-        if (!travel.some(r => r.targetId === target.id && r.mode === mode)) travel.push({ listingId: listing.id, targetId: target.id, mode, distanceM: distanceM(listing.location, target.resolved), minutes: null, poiId: null, computedAt: listing.lastSeenAt, method: 'straight_line' });
-      }
-      const context = { ...owner, safety: intent.safety.enabled ? owner.safety : null, travel };
-      contexts.set(listing.id, context);
-      return filterListing(listing, intent, context).passes ? listing : null;
-  });
+  // The owner context is filled with distance rows and becomes the filter/scoring context.
+  const accept = (listing: Listing, owner: ScoreContext) => {
+    const travel = owner.travel.map(row => TravelTimeRowSchema.parse(row)).filter(row => row.listingId === listing.id);
+    for (const target of intent.travelTargets) if (target.resolved) for (const mode of targetModes(target)) {
+      if (!travel.some(r => r.targetId === target.id && r.mode === mode)) travel.push({ listingId: listing.id, targetId: target.id, mode, distanceM: distanceM(listing.location, target.resolved), minutes: null, poiId: null, computedAt: listing.lastSeenAt, method: 'straight_line' });
+    }
+    const context = { ...owner, safety: intent.safety.enabled ? owner.safety : null, travel };
+    contexts.set(listing.id, context);
+    return filterListing(listing, intent, context).passes ? listing : null;
+  };
+  let enriched: (Listing | null)[];
+  if (dependencies.enrichMany) {
+    const owners = await dependencies.enrichMany(contextPool, intent);
+    enriched = contextPool.map(listing => {
+      const owner = owners.get(listing.id);
+      if (!owner) throw new SearchUnavailable('Listing context is unavailable');
+      return accept(listing, owner);
+    });
+  } else {
+    enriched = await mapCandidatePool(contextPool, async listing => accept(listing, await dependencies.enrich(listing, intent)));
+  }
   const eligible = enriched.filter((listing): listing is Listing => listing !== null);
   const candidates = eligible.map(listing => {
     const context = contexts.get(listing.id)!;
-    return SearchResultSchema.parse({ listing, valuation: context.valuation, safety: context.safety, travel: context.travel, matchScore: scoreListing(listing, intent, context) });
+    return SearchResultSchema.parse({ listing, valuation: searchValuation(context.valuation), safety: context.safety, travel: context.travel, matchScore: scoreListing(listing, intent, context) });
   }).sort((a, b) => compareResults(intent, a, b)).slice(0, engineConfig.candidateLimit);
   const targets = intent.travelTargets.filter(t => t.kind === 'place' || t.kind === 'amenity');
   const origins = candidates.slice(0, engineConfig.routingLimit).map(r => r.listing);

@@ -11,10 +11,15 @@ export function valueScore(valuation: Pick<Valuation, 'status' | 'differencePct'
   if (valuation.differencePct > CAVEATS.farBelowPct) return 50;
   return clamp(50 + valuation.differencePct * 2.5);
 }
-export function scoreListing(listing: Listing, intent: SearchIntent, context: ScoreContext): MatchScore {
-  if (context.safetyScore != null && (!Number.isFinite(context.safetyScore) || context.safetyScore < 0 || context.safetyScore > 100)) throw new Error('Owner safety score must be between 0 and 100');
+/** The part weights a search scores with: the defaults, a "good deal" or safety opt-in, then the renter's own sliders. */
+export function scoreWeights(intent: SearchIntent): Record<keyof typeof engineConfig.weights, number> {
   const weights = { ...engineConfig.weights, ...(intent.criteria.priceFairness && !intent.criteria.priceFairness.hard ? { value: engineConfig.fairnessWeight } : {}), ...(intent.safety.enabled ? { safety: engineConfig.safetyWeight } : {}), ...intent.weights };
   if (!intent.safety.enabled) weights.safety = 0;
+  return weights;
+}
+export function scoreListing(listing: Listing, intent: SearchIntent, context: ScoreContext): MatchScore {
+  if (context.safetyScore != null && (!Number.isFinite(context.safetyScore) || context.safetyScore < 0 || context.safetyScore > 100)) throw new Error('Owner safety score must be between 0 and 100');
+  const weights = scoreWeights(intent);
   const rent = intent.criteria.rent;
   const max = rent?.value.max;
   const scores = {

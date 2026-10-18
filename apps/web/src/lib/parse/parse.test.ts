@@ -141,8 +141,8 @@ const geminiResponse = (value: unknown) => Response.json({ candidates:[{content:
 test('generic Gemini structured generation validates refinements and retries once', async () => {
   let calls = 0;
   const schema = z.object({ min:z.number(),max:z.number() }).refine(v => v.min <= v.max);
-  const provider = new GeminiProvider({ apiKey:'test',model:'configured-main',fastModel:'configured-fast',fetch:async (url, opts) => { calls++; assert.match(String(url),/configured-fast/); const body = JSON.parse(String(opts?.body)); assert.equal(body.generationConfig.responseMimeType,'application/json'); assert.ok(body.generationConfig.responseJsonSchema); return geminiResponse(calls === 1 ? { min:2,max:1 } : { min:1,max:2 }); } });
-  assert.deepEqual(await provider.generateStructured({ system:'test',prompt:'fixture',schema,fast:true }), { min:1,max:2 }); assert.equal(calls, 2);
+  const provider = new GeminiProvider({ apiKey:'test',model:'configured-main',fastModel:'configured-fast',fetch:async (url, opts) => { calls++; assert.match(String(url),/configured-main/); const body = JSON.parse(String(opts?.body)); assert.equal(body.generationConfig.responseMimeType,'application/json'); assert.ok(body.generationConfig.responseJsonSchema); return geminiResponse(calls === 1 ? { min:2,max:1 } : { min:1,max:2 }); } });
+  assert.deepEqual(await provider.generateStructured({ system:'test',prompt:'fixture',schema }), { min:1,max:2 }); assert.equal(calls, 2);
 });
 test('Gemini busy never retries, timeout bounds full retry and text uses main model', async () => {
   for (const status of [429,503]) { let calls = 0; const provider = new GeminiProvider({ apiKey:'test',model:'test',fetch:async () => { calls++; return new Response('',{status}); } }); await assert.rejects(provider.generateText({system:'test',prompt:'test'}), (e: unknown) => e instanceof AIUnavailable && e.reason === 'busy' && e.status === status); assert.equal(calls,1); }
@@ -150,10 +150,10 @@ test('Gemini busy never retries, timeout bounds full retry and text uses main mo
   await assert.rejects(provider.generateStructured({system:'test',prompt:'test',schema:z.object({ok:z.boolean()})}), (e: unknown) => e instanceof AIUnavailable && e.reason === 'timeout'); assert.equal(calls,2);
   const text = new GeminiProvider({ apiKey:'test',model:'main',fastModel:'fast',fetch:async url => { assert.match(String(url), /main/); return Response.json({candidates:[{content:{parts:[{text:'hello'}]}}]}); } }); assert.equal(await text.generateText({system:'test',prompt:'test'}),'hello');
 });
-test('Gemini fast requests cap the shared retry deadline at ten seconds and respect shorter budgets', async () => {
+test('Gemini fast requests make one attempt; background requests share the retry deadline', async () => {
   vi.useFakeTimers();
   try {
-    for (const [fast, deadlineMs, budget] of [[true, undefined, 10000], [true, 12000, 10000], [true, 500, 500], [false, undefined, 12000], [false, 1500, 1500]] as const) {
+    for (const [fast, deadlineMs, budget] of [[true, undefined, 4500], [true, 500, 500], [false, undefined, 8000], [false, 1500, 1500]] as const) {
       let calls = 0;
       let signal: AbortSignal | undefined;
       const provider = new GeminiProvider({ apiKey: 'test', model: 'configured', deadlineMs, fetch: async (_url, opts) => {
@@ -162,8 +162,14 @@ test('Gemini fast requests cap the shared retry deadline at ten seconds and resp
         if (calls === 1) { await new Promise(resolve => setTimeout(resolve, 100)); return geminiResponse({ invalid: true }); }
         return new Promise(() => {});
       } });
-      const rejected = assert.rejects(provider.generateStructured({ system: 'test', prompt: 'test', schema: z.object({ ok: z.boolean() }), fast }), (error: unknown) => error instanceof AIUnavailable && error.reason === 'timeout');
+      const rejected = assert.rejects(provider.generateStructured({ system: 'test', prompt: 'test', schema: z.object({ ok: z.boolean() }), fast }), (error: unknown) => error instanceof AIUnavailable && error.reason === (fast ? 'invalid' : 'timeout'));
       await vi.advanceTimersByTimeAsync(100);
+      if (fast) {
+        await rejected;
+        assert.equal(calls, 1);
+        assert.equal(signal?.aborted, false);
+        continue;
+      }
       assert.equal(calls, 2);
       await vi.advanceTimersByTimeAsync(budget - 101);
       assert.equal(signal?.aborted, false);
@@ -209,7 +215,7 @@ test('root walkthrough refines close groceries to one timed amenity without chan
 });
 
 
-test('AI source contract uses target IDs and missing travel evidence falls back without widening', async () => {
+test('AI source contract uses target IDs and missing travel evidence is repaired without widening', async () => {
   assert.ok(parseInstruction.includes('travelTargets.<target.id>'));
   assert.ok(parseInstruction.includes('never an array index'));
   assert.ok(parseInstruction.includes('within 10 minutes biking'));
@@ -221,12 +227,26 @@ test('AI source contract uses target IDs and missing travel evidence falls back 
   delete invalid.fieldSources['travelTargets.target-1'];
   const service = new ParseService({ provider: { generateStructured: async <T>() => structuredClone(invalid) as T, generateText: async () => '' } });
   const result = await service.parse({ prompt }, 'ip');
+  // The AI contributed nothing grounded, so the deterministic answer is labelled as such.
   assert.equal(result.parser, 'fallback');
   assert.equal(result.intent.travelTargets[0].maxMinutes, 10);
   assert.equal(result.destinations[0].resolution.status, 'resolved');
   assert.ok(result.notice);
 });
 
+
+test('AI interpretation takes the deterministic configured area when the model omits it', async () => {
+  const prompt = '3 bedrooms in Scarborough under $3,200, near a public school and a park, parking.';
+  const intent = fallbackParse(prompt);
+  intent.areas = [];
+  delete intent.fieldSources.areas;
+  const service = new ParseService({ provider: { generateStructured: async <T>() => structuredClone(intent) as T, generateText: async () => '' } });
+  const result = await service.parse({ prompt }, 'ip');
+  assert.equal(result.parser, 'gemini');
+  assert.equal(result.intent.areas.length, 1);
+  assert.equal(result.intent.areas[0].kind, 'configured');
+  assert.equal(result.intent.criteria.rent?.value.max, 3200);
+});
 
 test('MapTiler weak or missing relevance cannot become a destination choice', async () => {
   const partial = { id: 'wrong', place_name: 'Unrelated landform', place_type: ['major_landform'], center: [-79.4,43.7] };
@@ -249,7 +269,9 @@ test('known hard travel bounds cannot be softened, omitted or widened by AI', as
     if (change === 'widen') intent.travelTargets[0].maxMinutes = 20;
     const service = new ParseService({ provider: { generateStructured: async <T>() => intent as T, generateText: async () => '' } });
     const result = await service.parse({ prompt }, 'ip');
-    assert.equal(result.parser, 'fallback');
+    // A softened or widened bound is restored on the AI interpretation; an omitted one leaves
+    // nothing grounded, so the deterministic parse answers.
+    assert.equal(result.parser, change === 'omit' ? 'fallback' : 'gemini');
     assert.equal(result.intent.travelTargets[0].hard, true);
     assert.equal(result.intent.travelTargets[0].maxMinutes, 10);
   }
@@ -277,7 +299,7 @@ test('arbitrary mode-less travel bounds remain strict when AI softens, widens or
     if (change === 'mode') intent.travelTargets[0].mode = 'drive';
     const service = new ParseService({ resolver, provider: { generateStructured: async <T>() => intent as T, generateText: async () => '' } });
     const result = await service.parse({ prompt }, 'strict-arbitrary-time');
-    assert.equal(result.parser, 'fallback');
+    assert.equal(result.parser, change === 'omit' ? 'fallback' : 'gemini');
     assert.equal(result.intent.travelTargets[0].mode, 'walk');
     assert.equal(result.intent.travelTargets[0].maxMinutes, 10);
     assert.equal(result.intent.travelTargets[0].hard, true);

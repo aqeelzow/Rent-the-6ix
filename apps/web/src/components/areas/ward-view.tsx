@@ -3,8 +3,10 @@ import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { DetailSection } from "@/components/listing/detail-sections";
 import { t, type MessageKey } from "@/lib/format/messages";
+import type { WardCrime } from "@/lib/db/ward-crime";
 import { AreaFactsList } from "./area-facts-list";
 import { ElectionBox } from "./election-box";
+import { WardCrimeSection } from "./ward-crime";
 
 const w = (key: string, params?: Record<string, string | number>) =>
   t(`areas.ward.${key}` as MessageKey, params);
@@ -13,7 +15,15 @@ const w = (key: string, params?: Record<string, string | number>) =>
  * `/areas/ward/[n]` (SPEC 9.3): the ward's figures beside Toronto's (D's area facts) and the election
  * info box. Without the database the figures section says so.
  */
-export function WardView({ n, facts }: { n: number; facts: AreaFacts | null }) {
+export function WardView({
+  n,
+  facts,
+  crime,
+}: {
+  n: number;
+  facts: AreaFacts | null;
+  crime: WardCrime | null;
+}) {
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-4 py-8">
       <div className="flex flex-col gap-2">
@@ -36,13 +46,16 @@ export function WardView({ n, facts }: { n: number; facts: AreaFacts | null }) {
         <div className="lg:sticky lg:top-20 lg:order-last">
           <ElectionBox />
         </div>
-        <DetailSection id="figures" title={w("figuresTitle")}>
-          {facts && facts.facts.length > 0 ? (
-            <AreaFactsList facts={facts} />
-          ) : (
-            <p className="text-muted-foreground text-sm">{w("figuresPending")}</p>
-          )}
-        </DetailSection>
+        <div className="flex min-w-0 flex-col gap-6">
+          <DetailSection id="figures" title={w("figuresTitle")}>
+            {facts && facts.facts.length > 0 ? (
+              <AreaFactsList facts={facts} />
+            ) : (
+              <p className="text-muted-foreground text-sm">{w("figuresPending")}</p>
+            )}
+          </DetailSection>
+          {crime && crime.neighbourhoods.length > 0 && <WardCrimeSection crime={crime} />}
+        </div>
       </div>
     </div>
   );

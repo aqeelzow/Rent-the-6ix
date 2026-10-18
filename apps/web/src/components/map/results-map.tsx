@@ -10,14 +10,21 @@ import type {
   Marker,
   Popup,
 } from "maplibre-gl";
+import { Layers, LoaderCircle } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useTheme } from "@/lib/theme/theme";
-import type { SearchResultItem } from "@/lib/store/types";
+import type { AreaChoropleth, SearchResultItem } from "@/lib/store/types";
 import { t, type MessageKey } from "@/lib/format/messages";
 import { formatCad } from "@/lib/format/number";
+import { SafetyInfoButton } from "@/components/safety/safety-info";
+import { fetchChoropleth } from "@/lib/store/actions";
 import { appStore, useAppStore } from "@/lib/store/store";
 import {
   BAND_COLORS,
+  CRIME_COLORS,
+  CRIME_NO_DATA,
+  CRIME_STEPS,
+  choroplethToGeoJSON,
   MAP_MAX_BOUNDS,
   PLACE_COLOR,
   boundsOf,
@@ -53,9 +60,34 @@ const bandColor: ExpressionSpecification = [
   BAND_COLORS.low,
 ];
 
+const crimeColor: ExpressionSpecification = [
+  "case",
+  ["==", ["typeof", ["get", "value"]], "number"],
+  [
+    "step",
+    ["get", "value"],
+    CRIME_COLORS[0],
+    CRIME_STEPS[0],
+    CRIME_COLORS[1],
+    CRIME_STEPS[1],
+    CRIME_COLORS[2],
+    CRIME_STEPS[2],
+    CRIME_COLORS[3],
+    CRIME_STEPS[3],
+    CRIME_COLORS[4],
+  ],
+  CRIME_NO_DATA,
+];
+
+type CrimeState =
+  { status: "idle" | "loading" | "error" } | { status: "ok"; layer: AreaChoropleth };
+type CrimeHover = { name: string; value: number | null } | null;
+
 /**
  * Results map (SPEC 12): clustered pins, listing uncertainty circles and
  * place pins. Hover and select are shared with the list through the store.
+ * An opt-in "Crime rates" layer shades neighbourhoods by police-reported
+ * crime relative to the city, with its caveats beside it (SPEC 7.6).
  */
 /** The highlighted listing's ring: a warm orange no score band or place pin uses. */
 const ACTIVE_COLOR = "#e8590c";
@@ -87,6 +119,22 @@ export function ResultsMap({ className = "" }: { className?: string }) {
   const targets = useAppStore((s) => s.intent?.travelTargets);
   const hovered = useAppStore((s) => s.hoveredListingId);
   const selected = useAppStore((s) => s.selectedListingId);
+  // Off on every visit; loaded the first time the renter turns it on.
+  const [crimeOn, setCrimeOn] = useState(false);
+  const [crime, setCrime] = useState<CrimeState>({ status: "idle" });
+  const [crimeHover, setCrimeHover] = useState<CrimeHover>(null);
+
+  const toggleCrime = () => {
+    const next = !crimeOn;
+    setCrimeOn(next);
+    if (!next) setCrimeHover(null);
+    if (next && (crime.status === "idle" || crime.status === "error")) {
+      setCrime({ status: "loading" });
+      void fetchChoropleth("neighbourhood", "crime").then((result) =>
+        setCrime(result.ok ? { status: "ok", layer: result.layer } : { status: "error" }),
+      );
+    }
+  };
 
   const theme = useTheme();
 
@@ -314,6 +362,20 @@ export function ResultsMap({ className = "" }: { className?: string }) {
     homeView.current = null;
   }, [results]);
 
+  // The crime layer: added once its data arrives, then shown or hidden with the toggle.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!ready || !map) return;
+    if (crime.status === "ok" && !map.getSource("crime")) {
+      addCrimeLayer(map, choroplethToGeoJSON(crime.layer), setCrimeHover);
+    }
+    if (map.getLayer("crime-fill")) {
+      const visibility = crimeOn ? "visible" : "none";
+      map.setLayoutProperty("crime-fill", "visibility", visibility);
+      map.setLayoutProperty("crime-line", "visibility", visibility);
+    }
+  }, [ready, crimeOn, crime]);
+
   // Hover and selection from the list highlight the matching pin or circle.
   useEffect(() => {
     const map = mapRef.current;
@@ -322,6 +384,8 @@ export function ResultsMap({ className = "" }: { className?: string }) {
     const filter: FilterSpecification = ["in", ["get", "id"], ["literal", ids]];
     const pinFilter: FilterSpecification = ["all", ["!", ["has", "point_count"]], filter];
     map.setFilter("pins-active", pinFilter);
+    map.setFilter("approx-fill", filter);
+    map.setFilter("approx-line", filter);
     map.setFilter("approx-active-fill", filter);
     map.setFilter("approx-active", filter);
     // A halo and centre dot mark each highlighted listing, approximate circles included.
@@ -341,12 +405,18 @@ export function ResultsMap({ className = "" }: { className?: string }) {
     (map.getSource("focus") as GeoJSONSource | undefined)?.setData(focus);
     // Fade every other listing while one is pointed at, so the active one stands out.
     const active: ExpressionSpecification = ["in", ["get", "id"], ["literal", ids]];
-    const faded = (on: number, off: number): ExpressionSpecification | number =>
-      ids.length ? ["case", active, on, off] : on;
-    map.setPaintProperty("pins", "circle-opacity", faded(1, 0.3));
-    map.setPaintProperty("pins", "circle-stroke-opacity", faded(1, 0.3));
-    map.setPaintProperty("approx-fill", "fill-opacity", faded(0.25, 0.08));
-    map.setPaintProperty("approx-line", "line-opacity", faded(1, 0.3));
+    // Approximate dots stay lighter than confirmed ones in both states.
+    const base = (full: number): ExpressionSpecification => [
+      "case",
+      ["get", "approx"],
+      full * APPROX_OPACITY,
+      full,
+    ];
+    const pinOpacity: ExpressionSpecification = ids.length
+      ? ["case", active, 1, base(0.3)]
+      : base(1);
+    map.setPaintProperty("pins", "circle-opacity", pinOpacity);
+    map.setPaintProperty("pins", "circle-stroke-opacity", pinOpacity);
   }, [ready, hovered, selected, results]);
 
   return (
@@ -363,8 +433,107 @@ export function ResultsMap({ className = "" }: { className?: string }) {
           {t("results.map.unavailable")}
         </p>
       ) : (
-        <Legend />
+        <>
+          <div className="absolute top-2 left-2 flex max-w-[15rem] flex-col items-start gap-2">
+            <button
+              type="button"
+              aria-pressed={crimeOn}
+              onClick={toggleCrime}
+              className={`focus-visible:ring-ring/50 flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs font-medium shadow-sm outline-none focus-visible:ring-3 ${crimeOn ? "bg-primary text-primary-foreground border-primary" : "bg-card/95 hover:bg-accent"}`}
+            >
+              {crime.status === "loading" ? (
+                <LoaderCircle aria-hidden className="size-3.5 animate-spin" />
+              ) : (
+                <Layers aria-hidden className="size-3.5" />
+              )}
+              {t("results.map.crime.toggle")}
+            </button>
+            {crimeOn && <CrimeLegend state={crime} hover={crimeHover} />}
+          </div>
+          <Legend />
+        </>
       )}
+    </div>
+  );
+}
+
+function addCrimeLayer(
+  map: MapLibreMap,
+  data: FeatureCollection,
+  onHover: (hover: CrimeHover) => void,
+) {
+  map.addSource("crime", { type: "geojson", data });
+  // Beneath the listing circles and pins, so listings stay on top.
+  map.addLayer(
+    {
+      id: "crime-fill",
+      type: "fill",
+      source: "crime",
+      layout: { visibility: "none" },
+      paint: { "fill-color": crimeColor, "fill-opacity": 0.5 },
+    },
+    "approx-fill",
+  );
+  map.addLayer(
+    {
+      id: "crime-line",
+      type: "line",
+      source: "crime",
+      layout: { visibility: "none" },
+      paint: { "line-color": "#6b7280", "line-width": 0.6, "line-opacity": 0.6 },
+    },
+    "approx-fill",
+  );
+  const show = (event: { features?: { properties?: Record<string, unknown> }[] }) => {
+    const properties = event.features?.[0]?.properties;
+    if (!properties) return;
+    const value = properties.value;
+    onHover({ name: String(properties.name), value: typeof value === "number" ? value : null });
+  };
+  map.on("mousemove", "crime-fill", show);
+  map.on("click", "crime-fill", show);
+  map.on("mouseleave", "crime-fill", () => onHover(null));
+}
+
+const rate = new Intl.NumberFormat("en-CA", { maximumFractionDigits: 2 });
+
+/** The crime layer's key: five bands relative to the city, the area under the cursor, the caveats. */
+function CrimeLegend({ state, hover }: { state: CrimeState; hover: CrimeHover }) {
+  const c = (key: string, params?: Record<string, string | number>) =>
+    t(`results.map.crime.${key}` as MessageKey, params);
+  if (state.status === "error") {
+    return <p className="bg-card/95 rounded-lg border p-2 text-xs shadow-sm">{c("unavailable")}</p>;
+  }
+  if (state.status !== "ok") return null;
+  const labels = ["band0", "band1", "band2", "band3", "band4"];
+  return (
+    <div className="bg-card/95 flex flex-col gap-1 rounded-lg border p-2 text-xs shadow-sm">
+      <p className="font-medium">{c("title")}</p>
+      {CRIME_COLORS.map((color, index) => (
+        <p key={color} className="flex items-center gap-1.5">
+          <span aria-hidden className="size-3 rounded-sm border" style={{ background: color }} />
+          {c(labels[index]!)}
+        </p>
+      ))}
+      <p className="flex items-center gap-1.5">
+        <span
+          aria-hidden
+          className="size-3 rounded-sm border"
+          style={{ background: CRIME_NO_DATA }}
+        />
+        {c("noData")}
+      </p>
+      <p role="status" className="figures min-h-4 font-medium">
+        {hover
+          ? hover.value === null
+            ? c("hoverNoData", { name: hover.name })
+            : c("hover", { name: hover.name, rate: rate.format(hover.value) })
+          : c("hint")}
+      </p>
+      <p className="text-muted-foreground">
+        {c("source", { years: state.layer.period ?? "" })}{" "}
+        <SafetyInfoButton caveats={state.layer.caveats} />
+      </p>
     </div>
   );
 }
@@ -380,16 +549,19 @@ function addLayers(map: MapLibreMap) {
   });
   map.addSource("approx", { type: "geojson", data: empty });
 
+  // Approximate-area circles are hidden until their listing is selected or hovered.
   map.addLayer({
     id: "approx-fill",
     type: "fill",
     source: "approx",
+    filter: ["in", ["get", "id"], ["literal", []]],
     paint: { "fill-color": bandColor, "fill-opacity": 0.25 },
   });
   map.addLayer({
     id: "approx-line",
     type: "line",
     source: "approx",
+    filter: ["in", ["get", "id"], ["literal", []]],
     paint: { "line-color": bandColor, "line-width": 1.5 },
   });
   map.addLayer({
@@ -436,11 +608,14 @@ function addLayers(map: MapLibreMap) {
     type: "circle",
     source: "listings",
     filter: ["!", ["has", "point_count"]],
+    // Approximate locations are the same colour, lighter, so confirmed addresses stand out.
     paint: {
       "circle-color": bandColor,
       "circle-radius": 7,
+      "circle-opacity": ["case", ["get", "approx"], APPROX_OPACITY, 1],
       "circle-stroke-color": "#ffffff",
       "circle-stroke-width": 2,
+      "circle-stroke-opacity": ["case", ["get", "approx"], APPROX_OPACITY, 1],
     },
   });
   map.addLayer({
@@ -555,15 +730,33 @@ let placeList: Popup | null = null;
 
 function bindEvents(map: MapLibreMap, maplibregl: typeof import("maplibre-gl")) {
   const { setHoveredListingId, setSelectedListingId } = appStore.getState();
-  for (const layer of ["pins", "approx-fill"]) {
+  // Hovering an approximate-location dot says how approximate it is.
+  const approxTip = new maplibregl.Popup({
+    closeButton: false,
+    closeOnClick: false,
+    offset: 10,
+    className: "approx-tip",
+  });
+  // Only dots respond: the approximate-area circle is display-only, since its handlers fired with
+  // the dots' and undid their clicks (a dot inside a shown circle couldn't be selected).
+  for (const layer of ["pins"]) {
     map.on("mousemove", layer, (event) => {
-      const id = event.features?.[0]?.properties?.id;
+      const feature = event.features?.[0];
+      const id = feature?.properties?.id;
       if (typeof id === "string") setHoveredListingId(id);
       map.getCanvas().style.cursor = "pointer";
+      const radiusM = Number(feature?.properties?.radiusM ?? 0);
+      if (radiusM > 0 && feature?.geometry.type === "Point") {
+        approxTip
+          .setLngLat(feature.geometry.coordinates as [number, number])
+          .setText(t("results.map.approxTip", { m: radiusM }))
+          .addTo(map);
+      } else approxTip.remove();
     });
     map.on("mouseleave", layer, () => {
       setHoveredListingId(null);
       map.getCanvas().style.cursor = "";
+      approxTip.remove();
     });
     map.on("click", layer, (event) => {
       const id = event.features?.[0]?.properties?.id;
@@ -608,6 +801,9 @@ function bindEvents(map: MapLibreMap, maplibregl: typeof import("maplibre-gl")) 
   map.on("mouseleave", "clusters", () => (map.getCanvas().style.cursor = ""));
 }
 
+/** How opaque an approximate-location dot is, against 1 for a confirmed address. */
+const APPROX_OPACITY = 0.45;
+
 function Legend() {
   const bands: ScoreBand[] = ["high", "mid", "low"];
   return (
@@ -628,7 +824,14 @@ function Legend() {
         <span aria-hidden className="size-3 rounded-full" style={{ background: PLACE_COLOR }} />
         {t("results.map.place")}
       </p>
-      <p className="text-muted-foreground">{t("results.map.approx")}</p>
+      <p className="flex items-center gap-1.5">
+        <span
+          aria-hidden
+          className="size-3 rounded-full border-2 border-white"
+          style={{ background: BAND_COLORS.high, opacity: APPROX_OPACITY }}
+        />
+        {t("results.map.approx")}
+      </p>
     </div>
   );
 }
