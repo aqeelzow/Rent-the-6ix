@@ -132,6 +132,14 @@ export default async function DataPage() {
         ) : (
           <p className="text-muted-foreground">{d("datasets.unavailable")}</p>
         )}
+        {/* The basemap is credited on the map itself too; this names the provider in use. */}
+        <p>
+          {d(
+            process.env.NEXT_PUBLIC_MAPTILER_KEY
+              ? "datasets.mapMaptiler"
+              : "datasets.mapOpenFreeMap",
+          )}
+        </p>
       </Section>
 
       <Section id="listings">
