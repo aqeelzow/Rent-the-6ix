@@ -733,9 +733,19 @@ function PriorityRow({
     <div className="flex flex-col gap-2">
       <div className="flex items-baseline justify-between gap-3">
         <Label htmlFor={id}>{p(`priorities.parts.${part}`)}</Label>
-        <span className="text-muted-foreground figures text-sm">
-          {disabled ? p("priorities.safetyOff") : p("priorities.share", { share })}
-        </span>
+        {disabled ? (
+          <button
+            type="button"
+            onClick={goToSafety}
+            className="text-primary text-sm underline-offset-2 hover:underline"
+          >
+            {p("priorities.safetyOff")}
+          </button>
+        ) : (
+          <span className="text-muted-foreground figures text-sm">
+            {p("priorities.share", { share })}
+          </span>
+        )}
       </div>
       <Slider
         id={id}
@@ -751,16 +761,24 @@ function PriorityRow({
   );
 }
 
+/** The Safety section's switch; the priorities' "Turn on safety to use" scrolls to it. */
+const SAFETY_SWITCH_ID = "filters-safety-switch";
+
+function goToSafety() {
+  const toggle = document.getElementById(SAFETY_SWITCH_ID);
+  toggle?.scrollIntoView({ behavior: "smooth", block: "center" });
+  toggle?.focus({ preventScroll: true });
+}
+
 function SafetySection({ draft, edit }: SectionProps) {
-  const id = useId();
   const { enabled, hard } = draft.safety;
   return (
     <PanelSection title={p("sections.safety")}>
       <div className="flex flex-col gap-2">
         <div className="flex items-center justify-between gap-3">
-          <Label htmlFor={`${id}-on`}>{p("safetyToggle")}</Label>
+          <Label htmlFor={SAFETY_SWITCH_ID}>{p("safetyToggle")}</Label>
           <Switch
-            id={`${id}-on`}
+            id={SAFETY_SWITCH_ID}
             checked={enabled}
             onCheckedChange={(on) => edit((d) => setSafety(d, { enabled: on, hard: false }))}
           />
