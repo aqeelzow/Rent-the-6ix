@@ -26,6 +26,12 @@ const BADGE: Record<SourceState, "secondary" | "destructive" | "outline"> = {
   failed: "destructive",
 };
 
+/** Colour overrides: healthy is green (the same tokens as "Underpriced"), ongoing is grey. */
+const BADGE_CLASS: Partial<Record<SourceState, string>> = {
+  ok: "bg-price-underpriced text-price-underpriced-foreground",
+  blocked: "bg-muted text-muted-foreground",
+};
+
 function sourceName(source: string): string {
   const key = `results.sources.${source}` as MessageKey;
   const name = t(key);
@@ -49,7 +55,7 @@ export function SourceHealthSection({ sources }: { sources: SourceHealth[] | nul
             <li key={source.source} className="border-b py-3 last:border-b-0">
               <div className="flex items-center justify-between gap-4">
                 <span className="font-medium">{sourceName(source.source)}</span>
-                <Badge variant={BADGE[source.state]}>
+                <Badge variant={BADGE[source.state]} className={BADGE_CLASS[source.state]}>
                   {t(`status.listingSources.state.${source.state}`)}
                 </Badge>
               </div>
