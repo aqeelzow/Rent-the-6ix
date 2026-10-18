@@ -8,7 +8,7 @@ import type {
   SearchResultItem,
 } from "./types";
 
-export type SearchStatus = "idle" | "parsing" | "searching" | "ready" | "error";
+export type SearchStatus = "idle" | "parsing" | "choosing" | "searching" | "ready" | "error";
 
 type CompletedSearch = Extract<SearchResponse, { status: "completed" }>;
 

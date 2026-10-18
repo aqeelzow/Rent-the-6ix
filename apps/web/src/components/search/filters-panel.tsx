@@ -519,7 +519,7 @@ function DestinationChoice({
   );
 }
 
-function ChoiceList({
+export function ChoiceList({
   title,
   choices,
   onChoose,
@@ -535,6 +535,7 @@ function ChoiceList({
   return (
     <div role="group" aria-label={`${title} ${context}`} className="flex flex-col gap-2">
       <p className="text-sm font-medium">{title}</p>
+      <p className="text-muted-foreground text-sm">{context}</p>
       <div className="flex flex-col gap-1.5">
         {choices.map((choice) => (
           <Button

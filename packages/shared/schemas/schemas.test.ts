@@ -93,6 +93,7 @@ test('structured choices and async envelopes distinguish ambiguity, pending and 
   const resolved = travelIntent.travelTargets[0].resolved;
   assert.equal(DestinationResolutionSchema.safeParse({ status: 'ambiguous', query: 'campus', choices: [{ id: 'a', label: 'Campus A', resolved }, { id: 'b', label: 'Campus B', resolved }] }).success, true);
   assert.equal(DestinationResolutionSchema.safeParse({ status: 'ambiguous', query: 'campus', choices: [] }).success, false);
+  assert.equal(DestinationResolutionSchema.safeParse({ status: 'ambiguous', query: 'campus', choices: [{ id: 'a', label: 'Possible campus', resolved }] }).success, true);
   const jobToken = 'x'.repeat(32);
   assert.equal(SearchResponseSchema.safeParse({ status: 'pending', jobToken, pollUrl: `/api/listings/search/jobs/${jobToken}`, expiresAt: '2026-10-16T12:02:00Z' }).success, true);
   assert.equal(SearchResponseSchema.safeParse({ status: 'pending', jobToken, pollUrl: `/api/listings/search/jobs/${'y'.repeat(32)}`, expiresAt: '2026-10-16T12:02:00Z' }).success, false);

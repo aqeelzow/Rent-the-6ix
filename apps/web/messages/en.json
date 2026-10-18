@@ -96,9 +96,12 @@
   "search": {
     "title": "Results",
     "yourRequest": "Your request",
+    "chooseLocation": "We found possible locations. Confirm one for each place to continue your search.",
     "noPrompt": "Describe the place you're looking for to start a search.",
     "startSearch": "Start a search",
     "editRequest": "Change request",
+    "reinterpret": "Try interpreting again",
+    "uninterpreted": "We couldn't interpret your request, so no search was run. Try interpreting it again or change your request.",
     "parsing": "Reading your request…",
     "searching": "Finding listings…",
     "basicSearch": "AI wasn't used for this search",

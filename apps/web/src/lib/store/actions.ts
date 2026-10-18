@@ -10,6 +10,7 @@ import {
 } from "@rentthe6ix/shared/schemas";
 import { z } from "zod";
 import { appStore, type createAppStore } from "./store";
+import { needsReinterpretation } from "./persist";
 import type {
   ApiError,
   AreaChoropleth,
@@ -128,10 +129,14 @@ export async function runSearch(options: ActionOptions = {}): Promise<void> {
   inFlight = controller;
   const { signal } = controller;
 
+  if (needsReinterpretation(intent)) {
+    store.setState({ status: "idle", busySince: null, results: [], eligibleCount: 0, notices: [], selectedListingId: null, hoveredListingId: null });
+    return;
+  }
+
   // Saved/shared searches can contain unresolved places from an earlier lookup failure.
-  const unresolved = intent.travelTargets.filter(
-    (target) => target.kind === "place" && target.query && !target.resolved,
-  );
+  const unresolved = intent.travelTargets.filter(target => target.kind === "place" && target.query && !target.resolved &&
+    !store.getState().destinations.some(destination => destination.targetId === target.id && destination.resolution.status === "ambiguous"));
   if (unresolved.length) {
     const locations = await Promise.all(
       unresolved.map(async (target) => {
@@ -178,6 +183,13 @@ export async function runSearch(options: ActionOptions = {}): Promise<void> {
     }
   }
 
+  // A known ambiguity must survive retries until the renter picks a location or removes the target.
+  if (store.getState().destinations.some(destination => destination.resolution.status === "ambiguous" &&
+    intent.travelTargets.some(target => target.id === destination.targetId && target.kind === "place" && !target.resolved))) {
+    store.setState({ status: "choosing", busySince: null, results: [], eligibleCount: 0, notices: [], selectedListingId: null, hoveredListingId: null });
+    return;
+  }
+
   let response = await request(fetchFn, "/api/listings/search", {
     method: "POST",
     body: { intent, hideUnconfirmed },
@@ -214,7 +226,7 @@ export async function runSearch(options: ActionOptions = {}): Promise<void> {
 
 /**
  * Opens a search from a shared link or this browser's last search, as it was edited, and runs it.
- * The parser isn't called, so the filters are exactly the ones that were saved.
+ * Edited filters are retained; a completely unrecognized request gets another interpretation.
  */
 export async function restoreSearch(
   search: { intent: SearchIntent; hideUnconfirmed: boolean },
@@ -222,6 +234,7 @@ export async function restoreSearch(
 ): Promise<void> {
   const store = options.store ?? appStore;
   store.getState().loadSearch(search.intent, search.hideUnconfirmed);
+  if (needsReinterpretation(search.intent)) return parseAndSearch(search.intent.rawPrompt, options);
   await runSearch(options);
 }
 

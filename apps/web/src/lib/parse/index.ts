@@ -10,6 +10,8 @@ import { fallbackParse, configuredAreas } from './fallback';
 import { DestinationResolver } from './resolve';
 import { MemoryCache, IpLimiter, inputHash, type Cache } from './cache';
 import { targetModes } from '../../../../../packages/shared/engine/travel';
+import { possibleIntersections } from './intersections';
+import { namedParkMentions } from './named-parks';
 export { fallbackParse, configuredAreas } from './fallback';
 export { DestinationResolver } from './resolve';
 export { IpLimiter, RateLimitError, MemoryCache } from './cache';
@@ -32,6 +34,7 @@ export class ParseService {
         // Lost travel constraints would silently widen the search; use the grounded basic interpretation.
         if (intent.travelTargets.length < targetCount) throw new AIUnavailable('invalid');
         const basic = fallbackParse(prompt, this.options.now?.(), catalogue);
+        if (namedParkMentions(prompt).some(park => !intent.travelTargets.some(target => target.kind === 'place' && target.query?.toLowerCase().includes(park.phrase.toLowerCase())))) throw new AIUnavailable('invalid');
         if (basic.droppedRequests.some(request => request.reason === 'Area name is ambiguous; specify neighbourhood or ward.')) throw new AIUnavailable('invalid');
         if (basic.areas.some(required => !intent.areas.some(actual => JSON.stringify(actual) === JSON.stringify(required)))) throw new AIUnavailable('invalid');
         const requiredTravel = basic.travelTargets.filter(t => t.hard && t.maxMinutes !== undefined);
@@ -57,6 +60,13 @@ export class ParseService {
       else delete target.resolved;
       return { targetId: target.id, resolution };
     }));
+    for (const phrase of possibleIntersections(prompt)) {
+      const resolved = intent.travelTargets.some(target => target.resolved && target.query?.toLowerCase() === phrase.toLowerCase());
+      if (resolved) continue;
+      // Replace a generic parse failure with a useful clarification, preserving other requests.
+      intent.droppedRequests = intent.droppedRequests.filter(request => request.phrase !== phrase && !(request.phrase === prompt && request.reason === 'Basic parser could not identify supported constraints; edit filters or clarify.'));
+      intent.droppedRequests.push({ phrase, reason: 'Did you mean an intersection? Confirm both full street names and directions, or provide an exact nearby address or pin. The intersection has not been confirmed.' });
+    }
     const result = ParseResponseSchema.parse({ intent, destinations, parser, ...(notice ? { notice } : {}) });
     // Only successful AI interpretations are cached; temporary failures must be able to recover immediately.
     if (parser === 'gemini') this.cache.set(key, result);
