@@ -156,26 +156,33 @@ export function SearchView({ prompt, shared }: { prompt: string | null; shared: 
           <h2 id="request-label" className="text-muted-foreground text-sm font-medium">
             {t("search.yourRequest")}
           </h2>
-          <p className="mt-1">{prompt}</p>
-          <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1">
-            <Link
-              href={`/?q=${encodeURIComponent(prompt)}#start`}
-              className="text-primary text-sm font-medium underline-offset-4 hover:underline"
-            >
-              {t("search.editRequest")}
-            </Link>
-            {intent?.rawPrompt === prompt && <ShareSearch />}
-            {intent?.rawPrompt === prompt && intent.droppedRequests.length > 0 && (
-              <Button
-                variant="ghost"
-                size="sm"
-                disabled={busy}
-                onClick={() => void parseAndSearch(prompt)}
-              >
-                {t("search.reinterpret")}
-              </Button>
-            )}
-          </div>
+          {editing ? (
+            <RequestEditor prompt={prompt} onDone={() => setEditing(false)} />
+          ) : (
+            <>
+              <p className="mt-1">{prompt}</p>
+              <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1">
+                <button
+                  type="button"
+                  onClick={() => setEditing(true)}
+                  className="text-primary text-sm font-medium underline-offset-4 hover:underline"
+                >
+                  {t("search.editRequest")}
+                </button>
+                {intent?.rawPrompt === prompt && <ShareSearch />}
+                {intent?.rawPrompt === prompt && intent.droppedRequests.length > 0 && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    disabled={busy}
+                    onClick={() => void parseAndSearch(prompt)}
+                  >
+                    {t("search.reinterpret")}
+                  </Button>
+                )}
+              </div>
+            </>
+          )}
         </section>
 
         {intent && intent.rawPrompt === prompt && (
