@@ -125,10 +125,22 @@ export function ResultsMap({ className = "" }: { className?: string }) {
   const targets = useAppStore((s) => s.intent?.travelTargets);
   const hovered = useAppStore((s) => s.hoveredListingId);
   const selected = useAppStore((s) => s.selectedListingId);
-  // Off on every visit; loaded the first time the renter turns it on.
-  const [crimeOn, setCrimeOn] = useState(false);
-  const [crime, setCrime] = useState<CrimeState>({ status: "idle" });
+  // The layer is offered only while "Consider reported crime levels" is on; off on every visit,
+  // and loaded the first time the renter turns it on. Turning the preference off hides it too.
+  const crimeOffered = useAppStore((s) => s.intent?.safety.enabled ?? false);
+  const [crimeToggled, setCrimeOn] = useState(false);
+  const crimeOn = crimeOffered && crimeToggled;
   const [crimeHover, setCrimeHover] = useState<CrimeHover>(null);
+  // Turning the preference off also turns the layer off, so turning it back on starts clean.
+  const [offeredBefore, setOfferedBefore] = useState(crimeOffered);
+  if (crimeOffered !== offeredBefore) {
+    setOfferedBefore(crimeOffered);
+    if (!crimeOffered) {
+      setCrimeOn(false);
+      setCrimeHover(null);
+    }
+  }
+  const [crime, setCrime] = useState<CrimeState>({ status: "idle" });
 
   const toggleCrime = () => {
     const next = !crimeOn;
@@ -440,22 +452,24 @@ export function ResultsMap({ className = "" }: { className?: string }) {
         </p>
       ) : (
         <>
-          <div className="absolute top-2 left-2 flex max-w-[15rem] flex-col items-start gap-2">
-            <button
-              type="button"
-              aria-pressed={crimeOn}
-              onClick={toggleCrime}
-              className={`focus-visible:ring-ring/50 flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs font-medium shadow-sm outline-none focus-visible:ring-3 ${crimeOn ? "bg-primary text-primary-foreground border-primary" : "bg-card/95 hover:bg-accent"}`}
-            >
-              {crime.status === "loading" ? (
-                <LoaderCircle aria-hidden className="size-3.5 animate-spin" />
-              ) : (
-                <Layers aria-hidden className="size-3.5" />
-              )}
-              {t("results.map.crime.toggle")}
-            </button>
-            {crimeOn && <CrimeLegend state={crime} hover={crimeHover} theme={theme} />}
-          </div>
+          {crimeOffered && (
+            <div className="absolute top-2 left-2 flex max-w-[15rem] flex-col items-start gap-2">
+              <button
+                type="button"
+                aria-pressed={crimeOn}
+                onClick={toggleCrime}
+                className={`focus-visible:ring-ring/50 flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs font-medium shadow-sm outline-none focus-visible:ring-3 ${crimeOn ? "bg-primary text-primary-foreground border-primary" : "bg-card/95 hover:bg-accent"}`}
+              >
+                {crime.status === "loading" ? (
+                  <LoaderCircle aria-hidden className="size-3.5 animate-spin" />
+                ) : (
+                  <Layers aria-hidden className="size-3.5" />
+                )}
+                {t("results.map.crime.toggle")}
+              </button>
+              {crimeOn && <CrimeLegend state={crime} hover={crimeHover} theme={theme} />}
+            </div>
+          )}
           <Legend />
         </>
       )}
