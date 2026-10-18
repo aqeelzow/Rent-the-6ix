@@ -218,13 +218,13 @@ export function boundsOf(
 }
 
 // Crime layer (opt-in, SPEC 7.6 as changed 2026-10-17): neighbourhoods shaded by police-reported
-// major crime relative to the city in one hue, light to dark green (user decision 2026-10-18).
-// In dark mode the scale runs the other way, so the higher rates still stand out against the
-// dark basemap. Labels and the hover readout carry the numbers, so colour is never the only cue.
+// major crime relative to the city in one hue, light to dark blue (user decision 2026-10-18; blue
+// carries no "good" or "danger" meaning). In dark mode the scale runs the other way, so the higher
+// rates still stand out against the dark basemap. Labels and the hover readout carry the numbers, so colour is never the only cue.
 export const CRIME_STEPS = [0.5, 1, 1.5, 2] as const;
 export const CRIME_COLORS = {
-  light: ["#e5f5e0", "#c7e9c0", "#74c476", "#31a354", "#006d2c"],
-  dark: ["#00441b", "#006d2c", "#31a354", "#74c476", "#c7e9c0"],
+  light: ["#eff3ff", "#c6dbef", "#6baed6", "#2171b5", "#08306b"],
+  dark: ["#08306b", "#08519c", "#2171b5", "#6baed6", "#c6dbef"],
 } as const;
 export const CRIME_NO_DATA = { light: "#d4d4d4", dark: "#525252" } as const;
 export type MapTheme = keyof typeof CRIME_COLORS;
