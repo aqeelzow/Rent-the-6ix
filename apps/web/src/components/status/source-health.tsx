@@ -22,14 +22,15 @@ const BADGE: Record<SourceState, "secondary" | "destructive" | "outline"> = {
   no_runs: "outline",
   stale: "outline",
   empty: "destructive",
-  blocked: "destructive",
+  blocked: "secondary",
   failed: "destructive",
 };
 
 /** Colour overrides: healthy is green (the same tokens as "Underpriced"), ongoing is grey. */
 const BADGE_CLASS: Partial<Record<SourceState, string>> = {
-  ok: "bg-price-underpriced text-price-underpriced-foreground",
-  blocked: "bg-muted text-muted-foreground",
+  // `!` so they win over the variant's own colours (cn doesn't merge Tailwind classes).
+  ok: "bg-price-underpriced! text-price-underpriced-foreground!",
+  blocked: "bg-muted! text-muted-foreground!",
 };
 
 function sourceName(source: string): string {
