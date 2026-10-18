@@ -3,8 +3,8 @@ import { t } from "@/lib/format/messages";
 
 /**
  * The disclaimer shown wherever police-reported crime figures appear (the map layer, the safety
- * preference, results, the listing and ward pages): a higher reported rate doesn't make a
- * neighbourhood a worse place to live, and statistics don't reflect any one person's experience.
+ * preference, results, the listing and ward pages): higher reported rates don't necessarily mean a
+ * greater risk to individuals, and statistics don't always reflect a person's experience of an area.
  */
 export function CrimeDisclaimer({ className = "" }: { className?: string }) {
   return (

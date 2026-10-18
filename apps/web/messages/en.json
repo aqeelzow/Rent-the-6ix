@@ -561,7 +561,7 @@
     "scoreRow": "Match score",
     "view": "View",
     "viewAria": "View {title}",
-    "crimeDisclaimer": "Higher reported crime rates don't necessarily make a neighbourhood a worse place to live. Crime statistics count incidents reported to police per resident, so they don't always reflect any one person's experience of living in an area."
+    "crimeDisclaimer": "Neighbourhoods with higher reported crime rates do not necessarily reflect a greater risk to individuals, as crime statistics do not always accurately reflect an individual's safety or experience living in an area."
   },
   "listing": {
     "title": "Listing",
