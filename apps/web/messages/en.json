@@ -874,12 +874,14 @@
       "residential_units_proposed_12m": "Homes proposed in rezoning applications"
     },
     "crime": {
-      "title": "Police-reported crime",
+      "title": "Reported Crime Levels",
       "intro": "Toronto Police publish crime rates for neighbourhoods, not wards. These neighbourhoods cover this ward. Each rate compares major crimes per resident with the whole city.",
       "share": "{share}% of this ward",
       "rate": "{rate}× the city rate",
       "noData": "Not enough data",
-      "source": "Toronto Police Service, {years} average."
+      "source": "Toronto Police Service, {years} average.",
+      "show": "Show police-reported crime rates",
+      "hide": "Hide crime rates"
     }
   },
   "paste": {
