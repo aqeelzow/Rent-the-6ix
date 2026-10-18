@@ -170,7 +170,7 @@ export async function searchCandidates(input: SearchRequest, dependencies: Searc
     return [SearchResultSchema.parse({ ...result, travel: context.travel, matchScore: scoreListing(result.listing, intent, context) })];
   }).sort((a, b) => compareResults(intent, a, b));
   const eligibleCount = fullContextRequired || filterContexts.size ? pool.filter(listing => filterListing(listing, intent, contexts.get(listing.id) ?? filterContexts.get(listing.id), request.hideUnconfirmed).passes).length : pool.length - (candidates.length - results.length);
-  return { results, eligibleCount, notices: ['Travel times are distance-based estimates, without live traffic or timetables.'] };
+  return { results, eligibleCount, notices: [] };
 }
 
 /**
