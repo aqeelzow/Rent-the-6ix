@@ -154,7 +154,15 @@ describe("listings at the same place", () => {
 describe("crime layer", () => {
   it("bands relative rates at 0.5, 1, 1.5 and 2 times the city", () => {
     expect([0.3, 0.5, 0.99, 1, 1.49, 1.5, 2, 3.4].map(crimeBand)).toEqual([0, 1, 1, 2, 2, 3, 4, 4]);
-    expect(CRIME_COLORS).toHaveLength(CRIME_STEPS.length + 1);
+    expect(CRIME_COLORS.light).toHaveLength(CRIME_STEPS.length + 1);
+    expect(CRIME_COLORS.dark).toHaveLength(CRIME_STEPS.length + 1);
+    // Light mode goes light to dark green; dark mode runs the other way, so higher rates stand out.
+    const brightness = (hex: string) =>
+      [1, 3, 5].reduce((sum, i) => sum + parseInt(hex.slice(i, i + 2), 16), 0);
+    const steps = (colors: readonly string[]) =>
+      colors.slice(1).map((color, i) => brightness(color) - brightness(colors[i]!));
+    expect(steps(CRIME_COLORS.light).every((step) => step < 0)).toBe(true);
+    expect(steps(CRIME_COLORS.dark).every((step) => step > 0)).toBe(true);
   });
 
   it("turns the choropleth into GeoJSON, keeping unknown rates as null", () => {

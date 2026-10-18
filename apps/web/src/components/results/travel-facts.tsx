@@ -1,27 +1,13 @@
 "use client";
 
-import {
-  CARBON_CAVEATS,
-  CARBON_FACTORS,
-  COMMUTE_DAYS_PER_YEAR,
-  commuteCarbon,
-} from "@rentthe6ix/shared/engine/carbon";
+import { commuteCarbon } from "@rentthe6ix/shared/engine/carbon";
 import {
   distanceToPreferredArea,
   preferredReference,
 } from "@rentthe6ix/shared/engine/preferred-area";
 import { Leaf, MapPin } from "lucide-react";
 import { modeIcons } from "@/components/mode-icons";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
 import { t, type MessageKey } from "@/lib/format/messages";
-import { formatCount } from "@/lib/format/number";
 import type { SearchIntent, SearchResultItem } from "@/lib/store/types";
 import { carbonSummary, formatCo2e, preferredAreaText } from "./travel-facts-data";
 
@@ -85,70 +71,7 @@ export function TravelFacts({
               : c("transitUnknownDrive", { co2e: formatCo2e(carbon.driveGrams) }))}
         </span>
       </p>}
-      <CarbonInfoButton className="self-start text-xs" />
     </div>
-  );
-}
-
-/**
- * "How carbon is counted" — every figure's source, what it covers, and what it leaves out.
- * Caveat text lives in D's engine so every screen shows the same words.
- */
-export function CarbonInfoButton({ className = "" }: { className?: string }) {
-  return (
-    <Dialog>
-      <DialogTrigger asChild>
-        <button
-          type="button"
-          className={`text-primary focus-visible:ring-ring/50 relative z-10 rounded-sm font-medium underline underline-offset-2 outline-none focus-visible:ring-3 ${className}`}
-        >
-          {c("open")}
-        </button>
-      </DialogTrigger>
-      <DialogContent className="max-h-[85dvh] overflow-y-auto sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle>{c("title")}</DialogTitle>
-          <DialogDescription>{c("what")}</DialogDescription>
-        </DialogHeader>
-        <div className="flex flex-col gap-3 text-sm">
-          <p>{c("method", { days: formatCount(COMMUTE_DAYS_PER_YEAR) })}</p>
-          <h3 className="font-semibold">{c("factorsTitle")}</h3>
-          <ul className="flex flex-col gap-2">
-            {CARBON_FACTORS.map((factor) => (
-              <li key={factor.mode}>
-                <span className="font-medium">
-                  {t(`filters.modes.${factor.mode}` as MessageKey)}:{" "}
-                  {factor.gramsPerKm === null
-                    ? c("factorUnknown")
-                    : c("factorValue", { grams: formatCount(factor.gramsPerKm) })}
-                </span>.{" "}
-                <span className="text-muted-foreground">{factor.basis}</span>{" "}
-                {factor.sourceUrl && (
-                  <a
-                    href={factor.sourceUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="relative z-10 underline underline-offset-2"
-                  >
-                    {c("source")}
-                  </a>
-                )}
-              </li>
-            ))}
-          </ul>
-          <h3 className="font-semibold">{c("caveatsTitle")}</h3>
-          <ul className="flex flex-col gap-2">
-            {CARBON_CAVEATS.map((caveat) => (
-              <li key={caveat.code}>
-                <span className="font-medium">{caveat.title}.</span>{" "}
-                <span className="text-muted-foreground">{caveat.explanation}</span>
-              </li>
-            ))}
-          </ul>
-
-        </div>
-      </DialogContent>
-    </Dialog>
   );
 }
 

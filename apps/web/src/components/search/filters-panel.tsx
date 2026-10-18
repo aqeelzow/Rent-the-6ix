@@ -18,6 +18,7 @@ import { SAFETY, engineConfig } from "@rentthe6ix/shared/engine/config";
 import { scoreWeights } from "@rentthe6ix/shared/engine/score";
 import { Slider } from "@/components/ui/slider";
 import { SafetyInfoButton } from "@/components/safety/safety-info";
+import { CrimeDisclaimer } from "@/components/safety/crime-disclaimer";
 import { SafetyLimit } from "@/components/safety/safety-limit";
 import { Switch } from "@/components/ui/switch";
 import { t, type MessageKey } from "@/lib/format/messages";
@@ -798,6 +799,8 @@ function SafetySection({ draft, edit }: SectionProps) {
           {p("safetyHelp")} <SafetyInfoButton />
         </p>
       </div>
+      {/* Shown whether or not safety is on, so it's read before turning it on. */}
+      <CrimeDisclaimer />
       {enabled && (
         <SafetyLimit
           value={hard ? (draft.safety.maxRelativeRate ?? SAFETY.hardMaxRelativeRate) : null}

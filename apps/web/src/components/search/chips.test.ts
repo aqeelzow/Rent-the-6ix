@@ -76,7 +76,7 @@ describe("buildChips", () => {
       "Available by Nov 1, 2026",
       "UofT St. George: 25 min by transit",
       "Supermarket: 10 min by walk (default)",
-      "Consider safety",
+      "Reported crime levels",
       "Income $95,000/year",
       "2 people",
     ]);
@@ -160,7 +160,7 @@ describe("chip edits", () => {
     expect(hard({ enabled: true, hard: true, maxRelativeRate: 0.8 })).toBe(
       "Crime at most 0.8× city rate",
     );
-    expect(hard({ enabled: true, hard: false })).toBe("Consider safety");
+    expect(hard({ enabled: true, hard: false })).toBe("Reported crime levels");
   });
 
   it("keeps a safety limit while must-have, and drops it as a preference", () => {

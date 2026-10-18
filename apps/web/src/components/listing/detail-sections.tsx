@@ -14,6 +14,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useEffect, useId, useState } from "react";
 import { SafetyInfoButton } from "@/components/safety/safety-info";
+import { CrimeDisclaimer } from "@/components/safety/crime-disclaimer";
 import { daysSince, plainHardFilterNote, yearSpan } from "@/components/results/card-data";
 import { formatDaysAgo } from "@/lib/format/date";
 import { t, type MessageKey } from "@/lib/format/messages";
@@ -367,6 +368,7 @@ export function SafetySection({
   const { safety } = result;
   return (
     <DetailSection id="safety" title={l("sections.safety")} className={className}>
+      <CrimeDisclaimer />
       <p className="figures text-sm">
         {safety && safety.relativeRate !== null
           ? l("safety.rate", {
