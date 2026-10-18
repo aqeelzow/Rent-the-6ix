@@ -190,3 +190,14 @@ export const AreaFactsSchema = z.strictObject({
 });
 export type AreaFact = z.infer<typeof AreaFactSchema>;
 export type AreaFacts = z.infer<typeof AreaFactsSchema>;
+// One indicator for every area, with simplified outlines (D's P3.10 choropleth; drafted by A for D's review).
+// For `crime`, `value` is the neighbourhood's police-reported rate ÷ the city's (SPEC 7.6) and the caveats travel with it.
+export const AreaChoroplethSchema = z.strictObject({
+  kind: z.enum(['neighbourhood', 'ward']), indicator: text, unit: text, period: text.nullable(), cityValue: z.number().finite().nullable(),
+  sourceId: text.nullable(), caveats: z.array(CaveatSchema),
+  features: z.array(z.strictObject({
+    id: text, name: text, value: z.number().finite().nullable(),
+    geometry: z.strictObject({ type: z.literal('MultiPolygon'), coordinates: z.array(z.array(z.array(z.array(z.number())))) }),
+  })),
+});
+export type AreaChoropleth = z.infer<typeof AreaChoroplethSchema>;

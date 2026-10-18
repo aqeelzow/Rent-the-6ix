@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertCircle, ChevronRight, Info, List, LoaderCircle, MapIcon, X } from "lucide-react";
+import { AlertCircle, Info, List, LoaderCircle, MapIcon, X } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
@@ -231,31 +231,6 @@ export function SearchView({ prompt, shared }: { prompt: string | null; shared: 
                 <span className="font-medium">{t("search.basicSearch")}.</span> {parseNotice}
               </span>
             </p>
-          )}
-
-          {intent && intent.droppedRequests.length > 0 && status !== "parsing" && (
-            // Collapsed by default; the details open on tap.
-            <details className="group rounded-lg border border-dashed px-3 py-2 text-sm">
-              <summary className="flex cursor-pointer list-none items-center gap-1.5 font-medium [&::-webkit-details-marker]:hidden">
-                <ChevronRight
-                  aria-hidden
-                  className="size-4 shrink-0 transition-transform group-open:rotate-90"
-                />
-                {t(
-                  intent.droppedRequests.length === 1 ? "search.droppedOne" : "search.droppedMany",
-                  {
-                    count: formatCount(intent.droppedRequests.length),
-                  },
-                )}
-              </summary>
-              <ul className="text-muted-foreground mt-2 list-disc pl-5">
-                {intent.droppedRequests.map((dropped) => (
-                  <li key={dropped.phrase}>
-                    “{dropped.phrase}”: {dropped.reason}
-                  </li>
-                ))}
-              </ul>
-            </details>
           )}
         </div>
 
