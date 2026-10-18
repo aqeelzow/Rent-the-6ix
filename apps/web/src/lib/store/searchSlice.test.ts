@@ -40,6 +40,30 @@ describe("intent", () => {
     expect(store.getState().intent).toEqual({ ...intent, sortBy: "lowest_rent" });
   });
 
+  it("a new prompt starts fresh; reading the same prompt again keeps the search", () => {
+    store.getState().setIntent(intent);
+    store.getState().receiveResults(store.getState().startSearch(), completed(a, b));
+    store.getState().setSelectedListingId(a!, "map");
+    store.getState().setHoveredListingId(b!);
+    store.getState().setResultOrder("carbon");
+    store.getState().setHideUnconfirmed(true);
+
+    store.getState().startParse(intent.rawPrompt);
+    expect(ids()).toEqual([a, b]);
+    expect(store.getState().selectedListingId).toBe(a);
+
+    store.getState().startParse("studio near York under $1,300");
+    const state = store.getState();
+    expect(state.intent).toBeNull();
+    expect(state.results).toEqual([]);
+    expect(state.eligibleCount).toBe(0);
+    expect(state.selectedListingId).toBeNull();
+    expect(state.hoveredListingId).toBeNull();
+    expect(state.resultOrder).toBe("server");
+    expect(state.hideUnconfirmed).toBe(false);
+    expect(state.status).toBe("parsing");
+  });
+
   it("stores a parsed prompt, unless a newer request has started", () => {
     const parsed = {
       intent,

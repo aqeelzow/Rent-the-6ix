@@ -955,7 +955,9 @@
         "toronto-amr-utility-allowances": "Typical utility costs for the true monthly cost.",
         "ttc-fares": "The TTC fare used in the true monthly cost.",
         "ttc-routes-and-schedules": "TTC stops near each listing."
-      }
+      },
+      "mapOpenFreeMap": "Map: base map tiles from OpenFreeMap, built from OpenStreetMap data (ODbL 1.0), credited in the corner of every map.",
+      "mapMaptiler": "Map: base map tiles from MapTiler, built from OpenStreetMap data (ODbL 1.0), credited in the corner of every map."
     },
     "listings": {
       "intro": "We collect rental listings from the public pages of these sites. Each listing links back to its original post, where you contact the landlord.",

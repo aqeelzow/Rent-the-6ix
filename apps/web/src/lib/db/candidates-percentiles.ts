@@ -82,7 +82,7 @@ export async function searchPercentileCandidates(input: SearchRequest, dependenc
     return SearchResponseSchema.parse({ status: 'completed', results: selected.map(listing => {
       const context = contexts.get(listing.id)!;
       return { listing, valuation: searchValuation(context.valuation), safety: context.safety, travel: context.travel, matchScore: scoreListing(listing, intent, context) };
-    }), eligibleCount: selectBeforeEnrichment ? cheapPool.length : filtered.length, notices: ['Travel times are distance-based estimates, without live traffic or timetables.'] });
+    }), eligibleCount: selectBeforeEnrichment ? cheapPool.length : filtered.length, notices: [] });
   };
   if (!exactTravel) return work();
   if (execution.signal?.aborted || Date.now() >= deadline) return unavailable('timeout');
