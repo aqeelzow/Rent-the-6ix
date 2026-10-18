@@ -1,4 +1,3 @@
-import { CAVEATS, engineConfig, SAFETY } from "@rentthe6ix/shared/engine/config";
 import { t, type MessageKey } from "@/lib/format/messages";
 import type { SearchResultItem } from "@/lib/store/types";
 
@@ -18,15 +17,6 @@ export function ScoreBreakdown({ matchScore }: { matchScore: SearchResultItem["m
     (sum, part) => sum + (part.score === null ? 0 : part.weight),
     0,
   );
-  const calculationParams = {
-    farBelow: CAVEATS.farBelowPct,
-    priceOverrun: decimal.format(engineConfig.priceOverrun * 100),
-    sizeOverrun: decimal.format(engineConfig.sizeOverrun * 100),
-    ageOverrun: engineConfig.ageOverrunYears,
-    availabilityOverrun: engineConfig.availabilityOverrunDays,
-    fullSafety: SAFETY.fullScoreAt,
-    zeroSafety: SAFETY.zeroScoreAt,
-  };
 
   return (
     <div className="flex flex-col gap-3">
@@ -48,7 +38,7 @@ export function ScoreBreakdown({ matchScore }: { matchScore: SearchResultItem["m
               )}
             </span>
             <p className="text-muted-foreground text-xs">
-              {t(`results.scoreCalculation.${part.id}`, calculationParams)}
+              {t(`results.scoreCalculation.${part.id}`)}
             </p>
             {part.score === null ? (
               <p className="text-muted-foreground text-xs">

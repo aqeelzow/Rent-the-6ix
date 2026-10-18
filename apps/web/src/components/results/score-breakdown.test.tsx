@@ -22,7 +22,7 @@ describe("ScoreBreakdown", () => {
     expect(html).toContain("87.5/100 × 66.7% = 58.3 points. Weight: 30 out of 45.");
     expect(html).toContain("50/100 × 33.3% = 16.7 points. Weight: 15 out of 45.");
     expect(html).toContain("15% below estimate");
-    expect(html).toContain("reaching 0 at 15% over budget");
+    expect(html).toContain("Rent CAD/month 2150; preferred range unbounded–2000");
     expect(html).toContain("groceries, parks and schools");
     expect(html).not.toMatch(/\{\w+\}|NaN|Infinity/);
   });
@@ -40,8 +40,9 @@ describe("ScoreBreakdown", () => {
     const html = renderToStaticMarkup(<ScoreBreakdown matchScore={matchScore} />);
 
     expect(html).toContain("0/100 × 37.5% = 0 points. Weight: 15 out of 40.");
-    expect(html).toContain("this part has a score, but its weight is zero");
-    expect(html).toContain("the preference is inactive or the required data is unavailable");
+    expect(html).toContain("Not counted: this part’s weight is zero.");
+    expect(html).toContain("Not scored: no applicable preference or not enough data.");
+    expect(html).toContain("furnished: listing");
     expect(html).not.toMatch(/\{\w+\}|NaN|Infinity/);
   });
 
