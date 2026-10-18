@@ -730,15 +730,33 @@ let placeList: Popup | null = null;
 
 function bindEvents(map: MapLibreMap, maplibregl: typeof import("maplibre-gl")) {
   const { setHoveredListingId, setSelectedListingId } = appStore.getState();
-  for (const layer of ["pins", "approx-fill"]) {
+  // Hovering an approximate-location dot says how approximate it is.
+  const approxTip = new maplibregl.Popup({
+    closeButton: false,
+    closeOnClick: false,
+    offset: 12,
+    className: "approx-tip",
+  });
+  // Only dots respond: the approximate-area circle is display-only, since its handlers fired with
+  // the dots' and undid their clicks (a dot inside a shown circle couldn't be selected).
+  for (const layer of ["pins"]) {
     map.on("mousemove", layer, (event) => {
-      const id = event.features?.[0]?.properties?.id;
+      const feature = event.features?.[0];
+      const id = feature?.properties?.id;
       if (typeof id === "string") setHoveredListingId(id);
       map.getCanvas().style.cursor = "pointer";
+      const radiusM = Number(feature?.properties?.radiusM ?? 0);
+      if (radiusM > 0 && feature?.geometry.type === "Point") {
+        approxTip
+          .setLngLat(feature.geometry.coordinates as [number, number])
+          .setText(t("results.map.approxTip", { m: radiusM }))
+          .addTo(map);
+      } else approxTip.remove();
     });
     map.on("mouseleave", layer, () => {
       setHoveredListingId(null);
       map.getCanvas().style.cursor = "";
+      approxTip.remove();
     });
     map.on("click", layer, (event) => {
       const id = event.features?.[0]?.properties?.id;

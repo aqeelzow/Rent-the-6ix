@@ -518,7 +518,8 @@
         "hoverNoData": "{name}: no data",
         "source": "Toronto Police Service, {years} average, by neighbourhood.",
         "unavailable": "Crime rates couldn't be loaded. Try again later."
-      }
+      },
+      "approxTip": "Approximate location: within about {m} m"
     },
     "mobile": {
       "showMap": "Map",
