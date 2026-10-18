@@ -734,7 +734,7 @@ function bindEvents(map: MapLibreMap, maplibregl: typeof import("maplibre-gl")) 
   const approxTip = new maplibregl.Popup({
     closeButton: false,
     closeOnClick: false,
-    offset: 12,
+    offset: 10,
     className: "approx-tip",
   });
   // Only dots respond: the approximate-area circle is display-only, since its handlers fired with
