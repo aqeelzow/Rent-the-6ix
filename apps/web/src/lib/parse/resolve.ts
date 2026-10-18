@@ -1,29 +1,18 @@
 import { z } from 'zod';
-import knownPlaces from './known_places.json';
-import generatedPlaces from './known_places.generated.json';
 import { DestinationResolutionSchema, DestinationChoiceSchema, type DestinationResolution } from '../../../../../packages/shared/schemas/index';
 import { distanceM } from '../../../../../packages/shared/engine/travel';
 import { MemoryCache, inputHash, type Cache } from './cache';
-const places = z.array(z.object({ id: z.string(), label: z.string(), aliases: z.array(z.string()), group: z.string().optional(), primary: z.boolean().optional(), lng: z.number(), lat: z.number() })).parse([...knownPlaces, ...generatedPlaces]);
-export const normalizePlace = (query: string) => query.toLowerCase().replace(/[^a-z0-9 ]/g, '').replace(/\s+/g, ' ').trim();
-const choice = (p: typeof places[number]) => DestinationChoiceSchema.parse({ id: p.id, label: p.label, resolved: { lng: p.lng, lat: p.lat, source: 'known_place', representativePoint: true, label: p.label } });
-function knownResolution(normalized: string, query: string, preferPrimaryCampus: boolean): DestinationResolution | undefined {
-  const known = places.filter(p => [...p.aliases, p.label, p.label.replace(/ representative point$/, '')].some(a => normalizePlace(a) === normalized));
-  if (known.length === 1) return { status: 'resolved', query, destination: choice(known[0]) };
-  if (known.length > 1) {
-    const choices = known.map(choice);
-    if (choices.every(a => choices.every(b => distanceM(a.resolved, b.resolved) <= 250))) return { status: 'resolved', query, destination: choices[0] };
-    return { status: 'ambiguous', query, choices };
-  }
-  const group = /^(university of toronto|uoft|u of t)$/.test(normalized) ? 'University of Toronto' : /^(york|york university)$/.test(normalized) ? 'York University' : undefined;
-  if (group) {
-    const members = places.filter(p => p.group === group), primary = members.filter(p => p.primary);
-    // A bare university name is not a real ambiguity for a renter: with no campus named, the main
-    // campus is what they mean. Returning choices left the target without coordinates, which blanked
-    // every travel figure on the result cards; the label still says it is a representative point.
-    if (primary.length === 1 && preferPrimaryCampus) return { status: 'resolved', query, destination: choice(primary[0]) };
-    return { status: 'ambiguous', query, choices: members.map(choice) };
-  }
+import { normalizePlace } from './place-name';
+import { placeCatalogue, type PlaceEntity } from './place-catalogue';
+export { normalizePlace } from './place-name';
+const choice = (p: PlaceEntity) => DestinationChoiceSchema.parse({ id: p.id, label: p.label, resolved: { lng: p.lng, lat: p.lat, source: 'known_place', representativePoint: true, label: p.label } });
+function knownResolution(normalized: string, query: string, preferPrimaryCampus: boolean, fuzzy = false): DestinationResolution | undefined {
+  const match = placeCatalogue.lookup(normalized, fuzzy);
+  if (!match) return;
+  const primary = match.group && preferPrimaryCampus ? match.places.filter(p => p.primary) : [];
+  if (primary.length === 1) return { status: 'resolved', query, destination: choice(primary[0]) };
+  if (match.places.length === 1) return { status: 'resolved', query, destination: choice(match.places[0]) };
+  return { status: 'ambiguous', query, choices: match.places.map(choice) };
 }
 export type AddressLookup = (query: string, signal: AbortSignal) => Promise<DestinationResolution | undefined>;
 export class DestinationResolver {
@@ -34,7 +23,8 @@ export class DestinationResolver {
     const searchQuery = normalizedQuery === undefined ? query : z.string().trim().min(1).max(500).parse(normalizedQuery);
     // A normalization must not narrow an already ambiguous campus or override a known original.
     const prefersPrimary = this.config.preferPrimaryCampus !== false;
-    const known = knownResolution(normalized, query, prefersPrimary) ?? knownResolution(normalizePlace(searchQuery), query, prefersPrimary);
+    const hint = normalizePlace(searchQuery);
+    const known = knownResolution(normalized, query, prefersPrimary) ?? knownResolution(hint, query, prefersPrimary) ?? knownResolution(normalized, query, prefersPrimary, true) ?? knownResolution(hint, query, prefersPrimary, true);
     if (known) return known;
     const key = inputHash(JSON.stringify([normalized, normalizePlace(searchQuery)])); const cached = this.cache.get(key); if (cached) return { ...cached, query };
     const controller = new AbortController(); let timer: ReturnType<typeof setTimeout>;

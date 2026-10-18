@@ -302,6 +302,31 @@ test('known places use the longest name without adding overlapping aliases', asy
   assert.deepEqual(fallbackParse('room near the university of toronto and near union station').travelTargets.map(t => t.query), ['university of toronto', 'union station']);
 });
 
+test('busy AI resolves sourced places through curated aliases without stale-point ambiguity', async () => {
+  const parser = new ParseService({
+    provider: { generateStructured: async () => { throw new AIUnavailable('busy', 503); }, generateText: async () => '' },
+    resolver: new DestinationResolver({ addressLookup: async () => { assert.fail('Known places must resolve locally'); } }),
+  });
+  for (const name of ['jane and finch', 'jane-finch', 'Jane & Finch', 'Jane / Finch']) {
+    const result = await parser.parse({ prompt: `near ${name}` }, 'sourced-places');
+    assert.equal(result.parser, 'fallback');
+    assert.equal(result.intent.travelTargets.length, 1);
+    assert.equal(result.destinations.length, 1);
+    const resolution = result.destinations[0].resolution;
+    assert.equal(resolution.status, 'resolved');
+    if (resolution.status === 'resolved') {
+      assert.equal(resolution.destination.resolved.source, 'known_place');
+      assert.ok(Math.abs(resolution.destination.resolved.lat - 43.75725) < 0.0001);
+      assert.ok(Math.abs(resolution.destination.resolved.lng + 79.51775) < 0.0001);
+      assert.deepEqual(result.intent.travelTargets[0].resolved, resolution.destination.resolved);
+    }
+  }
+  const resolver = new DestinationResolver();
+  assert.equal((await resolver.resolve('Kensington Market')).status, 'resolved');
+  assert.equal((await resolver.resolve('Union Station')).status, 'resolved');
+  assert.equal((await resolver.resolve('Eglinton')).status, 'ambiguous');
+});
+
 test('timed destinations preserve street dots without duplicate campuses or merged trips', async () => {
   const campus = await new ParseService({ provider: new NoneProvider() }).parse({ prompt: 'Within 25 minutes by transit to UofT St. George.' }, 'destination-regression');
   assert.equal(campus.intent.travelTargets.length, 1);

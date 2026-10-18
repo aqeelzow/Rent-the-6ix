@@ -7,7 +7,8 @@ import type { CivicArea } from './civic-areas';
 import knownPlaces from './known_places.json';
 import { parseInstruction } from './instruction';
 import { fallbackParse, configuredAreas } from './fallback';
-import { DestinationResolver } from './resolve';
+import { DestinationResolver, normalizePlace } from './resolve';
+import { placeCatalogueVersion } from './place-catalogue';
 import { MemoryCache, IpLimiter, inputHash, type Cache } from './cache';
 import { targetModes } from '../../../../../packages/shared/engine/travel';
 export { fallbackParse, configuredAreas } from './fallback';
@@ -20,7 +21,7 @@ export class ParseService {
     const { prompt } = ParseRequestSchema.parse(input);
     this.options.limiter?.check(trustedIp);
     const catalogue = await this.options.civicAreas?.() ?? [];
-    const key = inputHash(`parse-v2:${this.options.cacheNamespace ?? "default"}:${inputHash(parseInstruction + JSON.stringify(configuredAreas) + JSON.stringify(catalogue) + JSON.stringify(knownPlaces.map(p => p.label)))}:${(this.options.now?.() ?? new Date()).toISOString().slice(0, 10)}:${prompt}`);
+    const key = inputHash(`parse-v3:${this.options.cacheNamespace ?? "default"}:${inputHash(parseInstruction + JSON.stringify(configuredAreas) + JSON.stringify(catalogue) + placeCatalogueVersion)}:${(this.options.now?.() ?? new Date()).toISOString().slice(0, 10)}:${prompt}`);
     const cached = this.cache.get(key); if (cached) return cached;
     let intent: SearchIntent; let parser: ParseResponse['parser'] = 'fallback'; let notice: string | undefined = this.options.civicAreas && !catalogue.length ? 'Official area catalogue unavailable; review area filters.' : undefined;
     const stored = await this.options.intentCache?.get(key, prompt);
@@ -34,10 +35,9 @@ export class ParseService {
         const basic = fallbackParse(prompt, this.options.now?.(), catalogue);
         if (basic.droppedRequests.some(request => request.reason === 'Area name is ambiguous; specify neighbourhood or ward.')) throw new AIUnavailable('invalid');
         if (basic.areas.some(required => !intent.areas.some(actual => JSON.stringify(actual) === JSON.stringify(required)))) throw new AIUnavailable('invalid');
-        const normalizePlace = (value: string) => value.toLowerCase().replace(/[^a-z0-9 ]/g, '').replace(/\s+/g, ' ').trim();
         if (basic.travelTargets.filter(target => target.kind === 'place').some(required => !intent.travelTargets.some(actual => actual.kind === 'place' && normalizePlace(actual.query ?? '') === normalizePlace(required.query ?? '')))) throw new AIUnavailable('invalid');
         const requiredTravel = basic.travelTargets.filter(t => t.hard && t.maxMinutes !== undefined);
-        if (requiredTravel.some(required => !intent.travelTargets.some(actual => actual.kind === required.kind && (required.kind === 'place' ? actual.query?.toLowerCase() === required.query?.toLowerCase() : actual.category === required.category) && actual.hard && actual.maxMinutes === required.maxMinutes && targetModes(actual).length === targetModes(required).length && targetModes(actual).every(mode => targetModes(required).includes(mode))))) throw new AIUnavailable('invalid');
+        if (requiredTravel.some(required => !intent.travelTargets.some(actual => actual.kind === required.kind && (required.kind === 'place' ? normalizePlace(actual.query ?? '') === normalizePlace(required.query ?? '') : actual.category === required.category) && actual.hard && actual.maxMinutes === required.maxMinutes && targetModes(actual).length === targetModes(required).length && targetModes(actual).every(mode => targetModes(required).includes(mode))))) throw new AIUnavailable('invalid');
         parser = 'gemini';
       } catch (error) {
         console.warn('[search.parse] Gemini parse fell back', {

@@ -1,8 +1,8 @@
 import { SearchIntentSchema, type SearchIntent, type TravelTarget, type AreaFilter } from '../../../../../packages/shared/schemas/index';
 
 import { civicAreaMatches, type CivicArea } from './civic-areas';
-import knownPlaces from './known_places.json';
-import generatedPlaces from './known_places.generated.json';
+import { normalizePlace as normalizePlaceName } from './place-name';
+import { placeCatalogue } from './place-catalogue';
 
 // shortcut: configured search boxes are approximate, replace with agreed D-owned geographic areas when available.
 export const configuredAreas: Record<string, AreaFilter> = {
@@ -12,16 +12,6 @@ export const configuredAreas: Record<string, AreaFilter> = {
 const amount = (n: string) => Number(n.replace(/[$,\s]/g, '').replace(/k$/i, '')) * (/k$/i.test(n) ? 1000 : 1);
 const modes = (s: string): TravelTarget['mode'][] => [...new Set([...s.toLowerCase().matchAll(/\b(transit|ttc|subway|commute|bus|car|drive|driving|walk|walking|bike|biking|cycling)\b/g)].map(m => /car|driv/.test(m[0]) ? 'drive' as const : /walk/.test(m[0]) ? 'walk' as const : /bik|cycl/.test(m[0]) ? 'bike' as const : 'transit' as const))];
 const soft = /\b(prefer|ideally|nice|would like|around|close|about)\b/i;
-const normalizePlaceName = (name: string) => name.toLowerCase().replace(/[^a-z0-9 ]/g, '').replace(/\s+/g, ' ').trim();
-const placeAliases = new Map<string, string[][]>();
-for (const place of [...knownPlaces, ...generatedPlaces]) for (const name of [place.label, ...place.aliases]) {
-  const tokens = normalizePlaceName(name).split(' ');
-  if (tokens.join('').length < 4 || !tokens[0]) continue;
-  const aliases = placeAliases.get(tokens[0]) ?? [];
-  if (!aliases.some(alias => alias.join(' ') === tokens.join(' '))) aliases.push(tokens);
-  placeAliases.set(tokens[0], aliases);
-}
-for (const aliases of placeAliases.values()) aliases.sort((a, b) => b.length - a.length);
 export function fallbackParse(rawPrompt: string, now = new Date(), catalogue: CivicArea[] = []): SearchIntent {
   const intent: SearchIntent = { schemaVersion: 1, rawPrompt, areas: [], criteria: {}, travelTargets: [], safety: { enabled: false, hard: false }, sortBy: 'best_match', fieldSources: {}, droppedRequests: [] };
   const source = (field: string, phrase: string) => { intent.fieldSources[field] = { source: 'ai_prompt', phrase }; };
@@ -100,39 +90,27 @@ export function fallbackParse(rawPrompt: string, now = new Date(), catalogue: Ci
     const newest = rawPrompt.match(/\b(?:newest listings?|latest listings?|most recently (?:listed|seen)|recently listed|newest first)\b/i);
     if (value || newest) { intent.sortBy = value ? 'best_value' : 'newest'; source('sortBy', (value ?? newest)![0]); }
   }
-  const placeCount = [...rawPrompt.matchAll(/\b(?:university of toronto|uoft|u of t|york university|eaton cent(?:er|re)|union station|toronto general hospital|financial district|TD(?: Canada)?\s+(?:on|at))/gi)].length;
+  const matchedPlaces = placeCatalogue.mentions(rawPrompt).filter(match => !intent.areas.length || !configuredAreas[normalizePlaceName(match.query)]);
+  const placeCount = matchedPlaces.length;
   const placeContext = rawPrompt.replace(/\d+\s*(?:minutes?|mins?)\s+(?:by\s+)?(?:transit|drive|walk|bike|car|walking|biking)\s+to\s+(?:(?:a|the|nearest)\s+)?(?:supermarkets?|grocer(?:y|ies)|public schools?|schools?|parks?|subway|librar(?:y|ies)|pharmac(?:y|ies)|clinics?)\b/gi, '');
   const globalModes = placeCount <= 1 ? modes(placeContext) : [];
   const globalTime = placeContext.match(/(?:within|under|no (?:longer|more) than|at most)?\s*(\d+)\s*(?:minutes?|mins?)\b/i);
   const addTarget = (query: string, phrase: string, category?: TravelTarget['category'], localText = phrase) => {
-    const existing = intent.travelTargets.find(t => t.query?.toLowerCase() === query.toLowerCase() || category && t.category === category);
+    const existing = intent.travelTargets.find(t => t.query && normalizePlaceName(t.query) === normalizePlaceName(query) || category && t.category === category);
     const time = localText.match(/(\d+)\s*(?:minutes?|mins?)/i) ?? (!category && placeCount <= 1 ? globalTime : null);
     const selectedModes = modes(localText); const targetModes = selectedModes.length ? selectedModes : category ? ['walk' as const] : globalModes.length ? globalModes : time ? ['walk' as const] : ['transit' as const];
     if (existing) { if (time) { existing.mode = targetModes[0]; existing.alternativeModes = targetModes.length > 1 ? targetModes.slice(1) : undefined; existing.maxMinutes = Number(time[1]); existing.hard = hard(time[0]); source(`travelTargets.${existing.id}`, localText.trim()); } return; }
     const id = `target-${intent.travelTargets.length + 1}`;
     intent.travelTargets.push({ id, kind: category ? 'amenity' : 'place', label: query, ...(category ? { category, ...(category === 'school' ? { schoolLevel: 'any' as const } : {}) } : { query }), mode: targetModes[0], ...(targetModes.length > 1 ? { alternativeModes: targetModes.slice(1) } : {}), ...(time ? { maxMinutes: Number(time[1]) } : {}), hard: time ? hard(time[0]) : false }); source(`travelTargets.${id}`, phrase);
   };
-  const placePattern = /\b(?:university of toronto(?:\s+(?:st\.? george|scarborough|mississauga))?|uoft(?:\s+(?:st\.? george|scarborough|mississauga))?|u of t|york university(?:\s+(?:keele|glendon|markham))?|eaton cent(?:er|re)|union station|toronto general hospital|financial district|TD(?: Canada)?\s+(?:on|at)\s+bay\s*(?:st(?:reet)?\.?)?\s+and\s+queens?\s*(?:st(?:reet)?\.?)?\s*w\.?)\b/gi;
-  const matchedPlaces: { start: number; end: number }[] = [];
-  for (const m of rawPrompt.matchAll(placePattern)) {
-    const before = rawPrompt.slice(0, m.index); const after = rawPrompt.slice(m.index! + m[0].length);
-    const clause = before.slice(Math.max(before.lastIndexOf(','), before.lastIndexOf(';'), before.lastIndexOf(' and ')) + 1) + m[0] + after.split(/[,;.]|\band\b/i)[0];
-    addTarget(m[0], m[0], undefined, clause);
-    matchedPlaces.push({ start: m.index!, end: m.index! + m[0].length });
-  }
-  const promptWords = [...rawPrompt.matchAll(/[A-Za-z0-9]+(?:['’][A-Za-z0-9]+)*/g)].map(match => ({ word: normalizePlaceName(match[0]), start: match.index!, end: match.index! + match[0].length }));
-  for (let i = 0; i < promptWords.length; i++) {
-    if (matchedPlaces.some(match => promptWords[i].start >= match.start && promptWords[i].start < match.end)) continue;
-    const before = rawPrompt.slice(Math.max(0, promptWords[i].start - 48), promptWords[i].start);
-    if (!/\b(?:near|nearby|close to|around|by|commute to|walk to|within)\b/i.test(before)) continue;
-    const alias = placeAliases.get(promptWords[i].word)?.find(alias => alias.every((word, offset) => promptWords[i + offset]?.word === word));
-    if (!alias) continue;
-    const matched = rawPrompt.slice(promptWords[i].start, promptWords[i + alias.length - 1].end);
-    addTarget(matched, matched, undefined, `${before}${matched}`);
-    i += alias.length - 1;
+  for (const match of matchedPlaces) {
+    const before = rawPrompt.slice(0, match.start), after = rawPrompt.slice(match.end);
+    const clause = before.slice(Math.max(before.lastIndexOf(','), before.lastIndexOf(';'), before.lastIndexOf(' and ')) + 1) + match.query + after.split(/[,;.]|\band\b/i)[0];
+    addTarget(match.query, match.query, undefined, clause);
+    if (match.normalizedQuery) intent.travelTargets.find(t => t.query === match.query)!.normalizedQuery = match.normalizedQuery;
   }
   for (const [category, re] of [['grocery', /\b(?:groceries|grocery|supermarkets?)\b/gi], ['school', /\b(?:public school|schools?)\b/gi], ['park', /\bparks?\b/gi], ['rapid_transit', /\bsubway\b/gi], ['library', /\blibrar(?:y|ies)\b/gi], ['pharmacy', /\bpharmac(?:y|ies)\b/gi], ['clinic', /\bclinics?\b/gi]] as const) {
-    for (const m of rawPrompt.matchAll(re)) { if (category === 'rapid_transit' && /by\s*$/i.test(rawPrompt.slice(0, m.index))) continue; const before = rawPrompt.slice(0, m.index); const clause = before.slice(Math.max(before.lastIndexOf(','), before.lastIndexOf(';'), before.lastIndexOf(' and ')) + 1) + m[0]; addTarget(m[0], m[0], category, clause); }
+    for (const m of rawPrompt.matchAll(re)) { if (matchedPlaces.some(match => m.index! >= match.start && m.index! < match.end) || category === 'rapid_transit' && /by\s*$/i.test(rawPrompt.slice(0, m.index))) continue; const before = rawPrompt.slice(0, m.index); const clause = before.slice(Math.max(before.lastIndexOf(','), before.lastIndexOf(';'), before.lastIndexOf(' and ')) + 1) + m[0]; addTarget(m[0], m[0], category, clause); }
   }
   // Street abbreviations keep their dots; sentence ends and separately timed destinations stop capture.
   for (const m of rawPrompt.matchAll(/(\d+\s*(?:minutes?|mins?)\s+(?:(?:by\s+)?(?:transit|drive|walk|bike|car|walking|biking)\s+)?(?:to|of|from)\s+)((?:(?!\s+and\s+\d+\s*(?:minutes?|mins?)\b)(?:\b(?:st|ave|rd|blvd|dr|cres|ct|pl|hwy)\.(?=\s+\w)|[^,;.!?]))+)/gi)) {
