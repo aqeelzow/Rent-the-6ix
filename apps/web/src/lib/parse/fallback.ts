@@ -4,6 +4,7 @@ import { civicAreaMatches, type CivicArea } from './civic-areas';
 import { normalizePlace as normalizePlaceName } from './place-name';
 import { placeCatalogue, type PlaceMention } from './place-catalogue';
 import { namedParkMentions } from './named-parks';
+import { safetyPreference } from './safety-preference';
 
 // shortcut: configured search boxes are approximate, replace with agreed D-owned geographic areas when available.
 export const configuredAreas: Record<string, AreaFilter> = {
@@ -81,7 +82,7 @@ export function fallbackParse(rawPrompt: string, now = new Date(), catalogue: Ci
   for (const [field, pattern] of [['furnished', /\b(?:unfurnished|furnished)\b/i], ['parking', /\b(?:no parking|parking)\b/i], ['laundryInSuite', /\b(?:no in[- ]suite laundry|in[- ]suite laundry)\b/i], ['utilitiesIncluded', /\b(?:utilities (?:not )?included)\b/i]] as const) { const m = rawPrompt.match(pattern); if (m) put(field, !/^(no|un)|not/i.test(m[0]), m[0]); }
   const fairness = rawPrompt.match(/\b(?:only underpriced|not overpriced|reasonably priced|good deal|underpriced|overpriced)\b/i);
   if (fairness) put('priceFairness', /not overpriced/i.test(fairness[0]) ? ['underpriced', 'reasonable'] : /reasonably/i.test(fairness[0]) ? ['reasonable'] : /^overpriced/i.test(fairness[0]) ? ['overpriced'] : ['underpriced'], fairness[0], /only/i.test(fairness[0]) || (!/good deal/i.test(fairness[0]) && hard(fairness[0])));
-  const safety = rawPrompt.match(/\b(?:safety|safe (?:neighbourhood|area)|low crime|safer|below (?:the )?city (?:crime )?rate)\b/i); if (safety) { intent.safety = { enabled: true, hard: /below/i.test(safety[0]) }; source('safety', safety[0]); }
+  const safety = safetyPreference(rawPrompt); if (safety) { intent.safety = { enabled: safety.enabled, hard: safety.hard }; source('safety', safety.phrase); }
   const trueCost = rawPrompt.match(/\b(?:lowest|cheapest) true monthly cost\b/i);
   const shortest = rawPrompt.match(/\bshortest (?:trips?|commutes?|travel times?)\b/i);
   const cheapest = rawPrompt.match(/\b(?:cheapest|lowest (?:rent|cost))\b/i);

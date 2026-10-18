@@ -1,6 +1,7 @@
 import { type SearchIntent } from '../../../../../packages/shared/schemas/index';
 import { civicAreaMatches, type CivicArea } from './civic-areas';
 import { configuredAreas } from './fallback';
+import { safetyPreference } from './safety-preference';
 export function cleanAIIntent(intent: SearchIntent, prompt: string, catalogue: CivicArea[] = []): SearchIntent {
   const source = (key: string) => { const evidence = intent.fieldSources[key]; return evidence?.source === 'ai_prompt' && !!evidence.phrase && prompt.toLowerCase().includes(evidence.phrase.toLowerCase()); };
   const drop = (field: string) => intent.droppedRequests.push({ phrase: field, reason: 'AI interpretation lacked explicit source evidence; review this filter.' });
@@ -23,7 +24,11 @@ export function cleanAIIntent(intent: SearchIntent, prompt: string, catalogue: C
   }
   // Only the renter sets a safety limit (the slider); the AI never invents one.
   delete intent.safety.maxRelativeRate;
-  if (intent.safety.enabled && (!source('safety') || !/\b(?:safety|safe|safer|crime|city rate)\b/i.test(prompt))) { intent.safety = { enabled:false,hard:false }; drop('safety'); }
+  const safety = safetyPreference(prompt);
+  if (safety) {
+    intent.safety = { enabled: safety.enabled, hard: safety.hard };
+    intent.fieldSources.safety = { source: 'ai_prompt', phrase: safety.phrase };
+  } else if (intent.safety.enabled) { intent.safety = { enabled:false,hard:false }; drop('safety'); }
   if (intent.sortBy !== 'best_match' && !source('sortBy')) { intent.sortBy = 'best_match'; drop('sortBy'); }
   if (intent.numericExtreme && (!source('numericExtreme') || intent.numericExtreme.field === 'travel' && !intent.travelTargets.some(t => t.id === intent.numericExtreme?.targetId))) { delete intent.numericExtreme; drop('numericExtreme'); }
   // Model-selected weights can add implicit preferences; deterministic score defaults own weights.

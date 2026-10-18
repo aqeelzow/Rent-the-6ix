@@ -4,13 +4,22 @@ import { baseIntent, searchFixture } from '@rentthe6ix/shared/fixtures';
 import { needsReinterpretation, LAST_SEARCH_KEY, readLastSearch, writeLastSearch } from './persist';
 import { parseAndSearch, restoreSearch, runSearch } from './actions';
 import { createAppStore } from './store';
-import { ParseService } from '../parse';
+import { fallbackParse, ParseService } from '../parse';
 
 const prompt = 'near the cn tower';
 const failed = {
   ...structuredClone(baseIntent), rawPrompt: prompt,
   droppedRequests: [{ phrase: prompt, reason: 'Basic parser could not identify supported constraints; edit filters or clarify.' }],
 };
+
+test('saved searches that missed safety are reparsed while renter edits are preserved', () => {
+  const corrected = fallbackParse('under $1300, safe neighborhood');
+  const missed = { ...corrected, safety: { enabled: false, hard: false } };
+  assert.equal(needsReinterpretation(missed), true);
+  assert.equal(needsReinterpretation(corrected), false);
+  assert.equal(needsReinterpretation({ ...missed, fieldSources: { safety: { source: 'user' } } }), false);
+  assert.equal(needsReinterpretation(fallbackParse('under $1300')), false);
+});
 
 test('a previously saved failed CN Tower interpretation is parsed again and reaches search with its location', async () => {
   const parsed = await new ParseService().parse({ prompt }, 'test');
