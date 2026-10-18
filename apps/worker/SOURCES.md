@@ -1,5 +1,7 @@
 # SOURCES.md — listing sources: go / no-go
 
+**Search destinations:** `pnpm --filter worker data:known-places` merges the static destination catalogue from the City of Toronto Intersection File (Open Government Licence – Toronto), including all named multi-road intersections, and named OpenStreetMap parks, neighbourhoods, common landuse classes, landmarks, transit stations and notable restaurants (ODbL 1.0). Entries are merged by source ID, so old records survive refreshes and matching IDs get their updated source data. The OSM query is restricted to places tagged with `wikidata` for restaurants to keep the snapshot small; attribution is © OpenStreetMap contributors.
+
 All adapters use [CloakBrowser](https://github.com/CloakHQ/cloakbrowser) (stealth Chromium, driven through Playwright; `src/lib/fetch.ts`): one page per source, `INGEST_REQUEST_DELAY_MS` between requests, `USER_AGENT`, retries on network errors and 5xx. Kijiji, Zillow and Realtor.ca also fetch each new or changed listing's own page for the full description and amenities (`INGEST_MAX_DETAILS` per run; contact fields never read). A 401/403/429 or a bot-check page (Cloudflare, captcha) stops the source for that run and marks it `unhealthy` (no retries, captcha solving or proxies on top of CloakBrowser).
 
 Checked 2026-10-16 with `pnpm ingest:once --sources kijiji,torontorentals,rentals_ca,zillow,realtor_ca --pages 2` (plain Playwright); rentals_ca, zillow and realtor_ca rechecked with CloakBrowser, `--pages 1`.

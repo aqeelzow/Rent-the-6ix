@@ -292,6 +292,16 @@ test('plain monthly budgets parse without currency signs and do not consume home
 });
 
 
+test('known places use the longest name without adding overlapping aliases', async () => {
+  const prompt = 'room near the university of toronto';
+  const result = await new ParseService({ provider: new NoneProvider() }).parse({ prompt }, 'overlapping-places');
+  assert.deepEqual(result.intent.travelTargets.map(t => t.query), ['university of toronto']);
+  assert.equal(result.destinations.length, 1);
+  assert.equal(result.destinations[0].resolution.status, 'resolved');
+  assert.deepEqual(fallbackParse('room near kensington market').travelTargets.map(t => t.query), ['kensington market']);
+  assert.deepEqual(fallbackParse('room near the university of toronto and near union station').travelTargets.map(t => t.query), ['university of toronto', 'union station']);
+});
+
 test('timed destinations preserve street dots without duplicate campuses or merged trips', async () => {
   const campus = await new ParseService({ provider: new NoneProvider() }).parse({ prompt: 'Within 25 minutes by transit to UofT St. George.' }, 'destination-regression');
   assert.equal(campus.intent.travelTargets.length, 1);

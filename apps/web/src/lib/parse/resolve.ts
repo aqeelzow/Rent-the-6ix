@@ -1,14 +1,20 @@
 import { z } from 'zod';
 import knownPlaces from './known_places.json';
+import generatedPlaces from './known_places.generated.json';
 import { DestinationResolutionSchema, DestinationChoiceSchema, type DestinationResolution } from '../../../../../packages/shared/schemas/index';
 import { distanceM } from '../../../../../packages/shared/engine/travel';
 import { MemoryCache, inputHash, type Cache } from './cache';
-const places = z.array(z.object({ id: z.string(), label: z.string(), aliases: z.array(z.string()), group: z.string().optional(), primary: z.boolean().optional(), lng: z.number(), lat: z.number() })).parse(knownPlaces);
+const places = z.array(z.object({ id: z.string(), label: z.string(), aliases: z.array(z.string()), group: z.string().optional(), primary: z.boolean().optional(), lng: z.number(), lat: z.number() })).parse([...knownPlaces, ...generatedPlaces]);
 export const normalizePlace = (query: string) => query.toLowerCase().replace(/[^a-z0-9 ]/g, '').replace(/\s+/g, ' ').trim();
 const choice = (p: typeof places[number]) => DestinationChoiceSchema.parse({ id: p.id, label: p.label, resolved: { lng: p.lng, lat: p.lat, source: 'known_place', representativePoint: true, label: p.label } });
 function knownResolution(normalized: string, query: string, preferPrimaryCampus: boolean): DestinationResolution | undefined {
   const known = places.filter(p => [...p.aliases, p.label, p.label.replace(/ representative point$/, '')].some(a => normalizePlace(a) === normalized));
   if (known.length === 1) return { status: 'resolved', query, destination: choice(known[0]) };
+  if (known.length > 1) {
+    const choices = known.map(choice);
+    if (choices.every(a => choices.every(b => distanceM(a.resolved, b.resolved) <= 250))) return { status: 'resolved', query, destination: choices[0] };
+    return { status: 'ambiguous', query, choices };
+  }
   const group = /^(university of toronto|uoft|u of t)$/.test(normalized) ? 'University of Toronto' : /^(york|york university)$/.test(normalized) ? 'York University' : undefined;
   if (group) {
     const members = places.filter(p => p.group === group), primary = members.filter(p => p.primary);
