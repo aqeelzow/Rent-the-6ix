@@ -1,7 +1,7 @@
 import { getClient } from '../db';
 import { MemoryCache, inputHash } from '../parse/cache';
 import type { ScoreContext } from '../../../../../packages/shared/engine/score';
-import { listingContext } from './valuation';
+import { listingContext, listingContexts } from './valuation';
 import { CaveatSchema, ValuationSchema, type Listing, type SearchIntent } from '../../../../../packages/shared/schemas/index';
 import { SearchUnavailable, type SearchDependencies } from './candidates';
 import { sqlDetailLoader } from './candidates-detail';
@@ -25,6 +25,32 @@ export function sqlSearchDependencies(client: typeof getClient = getClient, crim
     loadCandidates: sqlCandidateLoader(client),
     // No stored travel adapter is published yet; both stages explicitly expose unknown time.
     filterContext: async (listing, intent) => ({ travel: [], safety: intent.safety.enabled ? safetyForListing(await crimeTable().catch(() => null), listing.neighbourhoodId).safety : null }),
+    // Ordinary search: value every candidate from one comparable read and two fact reads.
+    enrichMany: async (listings, intent, signal) => {
+      if (signal?.aborted) throw new SearchUnavailable('Listing context is unavailable');
+      try {
+        const sql = client();
+        if (!sql) throw new SearchUnavailable('Database is unavailable');
+        const owners = await listingContexts(sql, listings);
+        if (signal?.aborted) throw new SearchUnavailable('Listing context cancelled');
+        const contexts = new Map<string, ScoreContext>();
+        for (const listing of listings) {
+          const owner = owners.get(listing.id);
+          if (!owner) throw new SearchUnavailable('Listing context is unavailable');
+          // Same schema check as the single-listing path: malformed owner rows fail the search
+          // privately instead of reaching a card.
+          contexts.set(listing.id, await withSafety({
+            valuation: ValuationSchema.parse(owner.valuation),
+            caveats: owner.caveats.map(caveat => CaveatSchema.parse(caveat)),
+            travel: [], safety: null,
+          }, listing, intent));
+        }
+        return contexts;
+      } catch (error) {
+        if (error instanceof SearchUnavailable) throw error;
+        throw new SearchUnavailable('Listing context is unavailable');
+      }
+    },
     enrich: async (listing, intent, signal) => {
       let abort: (() => void) | undefined;
       try {

@@ -24,11 +24,16 @@ export class GeminiProvider implements AIProvider {
       throw new AIUnavailable('configuration');
     }
     const controller = new AbortController();
-    const budget = Math.min(opts.fast ? 10000 : 12000, Math.max(1, this.config.deadlineMs ?? 12000));
+    // A search is interactive: the basic parser is a complete fallback, so waiting 10 s for a
+    // slow model is worse than answering with it. Fast requests get 4.5 s including the retry.
+    const budget = Math.min(opts.fast ? 4500 : 8000, Math.max(1, this.config.deadlineMs ?? 8000));
     let timer: ReturnType<typeof setTimeout>;
     const timeout = new Promise<never>((_, reject) => { timer = setTimeout(() => { controller.abort(); reject(new AIUnavailable('timeout')); }, budget); });
     const request = async () => {
-      for (let attempt = 0; attempt < 2; attempt++) {
+      // Interactive parsing takes one attempt: the deterministic parser is a complete answer, so a
+      // second model call is latency without a guarantee. Background text may still retry.
+      const attempts = opts.fast ? 1 : 2;
+      for (let attempt = 0; attempt < attempts; attempt++) {
         let response: Response;
         try {
           response = await (this.config.fetch ?? fetch)(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
