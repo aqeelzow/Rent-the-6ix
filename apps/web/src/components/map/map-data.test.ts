@@ -31,18 +31,17 @@ describe("scoreBand", () => {
 });
 
 describe("resultsToGeoJSON", () => {
-  it("draws exact locations as pins and approximate ones as circles", () => {
+  it("draws every listing as a dot, and approximate ones also get their area circle", () => {
     const { points, areas } = resultsToGeoJSON(results);
-    expect(points.features.length + areas.features.length).toBe(results.length);
+    expect(points.features).toHaveLength(results.length);
     for (const feature of points.features) {
       const listing = results.find((r) => r.listing.id === feature.properties.id)!.listing;
-      expect(listing.locationPrecision).toBe("exact");
       expect(feature.geometry.coordinates).toEqual([listing.location.lng, listing.location.lat]);
     }
-    for (const feature of areas.features) {
-      const listing = results.find((r) => r.listing.id === feature.properties.id)!.listing;
-      expect(listing.locationPrecision).not.toBe("exact");
-    }
+    const approximate = results.filter((r) => r.listing.locationPrecision !== "exact");
+    expect(areas.features.map((f) => f.properties.id).sort()).toEqual(
+      approximate.map((r) => r.listing.id).sort(),
+    );
   });
 
   it("carries the id and score band for colouring and selection", () => {

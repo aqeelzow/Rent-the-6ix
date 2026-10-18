@@ -67,7 +67,10 @@ export function circlePolygon(
   return ring;
 }
 
-/** Exact listings become clustered pins; street- or area-level ones become circles. */
+/**
+ * Every listing is a clustered dot. Street- or area-level ones also get their approximate-area
+ * circle, which the map shows only for the listing that's selected or hovered.
+ */
 export function resultsToGeoJSON(results: SearchResultItem[]): {
   points: PointCollection;
   areas: AreaCollection;
@@ -80,14 +83,13 @@ export function resultsToGeoJSON(results: SearchResultItem[]): {
       band: scoreBand(matchScore.total),
       total: matchScore.total,
     };
-    if (listing.locationPrecision === "exact") {
-      points.features.push({
-        type: "Feature",
-        id: listing.id,
-        properties,
-        geometry: { type: "Point", coordinates: [listing.location.lng, listing.location.lat] },
-      });
-    } else {
+    points.features.push({
+      type: "Feature",
+      id: listing.id,
+      properties,
+      geometry: { type: "Point", coordinates: [listing.location.lng, listing.location.lat] },
+    });
+    if (listing.locationPrecision !== "exact") {
       areas.features.push({
         type: "Feature",
         id: listing.id,

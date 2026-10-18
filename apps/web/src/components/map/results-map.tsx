@@ -384,6 +384,8 @@ export function ResultsMap({ className = "" }: { className?: string }) {
     const filter: FilterSpecification = ["in", ["get", "id"], ["literal", ids]];
     const pinFilter: FilterSpecification = ["all", ["!", ["has", "point_count"]], filter];
     map.setFilter("pins-active", pinFilter);
+    map.setFilter("approx-fill", filter);
+    map.setFilter("approx-line", filter);
     map.setFilter("approx-active-fill", filter);
     map.setFilter("approx-active", filter);
     // A halo and centre dot mark each highlighted listing, approximate circles included.
@@ -407,8 +409,6 @@ export function ResultsMap({ className = "" }: { className?: string }) {
       ids.length ? ["case", active, on, off] : on;
     map.setPaintProperty("pins", "circle-opacity", faded(1, 0.3));
     map.setPaintProperty("pins", "circle-stroke-opacity", faded(1, 0.3));
-    map.setPaintProperty("approx-fill", "fill-opacity", faded(0.25, 0.08));
-    map.setPaintProperty("approx-line", "line-opacity", faded(1, 0.3));
   }, [ready, hovered, selected, results]);
 
   return (
@@ -541,16 +541,19 @@ function addLayers(map: MapLibreMap) {
   });
   map.addSource("approx", { type: "geojson", data: empty });
 
+  // Approximate-area circles are hidden until their listing is selected or hovered.
   map.addLayer({
     id: "approx-fill",
     type: "fill",
     source: "approx",
+    filter: ["in", ["get", "id"], ["literal", []]],
     paint: { "fill-color": bandColor, "fill-opacity": 0.25 },
   });
   map.addLayer({
     id: "approx-line",
     type: "line",
     source: "approx",
+    filter: ["in", ["get", "id"], ["literal", []]],
     paint: { "line-color": bandColor, "line-width": 1.5 },
   });
   map.addLayer({
