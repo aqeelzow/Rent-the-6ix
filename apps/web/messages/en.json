@@ -365,7 +365,22 @@
       "areaHelp": "Areas come from your request. Picking neighbourhoods on a map comes with the explorer.",
       "noAreas": "All of Toronto.",
       "removeArea": "Remove {label}",
-      "sortBy": "Sort by"
+      "sortBy": "Sort by",
+      "priorities": {
+        "title": "What matters most",
+        "help": "Drag to change how much each part counts in the match score. A part that doesn't apply to your search is skipped and the others share its weight.",
+        "parts": {
+          "value": "Value (price vs similar listings)",
+          "price": "Your budget",
+          "travel": "Getting to your places",
+          "home": "The home itself",
+          "safety": "Safety"
+        },
+        "share": "{share}% of the score",
+        "safetyOff": "Turn on safety to use",
+        "allZero": "At least one part needs some weight.",
+        "reset": "Reset to defaults"
+      }
     },
     "summaryLabel": "Your filters",
     "summaryMore": "and {count} more",
