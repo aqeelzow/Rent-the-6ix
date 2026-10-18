@@ -7,6 +7,7 @@ import { caveats } from '../../../../../packages/shared/engine/caveats';
 import { scoreListing } from '../../../../../packages/shared/engine/score';
 import { distanceM, targetModes } from '../../../../../packages/shared/engine/travel';
 import { ParseService, DestinationResolver, IpLimiter } from '../parse/index';
+import { inputHash } from '../parse/cache';
 import { databaseIntentCache } from '../parse/db-cache';
 import { providerFromEnv } from '../ai/index';
 import { ExplanationService } from '../ai/explain';
@@ -46,6 +47,10 @@ export function createRuntime(options: RuntimeOptions = {}) {
   const parser = options.parser ?? new ParseService({ provider: providerFromEnv(env), resolver, civicAreas: env.SEARCH_FIXTURES !== '1' && env.DATABASE_URL ? civicAreasLookup() : undefined, cacheNamespace: `${env.AI_PROVIDER}:${env.GEMINI_MODEL_FAST ?? env.GEMINI_MODEL}`, intentCache: env.SEARCH_FIXTURES !== '1' && env.DATABASE_URL && env.AI_PROVIDER === 'gemini' ? databaseIntentCache() : undefined });
   const explainer = new ExplanationService(options.explainProvider ?? providerFromEnv(env), `${env.AI_PROVIDER}:${env.GEMINI_MODEL_FAST ?? env.GEMINI_MODEL}`, env.SEARCH_FIXTURES !== '1' && env.DATABASE_URL && env.AI_PROVIDER === 'gemini' ? databaseExplanationCache() : undefined);
   const jobs = options.jobs ?? new SearchJobs();
+  // Identical searches (a reload, Back from a listing, React running an effect twice) answer from
+  // memory. Rent and availability change slowly; 60 s is short enough to stay honest.
+  const searchCache = new Map<string, { expires: number; value: unknown }>();
+  const SEARCH_CACHE_TTL_MS = 60_000, SEARCH_CACHE_SIZE = 64;
   // Wired on the base dependencies, not only when a router is: a card the router never reached must
   // still show a distance rather than a blank, and there is no router by default.
   const dependencies = options.dependencies ?? (env.SEARCH_FIXTURES === '1' ? fixtureDependencies : env.DATABASE_URL ? { ...sqlSearchDependencies(), amenityDistances: amenityDistances() } : undefined);
@@ -101,8 +106,14 @@ export function createRuntime(options: RuntimeOptions = {}) {
         startLimiter.check(identity(raw));
         return jobs.start((signal, deadline) => searchPercentileCandidates(request, deps, { referenceYear: new Date().getUTCFullYear(), deadline, signal }));
       }
+      const cacheKey = inputHash(JSON.stringify([request.intent, request.hideUnconfirmed]));
+      const hit = searchCache.get(cacheKey);
+      if (hit && hit.expires > Date.now()) return hit.value;
       try {
-        return request.intent.numericExtreme ? await searchPercentileCandidates(request, deps, { referenceYear: new Date().getUTCFullYear() }) : SearchResponseSchema.parse({ status: 'completed', ...await searchCandidates(request, deps) });
+        const response = request.intent.numericExtreme ? await searchPercentileCandidates(request, deps, { referenceYear: new Date().getUTCFullYear() }) : SearchResponseSchema.parse({ status: 'completed', ...await searchCandidates(request, deps) });
+        if (searchCache.size >= SEARCH_CACHE_SIZE) searchCache.delete(searchCache.keys().next().value!);
+        searchCache.set(cacheKey, { expires: Date.now() + SEARCH_CACHE_TTL_MS, value: response });
+        return response;
       } catch (error) { if (error instanceof SearchUnavailable) throw new ApiError(503, 'service_unavailable', 'This search is temporarily unavailable'); throw error; }
     }),
     poll: jsonRoute<undefined, { params: Promise<{ token: string }> }>({ name: 'listings.search.jobs', rateLimit: request => pollLimiter.check(identity(request)) }, async (_input, _request, context) => jobs.poll(token.parse(await context.params).token)),

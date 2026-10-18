@@ -75,7 +75,12 @@ test.skipIf(process.env.RUN_LIVE_SEARCH_BENCHMARK !== '1')('live search and deta
       assert.equal(detailResponse.status, 200);
       const detail = DetailResponseSchema.parse(await detailResponse.json());
       assert.deepEqual(detail.valuation.benchmark, result.valuation.benchmark);
-      assert.deepEqual(detail.valuation, result.valuation);
+      // Search cards carry the price label and counts; the detail response carries every comparable.
+      const { comparables: searchComparables, ...searchScalars } = result.valuation;
+      const { comparables: detailComparables, ...detailScalars } = detail.valuation;
+      assert.deepEqual(searchScalars, detailScalars);
+      assert.deepEqual(searchComparables, detailComparables.slice(0, searchComparables.length));
+      assert.ok(searchComparables.length <= 3);
     }
     console.info(JSON.stringify({ feature: 'P2.3 benchmark consumption', database: 'live', rentRows: rows.length, sampledListings: listings.length, actualValuations: valued, askingOnly: true, searchDetailEqual: true, valuationUnchanged: true }));
   } finally { clearValuationCache(); api.jobs.dispose(); await sql.end({ timeout: 2 }); }

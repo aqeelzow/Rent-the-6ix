@@ -2,7 +2,7 @@ import { ListingSchema, SearchRequestSchema, SearchResponseSchema, TravelTimeRow
 import { filterListing } from '../../../../../packages/shared/engine/filters';
 import { scoreListing, selectPercentile, type ScoreContext } from '../../../../../packages/shared/engine/score';
 import { distanceM, targetModes, targetDistanceM, estimateTravelMinutes } from '../../../../../packages/shared/engine/travel';
-import { fillAmenityDistances, fillDistanceRows, mapCandidatePool, type SearchDependencies } from './candidates';
+import { fillAmenityDistances, fillDistanceRows, mapCandidatePool, searchValuation, type SearchDependencies } from './candidates';
 import { engineConfig } from '../../../../../packages/shared/engine/config';
 
 export type PercentileExecution = { referenceYear: number; deadline?: number; signal?: AbortSignal };
@@ -81,7 +81,7 @@ export async function searchPercentileCandidates(input: SearchRequest, dependenc
     });
     return SearchResponseSchema.parse({ status: 'completed', results: selected.map(listing => {
       const context = contexts.get(listing.id)!;
-      return { listing, valuation: context.valuation, safety: context.safety, travel: context.travel, matchScore: scoreListing(listing, intent, context) };
+      return { listing, valuation: searchValuation(context.valuation), safety: context.safety, travel: context.travel, matchScore: scoreListing(listing, intent, context) };
     }), eligibleCount: selectBeforeEnrichment ? cheapPool.length : filtered.length, notices: ['Travel times are distance-based estimates, without live traffic or timetables.'] });
   };
   if (!exactTravel) return work();
