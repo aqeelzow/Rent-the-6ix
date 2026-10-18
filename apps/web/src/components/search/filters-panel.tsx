@@ -764,17 +764,28 @@ function PriorityRow({
 /** The Safety section's switch; the priorities' "Turn on safety to use" scrolls to it. */
 const SAFETY_SWITCH_ID = "filters-safety-switch";
 
+const SAFETY_ROW_ID = "filters-safety-row";
+/** Classes the Safety row flashes when the priorities send the renter to it. */
+const HIGHLIGHT = ["bg-primary/10", "ring-2", "ring-primary"];
+
 function goToSafety() {
   const toggle = document.getElementById(SAFETY_SWITCH_ID);
+  const row = document.getElementById(SAFETY_ROW_ID);
   toggle?.scrollIntoView({ behavior: "smooth", block: "center" });
   toggle?.focus({ preventScroll: true });
+  if (!row) return;
+  row.classList.add(...HIGHLIGHT);
+  window.setTimeout(() => row.classList.remove(...HIGHLIGHT), 1600);
 }
 
 function SafetySection({ draft, edit }: SectionProps) {
   const { enabled, hard } = draft.safety;
   return (
     <PanelSection title={p("sections.safety")}>
-      <div className="flex flex-col gap-2">
+      <div
+        id={SAFETY_ROW_ID}
+        className="-m-2 flex flex-col gap-2 rounded-lg p-2 transition-[background-color,box-shadow] duration-700"
+      >
         <div className="flex items-center justify-between gap-3">
           <Label htmlFor={SAFETY_SWITCH_ID}>{p("safetyToggle")}</Label>
           <Switch
