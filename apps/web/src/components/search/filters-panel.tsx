@@ -799,7 +799,8 @@ function SafetySection({ draft, edit }: SectionProps) {
           {p("safetyHelp")} <SafetyInfoButton />
         </p>
       </div>
-      {enabled && <CrimeDisclaimer />}
+      {/* Shown whether or not safety is on, so it's read before turning it on. */}
+      <CrimeDisclaimer />
       {enabled && (
         <SafetyLimit
           value={hard ? (draft.safety.maxRelativeRate ?? SAFETY.hardMaxRelativeRate) : null}
