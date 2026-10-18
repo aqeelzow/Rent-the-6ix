@@ -21,7 +21,8 @@ import { formatCad, formatCount } from "@/lib/format/number";
 import { redactIntent } from "@/lib/store/actions";
 import type { DetailResponse, SearchIntent, SearchResultItem } from "@/lib/store/types";
 import { AdjustmentBars, PricePosition } from "./detail-charts";
-import { homeFields, scoreBreakdown } from "./detail-data";
+import { homeFields } from "./detail-data";
+import { ScoreBreakdown } from "@/components/results/score-breakdown";
 
 // The sections of the listing detail page, in SPEC 11.3 order. Every figure comes from B's,
 // C's or D's data; these components only word and arrange it.
@@ -30,14 +31,6 @@ const l = (key: string, params?: Record<string, string | number>) =>
   t(`listing.${key}` as MessageKey, params);
 const decimal = new Intl.NumberFormat("en-CA", { maximumFractionDigits: 1 });
 const km = (metres: number) => decimal.format(metres / 1000);
-
-const partColors = {
-  value: "bg-score-value",
-  price: "bg-score-price",
-  travel: "bg-score-travel",
-  home: "bg-score-home",
-  safety: "bg-score-safety",
-} as const;
 
 const caveatStyles = {
   info: "bg-caveat-info text-caveat-info-foreground",
@@ -80,52 +73,11 @@ export function WhyItRanksContent({
   result: SearchResultItem;
   intent: SearchIntent | null;
 }) {
-  const { parts, omitted } = scoreBreakdown(result.matchScore);
   return (
     <div className="flex flex-col gap-3">
       <p className="font-semibold">{l("sections.why")}</p>
       <ExplanationSlot listingId={result.listing.id} intent={intent} />
-      <ul className="flex flex-col gap-3">
-        {parts.map((part) => (
-          <li key={part.id} className="flex flex-col gap-1.5">
-            <span className="flex items-center justify-between gap-3">
-              <span className="flex items-center gap-2 font-medium">
-                <span aria-hidden className={`size-2.5 rounded-full ${partColors[part.id]}`} />
-                {t(`results.parts.${part.id}` as MessageKey)}
-              </span>
-              <span className="figures text-sm font-semibold">
-                {l("why.points", { points: formatCount(part.points) })}
-              </span>
-            </span>
-            <span aria-hidden className="bg-muted block h-1.5 overflow-hidden rounded-full">
-              <span
-                className={`${partColors[part.id]} block h-full rounded-full`}
-                style={{ width: `${part.score}%` }}
-              />
-            </span>
-            <span className="text-muted-foreground figures text-xs">
-              {l("why.part", {
-                score: formatCount(part.score),
-                weight: formatCount(part.effectiveWeight * 100),
-              })}
-            </span>
-            {part.evidence.length > 0 && (
-              <ul className="text-muted-foreground list-disc pl-4 text-xs">
-                {part.evidence.map((line) => (
-                  <li key={line}>{line}</li>
-                ))}
-              </ul>
-            )}
-          </li>
-        ))}
-      </ul>
-      {omitted.length > 0 && (
-        <p className="text-muted-foreground border-t pt-2 text-xs">
-          {l("why.omitted", {
-            parts: omitted.map((id) => t(`results.parts.${id}` as MessageKey)).join(", "),
-          })}
-        </p>
-      )}
+      <ScoreBreakdown matchScore={result.matchScore} />
     </div>
   );
 }

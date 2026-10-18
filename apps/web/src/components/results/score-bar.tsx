@@ -1,23 +1,15 @@
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { t, type MessageKey } from "@/lib/format/messages";
 import { formatCount } from "@/lib/format/number";
 import type { SearchResultItem } from "@/lib/store/types";
 import { scoreSegments } from "./card-data";
-
-const partColors = {
-  value: "bg-score-value",
-  price: "bg-score-price",
-  travel: "bg-score-travel",
-  home: "bg-score-home",
-  safety: "bg-score-safety",
-} as const;
+import { ScoreBreakdown, partColors } from "./score-breakdown";
 
 /**
  * Match score with a bar segmented by part (vertical, or a horizontal row on result cards);
- * hovering or focusing it lists each part. Segments are score × effective weight, so together
+ * opening it explains each part. Segments are score × effective weight, so together
  * they fill exactly `total` percent of the bar; the number and an aria label carry the same
  * information as the colours.
- * Lives inside a TooltipProvider (the root layout has one).
  */
 export function ScoreBar({
   matchScore,
@@ -40,9 +32,9 @@ export function ScoreBar({
     .join(", ");
 
   return (
-    <Tooltip>
-      {/* A button so the breakdown also opens by keyboard; it sits above the card's link. */}
-      <TooltipTrigger asChild>
+    <Popover>
+      {/* A button so the breakdown opens by touch and keyboard, above the card's link. */}
+      <PopoverTrigger asChild>
         {orientation === "horizontal" ? (
           <button
             type="button"
@@ -85,25 +77,14 @@ export function ScoreBar({
             </span>
           </button>
         )}
-      </TooltipTrigger>
-      <TooltipContent
+      </PopoverTrigger>
+      <PopoverContent
         side={orientation === "horizontal" ? "top" : "left"}
-        className="flex-col items-stretch gap-1.5 py-2"
+        className="max-h-[70dvh] w-96 max-w-[calc(100vw-2rem)] overflow-y-auto"
       >
         <p className="font-semibold">{t("results.scoreBreakdown", { total: matchScore.total })}</p>
-        <ul className="flex flex-col gap-1">
-          {/* Top to bottom in the same order as the bar, highest segment first. */}
-          {[...segments].reverse().map((segment) => (
-            <li key={segment.id} className="flex items-center gap-2">
-              <span aria-hidden className={`size-2.5 rounded-full ${partColors[segment.id]}`} />
-              <span className="flex-1">{t(`results.parts.${segment.id}` as MessageKey)}</span>
-              <span className="figures font-medium">
-                {t("results.scorePoints", { points: formatCount(segment.points) })}
-              </span>
-            </li>
-          ))}
-        </ul>
-      </TooltipContent>
-    </Tooltip>
+        <ScoreBreakdown matchScore={matchScore} />
+      </PopoverContent>
+    </Popover>
   );
 }
