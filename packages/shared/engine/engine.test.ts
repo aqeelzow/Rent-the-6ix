@@ -4,7 +4,7 @@ import { baseIntent, sampleListings, valuations, travelIntent, safetySearchFixtu
 import { ListingSchema, MatchScoreSchema, SearchIntentSchema, type SearchIntent, type Listing, type TravelTimeRow } from '../schemas/index';
 import { homeFit, roomsScore, sizeScore, unitTypeMatch } from './home-fit';
 import { filterListing } from './filters';
-import { bestMatchOrder, confirmedFieldCount, scoreListing, tieBreak, valueScore } from './score';
+import { bestMatchOrder, confirmedFieldCount, scoreListing, scoreWeights, tieBreak, valueScore } from './score';
 import { defaultMinutes, evaluateTarget, travelScore } from './travel';
 const listing = sampleListings[1];
 const intent = (criteria: object) => SearchIntentSchema.parse({ ...baseIntent, criteria });
@@ -145,4 +145,11 @@ test('Rent verification threshold keeps a neutral value without dropping the cav
     assert.deepEqual(score.caveats, [caveat]);
     assert.equal(score.total, Math.round(score.parts.reduce((sum, p) => sum + (p.score ?? 0) * p.effectiveWeight, 0)));
   }
+});
+test('scoreWeights: defaults, a good-deal or safety opt-in, then the renter\'s sliders; safety stays 0 when off', () => {
+  assert.deepEqual(scoreWeights(baseIntent), { value: 30, price: 15, travel: 30, home: 25, safety: 0 });
+  assert.equal(scoreWeights(intent({ priceFairness: { value: ['underpriced'], hard: false } })).value, 45);
+  assert.equal(scoreWeights({ ...baseIntent, safety: { enabled: true, hard: false } }).safety, 15);
+  const own = { value: 10, price: 0, travel: 80, home: 10, safety: 50 };
+  assert.deepEqual(scoreWeights({ ...baseIntent, weights: own }), { ...own, safety: 0 });
 });

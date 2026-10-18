@@ -46,7 +46,11 @@ export function scoreBand(total: number): ScoreBand {
 }
 
 type Position = [number, number];
-type Props = { id: string; band: ScoreBand; total: number };
+/**
+ * `approx`: the location is street- or area-level, so the dot is drawn lighter; `radiusM` is how
+ * far the unit may be from the dot (0 for a confirmed address).
+ */
+type Props = { id: string; band: ScoreBand; total: number; approx: boolean; radiusM: number };
 export type PointCollection = FeatureCollection<Point, Props>;
 export type AreaCollection = FeatureCollection<Polygon, Props>;
 
@@ -67,7 +71,10 @@ export function circlePolygon(
   return ring;
 }
 
-/** Exact listings become clustered pins; street- or area-level ones become circles. */
+/**
+ * Every listing is a clustered dot. Street- or area-level ones also get their approximate-area
+ * circle, which the map shows only for the listing that's selected or hovered.
+ */
 export function resultsToGeoJSON(results: SearchResultItem[]): {
   points: PointCollection;
   areas: AreaCollection;
@@ -79,15 +86,17 @@ export function resultsToGeoJSON(results: SearchResultItem[]): {
       id: listing.id,
       band: scoreBand(matchScore.total),
       total: matchScore.total,
+      approx: listing.locationPrecision !== "exact",
+      radiusM:
+        listing.locationPrecision === "exact" ? 0 : APPROX_RADIUS_M[listing.locationPrecision],
     };
-    if (listing.locationPrecision === "exact") {
-      points.features.push({
-        type: "Feature",
-        id: listing.id,
-        properties,
-        geometry: { type: "Point", coordinates: [listing.location.lng, listing.location.lat] },
-      });
-    } else {
+    points.features.push({
+      type: "Feature",
+      id: listing.id,
+      properties,
+      geometry: { type: "Point", coordinates: [listing.location.lng, listing.location.lat] },
+    });
+    if (listing.locationPrecision !== "exact") {
       areas.features.push({
         type: "Feature",
         id: listing.id,

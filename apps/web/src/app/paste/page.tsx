@@ -1,9 +1,6 @@
-import type { Metadata } from "next";
-import { PasteView } from "@/components/paste/paste-view";
-import { t } from "@/lib/format/messages";
+import { redirect } from "next/navigation";
 
-export const metadata: Metadata = { title: t("layout.nav.paste") };
-
+// Paste a listing is switched off (team decision, 2026-10-17); old links land on search.
 export default function PastePage() {
-  return <PasteView />;
+  redirect("/search");
 }

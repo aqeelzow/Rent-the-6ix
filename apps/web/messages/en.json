@@ -104,7 +104,6 @@
     "uninterpreted": "We couldn't interpret your request, so no search was run. Try interpreting it again or change your request.",
     "parsing": "Reading your request…",
     "searching": "Finding listings…",
-    "basicSearch": "AI wasn't used for this search",
     "count": "Showing {shown} of {eligible} matching listings",
     "noResults": "No listings match all of your must-haves. Try turning one into a preference.",
     "retry": "Try again",
@@ -162,11 +161,11 @@
       "lastRunCounts": "Last run",
       "collectedStored": "{collected} collected, {stored} stored",
       "state": {
-        "ok": "Working",
+        "ok": "Healthy",
         "no_runs": "No runs recorded",
         "stale": "Behind",
         "empty": "No listings found",
-        "blocked": "Blocked",
+        "blocked": "Ongoing",
         "failed": "Failed"
       },
       "explain": {
@@ -366,7 +365,22 @@
       "areaHelp": "Areas come from your request. Picking neighbourhoods on a map comes with the explorer.",
       "noAreas": "All of Toronto.",
       "removeArea": "Remove {label}",
-      "sortBy": "Sort by"
+      "sortBy": "Sort by",
+      "priorities": {
+        "title": "What matters most",
+        "help": "Drag to change how much each part counts in the match score. A part that doesn't apply to your search is skipped and the others share its weight.",
+        "parts": {
+          "value": "Value (price vs similar listings)",
+          "price": "Your budget",
+          "travel": "Getting to your places",
+          "home": "The home itself",
+          "safety": "Safety"
+        },
+        "share": "{share}% of the score",
+        "safetyOff": "Turn on safety to use",
+        "allZero": "At least one part needs some weight.",
+        "reset": "Reset to defaults"
+      }
     },
     "summaryLabel": "Your filters",
     "summaryMore": "and {count} more",
@@ -484,7 +498,7 @@
       "high": "75 and up",
       "mid": "50 to 74",
       "low": "Under 50",
-      "approx": "Shaded circle: approximate location",
+      "approx": "Lighter dot: approximate location (tap to see the area)",
       "place": "Your places",
       "unavailable": "The map couldn't load. The list has every result.",
       "placePopup": "Your place",
@@ -504,7 +518,8 @@
         "hoverNoData": "{name}: no data",
         "source": "Toronto Police Service, {years} average, by neighbourhood.",
         "unavailable": "Crime rates couldn't be loaded. Try again later."
-      }
+      },
+      "approxTip": "Approximate location: within about {m} m"
     },
     "mobile": {
       "showMap": "Map",
@@ -711,11 +726,12 @@
     "chart": {
       "priceAria": "Chart: this listing at {rent} compared with {count} similar listings, adjusted to its terms.",
       "estimate": "Estimate {value}",
-      "comparableTip": "{adjusted} on this listing's terms (asks {rent}), {km} km away",
+      "comparableTip": "{adjusted} on this listing's terms (asks {rent}), {km} km away · click to open",
       "thisListing": "This listing {value}",
       "similar": "Similar listings",
       "range": "Typical range",
-      "rangeValue": "Typical range {low}–{high}"
+      "rangeValue": "Typical range {low}–{high}",
+      "openComparable": "Open the similar listing at {adjusted} on this listing's terms, {km} km away"
     },
     "stats": {
       "score": "Match score",
@@ -905,6 +921,115 @@
       "factorUnknown": "not quantified",
       "source": "source",
       "caveatsTitle": "What this does not include"
+    }
+  },
+  "dataPage": {
+    "title": "About the data",
+    "intro": "Every number on RentThe6ix comes from public data and our own code. Gemini reads your search and writes plain-language explanations, but it never produces a rent estimate, a travel time, a score or a ranking. AI interprets; code calculates.",
+    "contents": "On this page",
+    "sections": {
+      "datasets": "Datasets",
+      "listings": "Where the listings come from",
+      "rent": "How the rent check works",
+      "score": "How the match score works",
+      "travel": "Travel times",
+      "safety": "Safety",
+      "ai": "How we use AI",
+      "limits": "Limitations"
+    },
+    "datasets": {
+      "intro": "Each dataset below was loaded by a script that recorded its source, licence and the date we downloaded it.",
+      "period": "Period: {period}",
+      "retrieved": "Retrieved {date}",
+      "unavailable": "The dataset list couldn't be read from the database right now.",
+      "usedFor": {
+        "address-points": "Matching listing addresses to official City addresses and exact locations.",
+        "apartment-building-evaluation": "Each building's RentSafeTO inspection score and year built.",
+        "apartment-building-registration": "Linking listings to registered apartment buildings.",
+        "city-wards": "Ward boundaries for the area pages and ward facts.",
+        "development-applications": "What's being built nearby, on area pages.",
+        "library-branch-general-information": "Libraries as nearby places and travel targets.",
+        "neighbourhood-crime-rates": "Police-reported crime rates for the optional safety preference.",
+        "neighbourhood-profiles": "Renter share, rent burden and other neighbourhood facts from the 2021 Census.",
+        "neighbourhoods": "The 158 neighbourhood boundaries every listing is placed in.",
+        "openstreetmap": "Groceries, pharmacies and other everyday places near each listing.",
+        "parks-and-recreation-facilities": "Parks and recreation centres as nearby places.",
+        "school-locations-all-types": "Schools as nearby places and travel targets.",
+        "statcan-46100092": "The Toronto-area average asking rent shown under each rent check.",
+        "toronto-amr-utility-allowances": "Typical utility costs for the true monthly cost.",
+        "ttc-fares": "The TTC fare used in the true monthly cost.",
+        "ttc-routes-and-schedules": "TTC stops near each listing."
+      }
+    },
+    "listings": {
+      "intro": "We collect rental listings from the public pages of these sites. Each listing links back to its original post, where you contact the landlord.",
+      "site": "{shown} listings shown · last seen {when}",
+      "rules": {
+        "1": "We store a short excerpt of each description ({excerpt} characters at most), with phone numbers, emails and names removed. Contact details are never stored.",
+        "2": "Photos are never downloaded or stored: the cover photo is shown straight from the source site.",
+        "3": "The same unit listed on several sites is shown once, as its cheapest copy, unless that copy is more than {belowNext}% below the others (often a copied ad). The other copies and their prices appear under “Also on”.",
+        "4": "A listing not seen for {staleDays} days is marked stale, and after 21 days it is removed from search.",
+        "5": "If a site blocks or rate-limits our collector, it stops for that run. We never solve captchas or use proxies."
+      }
+    },
+    "rent": {
+      "intro": "We estimate what a listing should rent for from similar listings nearby that are still on the market. These are asking rents, not signed leases.",
+      "rules": {
+        "1": "Comparables have the same number of bedrooms (rooms are compared only with rooms), at most {bathrooms} bathroom more or less, and were seen in the last {windowDays} days.",
+        "2": "We search within {radii}, widening until there are at least {minComparables}. With fewer, the listing shows “Not enough data”.",
+        "3": "Closer, more recent and more similar listings count more. One building counts as at most {perBuilding} comparables, so a single tower can't set the price.",
+        "4": "Comparables are adjusted to the listing's terms: utilities included {utilities}, parking {parking}, furnished {furnished}, in-suite laundry {laundry} a month.",
+        "5": "The estimate is the weighted median. A listing more than {band}% below it is “Underpriced”, more than {band}% above is “Overpriced” ({lowBand}% when confidence is low), and in between “Reasonably priced”.",
+        "6": "More than {farBelow}% below the estimate is flagged “Unusually low for this area”: check that the listing is real before sending money.",
+        "7": "The Statistics Canada Toronto-area average asking rent is shown for context. It never changes the estimate."
+      }
+    },
+    "score": {
+      "intro": "Listings that fail one of your must-haves are left out. The rest get a match score from 0 to 100, made of five parts:",
+      "parts": {
+        "value": "Value ({weight}%, or {fairness}% if you ask for a good deal): the rent against our estimate.",
+        "price": "Price ({weight}%): how the rent sits against your budget, when the budget is a preference.",
+        "travel": "Travel ({weight}%): time to your places against your target.",
+        "home": "Home ({weight}%): how the unit matches your wishes: bedrooms, size, AC, laundry, pets and so on.",
+        "safety": "Safety (off, or {weight}% if you turn it on): the neighbourhood's crime rate against the city's."
+      },
+      "rules": {
+        "1": "A detail the listing doesn't state scores 50, halfway between a match and a miss. Unknown is never treated as “no”.",
+        "2": "A part with no data is left out and the others are scaled up, so the parts always add up to the total shown.",
+        "3": "Listings that confirm every must-have rank above ones that leave some unconfirmed. Ties go to higher price-check confidence, then more confirmed details, then the most recently seen."
+      }
+    },
+    "travel": {
+      "intro": "Travel times are estimates from the distance between the listing and the place, not routed trips:",
+      "mode": "{mode}: {speed} km/h along streets about {detour}× the straight-line distance, plus {overhead} min for waiting, parking or getting to the stop",
+      "note": "Real trips vary with routes, transfers, schedules and traffic. Driving times assume no traffic.",
+      "modeNoOverhead": "{mode}: {speed} km/h along streets about {detour}× the straight-line distance"
+    },
+    "safety": {
+      "body": "Safety is off unless you turn it on. It uses the Toronto Police Service's police-reported rates for five major crime types in the listing's neighbourhood, compared with the city average. Reported crime isn't all crime, rates move from year to year, and they say nothing about any street or building. We never call an area safe or unsafe."
+    },
+    "ai": {
+      "rules": {
+        "1": "Gemini turns your search into filters you can see and edit, and each one shows the words it came from.",
+        "2": "Gemini writes the short explanation of why a listing ranks where it does, from numbers our code computed. Explanations that mention a number are checked against those numbers.",
+        "3": "In our collector, Gemini reads listing descriptions to fill details the site doesn't list (utilities, laundry, parking and so on), and each value must quote the phrase it came from.",
+        "4": "What we send: your search text, and listing descriptions with contact details already removed. No account or personal data is sent. If Gemini is unavailable, a simpler non-AI version is used."
+      }
+    },
+    "limits": {
+      "rules": {
+        "1": "Rents are asking rents from listings, not what tenants actually pay.",
+        "2": "Locations come from the listing; an address we couldn't match to the City's records is shown as approximate.",
+        "3": "Listing sites differ in what they state, so many details are unknown. We mark them as unknown rather than guessing.",
+        "4": "Neighbourhood facts come from the 2021 Census and other dated sources; each shows its period.",
+        "5": "Building scores cover RentSafeTO's buildings only: apartment buildings with 3 or more storeys and 10 or more units."
+      }
+    },
+    "modes": {
+      "walk": "Walk",
+      "bike": "Bike",
+      "transit": "Transit",
+      "drive": "Car"
     }
   }
 }

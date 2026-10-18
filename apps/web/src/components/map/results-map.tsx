@@ -384,6 +384,8 @@ export function ResultsMap({ className = "" }: { className?: string }) {
     const filter: FilterSpecification = ["in", ["get", "id"], ["literal", ids]];
     const pinFilter: FilterSpecification = ["all", ["!", ["has", "point_count"]], filter];
     map.setFilter("pins-active", pinFilter);
+    map.setFilter("approx-fill", filter);
+    map.setFilter("approx-line", filter);
     map.setFilter("approx-active-fill", filter);
     map.setFilter("approx-active", filter);
     // A halo and centre dot mark each highlighted listing, approximate circles included.
@@ -403,12 +405,18 @@ export function ResultsMap({ className = "" }: { className?: string }) {
     (map.getSource("focus") as GeoJSONSource | undefined)?.setData(focus);
     // Fade every other listing while one is pointed at, so the active one stands out.
     const active: ExpressionSpecification = ["in", ["get", "id"], ["literal", ids]];
-    const faded = (on: number, off: number): ExpressionSpecification | number =>
-      ids.length ? ["case", active, on, off] : on;
-    map.setPaintProperty("pins", "circle-opacity", faded(1, 0.3));
-    map.setPaintProperty("pins", "circle-stroke-opacity", faded(1, 0.3));
-    map.setPaintProperty("approx-fill", "fill-opacity", faded(0.25, 0.08));
-    map.setPaintProperty("approx-line", "line-opacity", faded(1, 0.3));
+    // Approximate dots stay lighter than confirmed ones in both states.
+    const base = (full: number): ExpressionSpecification => [
+      "case",
+      ["get", "approx"],
+      full * APPROX_OPACITY,
+      full,
+    ];
+    const pinOpacity: ExpressionSpecification = ids.length
+      ? ["case", active, 1, base(0.3)]
+      : base(1);
+    map.setPaintProperty("pins", "circle-opacity", pinOpacity);
+    map.setPaintProperty("pins", "circle-stroke-opacity", pinOpacity);
   }, [ready, hovered, selected, results]);
 
   return (
@@ -541,16 +549,19 @@ function addLayers(map: MapLibreMap) {
   });
   map.addSource("approx", { type: "geojson", data: empty });
 
+  // Approximate-area circles are hidden until their listing is selected or hovered.
   map.addLayer({
     id: "approx-fill",
     type: "fill",
     source: "approx",
+    filter: ["in", ["get", "id"], ["literal", []]],
     paint: { "fill-color": bandColor, "fill-opacity": 0.25 },
   });
   map.addLayer({
     id: "approx-line",
     type: "line",
     source: "approx",
+    filter: ["in", ["get", "id"], ["literal", []]],
     paint: { "line-color": bandColor, "line-width": 1.5 },
   });
   map.addLayer({
@@ -597,11 +608,14 @@ function addLayers(map: MapLibreMap) {
     type: "circle",
     source: "listings",
     filter: ["!", ["has", "point_count"]],
+    // Approximate locations are the same colour, lighter, so confirmed addresses stand out.
     paint: {
       "circle-color": bandColor,
       "circle-radius": 7,
+      "circle-opacity": ["case", ["get", "approx"], APPROX_OPACITY, 1],
       "circle-stroke-color": "#ffffff",
       "circle-stroke-width": 2,
+      "circle-stroke-opacity": ["case", ["get", "approx"], APPROX_OPACITY, 1],
     },
   });
   map.addLayer({
@@ -716,15 +730,33 @@ let placeList: Popup | null = null;
 
 function bindEvents(map: MapLibreMap, maplibregl: typeof import("maplibre-gl")) {
   const { setHoveredListingId, setSelectedListingId } = appStore.getState();
-  for (const layer of ["pins", "approx-fill"]) {
+  // Hovering an approximate-location dot says how approximate it is.
+  const approxTip = new maplibregl.Popup({
+    closeButton: false,
+    closeOnClick: false,
+    offset: 12,
+    className: "approx-tip",
+  });
+  // Only dots respond: the approximate-area circle is display-only, since its handlers fired with
+  // the dots' and undid their clicks (a dot inside a shown circle couldn't be selected).
+  for (const layer of ["pins"]) {
     map.on("mousemove", layer, (event) => {
-      const id = event.features?.[0]?.properties?.id;
+      const feature = event.features?.[0];
+      const id = feature?.properties?.id;
       if (typeof id === "string") setHoveredListingId(id);
       map.getCanvas().style.cursor = "pointer";
+      const radiusM = Number(feature?.properties?.radiusM ?? 0);
+      if (radiusM > 0 && feature?.geometry.type === "Point") {
+        approxTip
+          .setLngLat(feature.geometry.coordinates as [number, number])
+          .setText(t("results.map.approxTip", { m: radiusM }))
+          .addTo(map);
+      } else approxTip.remove();
     });
     map.on("mouseleave", layer, () => {
       setHoveredListingId(null);
       map.getCanvas().style.cursor = "";
+      approxTip.remove();
     });
     map.on("click", layer, (event) => {
       const id = event.features?.[0]?.properties?.id;
@@ -769,6 +801,9 @@ function bindEvents(map: MapLibreMap, maplibregl: typeof import("maplibre-gl")) 
   map.on("mouseleave", "clusters", () => (map.getCanvas().style.cursor = ""));
 }
 
+/** How opaque an approximate-location dot is, against 1 for a confirmed address. */
+const APPROX_OPACITY = 0.45;
+
 function Legend() {
   const bands: ScoreBand[] = ["high", "mid", "low"];
   return (
@@ -789,7 +824,14 @@ function Legend() {
         <span aria-hidden className="size-3 rounded-full" style={{ background: PLACE_COLOR }} />
         {t("results.map.place")}
       </p>
-      <p className="text-muted-foreground">{t("results.map.approx")}</p>
+      <p className="flex items-center gap-1.5">
+        <span
+          aria-hidden
+          className="size-3 rounded-full border-2 border-white"
+          style={{ background: BAND_COLORS.high, opacity: APPROX_OPACITY }}
+        />
+        {t("results.map.approx")}
+      </p>
     </div>
   );
 }
