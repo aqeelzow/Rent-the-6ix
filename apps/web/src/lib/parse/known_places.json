@@ -1,7 +1,7 @@
 [
   {
     "id": "cn-tower",
-    "label": "CN Tower representative point",
+    "label": "CN Tower",
     "aliases": [
       "cn tower",
       "the cn tower",
@@ -12,7 +12,7 @@
   },
   {
     "id": "uoft-st-george",
-    "label": "UofT St. George campus representative point",
+    "label": "UofT St. George campus",
     "aliases": [
       "uoft st. george",
       "uoft st george",
@@ -25,7 +25,7 @@
   },
   {
     "id": "uoft-scarborough",
-    "label": "UofT Scarborough campus representative point",
+    "label": "UofT Scarborough campus",
     "aliases": [
       "uoft scarborough",
       "university of toronto scarborough"
@@ -36,7 +36,7 @@
   },
   {
     "id": "uoft-mississauga",
-    "label": "UofT Mississauga campus representative point",
+    "label": "UofT Mississauga campus",
     "aliases": [
       "uoft mississauga",
       "university of toronto mississauga"
@@ -47,7 +47,7 @@
   },
   {
     "id": "york-keele",
-    "label": "York University Keele campus representative point",
+    "label": "York University Keele campus",
     "aliases": [
       "york keele",
       "york university keele"
@@ -59,7 +59,7 @@
   },
   {
     "id": "york-glendon",
-    "label": "York University Glendon campus representative point",
+    "label": "York University Glendon campus",
     "aliases": [
       "york glendon",
       "york university glendon"
@@ -70,7 +70,7 @@
   },
   {
     "id": "york-markham",
-    "label": "York University Markham campus representative point",
+    "label": "York University Markham campus",
     "aliases": [
       "york markham",
       "york university markham"
@@ -81,7 +81,7 @@
   },
   {
     "id": "eaton-centre",
-    "label": "Eaton Centre representative point",
+    "label": "Eaton Centre",
     "aliases": [
       "eaton center",
       "eaton centre",
@@ -92,7 +92,7 @@
   },
   {
     "id": "toronto-general",
-    "label": "Toronto General Hospital representative point",
+    "label": "Toronto General Hospital",
     "aliases": [
       "toronto general hospital"
     ],
@@ -101,7 +101,7 @@
   },
   {
     "id": "union-station",
-    "label": "Union Station representative point",
+    "label": "Union Station",
     "aliases": [
       "union station"
     ],
@@ -110,7 +110,7 @@
   },
   {
     "id": "financial-district",
-    "label": "Financial District representative point",
+    "label": "Financial District",
     "aliases": [
       "financial district"
     ],
@@ -119,7 +119,7 @@
   },
   {
     "id": "downtown-core",
-    "label": "Downtown core representative point",
+    "label": "Downtown core",
     "aliases": [
       "downtown",
       "downtown toronto",
@@ -130,7 +130,7 @@
   },
   {
     "id": "kensington-market",
-    "label": "Kensington Market representative point",
+    "label": "Kensington Market",
     "aliases": [
       "kensington market",
       "kensington"
@@ -140,7 +140,7 @@
   },
   {
     "id": "liberty-village",
-    "label": "Liberty Village representative point",
+    "label": "Liberty Village",
     "aliases": [
       "liberty village"
     ],
@@ -149,7 +149,7 @@
   },
   {
     "id": "cityplace",
-    "label": "CityPlace representative point",
+    "label": "CityPlace",
     "aliases": [
       "cityplace",
       "city place"
@@ -159,7 +159,7 @@
   },
   {
     "id": "leslieville",
-    "label": "Leslieville representative point",
+    "label": "Leslieville",
     "aliases": [
       "leslieville"
     ],
@@ -168,7 +168,7 @@
   },
   {
     "id": "corktown",
-    "label": "Corktown representative point",
+    "label": "Corktown",
     "aliases": [
       "corktown"
     ],
@@ -177,7 +177,7 @@
   },
   {
     "id": "distillery-district",
-    "label": "Distillery District representative point",
+    "label": "Distillery District",
     "aliases": [
       "distillery district",
       "the distillery"
@@ -187,7 +187,7 @@
   },
   {
     "id": "riverside",
-    "label": "Riverside representative point",
+    "label": "Riverside",
     "aliases": [
       "riverside",
       "riverside toronto"
@@ -197,7 +197,7 @@
   },
   {
     "id": "yorkville",
-    "label": "Yorkville representative point",
+    "label": "Yorkville",
     "aliases": [
       "yorkville"
     ],
@@ -206,7 +206,7 @@
   },
   {
     "id": "greektown",
-    "label": "Greektown on the Danforth representative point",
+    "label": "Greektown on the Danforth",
     "aliases": [
       "greektown",
       "greek town",
@@ -218,7 +218,7 @@
   },
   {
     "id": "north-york-centre",
-    "label": "North York Centre representative point",
+    "label": "North York Centre",
     "aliases": [
       "north york",
       "north york centre",
@@ -229,7 +229,7 @@
   },
   {
     "id": "jane-finch",
-    "label": "Jane and Finch representative point",
+    "label": "Jane and Finch",
     "aliases": [
       "jane and finch",
       "jane-finch"
@@ -239,7 +239,7 @@
   },
   {
     "id": "scarborough-town-centre",
-    "label": "Scarborough Town Centre representative point",
+    "label": "Scarborough Town Centre",
     "aliases": [
       "scarborough town centre",
       "scarborough town center"
@@ -249,7 +249,7 @@
   },
   {
     "id": "mimico",
-    "label": "Mimico representative point",
+    "label": "Mimico",
     "aliases": [
       "mimico"
     ],
@@ -258,7 +258,7 @@
   },
   {
     "id": "moss-park",
-    "label": "Moss Park representative point",
+    "label": "Moss Park",
     "aliases": [
       "moss park"
     ],
@@ -267,7 +267,7 @@
   },
   {
     "id": "td-bay-queen",
-    "label": "TD Bay & Queen, 394 Bay St representative point",
+    "label": "TD Bay & Queen, 394 Bay St",
     "aliases": [
       "td at bay st and queen st w",
       "td at bay st and queen street w",

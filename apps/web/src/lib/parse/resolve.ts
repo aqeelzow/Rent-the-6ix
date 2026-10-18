@@ -10,14 +10,15 @@ const torontoBounds = [-79.65, 43.58, -79.10, 43.87] as const;
 const geocodingFeature = z.object({ id: z.string().trim().min(1), place_name: z.string().trim().min(1), text: z.string().optional(), relevance: z.number().min(0).max(1).optional(), place_type: z.array(z.string()).optional(), bbox: z.array(z.number()).optional(), center: z.tuple([z.number().min(-180).max(180), z.number().min(-90).max(90)]) });
 const poiName = (name: string) => normalizePlace(name).replace(/^the /, '');
 function knownResolution(normalized: string, query: string, preferPrimaryCampus: boolean): DestinationResolution | undefined {
-  const known = places.filter(p => [...p.aliases, p.label, p.label.replace(/ representative point$/, '')].some(a => normalizePlace(a) === normalized));
+  // Labels used to end in "representative point"; a search saved with one still matches.
+  const known = places.filter(p => [...p.aliases, p.label, `${p.label} representative point`].some(a => normalizePlace(a) === normalized));
   if (known.length === 1) return { status: 'resolved', query, destination: choice(known[0]) };
   const group = /^(university of toronto|uoft|u of t)$/.test(normalized) ? 'University of Toronto' : /^(york|york university)$/.test(normalized) ? 'York University' : undefined;
   if (group) {
     const members = places.filter(p => p.group === group), primary = members.filter(p => p.primary);
     // A bare university name is not a real ambiguity for a renter: with no campus named, the main
     // campus is what they mean. Returning choices left the target without coordinates, which blanked
-    // every travel figure on the result cards; the label still says it is a representative point.
+    // every travel figure on the result cards; `representativePoint` still marks it as a stand-in.
     if (primary.length === 1 && preferPrimaryCampus) return { status: 'resolved', query, destination: choice(primary[0]) };
     return { status: 'ambiguous', query, choices: members.map(choice) };
   }
@@ -76,7 +77,7 @@ export class DestinationResolver {
         } catch { failure = 'Geocoding failed or returned invalid data.'; break; }
       }
       const candidates = matchingFeatures().sort((a, b) => (b.relevance ?? 0) - (a.relevance ?? 0)).slice(0, 5);
-      const choices = candidates.map(p => DestinationChoiceSchema.parse({ id: p.id, label: p.place_name, resolved: { lng: p.center[0], lat: p.center[1], source: 'maptiler', ...((p.relevance !== 1 || p.bbox || p.place_type?.some(t => ['region','place','locality','neighbourhood','poi'].includes(t))) ? { representativePoint: true, label: `${p.place_name} representative point` } : {}) } }));
+      const choices = candidates.map(p => DestinationChoiceSchema.parse({ id: p.id, label: p.place_name, resolved: { lng: p.center[0], lat: p.center[1], source: 'maptiler', ...((p.relevance !== 1 || p.bbox || p.place_type?.some(t => ['region','place','locality','neighbourhood','poi'].includes(t))) ? { representativePoint: true, label: p.place_name } : {}) } }));
       if (!choices.length) return unavailable(failure ?? 'No confident destination found. Provide an exact address or pin.');
       if (choices.length === 1 && (candidates[0].relevance ?? 0) >= 0.9) return { status: 'resolved', query, destination: choices[0] };
       return { status: 'ambiguous', query, choices };
