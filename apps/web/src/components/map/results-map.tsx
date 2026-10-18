@@ -24,6 +24,7 @@ import {
   BAND_COLORS,
   CRIME_COLORS,
   CRIME_NO_DATA,
+  type MapTheme,
   CRIME_STEPS,
   choroplethToGeoJSON,
   MAP_MAX_BOUNDS,
@@ -61,24 +62,28 @@ const bandColor: ExpressionSpecification = [
   BAND_COLORS.low,
 ];
 
-const crimeColor: ExpressionSpecification = [
-  "case",
-  ["==", ["typeof", ["get", "value"]], "number"],
-  [
-    "step",
-    ["get", "value"],
-    CRIME_COLORS[0],
-    CRIME_STEPS[0],
-    CRIME_COLORS[1],
-    CRIME_STEPS[1],
-    CRIME_COLORS[2],
-    CRIME_STEPS[2],
-    CRIME_COLORS[3],
-    CRIME_STEPS[3],
-    CRIME_COLORS[4],
-  ],
-  CRIME_NO_DATA,
-];
+/** The crime fill for one theme: the five bands by relative rate, grey where TPS has no rate. */
+function crimeColor(theme: MapTheme): ExpressionSpecification {
+  const colors = CRIME_COLORS[theme];
+  return [
+    "case",
+    ["==", ["typeof", ["get", "value"]], "number"],
+    [
+      "step",
+      ["get", "value"],
+      colors[0],
+      CRIME_STEPS[0],
+      colors[1],
+      CRIME_STEPS[1],
+      colors[2],
+      CRIME_STEPS[2],
+      colors[3],
+      CRIME_STEPS[3],
+      colors[4],
+    ],
+    CRIME_NO_DATA[theme],
+  ];
+}
 
 type CrimeState =
   { status: "idle" | "loading" | "error" } | { status: "ok"; layer: AreaChoropleth };
@@ -368,14 +373,14 @@ export function ResultsMap({ className = "" }: { className?: string }) {
     const map = mapRef.current;
     if (!ready || !map) return;
     if (crime.status === "ok" && !map.getSource("crime")) {
-      addCrimeLayer(map, choroplethToGeoJSON(crime.layer), setCrimeHover);
+      addCrimeLayer(map, choroplethToGeoJSON(crime.layer), setCrimeHover, theme);
     }
     if (map.getLayer("crime-fill")) {
       const visibility = crimeOn ? "visible" : "none";
       map.setLayoutProperty("crime-fill", "visibility", visibility);
       map.setLayoutProperty("crime-line", "visibility", visibility);
     }
-  }, [ready, crimeOn, crime]);
+  }, [ready, crimeOn, crime, theme]);
 
   // Hover and selection from the list highlight the matching pin or circle.
   useEffect(() => {
@@ -449,7 +454,7 @@ export function ResultsMap({ className = "" }: { className?: string }) {
               )}
               {t("results.map.crime.toggle")}
             </button>
-            {crimeOn && <CrimeLegend state={crime} hover={crimeHover} />}
+            {crimeOn && <CrimeLegend state={crime} hover={crimeHover} theme={theme} />}
           </div>
           <Legend />
         </>
@@ -462,6 +467,7 @@ function addCrimeLayer(
   map: MapLibreMap,
   data: FeatureCollection,
   onHover: (hover: CrimeHover) => void,
+  theme: MapTheme,
 ) {
   map.addSource("crime", { type: "geojson", data });
   // Beneath the listing circles and pins, so listings stay on top.
@@ -471,7 +477,7 @@ function addCrimeLayer(
       type: "fill",
       source: "crime",
       layout: { visibility: "none" },
-      paint: { "fill-color": crimeColor, "fill-opacity": 0.5 },
+      paint: { "fill-color": crimeColor(theme), "fill-opacity": theme === "dark" ? 0.6 : 0.55 },
     },
     "approx-fill",
   );
@@ -499,7 +505,15 @@ function addCrimeLayer(
 const rate = new Intl.NumberFormat("en-CA", { maximumFractionDigits: 2 });
 
 /** The crime layer's key: five bands relative to the city, the area under the cursor, the caveats. */
-function CrimeLegend({ state, hover }: { state: CrimeState; hover: CrimeHover }) {
+function CrimeLegend({
+  state,
+  hover,
+  theme,
+}: {
+  state: CrimeState;
+  hover: CrimeHover;
+  theme: MapTheme;
+}) {
   const c = (key: string, params?: Record<string, string | number>) =>
     t(`results.map.crime.${key}` as MessageKey, params);
   if (state.status === "error") {
@@ -511,7 +525,7 @@ function CrimeLegend({ state, hover }: { state: CrimeState; hover: CrimeHover })
     <div className="bg-card/95 flex flex-col gap-1 rounded-lg border p-2 text-xs shadow-sm">
       <p className="font-medium">{c("title")}</p>
       <CrimeDisclaimer className="-mx-0.5" />
-      {CRIME_COLORS.map((color, index) => (
+      {CRIME_COLORS[theme].map((color, index) => (
         <p key={color} className="flex items-center gap-1.5">
           <span aria-hidden className="size-3 rounded-sm border" style={{ background: color }} />
           {c(labels[index]!)}
@@ -521,7 +535,7 @@ function CrimeLegend({ state, hover }: { state: CrimeState; hover: CrimeHover })
         <span
           aria-hidden
           className="size-3 rounded-sm border"
-          style={{ background: CRIME_NO_DATA }}
+          style={{ background: CRIME_NO_DATA[theme] }}
         />
         {c("noData")}
       </p>
