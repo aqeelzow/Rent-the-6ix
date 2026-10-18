@@ -201,8 +201,10 @@
   }
 }
 
-/* Popup naming a renter's place on the results map (MapLibre's popup, restyled to the tokens). */
-.place-popup .maplibregl-popup-content {
+/* Popups on the results map: a renter's place, and the approximate-location hover tip (MapLibre's
+   popup, restyled to the tokens). */
+.place-popup .maplibregl-popup-content,
+.approx-tip .maplibregl-popup-content {
   background: var(--popover);
   color: var(--popover-foreground);
   border: 1px solid var(--border);
@@ -211,10 +213,12 @@
   box-shadow: 0 6px 20px rgb(0 0 0 / 0.2);
   font-family: var(--font-sans);
 }
-.place-popup.maplibregl-popup-anchor-bottom .maplibregl-popup-tip {
+.place-popup.maplibregl-popup-anchor-bottom .maplibregl-popup-tip,
+.approx-tip.maplibregl-popup-anchor-bottom .maplibregl-popup-tip {
   border-top-color: var(--popover);
 }
-.place-popup.maplibregl-popup-anchor-top .maplibregl-popup-tip {
+.place-popup.maplibregl-popup-anchor-top .maplibregl-popup-tip,
+.approx-tip.maplibregl-popup-anchor-top .maplibregl-popup-tip {
   border-bottom-color: var(--popover);
 }
 .place-popup-name {
@@ -237,5 +241,10 @@
   font-weight: 600;
   white-space: nowrap;
   box-shadow: 0 2px 8px rgb(0 0 0 / 0.25);
+  pointer-events: none;
+}
+.approx-tip .maplibregl-popup-content {
+  font-size: 0.75rem;
+  padding: 0.25rem 0.5rem;
   pointer-events: none;
 }
