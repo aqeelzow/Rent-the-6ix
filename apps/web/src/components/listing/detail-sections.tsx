@@ -421,44 +421,6 @@ export function SafetySection({
   );
 }
 
-/**
- * Sections whose data isn't loaded yet (the RentSafeTO record, area facts, the city benchmark),
- * folded into one quiet row so they stay findable without filling the page with placeholders.
- */
-export function NotYetAvailable({
-  result,
-  extras,
-}: {
-  result: SearchResultItem;
-  extras: DetailResponse | null;
-}) {
-  const areaEmpty = !extras?.areas?.length && !extras?.indicators?.length;
-  const missing = [
-    { id: "building", title: l("sections.building"), text: l("building.none") },
-    ...(areaEmpty ? [{ id: "area", title: l("sections.area"), text: l("area.none") }] : []),
-    ...(result.valuation.benchmark
-      ? []
-      : [{ id: "benchmark", title: l("rent.benchmark"), text: l("rent.benchmarkNone") }]),
-  ];
-  return (
-    <section
-      aria-label={l("missing.aria")}
-      className="bg-card rounded-2xl border border-dashed px-5 py-3"
-    >
-      <Disclosure label={l("missing.title", { count: formatCount(missing.length) })}>
-        <dl className="flex flex-col gap-3 text-sm">
-          {missing.map((item) => (
-            <div key={item.id}>
-              <dt className="font-medium">{item.title}</dt>
-              <dd className="text-muted-foreground">{item.text}</dd>
-            </div>
-          ))}
-        </dl>
-      </Disclosure>
-    </section>
-  );
-}
-
 /** A readable name for one of D's indicator ids; an unknown id is shown as it is, capitalised. */
 function indicatorLabel(id: string): string {
   const key = `listing.indicators.${id}`;
@@ -479,7 +441,7 @@ export function AreaCard({
 }) {
   const areas = extras?.areas ?? [];
   const indicators = extras?.indicators ?? [];
-  // With nothing loaded, the area folds into NotYetAvailable instead.
+  // No area section is shown until area data is available.
   if (areas.length === 0 && indicators.length === 0) return null;
   const groups = [
     ...areas.map((area) => ({

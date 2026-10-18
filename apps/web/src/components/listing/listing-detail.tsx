@@ -17,7 +17,6 @@ import { PriceBadge } from "@/components/results/price-badge";
 import { priceSummary } from "@/components/results/card-data";
 import {
   AreaCard,
-  NotYetAvailable,
   RentCheck,
   SafetySection,
   SourceButton,
@@ -108,7 +107,6 @@ export function ListingDetail({ id }: { id: string }) {
           <TheHome result={data} />
           <NearbySection state={nearby} />
           {intent?.safety.enabled && <SafetySection result={data} />}
-          <NotYetAvailable result={data} extras={extras} />
         </div>
       </div>
     </>
