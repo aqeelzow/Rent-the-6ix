@@ -46,7 +46,8 @@ export function scoreBand(total: number): ScoreBand {
 }
 
 type Position = [number, number];
-type Props = { id: string; band: ScoreBand; total: number };
+/** `approx`: the location is street- or area-level, so the dot is drawn lighter. */
+type Props = { id: string; band: ScoreBand; total: number; approx: boolean };
 export type PointCollection = FeatureCollection<Point, Props>;
 export type AreaCollection = FeatureCollection<Polygon, Props>;
 
@@ -82,6 +83,7 @@ export function resultsToGeoJSON(results: SearchResultItem[]): {
       id: listing.id,
       band: scoreBand(matchScore.total),
       total: matchScore.total,
+      approx: listing.locationPrecision !== "exact",
     };
     points.features.push({
       type: "Feature",

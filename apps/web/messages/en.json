@@ -498,7 +498,7 @@
       "high": "75 and up",
       "mid": "50 to 74",
       "low": "Under 50",
-      "approx": "Shaded circle: approximate location",
+      "approx": "Lighter dot: approximate location (tap to see the area)",
       "place": "Your places",
       "unavailable": "The map couldn't load. The list has every result.",
       "placePopup": "Your place",

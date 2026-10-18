@@ -405,10 +405,18 @@ export function ResultsMap({ className = "" }: { className?: string }) {
     (map.getSource("focus") as GeoJSONSource | undefined)?.setData(focus);
     // Fade every other listing while one is pointed at, so the active one stands out.
     const active: ExpressionSpecification = ["in", ["get", "id"], ["literal", ids]];
-    const faded = (on: number, off: number): ExpressionSpecification | number =>
-      ids.length ? ["case", active, on, off] : on;
-    map.setPaintProperty("pins", "circle-opacity", faded(1, 0.3));
-    map.setPaintProperty("pins", "circle-stroke-opacity", faded(1, 0.3));
+    // Approximate dots stay lighter than confirmed ones in both states.
+    const base = (full: number): ExpressionSpecification => [
+      "case",
+      ["get", "approx"],
+      full * APPROX_OPACITY,
+      full,
+    ];
+    const pinOpacity: ExpressionSpecification = ids.length
+      ? ["case", active, 1, base(0.3)]
+      : base(1);
+    map.setPaintProperty("pins", "circle-opacity", pinOpacity);
+    map.setPaintProperty("pins", "circle-stroke-opacity", pinOpacity);
   }, [ready, hovered, selected, results]);
 
   return (
@@ -600,11 +608,14 @@ function addLayers(map: MapLibreMap) {
     type: "circle",
     source: "listings",
     filter: ["!", ["has", "point_count"]],
+    // Approximate locations are the same colour, lighter, so confirmed addresses stand out.
     paint: {
       "circle-color": bandColor,
       "circle-radius": 7,
+      "circle-opacity": ["case", ["get", "approx"], APPROX_OPACITY, 1],
       "circle-stroke-color": "#ffffff",
       "circle-stroke-width": 2,
+      "circle-stroke-opacity": ["case", ["get", "approx"], APPROX_OPACITY, 1],
     },
   });
   map.addLayer({
@@ -772,6 +783,9 @@ function bindEvents(map: MapLibreMap, maplibregl: typeof import("maplibre-gl")) 
   map.on("mouseleave", "clusters", () => (map.getCanvas().style.cursor = ""));
 }
 
+/** How opaque an approximate-location dot is, against 1 for a confirmed address. */
+const APPROX_OPACITY = 0.45;
+
 function Legend() {
   const bands: ScoreBand[] = ["high", "mid", "low"];
   return (
@@ -792,7 +806,14 @@ function Legend() {
         <span aria-hidden className="size-3 rounded-full" style={{ background: PLACE_COLOR }} />
         {t("results.map.place")}
       </p>
-      <p className="text-muted-foreground">{t("results.map.approx")}</p>
+      <p className="flex items-center gap-1.5">
+        <span
+          aria-hidden
+          className="size-3 rounded-full border-2 border-white"
+          style={{ background: BAND_COLORS.high, opacity: APPROX_OPACITY }}
+        />
+        {t("results.map.approx")}
+      </p>
     </div>
   );
 }
