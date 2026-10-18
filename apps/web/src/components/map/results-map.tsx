@@ -17,6 +17,7 @@ import type { AreaChoropleth, SearchResultItem } from "@/lib/store/types";
 import { t, type MessageKey } from "@/lib/format/messages";
 import { formatCad } from "@/lib/format/number";
 import { SafetyInfoButton } from "@/components/safety/safety-info";
+import { CrimeDisclaimer } from "@/components/safety/crime-disclaimer";
 import { fetchChoropleth } from "@/lib/store/actions";
 import { appStore, useAppStore } from "@/lib/store/store";
 import {
@@ -509,6 +510,7 @@ function CrimeLegend({ state, hover }: { state: CrimeState; hover: CrimeHover })
   return (
     <div className="bg-card/95 flex flex-col gap-1 rounded-lg border p-2 text-xs shadow-sm">
       <p className="font-medium">{c("title")}</p>
+      <CrimeDisclaimer className="-mx-0.5" />
       {CRIME_COLORS.map((color, index) => (
         <p key={color} className="flex items-center gap-1.5">
           <span aria-hidden className="size-3 rounded-sm border" style={{ background: color }} />

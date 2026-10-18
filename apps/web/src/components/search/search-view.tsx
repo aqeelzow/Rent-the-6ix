@@ -18,6 +18,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useMediaQuery } from "@/components/use-media-query";
 import { FilterChips } from "./filter-chips";
 import { FiltersPanel } from "./filters-panel";
+import { CrimeDisclaimer } from "@/components/safety/crime-disclaimer";
 import { DestinationChoices } from "./destination-choices";
 import { ShareSearch } from "./share-search";
 import { SortSelect } from "./sort-select";
@@ -165,7 +166,12 @@ export function SearchView({ prompt, shared }: { prompt: string | null; shared: 
             </Link>
             {intent?.rawPrompt === prompt && <ShareSearch />}
             {intent?.rawPrompt === prompt && intent.droppedRequests.length > 0 && (
-              <Button variant="ghost" size="sm" disabled={busy} onClick={() => void parseAndSearch(prompt)}>
+              <Button
+                variant="ghost"
+                size="sm"
+                disabled={busy}
+                onClick={() => void parseAndSearch(prompt)}
+              >
                 {t("search.reinterpret")}
               </Button>
             )}
@@ -235,6 +241,7 @@ export function SearchView({ prompt, shared }: { prompt: string | null; shared: 
                 eligible: formatCount(eligibleCount),
               })}
             </h2>
+            {intent?.safety.enabled && <CrimeDisclaimer />}
             {notices.length > 0 && (
               <ul className="text-muted-foreground text-xs">
                 {notices.map((notice) => (

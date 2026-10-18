@@ -29,6 +29,7 @@ import { createElement, useId, useState } from "react";
 import { SAFETY } from "@rentthe6ix/shared/engine/config";
 import { modeIcons } from "@/components/mode-icons";
 import { SafetyLimit } from "@/components/safety/safety-limit";
+import { CrimeDisclaimer } from "@/components/safety/crime-disclaimer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -204,24 +205,27 @@ function ChipButton({
         </div>
 
         {chip.kind === "safety" ? (
-          <SafetyLimit
-            key={`${intent.safety.hard}-${intent.safety.maxRelativeRate ?? ""}`}
-            commitOnRelease
-            value={
-              intent.safety.hard
-                ? (intent.safety.maxRelativeRate ?? SAFETY.hardMaxRelativeRate)
-                : null
-            }
-            onChange={(limit) =>
-              onEdit((i) =>
-                setSafety(i, {
-                  enabled: true,
-                  hard: limit !== null,
-                  maxRelativeRate: limit ?? undefined,
-                }),
-              )
-            }
-          />
+          <>
+            <CrimeDisclaimer />
+            <SafetyLimit
+              key={`${intent.safety.hard}-${intent.safety.maxRelativeRate ?? ""}`}
+              commitOnRelease
+              value={
+                intent.safety.hard
+                  ? (intent.safety.maxRelativeRate ?? SAFETY.hardMaxRelativeRate)
+                  : null
+              }
+              onChange={(limit) =>
+                onEdit((i) =>
+                  setSafety(i, {
+                    enabled: true,
+                    hard: limit !== null,
+                    maxRelativeRate: limit ?? undefined,
+                  }),
+                )
+              }
+            />
+          </>
         ) : (
           chip.hard !== null && (
             <HardSwitch

@@ -1,5 +1,6 @@
 import { DetailSection } from "@/components/listing/detail-sections";
 import { SafetyInfoButton } from "@/components/safety/safety-info";
+import { CrimeDisclaimer } from "@/components/safety/crime-disclaimer";
 import { t, type MessageKey } from "@/lib/format/messages";
 import type { WardCrime } from "@/lib/db/ward-crime";
 
@@ -18,6 +19,7 @@ export function WardCrimeSection({ crime }: { crime: WardCrime }) {
   return (
     <DetailSection id="crime" title={c("title")}>
       <p className="text-muted-foreground text-sm">{c("intro")}</p>
+      <CrimeDisclaimer />
       <ul className="divide-y">
         {crime.neighbourhoods.map((neighbourhood) => (
           <li
