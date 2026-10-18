@@ -12,7 +12,7 @@ import {
 import Link from "next/link";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { SafetyInfoButton } from "@/components/safety/safety-info";
 import { daysSince, plainHardFilterNote, yearSpan } from "@/components/results/card-data";
 import { formatDaysAgo } from "@/lib/format/date";
@@ -283,14 +283,34 @@ export function Disclosure({
   label: React.ReactNode;
   children: React.ReactNode;
 }) {
+  const [expanded, setExpanded] = useState(false);
+  const contentId = useId();
   return (
-    <details className="group border-t pt-3">
-      <summary className="text-muted-foreground hover:text-foreground flex cursor-pointer list-none items-center gap-1.5 text-sm font-medium [&::-webkit-details-marker]:hidden">
-        <ChevronDown aria-hidden className="size-4 transition-transform group-open:rotate-180" />
+    <div className="border-t pt-3">
+      <button
+        type="button"
+        aria-expanded={expanded}
+        aria-controls={contentId}
+        onClick={() => setExpanded((open) => !open)}
+        className="text-muted-foreground hover:text-foreground flex w-full cursor-pointer items-center gap-1.5 rounded text-left text-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring"
+      >
+        <ChevronDown
+          aria-hidden
+          className={`size-4 shrink-0 transition-transform duration-300 motion-reduce:transition-none ${expanded ? "rotate-180" : ""}`}
+        />
         {label}
-      </summary>
-      <div className="pt-3">{children}</div>
-    </details>
+      </button>
+      <div
+        id={contentId}
+        aria-hidden={!expanded}
+        inert={!expanded}
+        className={`grid transition-[grid-template-rows] duration-300 ease-in-out motion-reduce:transition-none ${expanded ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}
+      >
+        <div className="min-h-0 overflow-hidden">
+          <div className="pt-3">{children}</div>
+        </div>
+      </div>
+    </div>
   );
 }
 
