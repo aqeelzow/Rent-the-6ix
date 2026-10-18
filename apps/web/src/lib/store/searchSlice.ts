@@ -151,7 +151,26 @@ export const createSearchSlice: StateCreator<SearchSlice, [], [], SearchSlice> =
 
   startParse: (prompt) => {
     const requestId = get().searchRequestId + 1;
+    // A new prompt starts fresh: nothing from the previous search (its listings, pins, selection,
+    // local sort or unconfirmed toggle) stays on screen while the new one is read. Reading the
+    // same prompt again ("reinterpret") keeps them.
+    const fresh =
+      get().intent?.rawPrompt === prompt
+        ? {}
+        : {
+            intent: null,
+            destinations: [],
+            results: [],
+            eligibleCount: 0,
+            notices: [],
+            resultOrder: "server" as const,
+            hideUnconfirmed: false,
+            hoveredListingId: null,
+            selectedListingId: null,
+            selectedFrom: null,
+          };
     set({
+      ...fresh,
       searchRequestId: requestId,
       status: "parsing",
       parsingPrompt: prompt,
