@@ -710,11 +710,12 @@
     "chart": {
       "priceAria": "Chart: this listing at {rent} compared with {count} similar listings, adjusted to its terms.",
       "estimate": "Estimate {value}",
-      "comparableTip": "{adjusted} on this listing's terms (asks {rent}), {km} km away",
+      "comparableTip": "{adjusted} on this listing's terms (asks {rent}), {km} km away · click to open",
       "thisListing": "This listing {value}",
       "similar": "Similar listings",
       "range": "Typical range",
-      "rangeValue": "Typical range {low}–{high}"
+      "rangeValue": "Typical range {low}–{high}",
+      "openComparable": "Open the similar listing at {adjusted} on this listing's terms, {km} km away"
     },
     "stats": {
       "score": "Match score",
