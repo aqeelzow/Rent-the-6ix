@@ -10,11 +10,11 @@ import { placePins } from '../../components/map/map-data';
 const prompt = '2 bedrooms under $2800, within 20 min walk to ROM';
 const interpretation = () => ({
   ...structuredClone(baseIntent), rawPrompt: prompt,
-  travelTargets: [{ id: 'target-1', kind: 'place' as const, label: 'ROM', query: 'ROM', normalizedQuery: 'Royal Ontario Museum', mode: 'walk' as const, maxMinutes: 20, hard: true,
+  travelTargets: [{ id: 'target-1', kind: 'place' as const, label: 'ROM', query: 'ROM', normalizedQuery: 'Rental Fixture Museum', mode: 'walk' as const, maxMinutes: 20, hard: true,
     resolved: { lng: 1, lat: 1, source: 'known_place' as const } }],
   fieldSources: { 'travelTargets.target-1': { source: 'ai_prompt' as const, phrase: 'ROM' } },
 });
-const feature = (id: string) => ({ id, place_name: `Royal Ontario Museum ${id}`, relevance: 1, place_type: ['poi'], center: [-79.394, 43.667] });
+const feature = (id: string) => ({ id, place_name: `Rental Fixture Museum ${id}`, relevance: 1, place_type: ['poi'], center: [-79.394, 43.667] });
 
 test('Toronto context reaches Gemini and The Well normalization reaches the resolver without changing evidence', async () => {
   const rawPrompt = 'near the well';
@@ -32,23 +32,16 @@ test('Toronto context reaches Gemini and The Well normalization reaches the reso
         fieldSources: { 'travelTargets.target-1': { source: 'ai_prompt', phrase: 'the well' } },
       }) }] } }] });
     } }),
-    resolver: new DestinationResolver({ maptilerKey: 'test', fetch: async url => {
-      assert.equal(decodeURIComponent(new URL(String(url)).pathname), '/geocoding/The Well, Toronto.json');
-      return Response.json({ features: [
-        { id: 'well-spadina', place_name: 'The Well, 16 Spadina Avenue, Toronto', relevance: 1, place_type: ['poi'], center: [-79.39437657594681, 43.64333195105802] },
-        { id: 'well-downtown', place_name: 'The Well, Downtown, Toronto', relevance: 1, place_type: ['poi'], center: [-79.39608015160275, 43.64289544125227] },
-        { id: 'well-bar', place_name: 'The Well Bar Restaurant, 482 Queen Street West, Toronto', relevance: 0.77, place_type: ['poi'], center: [-79.40041020512581, 43.64803670436566] },
-      ] });
-    } }),
+    resolver: new DestinationResolver({ maptilerKey: 'test', fetch: async () => { assert.fail('The Well must resolve from the local catalogue'); } }),
   });
   const result = await parser.parse({ prompt: rawPrompt }, 'test');
   assert.equal(result.parser, 'gemini');
   assert.equal(result.intent.travelTargets[0].query, 'the well');
   assert.equal(result.intent.fieldSources['travelTargets.target-1'].phrase, 'the well');
   const resolution = result.destinations[0].resolution;
-  assert.equal(resolution.status, 'ambiguous');
-  if (resolution.status === 'ambiguous') assert.deepEqual(resolution.choices.map(choice => choice.id), ['well-spadina', 'well-downtown']);
-  assert.equal(result.intent.travelTargets[0].resolved, undefined);
+  assert.equal(resolution.status, 'resolved');
+  if (resolution.status === 'resolved') assert.equal(resolution.destination.id, 'osm:way/622447316');
+  assert.equal(result.intent.travelTargets[0].resolved?.source, 'known_place');
   assert.equal(result.intent.areas.length, 0);
 });
 
@@ -82,7 +75,7 @@ test('CN Tower survives basic parsing when AI is disabled or temporarily unavail
       assert.equal(result.parser, 'fallback');
       assert.equal(result.intent.travelTargets.length, 1);
       const target = result.intent.travelTargets[0];
-      assert.match(target.query!, /^cn tower$/i);
+      assert.match(target.query!, /^(?:the )?cn tower$/i);
       assert.equal(result.destinations[0].resolution.status, 'resolved');
       assert.equal(target.resolved?.source, 'known_place');
       assert.equal(placePins(result.intent.travelTargets).length, 1);
@@ -115,7 +108,7 @@ test('Gemini normalization reaches geocoding while original evidence survives an
   const parser = new ParseService({
     provider: new GeminiProvider({ apiKey: 'test', model: 'test', fetch: async () => Response.json({ candidates: [{ content: { parts: [{ text: JSON.stringify(interpretation()) }] } }] }) }),
     resolver: new DestinationResolver({ maptilerKey: 'test', fetch: async url => {
-      assert.equal(decodeURIComponent(new URL(String(url)).pathname), '/geocoding/Royal Ontario Museum.json');
+      assert.equal(decodeURIComponent(new URL(String(url)).pathname), '/geocoding/Rental Fixture Museum.json');
       assert.ok(new URL(String(url)).searchParams.get('types')?.split(',').includes('poi'));
       return Response.json({ features: [feature('museum')] });
     } }),
@@ -125,7 +118,7 @@ test('Gemini normalization reaches geocoding while original evidence survives an
   const target = result.intent.travelTargets[0];
   assert.equal(target.query, 'ROM');
   assert.equal(result.intent.fieldSources['travelTargets.target-1'].phrase, 'ROM');
-  assert.equal(target.label, 'Royal Ontario Museum museum');
+  assert.equal(target.label, 'Rental Fixture Museum museum');
   assert.equal(target.resolved?.source, 'maptiler');
   assert.equal(target.resolved?.lng, -79.394);
   assert.equal(result.destinations[0].resolution.query, 'ROM');
@@ -146,7 +139,7 @@ test('normalized names retain campus ambiguity and cannot override known origina
 
 test('normalized geocoder results preserve multiple choices and the original query', async () => {
   const resolver = new DestinationResolver({ maptilerKey: 'test', fetch: async () => Response.json({ features: [feature('east'), { ...feature('west'), center: [-79.5, 43.667] }] }) });
-  const result = await resolver.resolve('ROM', 'Royal Ontario Museum');
+  const result = await resolver.resolve('ROM', 'Rental Fixture Museum');
   assert.equal(result.status, 'ambiguous');
   assert.equal(result.query, 'ROM');
 });
@@ -167,24 +160,24 @@ test('strong fuzzy station matches in the same area require a choice and exclude
 
 test('multiple nearby exact matches and separated fuzzy matches both require a choice', async () => {
   const nearby = new DestinationResolver({ maptilerKey: 'test', fetch: async () => Response.json({ features: [feature('entrance'), { ...feature('tickets'), center: [-79.3945, 43.6675] }] }) });
-  assert.equal((await nearby.resolve('museum')).status, 'ambiguous');
+  assert.equal((await nearby.resolve('unlisted museum')).status, 'ambiguous');
   const distant = new DestinationResolver({ maptilerKey: 'test', fetch: async () => Response.json({ features: [
     { ...feature('east'), relevance: 0.96 },
     { ...feature('west'), relevance: 0.95, center: [-79.5, 43.667] },
   ] }) });
-  assert.equal((await distant.resolve('museum')).status, 'ambiguous');
+  assert.equal((await distant.resolve('unlisted museum')).status, 'ambiguous');
 });
 
 test('strong alternatives remain choices alongside exact matches and weak unrelated results cannot become pins', async () => {
   const exact = new DestinationResolver({ maptilerKey: 'test', fetch: async () => Response.json({ features: [
     { ...feature('fuzzy'), relevance: 0.96, center: [-79.5, 43.667] }, feature('exact'),
   ] }) });
-  const result = await exact.resolve('museum');
+  const result = await exact.resolve('unlisted museum');
   assert.equal(result.status, 'ambiguous');
   if (result.status === 'ambiguous') assert.deepEqual(result.choices.map(choice => choice.id), ['exact', 'fuzzy']);
   for (const relevance of [0.89, undefined]) {
     const weak = new DestinationResolver({ maptilerKey: 'test', fetch: async () => Response.json({ features: [{ ...feature('weak'), relevance }] }) });
-    assert.equal((await weak.resolve('museum')).status, 'unavailable');
+    assert.equal((await weak.resolve('unlisted museum')).status, 'unavailable');
   }
 });
 

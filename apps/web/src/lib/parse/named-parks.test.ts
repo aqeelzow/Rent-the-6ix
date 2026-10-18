@@ -54,16 +54,15 @@ test('disabled AI and AI that reduces a named park to an amenity both resolve th
     fieldSources: { 'travelTargets.target-1': { source: 'ai_prompt', phrase: 'park' } },
   };
   for (const provider of [undefined, { generateStructured: async <T>() => mistaken as T, generateText: async () => '' }]) {
-    const resolver = new DestinationResolver({ maptilerKey: 'test', fetch: async url => {
-      assert.equal(decodeURIComponent(new URL(String(url)).pathname), '/geocoding/high park.json');
-      return Response.json({ features: [{ id: 'fixture-high-park', text: 'High Park', place_name: 'High Park, Toronto', relevance: 1, place_type: ['poi'], center: [-79.4, 43.65] }] });
-    } });
+    const resolver = new DestinationResolver({ maptilerKey: 'test', fetch: async () => { assert.fail('Known park candidates must resolve locally'); } });
     const result = await new ParseService({ provider, resolver }).parse({ prompt }, 'test');
     assert.equal(result.parser, 'fallback');
     assert.equal(result.intent.travelTargets.length, 1);
     assert.equal(result.intent.travelTargets[0].query, 'high park');
     assert.equal(result.intent.travelTargets[0].category, undefined);
-    assert.equal(result.destinations[0].resolution.status, 'resolved');
+    const resolution = result.destinations[0].resolution;
+    assert.equal(resolution.status, 'ambiguous');
+    if (resolution.status === 'ambiguous') assert.ok(resolution.choices.every(choice => choice.resolved.source === 'known_place'));
     assert.equal(result.intent.criteria.rent?.value.max, 2500);
   }
 });
@@ -76,9 +75,9 @@ test('named parks bypass neighbourhood centroids while other destinations retain
       areaLookups++;
       return { status: 'resolved', query, destination: { id: 'neighbourhood', label: 'Neighbourhood representative point', resolved: { lng: -79.4, lat: 43.65, source: 'known_place' } } };
     },
-    fetch: async () => Response.json({ features: [{ id: 'fixture-park', place_name: 'High Park, Toronto', relevance: 1, place_type: ['poi'], center: [-79.4, 43.65] }] }),
+    fetch: async () => Response.json({ features: [{ id: 'fixture-park', place_name: 'Fixture Garden Park, Toronto', relevance: 1, place_type: ['poi'], center: [-79.4, 43.65] }] }),
   });
-  const park = await resolver.resolve('High Park');
+  const park = await resolver.resolve('Fixture Garden Park');
   assert.equal(park.status, 'resolved');
   if (park.status === 'resolved') assert.equal(park.destination.resolved.source, 'maptiler');
   assert.equal(areaLookups, 0);

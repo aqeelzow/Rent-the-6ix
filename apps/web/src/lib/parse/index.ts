@@ -7,7 +7,8 @@ import type { CivicArea } from './civic-areas';
 import knownPlaces from './known_places.json';
 import { parseInstruction } from './instruction';
 import { fallbackParse, configuredAreas } from './fallback';
-import { DestinationResolver } from './resolve';
+import { DestinationResolver, normalizePlace } from './resolve';
+import { placeCatalogueVersion } from './place-catalogue';
 import { MemoryCache, IpLimiter, inputHash, type Cache } from './cache';
 import { possibleIntersections } from './intersections';
 import { namedParkMentions } from './named-parks';
@@ -21,7 +22,7 @@ export class ParseService {
     const { prompt } = ParseRequestSchema.parse(input);
     this.options.limiter?.check(trustedIp);
     const catalogue = await this.options.civicAreas?.() ?? [];
-    const key = inputHash(`parse-v2:${this.options.cacheNamespace ?? "default"}:${inputHash(parseInstruction + JSON.stringify(configuredAreas) + JSON.stringify(catalogue) + JSON.stringify(knownPlaces.map(p => p.label)))}:${(this.options.now?.() ?? new Date()).toISOString().slice(0, 10)}:${prompt}`);
+    const key = inputHash(`parse-v3:${this.options.cacheNamespace ?? "default"}:${inputHash(parseInstruction + JSON.stringify(configuredAreas) + JSON.stringify(catalogue) + placeCatalogueVersion)}:${(this.options.now?.() ?? new Date()).toISOString().slice(0, 10)}:${prompt}`);
     const cached = this.cache.get(key); if (cached) return cached;
     let intent: SearchIntent; let parser: ParseResponse['parser'] = 'fallback'; let notice: string | undefined = this.options.civicAreas && !catalogue.length ? 'Official area catalogue unavailable; review area filters.' : undefined;
     const stored = await this.options.intentCache?.get(key, prompt);
@@ -50,14 +51,16 @@ export class ParseService {
         // A model that softens or drops a bound the deterministic parser found would silently
         // widen the search. Restore that bound on the model's target, or add the grounded target,
         // instead of throwing the whole (otherwise good) interpretation away and paying for a retry.
-        for (const required of basic.travelTargets.filter(t => t.hard && t.maxMinutes !== undefined)) {
-          const match = intent.travelTargets.find(actual => actual.kind === required.kind && (required.kind === 'place' ? actual.query?.toLowerCase() === required.query?.toLowerCase() : actual.category === required.category));
+        for (const required of basic.travelTargets.filter(t => t.kind === 'place' || t.hard && t.maxMinutes !== undefined)) {
+          const match = intent.travelTargets.find(actual => actual.kind === required.kind && (required.kind === 'place' ? normalizePlace(actual.query ?? '') === normalizePlace(required.query ?? '') : actual.category === required.category));
           if (match) {
-            match.hard = true;
-            match.maxMinutes = required.maxMinutes;
-            match.mode = required.mode;
-            if (required.alternativeModes) match.alternativeModes = required.alternativeModes;
-            else delete match.alternativeModes;
+            if (required.hard && required.maxMinutes !== undefined) {
+              match.hard = true;
+              match.maxMinutes = required.maxMinutes;
+              match.mode = required.mode;
+              if (required.alternativeModes) match.alternativeModes = required.alternativeModes;
+              else delete match.alternativeModes;
+            }
           } else {
             const id = `target-${intent.travelTargets.length + 1}`;
             intent.travelTargets.push({ ...required, id });

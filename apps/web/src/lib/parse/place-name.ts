@@ -1,0 +1,1 @@
+export const normalizePlace = (query: string) => query.normalize('NFKD').replace(/\p{M}/gu, '').toLowerCase().replace(/[&/]/g, ' and ').replace(/[-–—.]/g, ' ').replace(/[^a-z0-9 ]/g, '').replace(/\s+/g, ' ').trim();

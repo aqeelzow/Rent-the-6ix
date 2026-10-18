@@ -17,6 +17,7 @@
     "ai:backfill": "node --env-file-if-exists=../../.env.local src/ai-backfill.ts",
     "geocode": "node --env-file-if-exists=../../.env.local src/geocode.ts",
     "data:civic": "node --env-file-if-exists=../../.env.local src/civic/cli.ts",
+    "data:known-places": "node src/civic/known-places.ts",
     "load:benchmarks": "node --env-file-if-exists=../../.env.local src/load-benchmarks.ts"
   },
   "dependencies": {

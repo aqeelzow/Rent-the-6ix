@@ -19,7 +19,7 @@ test('detects short street pairs without treating amenities or independent place
 });
 
 test('both basic and AI parsing suggest clarification for missing or unresolved intersection locations', async () => {
-  for (const prompt of ['near queens and adelaide', 'concord and hallam', 'Apartments near Concord and Hallam under $2500']) {
+  for (const prompt of ['near queens and adelaide', 'invented and fictitious', 'Apartments near Invented and Fictitious under $2500']) {
     for (const provider of [undefined, { generateStructured: async <T>() => fallbackParse('under $2500') as T, generateText: async () => '' }]) {
       const result = await new ParseService({ provider }).parse({ prompt }, 'test');
       assert.ok(result.intent.droppedRequests.some(request => /Did you mean an intersection\?/.test(request.reason)), prompt);
@@ -30,8 +30,8 @@ test('both basic and AI parsing suggest clarification for missing or unresolved 
 });
 
 test('an unresolved AI destination gets clarification while a resolved full pair keeps its location', async () => {
-  const prompt = 'near Concord and Hallam';
-  const interpretation = () => ({ ...fallbackParse(prompt), travelTargets: [{ id: 'target-1', kind: 'place', label: 'Concord and Hallam', query: 'Concord and Hallam', mode: 'walk', hard: false }], fieldSources: { 'travelTargets.target-1': { source: 'ai_prompt', phrase: 'Concord and Hallam' } } });
+  const prompt = 'near Invented and Fictitious';
+  const interpretation = () => ({ ...fallbackParse(prompt), travelTargets: [{ id: 'target-1', kind: 'place', label: 'Invented and Fictitious', query: 'Invented and Fictitious', mode: 'walk', hard: false }], fieldSources: { 'travelTargets.target-1': { source: 'ai_prompt', phrase: 'Invented and Fictitious' } } });
   for (const resolved of [false, true]) {
     const result = await new ParseService({
       provider: { generateStructured: async <T>() => interpretation() as T, generateText: async () => '' },
@@ -40,4 +40,10 @@ test('an unresolved AI destination gets clarification while a resolved full pair
     assert.equal(result.intent.droppedRequests.some(request => /Did you mean an intersection\?/.test(request.reason)), !resolved);
     assert.equal(!!result.intent.travelTargets[0].resolved, resolved);
   }
+});
+
+test('catalogued intersections resolve locally without an unnecessary clarification', async () => {
+  const result = await new ParseService().parse({ prompt: 'near Concord and Hallam' }, 'catalogued-intersection');
+  assert.equal(result.destinations[0].resolution.status, 'resolved');
+  assert.ok(!result.intent.droppedRequests.some(request => /Did you mean an intersection\?/.test(request.reason)));
 });
