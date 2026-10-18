@@ -253,7 +253,7 @@
       "lease12": "12-month lease",
       "travel": "{label}: {minutes} min by {modes}",
       "travelDefault": "{label}: {minutes} min by {modes} (default)",
-      "safety": "Consider safety",
+      "safety": "Reported crime levels",
       "income": "Income {amount}/year",
       "people": "{n} people",
       "area": "In {area}",
@@ -298,7 +298,7 @@
         "price": "Price",
         "home": "The home",
         "travel": "Getting around",
-        "safety": "Safety",
+        "safety": "Reported Crime Levels",
         "area": "Area"
       },
       "any": "Any",
@@ -360,7 +360,7 @@
         "community_centre": "Community centre",
         "university": "University or college"
       },
-      "safetyToggle": "Consider safety",
+      "safetyToggle": "Consider reported crime levels",
       "safetyHelp": "Uses Toronto Police neighbourhood crime rates compared with the city rate. Off unless you turn it on. Rates describe whole neighbourhoods, not a street, a building or the people who live there.",
       "areaHelp": "Areas come from your request. Picking neighbourhoods on a map comes with the explorer.",
       "noAreas": "All of Toronto.",
@@ -374,10 +374,10 @@
           "price": "Your budget",
           "travel": "Getting to your places",
           "home": "The home itself",
-          "safety": "Safety"
+          "safety": "Reported crime levels"
         },
         "share": "{share}% of the score",
-        "safetyOff": "Turn on safety to use",
+        "safetyOff": "Turn on reported crime levels to use",
         "allZero": "At least one part needs some weight.",
         "reset": "Reset to defaults"
       }
@@ -428,7 +428,7 @@
       "availableBy": "Available by",
       "lease": "Lease",
       "priceFairness": "Price compared with similar listings",
-      "safety": "Safety"
+      "safety": "Reported crime levels"
     },
     "approx": "Approximate location",
     "price": {
@@ -457,7 +457,7 @@
       "price": "Price",
       "travel": "Travel",
       "home": "Home",
-      "safety": "Safety"
+      "safety": "Reported crime levels"
     },
     "travel": {
       "transit": "Est. {minutes} min by transit to {target}",
@@ -528,10 +528,10 @@
     },
     "safetyInfo": {
       "open": "How this works",
-      "title": "How the safety figure works",
-      "what": "Safety is optional and off unless you turn it on. It uses Toronto Police Service neighbourhood crime rates.",
+      "title": "How reported crime levels work",
+      "what": "Reported crime levels are optional and off unless you turn them on. They use Toronto Police Service neighbourhood crime rates.",
       "measure": "We add up five major crime types (assault, break and enter, auto theft, robbery, theft over $5,000) per 100,000 residents, averaged over the last three published years, and compare the neighbourhood with the city. \"0.7× the city rate\" means 30% below it.",
-      "ranking": "When it's on, safety is {weight}% of the match score: {full}× the city rate or lower scores 100, {zero}× or higher scores 0, in a straight line between.",
+      "ranking": "When they're on, reported crime levels are {weight}% of the match score: {full}× the city rate or lower scores 100, {zero}× or higher scores 0, in a straight line between.",
       "mustHave": "With a limit set, it keeps only neighbourhoods at or below that many times the city rate (the city rate unless you move the slider).",
       "never": "Every listing in a neighbourhood gets the same figure. Nothing is worked out for a street or a building, and the figure is never a label for a place or the people in it.",
       "caveatsTitle": "Read before using it"
@@ -541,7 +541,7 @@
       "value": "{rate}× the city rate",
       "none": "No limit",
       "city": "city",
-      "help": "1.0× is the city rate; lower keeps fewer neighbourhoods. With no limit, safety only changes the ranking."
+      "help": "1.0× is the city rate; lower keeps fewer neighbourhoods. With no limit, reported crime levels only change the ranking."
     },
     "scoreLabel": "match",
     "scoreBreakdown": "Match score {total}",
@@ -552,7 +552,7 @@
       "price": "How the asking rent fits your preferred budget.",
       "travel": "How estimated trips fit your preferences for destinations and nearby amenities, such as groceries, parks and schools.",
       "home": "Soft home preferences are the home features you’d like a listing to have, but that aren’t required for it to appear in results.",
-      "safety": "How the neighbourhood’s police-reported crime rate compares with the city rate, when safety is enabled.",
+      "safety": "How the neighbourhood’s police-reported crime rate compares with the city rate, when reported crime levels are turned on.",
       "unavailable": "Not scored: no applicable preference or not enough data.",
       "zeroWeight": "Not counted: this part’s weight is zero.",
       "requirements": "Must-haves filter results separately. Unconfirmed requirements are marked on the listing."
@@ -589,7 +589,7 @@
       "rent": "Rent check",
       "home": "The home",
       "travel": "Getting around",
-      "safety": "Safety",
+      "safety": "Reported Crime Levels",
       "building": "Building",
       "area": "The area",
       "check": "Things to check",
@@ -933,7 +933,7 @@
       "rent": "How the rent check works",
       "score": "How the match score works",
       "travel": "Travel times",
-      "safety": "Safety",
+      "safety": "Reported Crime Levels",
       "ai": "How we use AI",
       "limits": "Limitations"
     },
@@ -949,7 +949,7 @@
         "city-wards": "Ward boundaries for the area pages and ward facts.",
         "development-applications": "What's being built nearby, on area pages.",
         "library-branch-general-information": "Libraries as nearby places and travel targets.",
-        "neighbourhood-crime-rates": "Police-reported crime rates for the optional safety preference.",
+        "neighbourhood-crime-rates": "Police-reported crime rates for the optional reported crime levels preference.",
         "neighbourhood-profiles": "Renter share, rent burden and other neighbourhood facts from the 2021 Census.",
         "neighbourhoods": "The 158 neighbourhood boundaries every listing is placed in.",
         "openstreetmap": "Groceries, pharmacies and other everyday places near each listing.",
@@ -993,7 +993,7 @@
         "price": "Price ({weight}%): how the rent sits against your budget, when the budget is a preference.",
         "travel": "Travel ({weight}%): time to your places against your target.",
         "home": "Home ({weight}%): how the unit matches your wishes: bedrooms, size, AC, laundry, pets and so on.",
-        "safety": "Safety (off, or {weight}% if you turn it on): the neighbourhood's crime rate against the city's."
+        "safety": "Reported crime levels (off, or {weight}% if you turn them on): the neighbourhood's crime rate against the city's."
       },
       "rules": {
         "1": "A detail the listing doesn't state scores 50, halfway between a match and a miss. Unknown is never treated as “no”.",
@@ -1008,7 +1008,7 @@
       "modeNoOverhead": "{mode}: {speed} km/h along streets about {detour}× the straight-line distance"
     },
     "safety": {
-      "body": "Safety is off unless you turn it on. It uses the Toronto Police Service's police-reported rates for five major crime types in the listing's neighbourhood, compared with the city average. Reported crime isn't all crime, rates move from year to year, and they say nothing about any street or building. We never call an area safe or unsafe."
+      "body": "Reported crime levels are off unless you turn them on. They use the Toronto Police Service's police-reported rates for five major crime types in the listing's neighbourhood, compared with the city average. Reported crime isn't all crime, rates move from year to year, and they say nothing about any street or building. We never call an area safe or unsafe."
     },
     "ai": {
       "rules": {
