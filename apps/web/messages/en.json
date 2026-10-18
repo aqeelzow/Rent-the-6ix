@@ -161,7 +161,7 @@
       "lastRunCounts": "Last run",
       "collectedStored": "{collected} collected, {stored} stored",
       "state": {
-        "ok": "Working",
+        "ok": "Healthy",
         "no_runs": "No runs recorded",
         "stale": "Behind",
         "empty": "No listings found",
