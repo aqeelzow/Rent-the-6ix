@@ -1,3 +1,4 @@
+import { Analytics } from "@vercel/analytics/next";
 import type { Metadata, Viewport } from "next";
 import { Big_Shoulders, Public_Sans } from "next/font/google";
 import { SiteFooter } from "@/components/layout/site-footer";
@@ -51,6 +52,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             {children}
           </main>
           <SiteFooter />
+          <Analytics />
         </TooltipProvider>
       </body>
     </html>
