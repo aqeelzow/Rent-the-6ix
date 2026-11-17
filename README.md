@@ -8,7 +8,7 @@ Describe what you need in plain English ("2-bed near UofT under $2,800, cat-frie
 
 Built at **Hack the Valley** for the Hack the Valley × School of Cities civic track, with the Gemini, Vultr and TigerData tracks.
 
-> Status: in development. See `PROGRESS.md`.
+> Status: completed.
 
 ## Screenshots
 
