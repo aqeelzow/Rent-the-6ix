@@ -14,10 +14,7 @@ Built at **Hack the Valley** for the Hack the Valley × School of Cities civic t
 
 **Describe what you need in plain English**
 
-<p>
-  <img src="docs/images/search.jpg" alt="Search page on desktop" width="66%">
-  <img src="docs/images/search-mobile.jpg" alt="Search page on mobile" width="32%">
-</p>
+![Search page](docs/images/search.jpg)
 
 **Ranked results on a map, with travel time to where you need to be**
 
