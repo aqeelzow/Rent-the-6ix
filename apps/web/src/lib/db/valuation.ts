@@ -208,7 +208,7 @@ export function clearValuationCache() {
  * Owner C's part of search's `ScoreContext` (packages/shared/engine/score.ts): the valuation and
  * the caveats for any listing, stored or pasted (SPEC 10.3: pasted listings are valued against our
  * comparables). Travel and safety come from D.
- * `sameTextElsewhere` is 0 for now: in TigerData nearly every repeated description is a property
+ * `sameTextElsewhere` is 0 for now: in the database nearly every repeated description is a property
  * manager's template across its own units, so the SPEC 7.7 rule would mostly flag real listings.
  */
 export async function listingContext(

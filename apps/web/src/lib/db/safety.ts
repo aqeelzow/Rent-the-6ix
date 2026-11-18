@@ -52,7 +52,7 @@ export function crimeTableFromRows(
   return { byArea, city: cityRates([...byArea.values()]) };
 }
 
-/** Reads the table from TigerData. */
+/** Reads the table from the database. */
 export async function loadCrimeTable(
   sql: NonNullable<ReturnType<typeof getClient>>,
 ): Promise<CrimeTable> {

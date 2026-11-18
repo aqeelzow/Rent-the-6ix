@@ -2,8 +2,8 @@
 // and merge what that page adds (full description, amenities) into the index row.
 // Patches are cached per source in the git-ignored apps/worker/.cache/details/, with the
 // description already scrubbed, so contact details never reach disk.
-// The cache stays on disk (full descriptions aren't stored in TigerData, SPEC 8.5; the worker needs a
-// persistent volume for it). TigerData records when each listing's page was fetched and at what
+// The cache stays on disk (full descriptions aren't stored in the database, SPEC 8.5; the worker needs a
+// persistent volume for it). The database records when each listing's page was fetched and at what
 // rent (detail_fetched_at / detail_rent_cad, migration 005), for coverage on /status.
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import type { Sql } from "postgres";

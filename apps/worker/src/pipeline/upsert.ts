@@ -1,4 +1,4 @@
-// Upsert (SPEC 8.4 step 6): write normalized listings to TigerData, record one
+// Upsert (SPEC 8.4 step 6): write normalized listings to the database, record one
 // listing_observations row per sighting, and mark listings stale/removed by last_seen_at.
 // Location: the source's coordinates at 'street' precision until geocoding (P1.5) upgrades a row;
 // once a row has an Address Points match, later upserts keep its geocoded location.

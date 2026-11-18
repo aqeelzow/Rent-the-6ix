@@ -1,4 +1,4 @@
-// Pre-fill candidates for db/seed/manual.csv from TigerData, one group per SPEC 16 demo prompt:
+// Pre-fill candidates for db/seed/manual.csv from the database, one group per SPEC 16 demo prompt:
 // `pnpm --filter worker manual:candidates`. Writes the git-ignored
 // apps/worker/.cache/manual-candidates.csv with checked_on empty: open each source_url, fix what's
 // wrong, set checked_on, and copy the good rows into db/seed/manual.csv. Excerpts are left out.

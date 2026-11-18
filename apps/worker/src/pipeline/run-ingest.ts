@@ -49,7 +49,7 @@ export interface SourceRun {
   dropped: number;
   /** Detail pages fetched this run (new or changed listings, up to maxDetails). */
   details: number;
-  /** Rows written to TigerData (0 when DATABASE_URL isn't set). */
+  /** Rows written to the database (0 when DATABASE_URL isn't set). */
   stored: number;
   /** Listings that gained fields from AI extraction (0 when AI is off). */
   aiFilled: number;
@@ -104,7 +104,7 @@ export function ingestOptionsFromEnv(
 export async function runIngest(options: IngestOptions): Promise<IngestResult> {
   const outDir = new URL("../../.cache/ingest/", import.meta.url);
   await mkdir(outDir, { recursive: true });
-  // With DATABASE_URL, every checkpoint and the final rows are also upserted into TigerData.
+  // With DATABASE_URL, every checkpoint and the final rows are also upserted into the database.
   const db = openDb();
   // With AI_PROVIDER=gemini, a key and a model, unknown fields are read from descriptions.
   const extractor = geminiExtractorFromEnv();
@@ -191,14 +191,14 @@ export async function runIngest(options: IngestOptions): Promise<IngestResult> {
     if (rows.length) {
       await save(rows);
       console.log(`${adapter.id}: wrote ${rows.length} listings to ${file.pathname}`);
-      if (db) console.log(`${adapter.id}: ${run.stored} listings in TigerData`);
+      if (db) console.log(`${adapter.id}: ${run.stored} listings in the database`);
       console.log(`${adapter.id}: field coverage ${coverage(rows)}`);
     }
     if (db) await recordRun(db, run, observedAt);
     if (db && adapter.fetchDetail) {
       try {
         const n = await recordDetailFetches(db, adapter.id, await loadDetailCache(adapter.id));
-        console.log(`${adapter.id}: ${n} listings' detail fetches recorded in TigerData`);
+        console.log(`${adapter.id}: ${n} listings' detail fetches recorded in the database`);
       } catch (error) {
         console.error(
           `${adapter.id}: detail fetch record failed: ${error instanceof Error ? error.message : error}`,
@@ -255,7 +255,7 @@ async function store(
     return (await upsertListings(db, rows, observedAt)).written;
   } catch (error) {
     console.error(
-      `${source}: TigerData upsert failed: ${error instanceof Error ? error.message : error}`,
+      `${source}: database upsert failed: ${error instanceof Error ? error.message : error}`,
     );
     return 0;
   }

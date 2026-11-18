@@ -1,4 +1,4 @@
-// Mark cross-site duplicates in TigerData: `pnpm --filter worker dedupe:listings` (also runs after each ingest).
+// Mark cross-site duplicates in the database: `pnpm --filter worker dedupe:listings` (also runs after each ingest).
 import { openDb } from "./lib/db.ts";
 import { dedupeStored } from "./pipeline/dedupe-store.ts";
 

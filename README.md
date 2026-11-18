@@ -6,9 +6,9 @@
 
 Describe what you need in plain English ("2-bed near UofT under $2,800, cat-friendly, 10 min walk to a supermarket, with AC"). RentThe6ix turns it into filters you can edit, searches listings gathered from several rental sites, and ranks them on price vs market, travel time (transit, car, walk or bike), the home itself, and, if you turn it on, neighbourhood crime rates. Every listing comes with its neighbourhood and ward context from Toronto open data: typical rents, how renters there are doing, transit, the building's RentSafeTO inspection score, and what's being built nearby.
 
-Built at **Hack the Valley** for the Hack the Valley × School of Cities civic track, with the Gemini, Vultr and TigerData tracks.
+Built at **Hack the Valley** for the Hack the Valley × School of Cities civic track, with the Gemini and Vultr tracks.
 
-> Status: completed.
+> Status: completed. Live at [6ix.casa](https://6ix.casa).
 
 ## Screenshots
 
@@ -30,8 +30,8 @@ Built at **Hack the Valley** for the Hack the Valley × School of Cities civic t
 ## How it works
 
 - **Gemini** reads your request and turns it into structured filters, explains why a listing ranks where it does, reads listings you paste from Facebook groups, and writes neutral housing briefings for each ward. It never produces a number: every figure comes from the engine and the database.
-- **TigerData** (PostgreSQL with PostGIS and TimescaleDB) stores listings, price history, travel times and Toronto civic data, and runs the spatial and comparable-rent queries.
-- **Vultr** hosts the app, the listing collection worker, and OpenTripPlanner, which computes every travel time.
+- **PostgreSQL** with PostGIS and TimescaleDB stores listings, price history and Toronto civic data, and runs the spatial and comparable-rent queries.
+- **Vultr** hosts everything on one instance: the app, the database, and the worker that collects listings from rental sites every six hours.
 - **Toronto open data** and Statistics Canada, CMHC, TTC and Toronto Police data give each listing its context. Full list with links and licences: the `/data` page and `SPEC.md` section 8.
 
 ## Repo layout
@@ -40,14 +40,14 @@ Built at **Hack the Valley** for the Hack the Valley × School of Cities civic t
 apps/web          Next.js app (UI + API routes)
 apps/worker       listing collection, civic data loaders, travel-time precompute
 packages/shared   zod schemas, fixtures, the pure TypeScript engine
-db/migrations     SQL migrations for TigerData
+db/migrations     SQL migrations (PostgreSQL + PostGIS + TimescaleDB)
 db/seed           benchmarks, manual backup listings
 otp/              OpenTripPlanner config (graph is built on the server, not committed)
 ```
 
 ## Getting started
 
-Requirements: Node 24+, pnpm 10 or newer (the repo pins pnpm 10.34.7 in `packageManager`; newer pnpm switches to it automatically), access to the team's TigerData service. Docker only if you run the worker or OTP locally.
+Requirements: Node 24+, pnpm 10 or newer (the repo pins pnpm 10.34.7 in `packageManager`; newer pnpm switches to it automatically), a PostgreSQL database with PostGIS, TimescaleDB and pg_trgm (see `DEPLOY.md` section 1). Docker only if you run the worker or OTP locally.
 
 ```bash
 pnpm install
@@ -81,7 +81,7 @@ The web app runs on fixtures from `packages/shared/fixtures` until the database 
 - `PERSON_A.md` … `PERSON_D.md`: each person's tasks and state
 - `PROGRESS.md`: master task list and data status
 - `CLAUDE.md`: rules for Claude Code sessions
-- `DEPLOY.md`: Vultr + TigerData + OTP setup
+- `DEPLOY.md`: Vultr, database and OTP setup
 - `DEVPOST.md`: submission draft
 
 ## Data and limits

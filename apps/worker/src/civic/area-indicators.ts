@@ -1,4 +1,4 @@
-// P2.14 (derived half) — area indicators computed in TigerData from tables the other civic tasks
+// P2.14 (derived half) — area indicators computed in the database from tables the other civic tasks
 // already loaded: RentSafeTO buildings, TTC stops and City POIs, counted inside each of the 158
 // neighbourhoods and 25 wards (SPEC 5 "Area", 9.1, 9.2). Nothing is fetched; each indicator is one
 // `insert … select` so no rows travel to this machine.
