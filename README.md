@@ -2,6 +2,8 @@
 
 ![RentThe6ix landing page](docs/images/landing.jpg)
 
+**[▶ Watch the demo video](https://www.youtube.com/watch?v=CLQsM87pwk4)**
+
 **Find the best-fit, best-value rental in Toronto, and see the neighbourhood around it.**
 
 Describe what you need in plain English ("2-bed near UofT under $2,800, cat-friendly, 10 min walk to a supermarket, with AC"). RentThe6ix turns it into filters you can edit, searches listings gathered from several rental sites, and ranks them on price vs market, travel time (transit, car, walk or bike), the home itself, and, if you turn it on, neighbourhood crime rates. Every listing comes with its neighbourhood and ward context from Toronto open data: typical rents, how renters there are doing, transit, the building's RentSafeTO inspection score, and what's being built nearby.
