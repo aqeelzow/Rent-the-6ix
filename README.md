@@ -47,44 +47,49 @@ db/seed           benchmarks, manual backup listings
 otp/              OpenTripPlanner config (graph is built on the server, not committed)
 ```
 
-## Getting started
+## Running it locally
 
-Requirements: Node 24+, pnpm 10 or newer (the repo pins pnpm 10.34.7 in `packageManager`; newer pnpm switches to it automatically), a PostgreSQL database with PostGIS, TimescaleDB and pg_trgm (see `DEPLOY.md` section 1). Docker only if you run the worker or OTP locally.
+Requirements: Node 24 and pnpm 10 or newer.
+
+The quickest way to look around: the app runs on built-in sample listings, with no database, AI key or map key needed.
 
 ```bash
 pnpm install
-# create .env.local at the repo root with the variables in SPEC.md section 20 (ask the team for values; never commit it)
-pnpm db:migrate                   # apply db/migrations to DATABASE_URL
-pnpm data:civic                   # load Toronto civic data (D)
-pnpm dev                          # web app on http://localhost:3000
+pnpm dev                          # http://localhost:3000
 ```
 
-One `.env.local` at the repo root is shared by the web app (loaded in `apps/web/next.config.ts`), the worker and scripts (`node --env-file-if-exists=../../.env.local`).
+Without keys it skips the AI features (`AI_PROVIDER=none`), uses the free OpenFreeMap basemap instead of MapTiler, and shows straight-line distances instead of transit times.
 
-The web app runs on fixtures from `packages/shared/fixtures` until the database has data. It also runs without AI (`AI_PROVIDER=none`), without a MapTiler key (OpenFreeMap basemap), and without OTP (travel falls back to labelled straight-line distance).
+To run it on real data you also need a PostgreSQL database with PostGIS, TimescaleDB and pg_trgm (setup in `DEPLOY.md` section 1). Create a `.env.local` at the repo root with the variables listed in `SPEC.md` section 20, then:
 
-### Scripts (planned; keep this list in sync as they're built)
+```bash
+pnpm db:migrate                   # create the tables
+pnpm data:civic                   # load Toronto open data
+pnpm ingest:once                  # collect listings from the rental sites once
+pnpm dev
+```
 
-| Script | What it does | Owner |
-| --- | --- | --- |
-| `pnpm dev` / `build` / `start` | web app | A |
-| `pnpm typecheck` / `lint` / `test` | all packages | A |
-| `pnpm format` / `format:check` | Prettier over the repo (Markdown docs excluded) | A |
-| `pnpm db:migrate` | apply SQL migrations | D |
-| `pnpm data:civic` | load Toronto open data, POIs, RentSafeTO, crime rates, benchmarks | D |
-| `pnpm ingest:once` | one listing collection run | C |
-| `pnpm travel:precompute` | fill `travel_times` for active listings | D |
-| `pnpm otp:build` | build the OpenTripPlanner graph | D |
+The web app, the worker and the scripts all read the same `.env.local`.
 
-## Team docs
+### Scripts
 
-- `SPEC.md`: what we're building and why (the master spec)
-- `TEAM.md`: how the four of us work in parallel (ownership, contracts, sync points)
-- `PERSON_A.md` … `PERSON_D.md`: each person's tasks and state
-- `PROGRESS.md`: master task list and data status
-- `CLAUDE.md`: rules for Claude Code sessions
-- `DEPLOY.md`: Vultr, database and OTP setup
-- `DEVPOST.md`: submission draft
+| Script | What it does |
+| --- | --- |
+| `pnpm dev` / `build` / `start` | run, build or serve the web app |
+| `pnpm typecheck` / `lint` / `test` | check all packages |
+| `pnpm format` / `format:check` | format the repo with Prettier |
+| `pnpm db:migrate` | apply the SQL migrations in `db/migrations` |
+| `pnpm data:civic` | load Toronto open data, points of interest, RentSafeTO, crime rates and rent benchmarks |
+| `pnpm ingest:once` | run one round of listing collection |
+
+## Project docs
+
+The planning docs from the hackathon are kept in the repo for reference:
+
+- `SPEC.md`: the full design: features, data sources and licences, ranking, environment variables
+- `DEPLOY.md`: how it's deployed on Vultr with PostgreSQL and OpenTripPlanner
+- `DEVPOST.md`: the Devpost submission
+- `TEAM.md`, `PERSON_A.md` … `PERSON_D.md`, `PROGRESS.md`: how the four of us split up the work and tracked it during the hackathon
 
 ## Data and limits
 
