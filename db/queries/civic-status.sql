@@ -1,6 +1,6 @@
 -- civic-status.sql — read-only health check for the civic data (owner: D).
 --
--- Run it in the TigerData console, or from the repo:
+-- Run it in psql, or from the repo:
 --   tiger db query --file db/queries/civic-status.sql --read-only
 --
 -- It answers "is the data actually there, and does it join to the listings?" in eight queries.

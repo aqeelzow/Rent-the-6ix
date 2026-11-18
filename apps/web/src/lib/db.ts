@@ -36,7 +36,7 @@ export function getClient(): Sql | null {
   }
   client ??= postgres(url, {
     max: 2,
-    // A paused or cold TigerData instance needs longer than 5 s to accept a connection; failing
+    // A cold database needs longer than 5 s to accept a connection; failing
     // the whole search in that window turned a slow first search into a 503.
     connect_timeout: 10,
     // Keep the two connections for a few minutes: a demo searches every few seconds, and a 20 s

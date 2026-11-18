@@ -1,4 +1,4 @@
-// Load ingest JSON files into TigerData: `pnpm --filter worker load:cache [file …]`.
+// Load ingest JSON files into the database: `pnpm --filter worker load:cache [file …]`.
 // With no files, loads the newest file per source in .cache/ingest/. Each row is upserted as seen
 // at the time in the file name (kijiji-2026-10-17T04-40-09-143Z.json), then freshness is updated.
 import { readdir, readFile } from "node:fs/promises";

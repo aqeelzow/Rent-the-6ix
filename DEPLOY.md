@@ -1,7 +1,8 @@
 # DEPLOY.md
 
 How RentThe6ix runs in production: one Vultr instance running Docker Compose (Caddy,
-`web`, `worker`, and `otp` behind a profile) talking to a TigerData service. Owner: **D**.
+`web`, `worker`, `db`, and `otp` behind a profile). The database is a PostgreSQL container on
+the same instance. Owner: **D**.
 
 Status: everything in this file is built and tested locally (Windows, Docker 29.2.1) except
 the parts that need the instance itself — they are marked **[needs instance]**. Record real
@@ -20,28 +21,66 @@ tree to resolve `@rentthe6ix/shared`. Next is built with `output: "standalone"`,
 image ships only the server bundle; the entry point is `apps/web/server.js` and
 `outputFileTracingRoot` is the repo root.
 
-## 1. TigerData (done — P0.8)
+## 1. Database (self-hosted on the instance)
 
-1. Service `ha5vgeeas8` (Tiger Cloud, region `x2mp9efr75`), database `tsdb`, user `tsdbadmin`.
-   TLS required.
-2. Connection string → `DATABASE_URL` in `.env.local` (dev) and `.env` (instance). It is
-   git-ignored; share it with the team privately, never in the repo or a public channel.
-   `tiger db uri --with-password` prints it without a copy step — note it emits
-   `postgresql://`, not `postgres://`.
-3. Migrations applied and verified: `postgis 3.6.4`, `timescaledb 2.30.2`, `pg_trgm 1.6`;
-   14 tables plus `schema_migrations`; `listing_observations` is a hypertable with 7-day
-   chunks; 10 GiST/trigram indexes.
-4. Re-apply after a pull: `pnpm db:migrate`. Files are applied once each, in order, one
-   transaction per file; `schema_migrations` records a checksum and the runner **refuses** to
-   run a file whose contents changed. Every schema change is a new `00N_*.sql`.
+PostgreSQL 17 with PostGIS, TimescaleDB and pg_trgm, from the `timescale/timescaledb-ha:pg17`
+image, running as the `db` service next to `web` and `worker`. It has no published port: only
+containers on the Compose network reach it, at `db:5432`.
 
-No local `psql`? Use the Tiger CLI: `tiger db query --command "select 1"` or
-`tiger db query --file path.sql` for a multi-statement file.
+The service is defined in `docker-compose.override.yml` on the instance, which Compose loads
+automatically on top of `docker-compose.yml`. That file and the secrets below live only on the
+instance (never in git); `deploy.sh` runs `git reset --hard` but not `git clean`, so they
+survive deploys.
+
+| On the instance | What it is |
+| --- | --- |
+| `docker-compose.override.yml` | the `db` service, its `db-data` volume, and `depends_on: db` for `web` and `worker` |
+| `.env.db` | `POSTGRES_PASSWORD` (`chmod 600`) |
+| `dbcerts/server.crt`, `server.key` | self-signed TLS certificate, so `sslmode=require` works unchanged |
+| `rentthe6ix_db-data` volume | the data directory (`/home/postgres/pgdata/data`) |
+
+The `db` service in the override:
+
+```yaml
+services:
+  db:
+    image: timescale/timescaledb-ha:pg17
+    restart: unless-stopped
+    env_file: .env.db
+    environment:
+      POSTGRES_USER: rentthe6ix
+      POSTGRES_DB: rentthe6ix
+    command: ["postgres", "-c", "shared_buffers=512MB", "-c", "ssl=on",
+              "-c", "ssl_cert_file=/certs/server.crt", "-c", "ssl_key_file=/certs/server.key"]
+    volumes:
+      - db-data:/home/postgres/pgdata/data
+      - ./dbcerts:/certs:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U rentthe6ix -d rentthe6ix"]
+```
+
+`DATABASE_URL` in `.env` is
+`postgres://rentthe6ix:<password>@db:5432/rentthe6ix?sslmode=require`.
+
+Migrations: `docker compose run --rm --no-deps worker node db/migrate.mjs`. Files are applied
+once each, in order, one transaction per file; `schema_migrations` records a checksum and the
+runner **refuses** to run a file whose contents changed. Every schema change is a new
+`00N_*.sql`.
+
+`psql` on the instance: `docker compose exec db psql -U rentthe6ix -d rentthe6ix`.
+
+Rebuilding from empty (what was done on 2026-11-17): run the migrations, then
+`civic/cli.ts all`, `load-benchmarks.ts`, `load-cache.ts` with every file in
+`.cache/ingest/` in date order (this restores listings and price history from the saved
+scrapes), and `dedupe.ts` (see section 5).
+
+For local development, any PostgreSQL 15+ with the three extensions works (the same image via
+`docker run`, for example); point `DATABASE_URL` in `.env.local` at it with `sslmode=require`.
 
 ## 2. Vultr instance **[needs instance]**
 
 1. Cloud Compute, **Ubuntu 24.04 LTS, 4 vCPU / 8 GB, 80 GB SSD**, region in North America
-   East (same side as TigerData). Add your SSH key. 8 GB is not padding: OTP wants 4–6 GB.
+   East. Add your SSH key. 8 GB is not padding: OTP wants 4–6 GB.
 2. Firewall (Vultr console): SSH (22) from your IP only, 80 and 443 from anywhere.
 3. SSH in and install Docker:
    ```bash
@@ -54,7 +93,7 @@ No local `psql`? Use the Tiger CLI: `tiger db query --command "select 1"` or
    `.env.example`; see `SPEC.md` section 20) and fill it in. `SITE_HOST` is the extra deploy key:
    ```
    SITE_HOST=203-0-113-7.sslip.io     # the instance IP with dots → dashes
-   DATABASE_URL=postgresql://…?sslmode=require
+   DATABASE_URL=postgres://rentthe6ix:…@db:5432/rentthe6ix?sslmode=require
    AI_PROVIDER=gemini
    GEMINI_API_KEY=…
    ```
@@ -138,7 +177,10 @@ to labelled straight-line distance and the app must still work.
 
 ```bash
 docker compose exec worker node apps/worker/src/civic/cli.ts all   # civic data (P1.10–P1.16)
-docker compose exec worker node apps/worker/src/index.ts            # or the scheduled run
+docker compose exec worker node apps/worker/src/load-benchmarks.ts  # reference rents, transit, utilities
+docker compose exec worker node apps/worker/src/ingest.ts           # one listing scrape now
+docker compose exec worker node apps/worker/src/load-cache.ts FILE… # reload saved scrapes
+docker compose exec worker node apps/worker/src/dedupe.ts           # mark cross-site duplicates
 ```
 
 ## 6. Deploying updates
@@ -169,6 +211,7 @@ script fails fast with a message if it is missing.
 
 | Symptom | Where to look |
 | --- | --- |
+| `ECONNREFUSED` / upsert failed in worker logs | `docker compose ps db` — the `db` container must be `(healthy)`; `docker compose logs --tail=50 db` |
 | 502 from Caddy | `docker compose logs --tail=50 web` — usually a boot crash or a bad `DATABASE_URL` |
 | `web` stuck `starting` | `docker compose logs web`; the health check fetches `/status` on `$PORT` |
 | Certificate not issued | `docker compose logs caddy`; `SITE_HOST` must resolve to this box, and 80/443 must be open |

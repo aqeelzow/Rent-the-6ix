@@ -1,4 +1,4 @@
-// TigerData connection for the worker. Same rules as apps/web/src/lib/db.ts: DATABASE_URL is
+// Database connection for the worker. Same rules as apps/web/src/lib/db.ts: DATABASE_URL is
 // postgres:// with sslmode=require, read from the repo-root .env.local, never logged.
 import postgres, { type Sql } from "postgres";
 

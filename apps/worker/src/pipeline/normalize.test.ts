@@ -50,7 +50,7 @@ describe("normalize: rent", () => {
   });
 });
 
-describe("normalize: not housing, rooms, implausible rents (seen in TigerData)", () => {
+describe("normalize: not housing, rooms, implausible rents (seen in scraped listings)", () => {
   it("drops parking spaces and lockers", () => {
     expect(
       normalize(raw({ title: "PARKING - 8 WELLESLEY STREET Toronto", monthlyRentCad: 300 }), NOW),

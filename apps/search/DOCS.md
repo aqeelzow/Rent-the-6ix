@@ -87,7 +87,7 @@ The draft exports strict Zod 4 schemas and inferred TypeScript types from `schem
 
 ## Setup and dependencies
 
-Target architecture is the team's Next.js app at `apps/web`, strict TypeScript/Zod shared package at `packages/shared` and TigerData/PostGIS database. A provides scaffold/UI; C provides listing/valuation/caveat implementations; D provides database/geographic/safety/routing definitions and services. Canonical B sources are now integrated in the isolated `/tmp/rent-search-integration` worktree based on main `adbeb25`; the original workspace is retained. Do not run a separate local service as a replacement architecture.
+Target architecture is the team's Next.js app at `apps/web`, strict TypeScript/Zod shared package at `packages/shared` and PostgreSQL/PostGIS database. A provides scaffold/UI; C provides listing/valuation/caveat implementations; D provides database/geographic/safety/routing definitions and services. Canonical B sources are now integrated in the isolated `/tmp/rent-search-integration` worktree based on main `adbeb25`; the original workspace is retained. Do not run a separate local service as a replacement architecture.
 
 Use a small synthetic sample for intermediate DB simulation as requested. Final shared fixtures still require 50 listings, three areas and representative search/detail responses, with unknown fields and both travel methods. Every fixture must be labelled synthetic/demo. The eight-row sample includes a furnished studio below CAD1,300 and a three-bedroom home with parking in the configured Scarborough search rectangle, so student/family API acceptance checks exercise positive hard-filter results. Fixtures cannot prove live DB mappings, OTP routing accuracy or external-provider latency.
 

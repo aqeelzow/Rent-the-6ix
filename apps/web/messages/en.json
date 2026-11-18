@@ -132,7 +132,7 @@
   },
   "status": {
     "title": "System status",
-    "database": "TigerData database",
+    "database": "Database",
     "connected": "Connected",
     "notConnected": "Not connected",
     "notConfigured": "Not configured",

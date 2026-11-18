@@ -1,4 +1,4 @@
-// AI extraction for listings already in TigerData (P4.10):
+// AI extraction for listings already in the database (P4.10):
 // `pnpm ai:backfill [--limit 50] [--sources kijiji,realtor_ca] [--full] [--apply]`.
 // Reads the full description from the detail cache when the listing's page was fetched, else
 // the stored excerpt (--full: only listings with a full description; the keyword rules already

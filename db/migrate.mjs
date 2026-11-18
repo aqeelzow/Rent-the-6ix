@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Apply db/migrations/*.sql to TigerData, once each, in filename order.
+ * Apply db/migrations/*.sql to the database, once each, in filename order.
  *
  *   pnpm db:migrate --dry-run     show the plan, touch nothing
  *   pnpm db:migrate               apply what is pending
@@ -145,7 +145,7 @@ function databaseUrl() {
     );
   }
   if (!url.includes("sslmode=")) {
-    throw new Error("DATABASE_URL has no sslmode; TigerData requires ?sslmode=require");
+    throw new Error("DATABASE_URL has no sslmode; the app requires ?sslmode=require");
   }
   return url;
 }

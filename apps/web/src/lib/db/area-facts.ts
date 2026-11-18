@@ -168,7 +168,7 @@ export function assembleAreaFacts(input: {
 const TABLES = { neighbourhood: "neighbourhoods", ward: "wards" } as const;
 const LISTING_COLUMN = { neighbourhood: "neighbourhood_id", ward: "ward_id" } as const;
 
-/** The area's facts from TigerData, or null when the area doesn't exist. */
+/** The area's facts from the database, or null when the area doesn't exist. */
 export async function loadAreaFacts(
   sql: NonNullable<ReturnType<typeof getClient>>,
   kind: AreaKind,

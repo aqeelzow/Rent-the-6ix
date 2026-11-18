@@ -1,4 +1,4 @@
-// Dedupe in TigerData: run findDuplicates over every listing not removed and store duplicate_of.
+// Dedupe in the database: run findDuplicates over every listing not removed and store duplicate_of.
 // Recomputed in full each time (≈ 13 s for 9,000 listings), so a pair that stops matching is cleared.
 import type { Sql } from "postgres";
 import type { SourceId } from "../sources/types.ts";

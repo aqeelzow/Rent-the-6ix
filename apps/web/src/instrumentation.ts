@@ -1,5 +1,5 @@
 /**
- * Warm the TigerData connection when the server starts.
+ * Warm the database connection when the server starts.
  *
  * The first search after a restart otherwise pays the TLS handshake and first-query planning
  * (~0.5–1 s) inside the request. The production image is a long-running Next server, so doing it
