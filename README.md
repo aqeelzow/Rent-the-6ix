@@ -6,7 +6,7 @@
 
 Describe what you need in plain English ("2-bed near UofT under $2,800, cat-friendly, 10 min walk to a supermarket, with AC"). RentThe6ix turns it into filters you can edit, searches listings gathered from several rental sites, and ranks them on price vs market, travel time (transit, car, walk or bike), the home itself, and, if you turn it on, neighbourhood crime rates. Every listing comes with its neighbourhood and ward context from Toronto open data: typical rents, how renters there are doing, transit, the building's RentSafeTO inspection score, and what's being built nearby.
 
-Built at **Hack the Valley** for the Hack the Valley × School of Cities civic track, with the Gemini and Vultr tracks.
+Built at **Hack the Valley** for the Hack the Valley × School of Cities civic track, with the Gemini, Vultr and TigerData tracks.
 
 > Status: completed. Live at [6ix.casa](https://6ix.casa).
 
@@ -30,7 +30,7 @@ Built at **Hack the Valley** for the Hack the Valley × School of Cities civic t
 ## How it works
 
 - **Gemini** reads your request and turns it into structured filters, explains why a listing ranks where it does, reads listings you paste from Facebook groups, and writes neutral housing briefings for each ward. It never produces a number: every figure comes from the engine and the database.
-- **PostgreSQL** with PostGIS and TimescaleDB stores listings, price history and Toronto civic data, and runs the spatial and comparable-rent queries.
+- **PostgreSQL** with PostGIS and TimescaleDB stores listings, price history and Toronto civic data, and runs the spatial and comparable-rent queries. It ran on TigerData during the hackathon; we later moved it to a self-hosted PostgreSQL container on the same Vultr instance.
 - **Vultr** hosts everything on one instance: the app, the database, and the worker that collects listings from rental sites every six hours.
 - **Toronto open data** and Statistics Canada, CMHC, TTC and Toronto Police data give each listing its context. Full list with links and licences: the `/data` page and `SPEC.md` section 8.
 
