@@ -1,10 +1,16 @@
 // #16 — City of Waterloo address points (~56k), used for offline geocoding (geocode.ts), place
 // resolution and building matching. Paged from the City's `Addresses` hosted feature layer.
 //
-// The key is the civic address itself ("WAT:213 PASTERN TRAIL"): about 40k of the 56k points
-// have no ADDRESS_ID, and OBJECTIDs change when the City republishes the layer. The address is
-// unique except for ~90 repeats (one address, several points); the first point by OBJECTID is
-// kept. Writes are batched upserts on that key, so an interrupted run can simply be repeated. The source's WARD column is ignored (no wards, #1); `neighbourhood_id` is filled
+// The City stores one point per unit ("155 CAROLINE ST S 1804"): 23.5k of the 56k points are
+// units of ~930 buildings. Listings name the building, not the unit, and the same-building rules
+// want one id per building, so units are merged into one point per civic address, placed at the
+// average of its unit points (a townhouse block's units spread up to ~50 m). The unit is whatever
+// follows `<number> <STREET_NM>` in CIVIC_ADDR.
+//
+// The key is that civic address ("WAT:155 CAROLINE ST S"): most points have no ADDRESS_ID, and
+// OBJECTIDs change when the City republishes the layer. Writes are batched upserts on that key,
+// and Waterloo points the City no longer publishes are deleted, so a run can simply be repeated.
+// The source's WARD column is ignored (no wards, #1); `neighbourhood_id` is filled
 // point-in-polygon afterwards from the neighbourhoods `areas` loaded.
 //
 // Spelling: the City writes "213 PASTERN TRAIL", "12 KING ST N", "15 ABC CRT", "8 XYZ CIR".
@@ -25,11 +31,14 @@ const SERVICE = "Addresses";
 const ITEM_ID = "fb1ce9625c634b2dbe1d2be36d419711";
 const SOURCE_ID = "waterloo-address-points";
 const WRITE_BATCH = 2000;
+/** An address outside every neighbourhood takes the nearest one within this distance. */
+const NEAREST_AREA_M = 1_000;
 /** The layer held 55,838 points on 2026-11-20; far fewer means a broken or filtered response. */
 const MIN_EXPECTED = 50_000;
 
 interface AddressProps {
   CIVIC_ADDR?: string | null;
+  STREET_NM?: string | null;
 }
 
 interface AddressRow {
@@ -48,26 +57,70 @@ export interface AddressPointLoad {
   withWard: number;
 }
 
+const clean = (text: string) => text.trim().toUpperCase().replace(/\s+/g, " ");
+
 /** "213  Pastern Trail " → "WAT:213 PASTERN TRAIL". */
 export function addressId(civic: string): string {
-  return `WAT:${civic.trim().toUpperCase().replace(/\s+/g, " ")}`;
+  return `WAT:${clean(civic)}`;
 }
 
-/** EWKT is accepted by the geography input function, so a bulk insert can carry the point. */
-export function toRow(feature: GeoJsonFeature<AddressProps>): AddressRow | null {
-  const full = feature.properties.CIVIC_ADDR?.trim();
-  const coordinates = feature.geometry?.type === "Point" ? feature.geometry.coordinates : null;
-  if (!full || !Array.isArray(coordinates) || coordinates.length < 2) return null;
-  const [lng, lat] = coordinates as number[];
-  if (typeof lng !== "number" || typeof lat !== "number") return null;
-  return {
-    id: addressId(full),
-    address_full: full,
-    address_norm: normalizeAddress(full),
-    location: `SRID=4326;POINT(${lng} ${lat})`,
+/**
+ * The building's civic address and the unit, from CIVIC_ADDR and STREET_NM:
+ * ("155 CAROLINE ST S 1804", "CAROLINE ST S") → { building: "155 CAROLINE ST S", unit: "1804" }.
+ * When the street name isn't where it should be, the whole address is the building.
+ */
+export function splitUnit(
+  civic: string,
+  street: string | null | undefined,
+): {
+  building: string;
+  unit: string | null;
+} {
+  const full = clean(civic);
+  const name = street ? clean(street) : "";
+  const m = name ? full.match(/^(\S+) (.*)$/) : null;
+  if (!m || !(m[2] === name || m[2].startsWith(`${name} `))) return { building: full, unit: null };
+  const unit = m[2].slice(name.length).trim();
+  return { building: `${m[1]} ${name}`, unit: unit || null };
+}
+
+/**
+ * One row per building: unit points merged, placed at their average. EWKT is accepted by the
+ * geography input function, so a bulk insert can carry the point.
+ */
+export function toBuildingRows(features: GeoJsonFeature<AddressProps>[]): {
+  rows: AddressRow[];
+  skipped: number;
+  units: number;
+} {
+  const sums = new Map<string, { lng: number; lat: number; n: number }>();
+  let skipped = 0;
+  let units = 0;
+  for (const feature of features) {
+    const civic = feature.properties.CIVIC_ADDR;
+    const coordinates = feature.geometry?.type === "Point" ? feature.geometry.coordinates : null;
+    const [lng, lat] = Array.isArray(coordinates) ? (coordinates as number[]) : [];
+    if (!civic?.trim() || typeof lng !== "number" || typeof lat !== "number") {
+      skipped++;
+      continue;
+    }
+    const { building, unit } = splitUnit(civic, feature.properties.STREET_NM);
+    if (unit) units++;
+    const sum = sums.get(building) ?? { lng: 0, lat: 0, n: 0 };
+    sum.lng += lng;
+    sum.lat += lat;
+    sum.n++;
+    sums.set(building, sum);
+  }
+  const rows = [...sums].map(([building, { lng, lat, n }]) => ({
+    id: addressId(building),
+    address_full: building,
+    address_norm: normalizeAddress(building),
+    location: `SRID=4326;POINT(${(lng / n).toFixed(7)} ${(lat / n).toFixed(7)})`,
     ward_id: null,
     source_id: SOURCE_ID,
-  };
+  }));
+  return { rows, skipped, units };
 }
 
 export async function loadAddressPoints(sql: Sql): Promise<AddressPointLoad> {
@@ -82,7 +135,7 @@ export async function loadAddressPoints(sql: Sql): Promise<AddressPointLoad> {
 
   const features = await queryAll<AddressProps>(url, {
     orderBy: "OBJECTID_1",
-    outFields: ["OBJECTID_1", "CIVIC_ADDR"],
+    outFields: ["OBJECTID_1", "CIVIC_ADDR", "STREET_NM"],
     onPage: (n) => {
       if (n % 10_000 === 0) console.log(`  addresses: ${n.toLocaleString("en-CA")} fetched`);
     },
@@ -90,16 +143,11 @@ export async function loadAddressPoints(sql: Sql): Promise<AddressPointLoad> {
   if (features.length < MIN_EXPECTED) {
     throw new Error(`${SERVICE}: only ${features.length} points (expected ${MIN_EXPECTED}+)`);
   }
-  const parsed = features.map(toRow).filter((row): row is AddressRow => row !== null);
-  const skipped = features.length - parsed.length;
+  const { rows, skipped, units } = toBuildingRows(features);
   if (skipped > 0) console.warn(`  addresses: ${skipped} points skipped (no address or point)`);
-  // Features arrive ordered by OBJECTID, so the first copy of a repeated address is kept.
-  const byId = new Map<string, AddressRow>();
-  for (const row of parsed) if (!byId.has(row.id)) byId.set(row.id, row);
-  const rows = [...byId.values()];
-  if (parsed.length > rows.length) {
-    console.log(`  addresses: ${parsed.length - rows.length} repeated addresses kept once`);
-  }
+  console.log(
+    `  addresses: ${features.length.toLocaleString("en-CA")} points (${units.toLocaleString("en-CA")} units) → ${rows.length.toLocaleString("en-CA")} civic addresses`,
+  );
 
   let written = 0;
   for (let i = 0; i < rows.length; i += WRITE_BATCH) {
@@ -117,6 +165,11 @@ export async function loadAddressPoints(sql: Sql): Promise<AddressPointLoad> {
     written += batch.length;
   }
   console.log(`  addresses: ${written.toLocaleString("en-CA")} upserted`);
+  // Addresses the City no longer publishes (and unit-level rows from before units were merged).
+  const removed = await sql`
+    delete from address_points
+     where source_id = ${SOURCE_ID} and id <> all(${rows.map((r) => r.id)})`;
+  if (removed.count) console.log(`  addresses: ${removed.count} old rows removed`);
 
   // Point-in-polygon assignment; only rows that have none yet, so re-runs stay cheap.
   console.log("  addresses: assigning neighbourhoods by point-in-polygon");
@@ -126,6 +179,15 @@ export async function loadAddressPoints(sql: Sql): Promise<AddressPointLoad> {
      where a.neighbourhood_id is null
        and a.source_id = ${SOURCE_ID}
        and st_covers(n.geometry, a.location::geometry)
+  `;
+  // ~60 City addresses sit just past the boundary drawing (up to ~400 m); they're still Waterloo,
+  // so they take the nearest neighbourhood.
+  await sql`
+    update address_points a set neighbourhood_id = (
+      select n.id from neighbourhoods n
+       where st_dwithin(n.geometry::geography, a.location, ${NEAREST_AREA_M})
+       order by st_distance(n.geometry::geography, a.location) limit 1)
+     where a.neighbourhood_id is null and a.source_id = ${SOURCE_ID}
   `;
 
   const [row] = await sql<{ total: number; with_hood: number; with_ward: number }[]>`
