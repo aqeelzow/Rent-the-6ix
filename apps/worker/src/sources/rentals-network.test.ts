@@ -4,7 +4,7 @@ import {
   coverPhoto,
   findResults,
   parseRentalListings,
-  torontoRentals,
+  rentalsCa,
 } from "./rentals-network.ts";
 import { NoResultsError } from "./types.ts";
 
@@ -100,7 +100,7 @@ describe("rentals network", () => {
       parking: null,
       lat: 43.7,
       lng: -79.39,
-      address: "1 Example Avenue, Toronto, ON M4S 1A1",
+      address: "1 Example Avenue, Waterloo, ON M4S 1A1",
     });
     expect(rows[1]).toMatchObject({
       title: "Studio at Example Towers",
@@ -210,6 +210,6 @@ describe("fetchIndex", () => {
       visit: async () => ({ status: 200, url: "", html: "<html></html>", json: [] }),
       close: async () => {},
     };
-    await expect(torontoRentals.fetchIndex(session, "409")).rejects.toBeInstanceOf(NoResultsError);
+    await expect(rentalsCa.fetchIndex(session, "409")).rejects.toBeInstanceOf(NoResultsError);
   });
 });

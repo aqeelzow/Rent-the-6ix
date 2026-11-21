@@ -73,10 +73,10 @@ describe("parseKijiji", () => {
   });
 
   it("finds the last page from the pagination links", () => {
-    const links = `<a href="/b-apartments-condos/city-of-toronto/page-2/c37l1700273"></a><a href="/b-apartments-condos/city-of-toronto/page-174/c37l1700273"></a>`;
+    const links = `<a href="/b-apartments-condos/kitchener-waterloo/page-2/c37l1700212"></a><a href="/b-apartments-condos/kitchener-waterloo/page-174/c37l1700212"></a>`;
     expect(parseKijiji(page([listing], links)).lastPage).toBe(174);
     expect(kijijiPageUrl(3)).toBe(
-      "https://www.kijiji.ca/b-apartments-condos/city-of-toronto/page-3/c37l1700273",
+      "https://www.kijiji.ca/b-apartments-condos/kitchener-waterloo/page-3/c37l1700212",
     );
   });
 
@@ -91,7 +91,7 @@ describe("parseKijiji", () => {
     };
     const html = page(
       [room],
-      `<a href="/b-room-rental-roommate/city-of-toronto/page-52/c36l1700273"></a>`,
+      `<a href="/b-room-rental-roommate/kitchener-waterloo/page-52/c36l1700212"></a>`,
     );
     const { listings, lastPage } = parseKijiji(html, "rooms");
     expect(listings[0]).toMatchObject({
@@ -112,7 +112,7 @@ describe("parseKijiji", () => {
     expect(wholeUnitTitle("MasterBedroom in a Townhouse", 2500)).toBe(false);
     expect(wholeUnitTitle("One bedroom basement unit for rent", 1300)).toBe(true);
     expect(kijijiPageUrl(3, "rooms")).toBe(
-      "https://www.kijiji.ca/b-room-rental-roommate/city-of-toronto/page-3/c36l1700273",
+      "https://www.kijiji.ca/b-room-rental-roommate/kitchener-waterloo/page-3/c36l1700212",
     );
   });
 

@@ -1,4 +1,4 @@
-// Zillow Toronto rentals. Results are embedded in __NEXT_DATA__ under
+// Zillow Waterloo rentals. Results are embedded in __NEXT_DATA__ under
 // searchPageState.cat1.searchResults.listResults.
 // Zillow answers plain Playwright with a PerimeterX captcha (403); CloakBrowser gets through and
 // the parser was checked against a live page on 2026-10-16 (SOURCES.md).
@@ -60,7 +60,7 @@ export function parseZillow(html: string): { listings: RawListing[]; totalPages:
         listings.push({
           ...base,
           sourceListingId: `${r.zpid}:${i}`,
-          title: `${beds === 0 ? "Studio" : `${beds} bed`} at ${r.buildingName ?? r.address ?? "Toronto"}`,
+          title: `${beds === 0 ? "Studio" : `${beds} bed`} at ${r.buildingName ?? r.address ?? "Waterloo"}`,
           monthlyRentCad: rent,
           bedrooms: Number.isNaN(beds) ? null : beds,
         });
@@ -69,7 +69,7 @@ export function parseZillow(html: string): { listings: RawListing[]; totalPages:
       listings.push({
         ...base,
         sourceListingId: String(r.zpid),
-        title: r.address ?? "Toronto rental",
+        title: r.address ?? "Waterloo rental",
         monthlyRentCad: r.unformattedPrice,
         bedrooms: r.beds ?? null,
         bathrooms: r.baths ?? null,
@@ -207,7 +207,7 @@ export const zillow: SourceAdapter = {
   async fetchIndex(session, cursor) {
     const page = cursor ? Number(cursor) : 1;
     const { html } = await session.visit(
-      `${ORIGIN}/toronto-on/rentals/${page > 1 ? `${page}_p/` : ""}`,
+      `${ORIGIN}/waterloo-on/rentals/${page > 1 ? `${page}_p/` : ""}`,
     );
     const { listings, totalPages } = parseZillow(html);
     const hasNext = listings.length > 0 && totalPages !== null && page < totalPages;

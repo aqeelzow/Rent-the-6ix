@@ -4,9 +4,12 @@
 import type { Session } from "../lib/fetch.ts";
 
 /** Sources with a scraping adapter. */
-export type AdapterId = "kijiji" | "torontorentals" | "rentals_ca" | "zillow" | "realtor_ca";
-/** Every source a stored listing can have; `manual` rows come from db/seed/manual.csv. */
-export type SourceId = AdapterId | "manual";
+export type AdapterId = "kijiji" | "rentals_ca" | "zillow" | "realtor_ca";
+/**
+ * Every source a stored listing can have; `manual` rows come from db/seed/manual.csv.
+ * `torontorentals` has no adapter any more; it stays so old rows and fixtures still parse.
+ */
+export type SourceId = AdapterId | "torontorentals" | "manual";
 
 /** true / false when the source says so, null when it doesn't (unknown is not "no"). */
 export type TriState = boolean | null;

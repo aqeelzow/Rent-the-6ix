@@ -16,7 +16,7 @@ export interface DedupeListing {
   monthlyRentCad: number;
   title: string;
   excerpt: string;
-  /** As the source shows it ("2207 - 181 WYNFORD DRIVE Toronto …", "109 Erskine Ave, Toronto"). */
+  /** As the source shows it ("2207 - 181 WYNFORD DRIVE Toronto …", "330 Phillip St, Waterloo"). */
   addressText: string | null;
   /** ISO timestamp; the oldest becomes canonical. */
   firstSeenAt: string;
@@ -120,7 +120,7 @@ export function streetKey(address: string | null): string | null {
   let a = address
     .toLowerCase()
     .split(",")[0]
-    .split(/\s+toronto\b/)[0];
+    .split(/\s+(?:toronto|waterloo|kitchener)\b/)[0];
   if (a.includes(" - ")) a = a.slice(a.lastIndexOf(" - ") + 3);
   a = a
     .replace(/#\s*\S+/g, " ")

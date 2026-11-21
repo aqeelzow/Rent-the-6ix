@@ -1,4 +1,4 @@
-// Geocode (SPEC 8.4 step 3, P1.5): match each stored listing's address to a City of Toronto
+// Geocode (SPEC 8.4 step 3, P1.5): match each stored listing's address to a City of Waterloo
 // Address Point, then join areas and buildings.
 // 1. Exact: the listing's normalized address equals `address_norm` ("89 CHURCH ST").
 // 2. Fuzzy: same house number, pg_trgm similarity ≥ FUZZY_MIN ("89 CHURCH STR" → "89 CHURCH ST").
@@ -7,16 +7,19 @@
 // address_point_id and the point's ward / neighbourhood. No match: the source's point stays at
 // 'street' precision.
 // Then, once D's tables are loaded: neighbourhood / ward by point-in-polygon for the rest;
-// listings outside every ward are dropped (outside the City of Toronto, except a Toronto address
-// within EDGE_M of the line, whose point is just imprecise); the RentSafeTO building
+// listings outside every Waterloo neighbourhood are dropped (outside the City of Waterloo, which
+// includes Kitchener, except a Waterloo address within EDGE_M of the line, whose point is just
+// imprecise); the RentSafeTO building
 // at the same Address Point gives building_id and year built.
 import type { Sql } from "postgres";
 
 /** A match further than this from the source's point is a different place with the same address. */
 export const MAX_SHIFT_M = 2_000;
 export const FUZZY_MIN = 0.6;
-/** A listing whose address says Toronto is kept this close outside the City boundary. */
+/** A listing whose address says Waterloo is kept this close outside the City boundary. */
 export const EDGE_M = 300;
+/** Waterloo neighbourhood ids (`WPD-<code>`, RENT_K_DUBS_SPEC.md Geography model). */
+export const WATERLOO_ID_PREFIX = "WPD-";
 
 // Address Points abbreviations (the last street-type word and a trailing direction).
 const STREET_TYPES: Record<string, string> = {
@@ -34,8 +37,8 @@ const STREET_TYPES: Record<string, string> = {
   COURT: "CRT",
   CT: "CRT",
   PLACE: "PL",
-  CIRCLE: "CRCL",
-  CIR: "CRCL",
+  // Waterloo writes CIR and GATE in full; Toronto used CRCL and GT.
+  CIRCLE: "CIR",
   LANE: "LN",
   TRAIL: "TRL",
   GARDENS: "GDNS",
@@ -46,7 +49,6 @@ const STREET_TYPES: Record<string, string> = {
   PARKWAY: "PKWY",
   PKY: "PKWY",
   SQUARE: "SQ",
-  GATE: "GT",
   HEIGHTS: "HTS",
   PARK: "PK",
 };
@@ -83,21 +85,20 @@ function ordinalWords(n: number): string | null {
   return n % 10 === 0 ? TENTHS[n / 10] : `${TENS[Math.floor(n / 10)]} ${ONES[n % 10]}`;
 }
 
-// Other municipalities that aren't also Toronto street or neighbourhood names (Niagara, Maple Leaf,
-// Concord CityPlace, Markham Rd, Kingston Rd and Hamilton St are all in Toronto).
+// Other municipalities near or often confused with Waterloo. Kitchener is out of coverage too.
 const OTHER_CITIES =
-  "waterloo|kitchener|guelph|burlington|oakville|mississauga|brampton|vaughan|woodbridge|richmond hill|newmarket|aurora|ajax|whitby|oshawa|barrie|ottawa|montreal|niagara falls|st\\.? catharines|peterborough|stouffville";
+  "kitchener|cambridge|guelph|woolwich|elmira|st\\.? jacobs|breslau|wilmot|baden|new hamburg|stratford|brantford|toronto|mississauga|brampton|hamilton|london|milton|burlington|oakville";
 const STREET_WORDS =
   "st|street|rd|road|ave|avenue|dr|drive|blvd|boulevard|cres|crescent|crt|court|way|pkwy|lane|ln|sq|square|gate|trail|terrace|place|pl|circle|cir|heights|park|line|mall";
 const OTHER_CITY = new RegExp(
-  `(?<!\\b(?:near|to|from|of|by|and|border|close to|minutes?|min|mins)\\s)(?<![&/]\\s?)\\b(?:${OTHER_CITIES})\\b(?!\\s+(?:${STREET_WORDS})\\b)(?!\\s*[&/]|\\s+and\\s)`,
+  `(?<!\\b(?:near|to|from|of|by|and|border|close to|minutes?|min|mins)\\s)(?<![&/]\\s?)(?<!waterloo\\s*[-–/]?\\s*)\\b(?:${OTHER_CITIES})\\b(?!\\s+(?:${STREET_WORDS})\\b)(?!\\s*[&/]|\\s+and\\s)(?!\\s*[-–]?\\s*waterloo\\b)`,
   "i",
 );
 
 /**
- * The title or address places the listing in another city ("Waterloo Finished Basement",
- * "81 Townsgate Dr, Vaughan"); not "near Mississauga", "Mississauga Rd" or "Vaughan/Steeles".
- * Only used for listings without an Address Point: a match proves the address is in Toronto.
+ * The title or address places the listing in another city ("Kitchener Finished Basement",
+ * "45 Hespeler Rd, Cambridge"); not "near Kitchener", "Kitchener-Waterloo" or "Guelph St".
+ * Only used for listings without an Address Point: a match proves the address is in Waterloo.
  */
 export function namesOtherCity(title: string, address: string | null = null): boolean {
   return OTHER_CITY.test(title) || (address !== null && OTHER_CITY.test(address));
@@ -151,8 +152,8 @@ export interface GeocodeResult {
   fuzzy: number;
   /** Listings given a neighbourhood or ward by point-in-polygon. */
   areaJoined: number;
-  /** Listings outside every ward, deleted (0 until wards are loaded). */
-  outsideToronto: number;
+  /** Listings outside every Waterloo neighbourhood, deleted (0 until they are loaded). */
+  outsideCoverage: number;
   /** Unmatched listings whose title or address names another city, deleted. */
   otherCity: number;
   /** Listings matched to a RentSafeTO building (0 until buildings are loaded). */
@@ -183,7 +184,7 @@ export async function geocodeStored(
     exact: 0,
     fuzzy: 0,
     areaJoined: 0,
-    outsideToronto: 0,
+    outsideCoverage: 0,
     otherCity: 0,
     buildings: 0,
   };
@@ -254,10 +255,11 @@ export async function geocodeStored(
       WHERE l.id = m.id AND l.address_point_id IS NULL`;
   }
 
-  const [{ neighbourhoods, wards, buildings }] = await sql<
-    { neighbourhoods: number; wards: number; buildings: number }[]
+  const [{ neighbourhoods, waterloo, wards, buildings }] = await sql<
+    { neighbourhoods: number; waterloo: number; wards: number; buildings: number }[]
   >`
     SELECT (SELECT count(*)::int FROM neighbourhoods) AS neighbourhoods,
+      (SELECT count(*)::int FROM neighbourhoods WHERE id LIKE ${WATERLOO_ID_PREFIX + "%"}) AS waterloo,
       (SELECT count(*)::int FROM wards) AS wards, (SELECT count(*)::int FROM buildings) AS buildings`;
 
   if (neighbourhoods || wards) {
@@ -272,19 +274,23 @@ export async function geocodeStored(
         WHERE (l.neighbourhood_id IS NULL OR l.ward_id IS NULL) AND l.status <> 'removed'`
     ).count;
   }
-  // All 25 wards cover the City; a point outside every one (Vaughan, Markham) isn't Toronto.
-  if (wards >= 25) {
-    result.outsideToronto = (
+  // Waterloo's neighbourhoods cover the City; a point outside every one (Kitchener, Woolwich)
+  // isn't Waterloo. Only Waterloo neighbourhoods count, so a database still holding Toronto's
+  // never deletes every listing.
+  if (waterloo > 0) {
+    result.outsideCoverage = (
       await sql`
         DELETE FROM listings l
-        WHERE l.address_point_id IS NULL -- an Address Point is in Toronto by definition
-          AND NOT EXISTS (SELECT 1 FROM wards w WHERE ST_Covers(w.geometry, l.location::geometry))
-          -- A Toronto address whose street-level point lands just offshore or over the line stays.
-          AND NOT (l.address_text ~* '\\mtoronto\\M' AND l.address_text !~* '\\m(vaughan|markham|mississauga|richmond hill|pickering|brampton|thornhill)\\M'
-            AND EXISTS (SELECT 1 FROM wards w WHERE ST_DWithin(w.geometry::geography, l.location, ${EDGE_M})))`
+        WHERE l.address_point_id IS NULL -- an Address Point is in Waterloo by definition
+          AND NOT EXISTS (SELECT 1 FROM neighbourhoods n
+            WHERE n.id LIKE ${WATERLOO_ID_PREFIX + "%"} AND ST_Covers(n.geometry, l.location::geometry))
+          -- A Waterloo address whose street-level point lands just over the line stays.
+          AND NOT (l.address_text ~* '\\mwaterloo\\M' AND l.address_text !~* '\\m(kitchener|cambridge|woolwich|elmira|st\\.? jacobs|breslau)\\M'
+            AND EXISTS (SELECT 1 FROM neighbourhoods n
+              WHERE n.id LIKE ${WATERLOO_ID_PREFIX + "%"} AND ST_DWithin(n.geometry::geography, l.location, ${EDGE_M})))`
     ).count;
   }
-  // A point inside Toronto with an address elsewhere: the source placed it imprecisely.
+  // A point inside Waterloo with an address elsewhere: the source placed it imprecisely.
   const unmatched = await sql<{ id: string; title: string; address_text: string | null }[]>`
     SELECT id, title, address_text FROM listings WHERE address_point_id IS NULL`;
   const elsewhere = unmatched

@@ -1,4 +1,4 @@
-// torontorentals.com and rentals.ca run on the same platform (Rentals.ca network). The search
+// Rentals.ca (and the retired torontorentals.com, same platform: the Rentals.ca network). The search
 // page loads its results from /graphql, which we capture while the page loads; rentals.ca instead
 // embeds the same results in the page (`App.store.search = { response: … }`) with a few fields
 // renamed, which `findEmbeddedResults` maps to the same shape.
@@ -181,7 +181,7 @@ export function parseRentalListings(
         source,
         sourceListingId: plan.externalId ?? `${node.id}:${i}`,
         sourceUrl: `${origin}/${node.path}`,
-        title: `${bedLabel(bedrooms)}${beds !== null && beds % 1 ? " + den" : ""} at ${node.name?.trim() || street || "Toronto"}`,
+        title: `${bedLabel(bedrooms)}${beds !== null && beds % 1 ? " + den" : ""} at ${node.name?.trim() || street || "Waterloo"}`,
         monthlyRentCad: plan.rent,
         bedrooms,
         den: beds !== null && beds % 1 !== 0,
@@ -195,7 +195,7 @@ export function parseRentalListings(
         parking: plan.parkingSpots ? true : null,
         availableFrom: plan.availability?.date ? plan.availability.date.slice(0, 10) : null,
         address: street
-          ? `${street}, Toronto, ON${node.address?.postalCode ? ` ${node.address.postalCode}` : ""}`
+          ? `${street}, Waterloo, ON${node.address?.postalCode ? ` ${node.address.postalCode}` : ""}`
           : null,
         postalCode: node.address?.postalCode ?? null,
         lng: node.location?.[0] ?? null,
@@ -245,17 +245,11 @@ function rentalsNetworkAdapter(
   };
 }
 
-export const torontoRentals = rentalsNetworkAdapter(
-  "torontorentals",
-  "TorontoRentals.com",
-  "https://www.torontorentals.com",
-  "/toronto",
-);
-
-// Same platform; rentals.ca embeds its results in the page instead of calling /graphql.
+// rentals.ca embeds its results in the page; the /graphql capture stays for the network's other
+// sites. TorontoRentals.com was dropped: it has no Waterloo sister site.
 export const rentalsCa = rentalsNetworkAdapter(
   "rentals_ca",
   "Rentals.ca",
   "https://rentals.ca",
-  "/toronto",
+  "/waterloo",
 );
