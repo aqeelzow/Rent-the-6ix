@@ -1,4 +1,5 @@
-// Kijiji long-term rentals, City of Toronto. The search page embeds its results as Apollo
+// Kijiji long-term rentals, Kitchener / Waterloo location (Kijiji has no Waterloo-only one;
+// geocode drops Kitchener, Cambridge and the townships). The search page embeds its results as Apollo
 // state in __NEXT_DATA__ (RealEstateListing:<id> entries), so one index page gives full rows.
 // Two categories: Apartments & Condos (c37), then Room Rentals & Roommates (c36), whose entries
 // are StandardListing with no attributes: rooms, priced per room. Cursor: "5" = apartments page 5,
@@ -14,14 +15,14 @@ import {
 } from "./types.ts";
 
 const CATEGORIES = {
-  apartments: { path: "b-apartments-condos", code: "c37l1700273" },
-  rooms: { path: "b-room-rental-roommate", code: "c36l1700273" },
+  apartments: { path: "b-apartments-condos", code: "c37l1700212" },
+  rooms: { path: "b-room-rental-roommate", code: "c36l1700212" },
 } as const;
 type Category = keyof typeof CATEGORIES;
 
 export function kijijiPageUrl(page: number, category: Category = "apartments"): string {
   const { path, code } = CATEGORIES[category];
-  return `https://www.kijiji.ca/${path}/city-of-toronto/${page > 1 ? `page-${page}/` : ""}${code}`;
+  return `https://www.kijiji.ca/${path}/kitchener-waterloo/${page > 1 ? `page-${page}/` : ""}${code}`;
 }
 
 interface KijijiListing {

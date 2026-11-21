@@ -69,7 +69,7 @@ type EvidenceField =
 
 // Outside these, the number is a typo, a weekly/nightly price or a sale price.
 const RENT_RANGE = [300, 25_000] as const;
-/** A whole unit under this is a typo, a deposit or a mislabelled room, not a Toronto rental. */
+/** A whole unit under this is a typo, a deposit or a mislabelled room, not a real rental. */
 const MIN_WHOLE_UNIT_RENT = 600;
 const SQFT_RANGE = [100, 10_000] as const;
 const M2_TO_SQFT = 10.7639;

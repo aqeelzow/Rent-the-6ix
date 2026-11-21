@@ -5,7 +5,7 @@ import {
   parseRealtor,
   realtorMapUrl,
   ticksToIso,
-  TORONTO_BOX,
+  WATERLOO_BOX,
 } from "./realtor-ca.ts";
 
 // Same shape as Realtor.ca's PropertySearch_Post response (checked 2026-10-16); values are made up.
@@ -76,14 +76,14 @@ describe("realtor.ca map tiles", () => {
   });
 
   it("splits a view that holds more than it serves into four tiles", () => {
-    const next = nextTileCursor({ queue: [TORONTO_BOX], page: 1 }, paging(8662, 55));
+    const next = nextTileCursor({ queue: [WATERLOO_BOX], page: 1 }, paging(8662, 55));
     expect(next?.page).toBe(1);
     expect(next?.queue).toHaveLength(4);
     expect(next?.queue[0]).toEqual({
-      latMin: 43.7185,
-      latMax: 43.856,
-      lngMin: -79.639,
-      lngMax: -79.377,
+      latMin: 43.48,
+      latMax: 43.54,
+      lngMin: -80.63,
+      lngMax: -80.545,
     });
   });
 
@@ -110,15 +110,15 @@ describe("realtor.ca map tiles", () => {
   });
 
   it("builds a rentals-only map URL for the tile and page", () => {
-    const url = new URL(realtorMapUrl(TORONTO_BOX, 3));
+    const url = new URL(realtorMapUrl(WATERLOO_BOX, 3));
     const hash = new URLSearchParams(url.hash.slice(1));
     expect(url.pathname).toBe("/map");
     expect(Object.fromEntries(hash)).toMatchObject({
-      LatitudeMax: "43.8560",
-      LongitudeMin: "-79.6390",
+      LatitudeMax: "43.5400",
+      LongitudeMin: "-80.6300",
       TransactionTypeId: "3",
       CurrentPage: "3",
-      ZoomLevel: "11",
+      ZoomLevel: "12",
     });
   });
 });

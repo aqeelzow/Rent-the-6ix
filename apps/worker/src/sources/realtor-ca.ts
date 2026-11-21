@@ -1,6 +1,6 @@
-// Realtor.ca rentals in Toronto. The map page loads results from
+// Realtor.ca rentals in Waterloo. The map page loads results from
 // api2.realtor.ca/Listing.svc/PropertySearch_Post; we capture that response while the page loads.
-// One map view serves at most 600 results (MaxRecords), so the Toronto box is split into tiles:
+// One map view serves at most 600 results (MaxRecords), so the Waterloo box is split into tiles:
 // a view that reports more than it serves is split in four, until every tile fits.
 // Realtor.ca answers plain Playwright with "Sorry, you have been blocked" (403); CloakBrowser gets
 // through and the parser was checked against a live response on 2026-10-16 (SOURCES.md).
@@ -22,12 +22,15 @@ export interface Box {
   lngMax: number;
 }
 
-/** City of Toronto bounding box (also catches some of Vaughan and Mississauga; geocode drops them). */
-export const TORONTO_BOX: Box = {
-  latMin: 43.581,
-  latMax: 43.856,
-  lngMin: -79.639,
-  lngMax: -79.115,
+/**
+ * City of Waterloo bounding box, with a small margin. It also catches the north edge of Kitchener
+ * and some of Woolwich; geocode drops them. Tighten from the loaded boundary once it's in.
+ */
+export const WATERLOO_BOX: Box = {
+  latMin: 43.42,
+  latMax: 43.54,
+  lngMin: -80.63,
+  lngMax: -80.46,
 };
 /** Tiles under ~1.1 km tall (2 × this) aren't split again: that many rentals there is a few big buildings. */
 const MIN_TILE_DEG = 0.005;
@@ -218,7 +221,7 @@ export const realtorCa: SourceAdapter = {
   id: "realtor_ca",
   displayName: "Realtor.ca",
   async fetchIndex(session, cursor) {
-    const state: TileCursor = cursor ? JSON.parse(cursor) : { queue: [TORONTO_BOX], page: 1 };
+    const state: TileCursor = cursor ? JSON.parse(cursor) : { queue: [WATERLOO_BOX], page: 1 };
     const url = realtorMapUrl(state.queue[0], state.page);
     const { json } = await session.visit(url, {
       captureJson: (u) => u.includes("PropertySearch_Post"),

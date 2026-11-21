@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { normalizeAddress as cityForm } from "../civic/lib/address.ts";
 import { namesOtherCity, normalizeAddress } from "./geocode.ts";
 
 const norm = (text: string) => normalizeAddress(text)?.norm ?? null;
@@ -47,24 +48,42 @@ describe("normalizeAddress", () => {
 
 describe("namesOtherCity", () => {
   it("finds listings placed in another city", () => {
-    expect(namesOtherCity("Waterloo Finished Basement for rent - $750")).toBe(true);
-    expect(namesOtherCity("1+1 apartment for rent in Square One Mississauga")).toBe(true);
-    expect(
-      namesOtherCity("814 - 11 TOWNSGATE DRIVE", "- 11 TOWNSGATE DRIVE, Vaughan (Crestwood)"),
-    ).toBe(true);
+    expect(namesOtherCity("Kitchener Finished Basement for rent - $750")).toBe(true);
+    expect(namesOtherCity("2 bed apartment in downtown Cambridge")).toBe(true);
+    expect(namesOtherCity("Room for rent", "45 Example Dr, Kitchener, ON N2M 1A1")).toBe(true);
+    expect(namesOtherCity("Basement in Elmira, all inclusive")).toBe(true);
   });
 
-  it("ignores Toronto places with city names and nearby mentions", () => {
+  it("ignores Waterloo places, the region's joint name and nearby mentions", () => {
     for (const title of [
-      "1407 - 75 EAST LIBERTY STREET, Toronto (Niagara), Ontario",
-      "529 - 3 CONCORD CITYPLACE WAY Toronto (Waterfront Communities)",
-      "3 Bedroom House in Markham & Lawrance",
-      "renovated one bedroom, kingston and woodbine",
-      "Basement near Mississauga border, Etobicoke",
-      "Room at Mississauga Rd and Dundas",
-      "2 bed at Vaughan/Steeles",
+      "330 Phillip St, Waterloo, ON N2L 3W9",
+      "Kitchener-Waterloo 2 bed near UW",
+      "Kitchener / Waterloo room for spring term",
+      "Waterloo-Kitchener basement suite",
+      "Room near Kitchener border, Uptown Waterloo",
+      "Unit at Guelph St and Erb",
+      "10 min to Kitchener, 1 bed in Lakeshore",
     ]) {
       expect(namesOtherCity(title), title).toBe(false);
+    }
+  });
+});
+
+describe("listing addresses meet Waterloo's address points", () => {
+  it("normalises a listing's spelling to the same key as the City's", () => {
+    // [as a listing writes it, as the City's Addresses layer writes it]
+    for (const [listing, city] of [
+      ["330 Phillip Street, Waterloo, ON N2L 3W9", "330 PHILLIP ST"],
+      ["Unit 4 - 12 King Street North, Waterloo", "12 KING ST N"],
+      ["213 Pastern Trail", "213 PASTERN TRAIL"],
+      ["15 Abbey Court", "15 ABBEY CRT"],
+      ["8 Brookhaven Circle", "8 BROOKHAVEN CIR"],
+      ["40 Lakeshore Gate", "40 LAKESHORE GATE"],
+      ["9 Cedarbrook Lane", "9 CEDARBROOK LANE"],
+      ["77 Columbia St W #1203", "77 COLUMBIA ST W"],
+      ["255 Northfield Dr E", "255 NORTHFIELD DR E"],
+    ]) {
+      expect(normalizeAddress(listing)?.norm, listing).toBe(cityForm(city));
     }
   });
 });

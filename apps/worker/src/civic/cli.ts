@@ -22,7 +22,7 @@ async function areas(sql: Sql): Promise<void> {
   const loads = await loadBoundaries(sql);
   for (const load of loads) {
     console.log(
-      `  ${load.table}: ${load.features} rows (${load.badSrid} not SRID 4326, ${load.invalid} invalid)`,
+      `  ${load.table}: ${load.features} rows (${load.badSrid} not SRID 4326, ${load.invalid} invalid; ${(load.overlapShare * 100).toFixed(2)}% overlapping, ${(load.uncoveredShare * 100).toFixed(2)}% of the City uncovered)`,
     );
   }
 }
@@ -31,7 +31,7 @@ async function addresses(sql: Sql): Promise<void> {
   const load = await loadAddressPoints(sql);
   const pct = (n: number) => `${((100 * n) / Math.max(load.total, 1)).toFixed(1)}%`;
   console.log(
-    `  address_points: ${load.total} rows, ${load.withNeighbourhood} with a neighbourhood (${pct(load.withNeighbourhood)}), ${load.withWard} with a ward`,
+    `  address_points: ${load.total} rows, ${load.withNeighbourhood} with a neighbourhood (${pct(load.withNeighbourhood)})`,
   );
   if (load.withNeighbourhood < load.total * 0.95) {
     throw new Error(

@@ -1,12 +1,15 @@
 // Adapter contract for listing sources (SPEC 8.4). Owner: C.
 // RawListing is what an adapter hands to the pipeline: source fields read as-is, before
 // normalize/scrub/geocode turn it into a shared `Listing`.
-import type { Session } from "../lib/fetch.ts";
+import type { Session, SessionOptions } from "../lib/fetch.ts";
 
 /** Sources with a scraping adapter. */
-export type AdapterId = "kijiji" | "torontorentals" | "rentals_ca" | "zillow" | "realtor_ca";
-/** Every source a stored listing can have; `manual` rows come from db/seed/manual.csv. */
-export type SourceId = AdapterId | "manual";
+export type AdapterId = "kijiji" | "rentals_ca" | "zillow" | "realtor_ca" | "facebook_marketplace";
+/**
+ * Every source a stored listing can have; `manual` rows come from db/seed/manual.csv.
+ * `torontorentals` has no adapter any more; it stays so old rows and fixtures still parse.
+ */
+export type SourceId = AdapterId | "torontorentals" | "manual";
 
 /** true / false when the source says so, null when it doesn't (unknown is not "no"). */
 export type TriState = boolean | null;
@@ -98,6 +101,8 @@ export interface SourceAdapter {
   fetchIndex(session: Session, cursor: string | null): Promise<IndexPage>;
   /** Load the listing's own page for the full description and amenities (SPEC 8.4 step 1). */
   fetchDetail?(session: Session, listing: RawListing): Promise<DetailPatch>;
+  /** How this source's browser session is opened (delay, saved profile); defaults otherwise. */
+  sessionOptions?(): SessionOptions;
 }
 
 export const emptyRawListing = {

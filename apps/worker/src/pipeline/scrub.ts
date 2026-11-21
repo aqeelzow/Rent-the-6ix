@@ -15,7 +15,7 @@ const HANDLE = /(^|\s)@[A-Za-z0-9_.]{3,}/g;
 
 // Capitalized words that follow "contact" / "call" etc. but aren't names ("Contact Us Today").
 const NOT_A_NAME =
-  "(?!(?:Us|Me|Now|Today|Tomorrow|Our|The|Your|For|To|Anytime|Any|Office|Management|Leasing|Property|Superintendent|Super|Info|Inquiries|Please|Directly|Here|Him|Her|Them|Owner|Landlord|Agent|Realtor|Home|Out|This|That|It|Again|Soon|Back|Mon|Tue|Wed|Thu|Fri|Sat|Sun|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday|Toronto)\\b)";
+  "(?!(?:Us|Me|Now|Today|Tomorrow|Our|The|Your|For|To|Anytime|Any|Office|Management|Leasing|Property|Superintendent|Super|Info|Inquiries|Please|Directly|Here|Him|Her|Them|Owner|Landlord|Agent|Realtor|Home|Out|This|That|It|Again|Soon|Back|Mon|Tue|Wed|Thu|Fri|Sat|Sun|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday|Toronto|Waterloo|Kitchener)\\b)";
 // "Maria", "O'Brien", "Jean-Luc"; a lone capital letter is never a name.
 const NAME = `${NOT_A_NAME}[A-Z](?:[a-z]+|['’][A-Z][a-z]+)(?:-[A-Z][a-z]+)?`;
 const FULL_NAME = `${NAME}(?:\\s+${NAME})?`;
