@@ -4,7 +4,8 @@
 // pages, then once more with detail pages merged), with field coverage,
 // and the run summary to .cache/ingest/last-run.json (the stats /status will show).
 import { mkdir, writeFile } from "node:fs/promises";
-import { openSession, SourceBlockedError } from "../lib/fetch.ts";
+import { openSession, SourceBlockedError, type SessionStats } from "../lib/fetch.ts";
+import { proxiesFor } from "../lib/proxies.ts";
 import { sources } from "../sources/index.ts";
 import {
   NoResultsError,
@@ -147,7 +148,11 @@ export async function runIngest(options: IngestOptions): Promise<IngestResult> {
       await writeRows(file, rows);
       if (db) run.stored = await store(db, adapter.id, rows, observedAt);
     };
-    const session = await openSession(adapter.sessionOptions?.());
+    const session = await openSession({
+      label: adapter.id,
+      proxies: proxiesFor(adapter.id),
+      ...adapter.sessionOptions?.(),
+    });
     try {
       let cursor: string | null = options.cursor ?? null;
       do {
@@ -178,6 +183,11 @@ export async function runIngest(options: IngestOptions): Promise<IngestResult> {
       run.message = error instanceof Error ? error.message : String(error);
       console.error(`${adapter.id}: ${run.status}: ${run.message}`);
     } finally {
+      const note = describeStats(session.stats());
+      if (note) {
+        console.log(`${adapter.id}: ${note}`);
+        run.message = run.message ? `${run.message} (${note})` : note;
+      }
       await session.close();
     }
     const normalized = normalizeAll(raws);
@@ -415,4 +425,19 @@ function coverage(rows: NormalizedListing[]): string {
   return Object.entries(known)
     .map(([field, has]) => `${field} ${Math.round((rows.filter(has).length / rows.length) * 100)}%`)
     .join(", ");
+}
+
+/** "3 blocks: 2 challenges passed, 1 proxy switch" — empty when nothing got in the way. */
+export function describeStats(stats: SessionStats): string {
+  const parts: string[] = [];
+  const n = (count: number, one: string, many = `${one}s`) =>
+    count ? parts.push(`${count} ${count === 1 ? one : many}`) : 0;
+  n(stats.challengesPassed, "challenge passed", "challenges passed");
+  n(stats.captchasSolved, "CAPTCHA solved", "CAPTCHAs solved");
+  n(stats.captchasFailed, "CAPTCHA failed", "CAPTCHAs failed");
+  n(stats.rotations, "proxy switch", "proxy switches");
+  n(stats.crashes, "tab crash", "tab crashes");
+  if (!stats.blocks && !parts.length) return "";
+  const head = `${stats.blocks} block${stats.blocks === 1 ? "" : "s"} in ${stats.visits} pages`;
+  return parts.length ? `${head}: ${parts.join(", ")}` : head;
 }
