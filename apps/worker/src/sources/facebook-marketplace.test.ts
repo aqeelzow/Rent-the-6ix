@@ -12,6 +12,16 @@ import {
 } from "./facebook-marketplace.ts";
 import { SourceBlockedError } from "../lib/fetch.ts";
 
+const NO_STATS = {
+  visits: 0,
+  blocks: 0,
+  challengesPassed: 0,
+  captchasSolved: 0,
+  captchasFailed: 0,
+  rotations: 0,
+  crashes: 0,
+};
+
 // Same shape as Facebook's embedded Relay JSON (checked 2026-11-21); every value is made up.
 const seller = { __typename: "User", name: "Jane Example", id: "pfbid0example" };
 const page = (payload: unknown) =>
@@ -199,6 +209,7 @@ describe("facebook marketplace index", () => {
     const session = {
       visit: async (url: string) => ({ status: 200, url, html: index, json: [] }),
       close: async () => {},
+      stats: () => NO_STATS,
     };
     const first = await facebookMarketplace.fetchIndex(session, null);
     expect(first.nextCursor).toBe("1");
@@ -215,6 +226,7 @@ describe("facebook marketplace index", () => {
         json: [],
       }),
       close: async () => {},
+      stats: () => NO_STATS,
     };
     await expect(facebookMarketplace.fetchIndex(session, null)).rejects.toBeInstanceOf(
       SourceBlockedError,

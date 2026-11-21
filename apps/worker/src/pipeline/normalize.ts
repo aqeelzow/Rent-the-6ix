@@ -104,8 +104,12 @@ export function normalize(raw: RawListing, now = new Date()): NormalizedListing 
   // A title that says "room for rent" wins: Kijiji files rooms under the house's own type.
   // Likewise "BSMT - 24 Fintona Ave": Realtor.ca files a basement unit as the whole house.
   const structuredType = unitTypeFrom(raw.unitType);
+  // Student houses in Waterloo are often posted as the whole unit ("5 Beds 2 Baths") at one
+  // room's price ("$675", "$2,100 (700/room)"): read as whole units they looked like huge bargains.
   const unitType =
-    isRoomListing(raw.title) || isRoomUnit(raw.title, raw.address, raw.description)
+    isRoomListing(raw.title) ||
+    isRoomUnit(raw.title, raw.address, raw.description) ||
+    isPricedPerRoom(raw.title, raw.description, rent, beds)
       ? ((evidence.unitType = "parsed_from_text"), "room" as const)
       : structuredType !== "condo" && isBasementUnit(raw.title, raw.address)
         ? ((evidence.unitType = "parsed_from_text"), "basement" as const)
@@ -239,6 +243,32 @@ export function isRoomUnit(
     ROOM_LABEL.test(`${title}\n${address ?? ""}`) ||
     ROOM_TEXT.test(`${title}\n${description ?? ""}`)
   );
+}
+
+// The price is for one room or one tenant: "$700/room", "700 per bed", "each room $650",
+// "individual rooms", "individual unit available", "rent by the room". Not "$2,800/month".
+const PER_ROOM_PRICE =
+  /\$?\s?\d[\d,]*\s*(?:\/|per|a|each)\s*(?:room|bed(?:room)?|person|student|tenant|head)\b|\b(?:each|every)\s+(?:room|bedroom)\s+(?:is\s+|at\s+|for\s+)?\$\s?\d|\bindividual\s+(?:rooms?|bedrooms?|units?|leases?)\b|\b(?:rent(?:ed|ing)?|leas(?:e|ed|ing))\s+(?:out\s+)?(?:by|per)\s+(?:the\s+)?(?:room|bedroom)\b|\brooms?\s+(?:starting|from)\s+(?:at\s+)?\$/i;
+/** Below this per bedroom, a 2+ bedroom "whole unit" is one room's rent. */
+const MIN_RENT_PER_BEDROOM = 450;
+/**
+ * Above this, the price is the whole unit's even when the text also offers rooms ("Entire unit
+ * $2,100/month · Individual rooms $700/month each").
+ */
+const MAX_ROOM_RENT = 1500;
+
+/**
+ * A whole unit priced per room: the text says so, or the rent is impossibly low for the bedroom
+ * count (a 5-bed for $675 is $135 a bedroom; Waterloo rooms rent for $600–900).
+ */
+export function isPricedPerRoom(
+  title: string,
+  description: string | null,
+  rent: number,
+  bedrooms: number | null,
+): boolean {
+  if (rent < MAX_ROOM_RENT && PER_ROOM_PRICE.test(`${title}\n${description ?? ""}`)) return true;
+  return bedrooms !== null && bedrooms >= 2 && rent < MIN_RENT_PER_BEDROOM * bedrooms;
 }
 
 /**

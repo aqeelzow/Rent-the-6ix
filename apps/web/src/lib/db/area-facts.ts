@@ -108,7 +108,7 @@ export function assembleAreaFacts(input: {
     });
   }
   const period = `30 days to ${today}`;
-  const listingNote = "asking rents in listings RentThe6ix collected, not official statistics";
+  const listingNote = "asking rents in listings Rent the Loo collected, not official statistics";
   for (const rent of [...rents].sort((a, b) => a.bedrooms - b.bedrooms)) {
     facts.push({
       indicatorId: `median_asking_rent_${rent.bedrooms}br`,
@@ -157,7 +157,7 @@ export function assembleAreaFacts(input: {
   if (used.has(LISTINGS_SOURCE)) {
     sources.push({
       id: LISTINGS_SOURCE,
-      title: "Listings RentThe6ix collected",
+      title: "Listings Rent the Loo collected",
       url: "/data",
       retrievedAt: today,
     });

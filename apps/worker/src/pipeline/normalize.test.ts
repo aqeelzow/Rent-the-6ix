@@ -109,6 +109,52 @@ describe("normalize: not housing, rooms, implausible rents (seen in scraped list
   });
 });
 
+describe("normalize: whole units priced per room (Waterloo student houses)", () => {
+  it("reads the per-room price from the text", () => {
+    for (const description of [
+      "Entire Place or by the room. $2,100 (700/room)",
+      "Full Unit or Individual Unit Available Starting from $700",
+      "Each room is $715 a month, utilities included",
+      "Rooms starting at $650. Close to UW.",
+      "$800 per person, 12 month lease",
+    ]) {
+      expect(
+        norm({ title: "Student house near UW", monthlyRentCad: 700, description }),
+      ).toMatchObject({ unitType: "room", rentIsPerRoom: true });
+    }
+  });
+
+  it("treats an impossibly low rent for the bedroom count as one room", () => {
+    const house = norm({ title: "5 Beds 2 Baths Apartment", bedrooms: 5, monthlyRentCad: 675 });
+    expect(house).toMatchObject({ unitType: "room", rentIsPerRoom: true, monthlyRentCad: 675 });
+    expect(norm({ title: "4 bed at 647 Albert Street", monthlyRentCad: 650 }).rentIsPerRoom).toBe(
+      true,
+    );
+  });
+
+  it("keeps the whole-unit price when the listing offers both", () => {
+    const description =
+      "Rental Options: * Entire 3-bedroom main unit: $2,100/month * Individual rooms: $700/month each";
+    expect(
+      norm({ title: "3-Bedroom House for Rent", bedrooms: 3, monthlyRentCad: 2100, description })
+        .rentIsPerRoom,
+    ).toBe(false);
+  });
+
+  it("leaves real whole units alone", () => {
+    expect(
+      norm({ title: "5 Beds 2 Baths House", bedrooms: 5, monthlyRentCad: 3500 }),
+    ).toMatchObject({ rentIsPerRoom: false });
+    expect(
+      norm({ title: "1 bedroom basement", bedrooms: 1, monthlyRentCad: 1400 }).rentIsPerRoom,
+    ).toBe(false);
+    expect(
+      norm({ title: "2 bed condo", bedrooms: 2, monthlyRentCad: 2400, description: "$2,400/month" })
+        .rentIsPerRoom,
+    ).toBe(false);
+  });
+});
+
 describe("normalize: structured fields win and are marked structured", () => {
   it("keeps source values and records evidence", () => {
     const out = norm({

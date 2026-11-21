@@ -8,6 +8,16 @@ import {
 } from "./rentals-network.ts";
 import { NoResultsError } from "./types.ts";
 
+const NO_STATS = {
+  visits: 0,
+  blocks: 0,
+  challengesPassed: 0,
+  captchasSolved: 0,
+  captchasFailed: 0,
+  rotations: 0,
+  crashes: 0,
+};
+
 // Same shape as torontorentals.com's /graphql results (checked 2026-10-16); values are made up.
 const results = {
   data: {
@@ -209,6 +219,7 @@ describe("fetchIndex", () => {
     const session = {
       visit: async () => ({ status: 200, url: "", html: "<html></html>", json: [] }),
       close: async () => {},
+      stats: () => NO_STATS,
     };
     await expect(rentalsCa.fetchIndex(session, "409")).rejects.toBeInstanceOf(NoResultsError);
   });
