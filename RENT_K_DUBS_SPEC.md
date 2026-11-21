@@ -21,7 +21,7 @@ Based on `main` at `b4c0c4a` (2026-11-17).
 
 ## Geography model
 
-Choose a Waterloo neighbourhood layer in K0 and use stable neighbourhood IDs. Use the City of Waterloo municipal boundary for listing coverage. Drop ward pages, loaders and filters.
+Choose Waterloo planning districts or neighbourhood-association areas in K0 and use stable `WPD-<code>` neighbourhood IDs. Use the City of Waterloo municipal boundary for listing coverage. Drop ward pages, loaders and filters.
 
 For census figures, assign each 2021 dissemination area to the neighbourhood containing its centroid and sum the counts. Show median household income where one dissemination area dominates, with “Not enough data” elsewhere.
 
@@ -76,7 +76,7 @@ Link to Waterloo’s low-rise rental licensing information and [rental housing r
 
 ## Listings ingestion
 
-Reuse the existing adapter parsers where possible. In K0, count unique active Waterloo listings after filtering and deduplication, then set an inventory target across at least two sources.
+Reuse the existing adapter parsers where possible. Use 300 unique active Waterloo listings across at least two sources as a provisional inventory target. Confirm it in K0 after boundary filtering and deduplication.
 
 | Adapter | File | Today | Waterloo change |
 | --- | --- | --- | --- |
@@ -115,8 +115,8 @@ Today `is_rapid` = served by GTFS `route_type` 1 or 2, because TTC streetcars ar
 
 **Known places (`apps/web/src/lib/parse/known_places*.json`, `civic/known-places.ts`)**
 
-- Regenerate `known_places.generated.json` for Waterloo destinations, including nearby destinations where supported. Load Waterloo intersections and update the ID prefix and source ranking.
-- Curate UW main campus, Laurier Waterloo campus, Conestoga Waterloo campus, Uptown Waterloo, Waterloo Park, Conestoga Mall, The Boardwalk and ION stations. Keep nearby campus and branch alternatives for disambiguation and explicitly named commutes.
+- Regenerate `known_places.generated.json` from the Waterloo lookup area and Waterloo intersections. Change the intersection ID prefix to `waterloo-intersection:` and update source ranking.
+- Curate UW main campus, Laurier Waterloo campus, Conestoga Waterloo campus, Uptown Waterloo, Waterloo Park, Conestoga Mall, The Boardwalk, David Johnston Research + Technology Park and ION stations. Include explicitly named commute destinations outside the city, such as UW School of Pharmacy, Conestoga Doon, downtown Kitchener, the hospitals, Kitchener GO and the regional airport.
 - Replace the group aliases in `place-catalogue.ts` (`uoft`, `u of t`, `york`) with `uw` / `uwaterloo` / `university of waterloo`, `laurier` / `wlu` / `wilfrid laurier`, `conestoga`.
 
 **Parser and resolver**
@@ -140,7 +140,7 @@ The area card and neighbourhood explorer use City of Waterloo comparisons where 
 | Renters spending 30%+ on shelter | 2021 Census, DA-aggregated | DA-level suppression leaves gaps; show "Not enough data" |
 | Median household income | 2021 Census | Only where the neighbourhood is one DA-dominated unit; else hidden |
 | Rapid transit within 800 m | GRT GTFS, ION stops | Metric SRID changes from EPSG:2952 (MTM 10) to EPSG:2958 (UTM 17N, NAD83 CSRS) |
-| Development applications, last 12 months | Waterloo quarterly report | If Waterloo data is tabular without points, the card says so for Waterloo areas |
+| Development applications, last 12 months | Waterloo quarterly report | If the report lacks usable locations, hide the indicator and explain why on `/data`. |
 | Police-reported crime (opt-in) | WRPS occurrences | Only if the safety check below passes |
 
 The explorer shows neighbourhoods only: remove the ward toggle from the map and the ward list from `apps/web/src/app/areas/page.tsx`.
@@ -165,8 +165,8 @@ Either way, keep the rules unchanged: opt-in, never "safe" or "unsafe", the disc
 
 **Brand.** The CN Tower is the brand mark today: the "I" in the wordmark, the header logo and the favicon (`components/brand/cn-tower.tsx`, `app/icon.svg`, `landing.css`). The landing skyline draws the CN Tower, the Rogers Centre and a TTC streetcar (`components/landing/skyline.tsx`, `scenes.tsx`), and its wordmark reads "RENT THE 6IX".
 
-- New mark: an original drawing, not a copy of any institution's or transit agency's logo. Suggested: a stylised ION light-rail car seen from the front, or a "K-W" monogram. The new mark replaces the "I" trick in the wordmark.
-- New skyline: generic mid-rise towers, a light-rail train on its own track, and a river line for the Grand. No UW, Laurier, GRT or ION logos.
+- New mark: an original drawing, not a copy of any institution's or transit agency's logo. Suggested: a stylised ION light-rail car seen from the front, or a "K-W" monogram (the name stays, even though coverage is Waterloo only). The new mark replaces the "I" trick in the wordmark.
+- New skyline: generic mid-rise towers, a light-rail train on its own track, and Silver Lake in Waterloo Park. No UW, Laurier, GRT or ION logos.
 - Wordmark "RENT K-DUBS"; page titles "Rent K-Dubs"; package scope `@rentthe6ix/shared` → `@rentkdubs/shared` (touches every import; do it in one commit with a codemod).
 - Domain: `6ix.casa` needs a successor. Update `Caddyfile`, `deploy.sh` (`/srv/rentthe6ix`), `docker-compose.yml` (`name: rentthe6ix`), `Dockerfile` target tags and `vercel.json` if used.
 
@@ -174,8 +174,7 @@ Either way, keep the rules unchanged: opt-in, never "safe" or "unsafe", the disc
 
 **Database.** Start a fresh database rather than migrating Toronto rows: this keeps Toronto listings, civic data, caches and provenance separate from Waterloo. Migrations 001–008 stay as merged; add:
 
-- `009_waterloo_geography.sql`: store the authoritative City of Waterloo boundary and update geography IDs and comments for the Waterloo loaders.
-- `010_listing_terms.sql` (P1): `listings.lease_term_months smallint NULL`, `listings.sublet text CHECK ('yes','no','unknown')`.
+- `009_listing_terms.sql` (P1): `listings.lease_term_months smallint NULL`, `listings.sublet text CHECK ('yes','no','unknown')`.
 
 Kept as they are: `buildings` (reused for building names, Additions item 2), `listing_observations`, `travel_times` or `ai_cache`. `listings.source` keeps `torontorentals` in the shared zod enum (the SQL column has no CHECK) so old fixtures still parse.
 
@@ -217,7 +216,7 @@ Paths are from the repo root. "Rewrite" = new data or logic; "Edit" = names, con
 | Copy | `apps/web/messages/en.json` | Edit \~50 lines |
 | Tests | 53 test files across web, worker and shared that name Toronto places or sources (e.g. `place-normalization.test.ts`, `geocoding.test.ts`, `chips.test.ts`, `election.test.ts`) | Rewrite inputs and expectations |
 | Infra | `package.json` names, `Caddyfile`, `deploy.sh`, `Dockerfile`, `vercel.json`, `.serena/project.yml` | Edit names, domain, paths |
-| DB | `db/migrations/009_waterloo_geography.sql`, `010_listing_terms.sql` | New |
+| DB | `db/migrations/009_listing_terms.sql`, `010_buildings.sql` | New when the corresponding features are built. |
 | Docs | `README.md`, `DEPLOY.md`, `docs/datasets.md`, `apps/worker/SOURCES.md` | Create Waterloo release and source documentation. |
 | Leave alone | `apps/search/**` (validation logs, patches) | Archive as Toronto history; not loaded at runtime |
 
@@ -231,9 +230,9 @@ The existing Paste a listing flow covers Facebook group posts. An automated Mark
 
 Every address with a known building gets its name, and every name resolves to its addresses: 330 Phillip St, Waterloo, ON N2L 3W9 ↔ ICON. This matters most in the student market, where posts often name only the building ("2 bed in ICON 330 for spring") and renters search by name ("room in ICON").
 
-**Building catalogue.** Reuse the `buildings` table and `listings.building_id`, both already in the schema and empty once RentSafeTO goes. Migration `011_buildings.sql` adds:
+**Building catalogue.** Reuse the `buildings` table and `listings.building_id`, both already in the schema and empty once RentSafeTO goes. Migration `010_buildings.sql` adds:
 
-- `buildings`: `name` ("ICON"), `aliases text[]` ("icon 330", "icon waterloo"), `kind` (`student`, `rental_apartment`, `condo`, `other`), `municipality`, `source_id`, `reviewed boolean`. Id becomes a slug (`icon-waterloo`). RentSafeTO columns stay, unused.
+- `buildings`: `name` ("ICON"), `aliases text[]` ("icon 330", "icon waterloo"), `kind` (`student`, `rental_apartment`, `condo`, `other`), `source_id`, `reviewed boolean`. Id becomes a slug (`icon-waterloo`). RentSafeTO columns stay, unused.
 - `building_addresses(building_id, address_point_id)`: one building, many civic numbers (towers and complexes like "109, 115 & 123 Westwood Dr").
 - `listings.unit_label` ("1706", "BSMT").
 
@@ -312,7 +311,7 @@ Six phases; each keeps `main` deployable. Phase K0 decides what K2 and K3 can bu
 - [ ] K0.2 Open the WRPS 2025 occurrence file; decide safety option 1 or 2.
 - [ ] K0.3 Pick the Waterloo neighbourhood layer and check city coverage.
 - [ ] K0.4 Confirm the GRT GTFS URL and ION's `route_type`.
-- [ ] K0.5 Verify Waterloo inventory from Kijiji, Rentals.ca, Zillow and Realtor.ca. Count unique active listings after boundary checks and set the launch inventory target.
+- [ ] K0.5 Verify Waterloo inventory from Kijiji, Rentals.ca, Zillow and Realtor.ca. Confirm the provisional 300-listing target using unique active listings inside the city boundary.
 - [ ] K0.6 Pick the utility-cost source; pick the domain.
 
 **K1 — Rename and neutralise (app still runs on sample data)**
@@ -325,12 +324,12 @@ Six phases; each keeps `main` deployable. Phase K0 decides what K2 and K3 can bu
 
 **K2 — Geography and civic data**
 
-- [ ] K2.1 Migration 009; `civic/lib/arcgis.ts`.
-- [ ] K2.2 Neighbourhoods and city boundaries loader. Check: every listing point inside coverage lands in exactly one neighbourhood.
+- [ ] K2.1 Add the ArcGIS loader in `civic/lib/arcgis.ts`.
+- [ ] K2.2 Load neighbourhoods and the city boundary. Check for neighbourhood gaps or overlaps. Use the municipal boundary for listing eligibility.
 - [ ] K2.3 Address points loader. Check: 20 random Waterloo addresses geocode within 10 m.
 - [ ] K2.4 GRT stops + rapid flag. Check: every ION station flagged rapid.
 - [ ] K2.5 POIs and known places regenerated.
-- [ ] K2.6 Census DA aggregation. Check: neighbourhood renter counts sum to each city's 2021 total within rounding.
+- [ ] K2.6 Census DA aggregation. Check: neighbourhood renter counts sum to Waterloo's 2021 total within rounding.
 - [ ] K2.7 Development applications.
 - [ ] K2.8 Crime rates (if K0.2 = option 1), else safety off with `/data` note.
 - [ ] K2.9 Area indicators; remove ward pages, ward toggle and election box; explorer shows neighbourhoods only.
@@ -351,14 +350,14 @@ Six phases; each keeps `main` deployable. Phase K0 decides what K2 and K3 can bu
 **K5 — Additions (can start after K1; K5.5 belongs before K3.1)**
 
 - [ ] K5.1 Verify latency, extraction reliability, POI accuracy and duplicate-location handling against the search requirements.
-- [ ] K5.2 Migration 011, `buildings.csv seed, OSM/Rentals.ca/Zillow candidates, address ↔ name matching, /building/[slug] page, building names in search. Check: 30 sampled listings near UW and Laurier get the right building or none`.
+- [ ] K5.2 Migration 010, building seed and source candidates, address and name matching, building page and search integration. Sample 30 listings near UW and Laurier and check that any assigned building is correct.
 - [ ] K5.3 Verify shortlist save, reopen, remove and reload behavior.
 - [ ] K5.4 UI pass after a 5-person student test: cards, plain names, price pins, mobile list-first, landing chips, contrast.
 - [ ] K5.5 Crawler: newest-first stop rule, saved cursors, per-source pacing and budgets, robots/terms check, `/status` block reporting. Check: a full Waterloo run finishes with no 429.
 - [ ] K5.6 Access requests to Rentals.ca, Kijiji and (via DDF) Realtor.ca; record answers in `SOURCES.md`.
 - [ ] K5.7 Follow-up search improvements: map area search, student filters, new sorts, saved searches in the browser, and "Show 25 more".
 
-Optional follow-up: Waterloo routing graph, lease term and sublet fields, GO Transit GTFS, and the Waterloo rental-licence link.
+Optional follow-up: build the Waterloo routing graph and verify UW to downtown Kitchener by transit. Lease term and sublet fields, GO Transit GTFS and the Waterloo rental-licence link also remain follow-up work.
 
 ## Open questions and risks
 
