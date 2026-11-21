@@ -24,7 +24,6 @@ const listing: CaveatListing = {
 
 const ctx: CaveatContext = {
   valuation: { status: "ok", differencePct: 2 },
-  building: null,
   sameTextElsewhere: 0,
   now: NOW,
 };
@@ -77,18 +76,6 @@ describe("caveats", () => {
     expect(c.explanation).toBe(
       "The listing doesn't say: utilities, air conditioning. Ask before you apply.",
     );
-  });
-
-  it("rentsafeto_low below 66%, with the date", () => {
-    expect(codes({}, { building: { latestScore: 66, scoreDate: "2025-03-01" } })).toEqual([]);
-    const [c] = caveats(listing, {
-      ...ctx,
-      building: { latestScore: 58, scoreDate: "2025-03-01" },
-    });
-    expect(c.explanation).toBe(
-      "The building scored 58% in its latest City of Toronto RentSafeTO evaluation (2025-03-01). Buildings under 66% are evaluated every year.",
-    );
-    expect(codes({}, { building: { latestScore: null, scoreDate: null } })).toEqual([]);
   });
 
   it("duplicate_text_elsewhere from the SQL count", () => {

@@ -46,14 +46,6 @@ select case when is_rapid then 'rapid' else 'local' end as kind,
  group by 1
  order by kind;
 
--- 5. RentSafeTO: score distribution and the colour band the sign would show.
-select coalesce(sign_colour, 'no score') as sign,
-       count(*) as buildings,
-       round(avg(latest_score), 1) as avg_score
-  from buildings
- group by 1
- order by buildings desc;
-
 -- 6. Highest assault rates, three-year average — a sanity check on the TPS join.
 select a.area_id, n.name, a.value as assault_per_100k, a.period
   from area_indicators a
@@ -82,7 +74,6 @@ select l.id as listing_id,
          where p.category = 'grocery' order by p.location <-> l.location limit 1) as metres_to_grocery,
        (select round(st_distance(t.location, l.location)) from transit_stops t
          where t.is_rapid order by t.location <-> l.location limit 1) as metres_to_rapid,
-       (select b.latest_score from buildings b where b.id = l.building_id) as building_score,
        (select round(a.value::numeric, 1) from area_indicators a
          where a.area_id = l.neighbourhood_id and a.indicator_id = 'crime:assault') as assault_per_100k
   from listing l;

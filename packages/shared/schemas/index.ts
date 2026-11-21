@@ -67,7 +67,7 @@ export const SearchIntentSchema = z.strictObject({
 export const ListingSchema = z.strictObject({
   id: z.uuid(), source: z.enum(['kijiji', 'torontorentals', 'rentals_ca', 'zillow', 'realtor_ca', 'facebook_marketplace', 'manual', 'pasted']), sourceListingId: text, sourceUrl: url,
   title: text, excerpt: z.string().max(280), monthlyRentCad: positive, rentIsPerRoom: z.boolean(), bedrooms: nonnegative.int().nullable(), bathrooms: nonnegative.nullable(),
-  unitType: UnitTypeSchema.nullable(), sqft: positive.nullable(), yearBuilt: year.nullable(), yearBuiltSource: z.enum(['listing', 'rentsafeto', 'ai_extracted']).nullable(),
+  unitType: UnitTypeSchema.nullable(), sqft: positive.nullable(), yearBuilt: year.nullable(), yearBuiltSource: z.enum(['listing', 'ai_extracted']).nullable(),
   airConditioning: z.enum(['central', 'yes', 'no', 'unknown']), location: CoordinateSchema, locationPrecision: z.enum(['exact', 'street', 'area']),
   addressText: text.nullable(), addressPointId: text.nullable(), buildingId: text.nullable(),
   // Null until D's boundaries are loaded; area requirements stay unconfirmed and safety unavailable.
@@ -113,7 +113,7 @@ export const TravelTimeRowSchema = z.strictObject({ listingId: z.uuid(), targetI
 export const SafetySchema = z.strictObject({ areaId: text, rate: nonnegative.nullable(), relativeRate: nonnegative.nullable(), byType: z.record(text, nonnegative.nullable()), years: unique(year), caveats: z.array(CaveatSchema).min(1) }).refine(v => (v.rate === null) === (v.relativeRate === null), 'Safety rate and relative rate availability must agree');
 const position = z.tuple([z.number().min(-180).max(180), z.number().min(-90).max(90)]);
 const ring = z.array(position).min(4).refine(v => v[0][0] === v[v.length - 1][0] && v[0][1] === v[v.length - 1][1], 'Polygon ring must close');
-export const AreaSchema = z.strictObject({ id: text, kind: z.literal('neighbourhood'), name: text, number: positive.int().optional(), geometry: z.strictObject({ type: z.literal('MultiPolygon'), coordinates: z.array(z.array(ring).min(1)).min(1) }), isNIA: z.boolean().optional() });
+export const AreaSchema = z.strictObject({ id: text, kind: z.literal('neighbourhood'), name: text, number: positive.int().optional(), geometry: z.strictObject({ type: z.literal('MultiPolygon'), coordinates: z.array(z.array(ring).min(1)).min(1) }) });
 export const AreaIndicatorSchema = z.strictObject({ areaId: text, indicatorId: text, value: z.number().finite().nullable(), unit: text, period: text, sourceId: text, sampleSize: nonnegative.int().optional(), note: text.optional() });
 export const MatchScoreSchema = z.strictObject({ total: nonnegative.int().max(100), parts: z.array(z.strictObject({ id: z.enum(['value', 'price', 'travel', 'home', 'safety']), score: nonnegative.max(100).nullable(), weight: nonnegative, effectiveWeight: nonnegative.max(1), evidence: z.array(text) })).length(5), hardFilterNotes: z.array(text), caveats: z.array(CaveatSchema) }).superRefine((v, ctx) => {
   if (new Set(v.parts.map(p => p.id)).size !== 5) ctx.addIssue({ code: 'custom', message: 'Each score part required exactly once' });
@@ -140,9 +140,7 @@ export const SearchResponseSchema = z.discriminatedUnion('status', [
 ]);
 export const ErrorResponseSchema = z.strictObject({ error: z.strictObject({ code: text, message: text, issues: z.array(z.strictObject({ path: z.array(z.union([z.string(), z.number().int()])), message: text })).optional(), retryAfterSeconds: positive.int().optional() }) });
 export const JobExpiredResponseSchema = z.strictObject({ error: z.strictObject({ code: z.literal('search_job_expired'), message: text }) });
-// RentSafeTO fields mirror D's buildings table and published loader; colours are passed through.
-export const BuildingSchema = z.strictObject({ id: text, address: text, addressPointId: text.nullable(), location: CoordinateSchema.nullable(), yearBuilt: year.nullable(), storeys: nonnegative.int().nullable(), units: nonnegative.int().nullable(), propertyType: z.enum(['private', 'social_housing', 'tchc']).nullable(), latestScore: nonnegative.max(100).nullable(), scoreDate: z.iso.date().nullable(), signColour: text.nullable(), previousScores: z.array(z.strictObject({ year, score: nonnegative.max(100) })), sourceId: text.nullable() });
-export const DetailResponseSchema = SearchResultSchema.safeExtend({ building: BuildingSchema.nullable().optional(), areas: z.array(AreaSchema), indicators: z.array(AreaIndicatorSchema), duplicates: z.array(ListingSchema) });
+export const DetailResponseSchema = SearchResultSchema.safeExtend({ areas: z.array(AreaSchema), indicators: z.array(AreaIndicatorSchema), duplicates: z.array(ListingSchema) });
 
 export type Listing = z.infer<typeof ListingSchema>;
 export type SearchIntent = z.infer<typeof SearchIntentSchema>;

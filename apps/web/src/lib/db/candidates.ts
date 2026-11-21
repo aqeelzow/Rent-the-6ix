@@ -7,7 +7,7 @@ export type SearchDependencies = {
   // Fixture/detail pool; live search can inject the read-only SQL candidate loader.
   listings: readonly Listing[];
   loadListing?: (id: string) => Promise<Listing | null>;
-  loadDetail?: (listing: Listing, intent: SearchRequest['intent']) => Promise<Pick<DetailResponse, 'areas' | 'indicators' | 'duplicates' | 'building'>>;
+  loadDetail?: (listing: Listing, intent: SearchRequest['intent']) => Promise<Pick<DetailResponse, 'areas' | 'indicators' | 'duplicates'>>;
   loadCandidates?: (request: SearchRequest, signal?: AbortSignal) => Promise<readonly Listing[]>;
   // Same safety/stored-travel facts as enrich, without valuation; omit when those facts require enrich.
   filterContext?: (listing: Listing, intent: SearchRequest['intent']) => Promise<FilterContext>;

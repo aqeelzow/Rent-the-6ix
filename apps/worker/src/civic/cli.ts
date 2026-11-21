@@ -9,7 +9,6 @@ import { openDb } from "../lib/db.ts";
 import { loadAddressPoints } from "./address-points.ts";
 import { loadDerivedIndicators } from "./area-indicators.ts";
 import { loadBoundaries } from "./areas.ts";
-import { loadBuildings } from "./buildings.ts";
 import { loadCensus } from "./census.ts";
 import { loadCrimeRates } from "./crime.ts";
 import { loadDevApplications } from "./dev-applications.ts";
@@ -62,14 +61,6 @@ async function stops(sql: Sql): Promise<void> {
   console.log(`  transit_stops: ${load.stops} stops, ${load.rapid} rapid`);
 }
 
-async function buildings(sql: Sql): Promise<void> {
-  const load = await loadBuildings(sql);
-  console.log(
-    `  buildings: ${load.buildings} rows (${load.withLocation} with coordinates, ${load.withAddressPoint} matched to an address point, ${load.withScore} with a score)`,
-  );
-  if (load.withScore === 0) throw new Error("no RentSafeTO scores loaded — check the column names");
-}
-
 async function crime(sql: Sql): Promise<void> {
   const load = await loadCrimeRates(sql);
   console.log(`  area_indicators: ${load.indicators} crime rows for ${load.period}`);
@@ -96,13 +87,12 @@ async function devapps(sql: Sql): Promise<void> {
   );
 }
 
-// `indicators` reads buildings, stops and POIs, so it runs after them in `all`.
+// `indicators` reads stops and POIs, so it runs after them in `all`.
 const TASKS: Record<string, Task> = {
   areas,
   addresses,
   pois,
   stops,
-  buildings,
   crime,
   census,
   devapps,

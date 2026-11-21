@@ -24,29 +24,26 @@ const row = (
 
 describe("cityValueOf", () => {
   it("sums counts, weights densities by area and the renter share by households", () => {
+    expect(cityValueOf("libraries", [row("01", "libraries", 4), row("02", "libraries", 3)])).toBe(
+      7,
+    );
     expect(
-      cityValueOf("libraries", [row("01", "libraries", 4), row("02", "libraries", 3)], null),
-    ).toBe(7);
-    expect(
-      cityValueOf(
-        "rapid_transit_within_800m_pct",
-        [row("01", "x", 50, { area_km2: 10 }), row("02", "x", 0, { area_km2: 30 })],
-        null,
-      ),
+      cityValueOf("rapid_transit_within_800m_pct", [
+        row("01", "x", 50, { area_km2: 10 }),
+        row("02", "x", 0, { area_km2: 30 }),
+      ]),
     ).toBe(12.5);
     expect(
-      cityValueOf(
-        "renter_households_pct",
-        [row("001", "x", 60, { sample_size: 1000 }), row("002", "x", 20, { sample_size: 3000 })],
-        null,
-      ),
+      cityValueOf("renter_households_pct", [
+        row("001", "x", 60, { sample_size: 1000 }),
+        row("002", "x", 20, { sample_size: 3000 }),
+      ]),
     ).toBe(30);
   });
 
-  it("uses every evaluated building for the RentSafeTO average and has no city median income", () => {
-    expect(cityValueOf("rentsafeto_avg_score", [row("01", "x", 90)], 88.4)).toBe(88.4);
-    expect(cityValueOf("median_household_income", [row("001", "x", 80000)], null)).toBeNull();
-    expect(cityValueOf("libraries", [row("01", "libraries", null)], null)).toBeNull();
+  it("has no city median income, and nothing when no area has a value", () => {
+    expect(cityValueOf("median_household_income", [row("001", "x", 80000)])).toBeNull();
+    expect(cityValueOf("libraries", [row("01", "libraries", null)])).toBeNull();
   });
 });
 
@@ -64,7 +61,6 @@ describe("assembleAreaFacts", () => {
       { bedrooms: 1, n_area: 703, median_area: 2500, n_city: 9000, median_city: 2290.5 },
       { bedrooms: 3, n_area: 4, median_area: 4500, n_city: 900, median_city: 3600 },
     ],
-    cityRentSafeAverage: null,
     sources: [
       {
         id: "library-branch-general-information",

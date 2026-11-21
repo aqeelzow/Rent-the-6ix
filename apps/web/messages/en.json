@@ -590,7 +590,6 @@
       "home": "The home",
       "travel": "Getting around",
       "safety": "Reported Crime Levels",
-      "building": "Building",
       "area": "The area",
       "check": "Things to check",
       "homeFacts": "Home",
@@ -645,7 +644,6 @@
       "sqft": "{n} sq ft",
       "yearFrom": "{year} (from {source})",
       "yearSource": {
-        "rentsafeto": "RentSafeTO",
         "ai_extracted": "the description"
       },
       "lease12": "12 months",
@@ -696,9 +694,6 @@
         "theftover": "Theft over $5,000"
       }
     },
-    "building": {
-      "none": "No RentSafeTO record for this building yet. RentSafeTO covers apartment buildings with 3+ storeys and 10+ units."
-    },
     "area": {
       "none": "Neighbourhood facts like renter share, rent burden and transit aren't loaded yet.",
       "indicator": "{value} {unit}",
@@ -723,8 +718,6 @@
       "renter_households_pct": "Renter households",
       "renters_shelter_cost_30pct": "Renters spending 30%+ of income on shelter",
       "median_household_income": "Median household income",
-      "rentsafeto_avg_score": "Average RentSafeTO score",
-      "rentsafeto_buildings": "RentSafeTO buildings",
       "dev_applications_12m": "Development applications in the last 12 months",
       "residential_units_proposed_12m": "Homes proposed in the last 12 months",
       "transit_stops_per_km2": "Transit stops per km²",
@@ -854,8 +847,6 @@
       "renter_households_pct": "Households that rent",
       "renters_shelter_cost_30pct": "Renters spending 30% or more of income on shelter",
       "median_household_income": "Median household income (2020)",
-      "rentsafeto_buildings": "Apartment buildings in RentSafeTO",
-      "rentsafeto_avg_score": "Average RentSafeTO evaluation score",
       "transit_stops_per_km2": "TTC stops per km²",
       "rapid_transit_within_800m_pct": "Area within 800 m of a subway or rail stop",
       "libraries": "Public libraries",
@@ -926,7 +917,6 @@
       "unavailable": "The dataset list couldn't be read from the database right now.",
       "usedFor": {
         "address-points": "Matching listing addresses to official City addresses and exact locations.",
-        "apartment-building-evaluation": "Each building's RentSafeTO inspection score and year built.",
         "apartment-building-registration": "Linking listings to registered apartment buildings.",
         "development-applications": "What's being built nearby, on area pages.",
         "library-branch-general-information": "Libraries as nearby places and travel targets.",
@@ -1004,8 +994,7 @@
         "1": "Rents are asking rents from listings, not what tenants actually pay.",
         "2": "Locations come from the listing; an address we couldn't match to the City's records is shown as approximate.",
         "3": "Listing sites differ in what they state, so many details are unknown. We mark them as unknown rather than guessing.",
-        "4": "Neighbourhood facts come from the 2021 Census and other dated sources; each shows its period.",
-        "5": "Building scores cover RentSafeTO's buildings only: apartment buildings with 3 or more storeys and 10 or more units."
+        "4": "Neighbourhood facts come from the 2021 Census and other dated sources; each shows its period."
       }
     },
     "modes": {

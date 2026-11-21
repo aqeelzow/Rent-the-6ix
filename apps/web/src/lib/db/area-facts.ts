@@ -6,15 +6,13 @@ import { getClient } from "../db";
 // (SPEC 9.4), never part of a default view.
 //
 // City values follow what each figure means: counts are summed; densities and shares of area are
-// weighted by area; the renter share by households; the RentSafeTO average is over every evaluated
-// building. A median of medians is not the city median, so median income has no city value.
+// weighted by area; the renter share by households. A median of medians is not the city median, so median income has no city value.
 
 export type AreaKind = "neighbourhood";
 
 /** Fewer listings than this and a median asking rent is "not enough data" (null). */
 export const MIN_LISTINGS = 5;
 const SUM = new Set([
-  "rentsafeto_buildings",
   "libraries",
   "parks",
   "dev_applications_12m",
@@ -52,14 +50,9 @@ export type SourceRow = {
 const round = (value: number, digits: number) => Math.round(value * 10 ** digits) / 10 ** digits;
 
 /** The city value for one indicator from every area's row, or null where none is meaningful. */
-export function cityValueOf(
-  indicatorId: string,
-  rows: IndicatorRow[],
-  cityRentSafeAverage: number | null,
-): number | null {
+export function cityValueOf(indicatorId: string, rows: IndicatorRow[]): number | null {
   const known = rows.filter((row) => row.value !== null);
   if (known.length === 0) return null;
-  if (indicatorId === "rentsafeto_avg_score") return cityRentSafeAverage;
   if (SUM.has(indicatorId)) return known.reduce((sum, row) => sum + row.value!, 0);
   if (AREA_WEIGHTED.has(indicatorId)) {
     const area = known.reduce((sum, row) => sum + row.area_km2, 0);
@@ -82,11 +75,10 @@ export function assembleAreaFacts(input: {
   area: { id: string; name: string; number: number | null };
   indicators: IndicatorRow[];
   rents: RentRow[];
-  cityRentSafeAverage: number | null;
   sources: SourceRow[];
   today: string;
 }): AreaFacts {
-  const { kind, area, indicators, rents, cityRentSafeAverage, today } = input;
+  const { kind, area, indicators, rents, today } = input;
   const byIndicator = new Map<string, IndicatorRow[]>();
   for (const row of indicators) {
     if (NOT_FACTS.has(row.indicator_id) || row.indicator_id.startsWith("crime:")) continue;
@@ -99,7 +91,7 @@ export function assembleAreaFacts(input: {
     facts.push({
       indicatorId,
       value: own.value,
-      cityValue: cityValueOf(indicatorId, rows, cityRentSafeAverage),
+      cityValue: cityValueOf(indicatorId, rows),
       unit: own.unit,
       period: own.period,
       sourceId: own.source_id,
@@ -179,7 +171,7 @@ export async function loadAreaFacts(
   const [areas, indicators, rents, sources] = await Promise.all([
     sql<{ id: string; name: string; number: number | null }[]>`
       SELECT id, name, number FROM ${table} WHERE id = ${areaId}`,
-    sql<(IndicatorRow & { city_rentsafe: number | null })[]>`
+    sql<IndicatorRow[]>`
       WITH latest AS (
         SELECT DISTINCT ON (area_id, indicator_id) area_id, indicator_id, value, unit, period,
                source_id, sample_size, note
@@ -187,9 +179,7 @@ export async function loadAreaFacts(
         WHERE area_kind = ${kind} AND indicator_id NOT LIKE 'crime:%'
         ORDER BY area_id, indicator_id, period DESC
       )
-      SELECT l.*, ST_Area(a.geometry::geography) / 1e6 AS area_km2,
-             (SELECT round(avg(latest_score), 1)::float8 FROM buildings
-              WHERE location IS NOT NULL AND latest_score IS NOT NULL) AS city_rentsafe
+      SELECT l.*, ST_Area(a.geometry::geography) / 1e6 AS area_km2
       FROM latest l JOIN ${table} a ON a.id = l.area_id`,
     sql<RentRow[]>`
       SELECT bedrooms,
@@ -211,7 +201,6 @@ export async function loadAreaFacts(
     area,
     indicators,
     rents,
-    cityRentSafeAverage: indicators[0]?.city_rentsafe ?? null,
     sources,
     today: new Date().toISOString().slice(0, 10),
   });

@@ -21,7 +21,6 @@ export function explanationFacts(detail: DetailResponse) {
     valuation: { status: detail.valuation.status, estimatedRentCad: detail.valuation.estimatedRentCad, differencePct: detail.valuation.differencePct, confidence: detail.valuation.confidence, comparableCount: detail.valuation.effectiveCount },
     travel: detail.travel.map(({ mode, distanceM }) => ({ mode, method: 'distance_estimate', minutes: estimateTravelMinutes(distanceM, mode), distanceM })),
     caveats: detail.matchScore.caveats.filter(c => safetyEnabled || !/^(?:safety|crime|police)/.test(c.code)).map(({ code, severity }) => ({ code, severity })),
-    building: detail.building ? { yearBuilt: detail.building.yearBuilt, latestScore: detail.building.latestScore, scoreDate: detail.building.scoreDate } : null,
     indicators: detail.indicators.filter(i => safetyEnabled || !/^crime[:_]/.test(i.indicatorId)).map(({ indicatorId, value, unit, period }) => ({ indicatorId, value, unit, period })),
     safety: safetyEnabled && detail.safety ? { relativeRate: detail.safety.relativeRate, years: detail.safety.years } : null,
   };

@@ -14,7 +14,7 @@ test('fixture enrichment executes C valuation and caveats with the small sample'
     const now = new Date(fixtureTimestamp);
     const comparables = sampleListings.map(candidate => ({ ...candidate, distanceM: distanceM(listing.location, candidate.location), buildingKey: candidate.buildingId ?? candidate.addressPointId }));
     assert.deepEqual(owner.valuation, valuate(listing, comparables, null, now));
-    assert.deepEqual(owner.caveats, caveats(listing, { valuation: owner.valuation, building: null, sameTextElsewhere: 0, now }));
+    assert.deepEqual(owner.caveats, caveats(listing, { valuation: owner.valuation, sameTextElsewhere: 0, now }));
     assert.equal(owner.valuation.status, 'insufficient_data');
     assert.equal(owner.valuation.benchmark, null);
   }

@@ -98,14 +98,12 @@ try {
       assert.equal(detail.listing.id, expected[0].id);
       assert.ok(detail.areas.length > 0);
       await page.getByRole('heading', { name: expected[0].title, exact: true }).waitFor({ state: 'visible' });
-      for (const section of ['Why it ranks here', 'Rent check', 'The home', 'Getting around', 'Building', 'The area', 'Things to check']) {
+      for (const section of ['Why it ranks here', 'Rent check', 'The home', 'Getting around', 'The area', 'Things to check']) {
         await page.getByRole('heading', { name: section, exact: true }).waitFor({ state: 'attached' });
       }
       for (const area of detail.areas) await page.getByText(area.name, { exact: false }).waitFor({ state: 'attached' });
       result.checks.liveDetailAndCivicArea = true;
       console.log(`${name}: detail passed`);
-      result.detailBuildingProvided = detail.building != null;
-      result.buildingUiPlaceholder = (await page.locator('body').innerText()).includes('No RentSafeTO record');
       result.checks.safetyOptOut = await page.getByRole('heading', { name: 'Safety', exact: true }).count() === 0;
       assert.ok(result.checks.safetyOptOut);
 

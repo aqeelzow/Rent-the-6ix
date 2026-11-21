@@ -1,5 +1,5 @@
 // Geocode (SPEC 8.4 step 3, P1.5): match each stored listing's address to a City of Waterloo
-// Address Point, then join areas and buildings.
+// Address Point, then join areas.
 // 1. Exact: the listing's normalized address equals `address_norm` ("89 CHURCH ST").
 // 2. Fuzzy: same house number, pg_trgm similarity ≥ FUZZY_MIN ("89 CHURCH STR" → "89 CHURCH ST").
 // Either match must lie within MAX_SHIFT_M of the source's own point, so "22 Grand Ave" in
@@ -9,8 +9,7 @@
 // Then, once D's tables are loaded: neighbourhood by point-in-polygon for the rest;
 // listings outside every Waterloo neighbourhood are dropped (outside the City of Waterloo, which
 // includes Kitchener, except a Waterloo address within EDGE_M of the line, whose point is just
-// imprecise); the RentSafeTO building
-// at the same Address Point gives building_id and year built.
+// imprecise).
 import type { Sql } from "postgres";
 
 /** A match further than this from the source's point is a different place with the same address. */
@@ -156,8 +155,6 @@ export interface GeocodeResult {
   outsideCoverage: number;
   /** Unmatched listings whose title or address names another city, deleted. */
   otherCity: number;
-  /** Listings matched to a RentSafeTO building (0 until buildings are loaded). */
-  buildings: number;
 }
 
 /** Listings per matching query, and per UPDATE (short statements: other writers never wait long). */
@@ -186,7 +183,6 @@ export async function geocodeStored(
     areaJoined: 0,
     outsideCoverage: 0,
     otherCity: 0,
-    buildings: 0,
   };
 
   // 1. Exact address, nearest point if the City has several. `|| ''` keeps the planner off the
@@ -254,12 +250,11 @@ export async function geocodeStored(
       WHERE l.id = m.id AND l.address_point_id IS NULL`;
   }
 
-  const [{ neighbourhoods, waterloo, buildings }] = await sql<
-    { neighbourhoods: number; waterloo: number; buildings: number }[]
+  const [{ neighbourhoods, waterloo }] = await sql<
+    { neighbourhoods: number; waterloo: number }[]
   >`
     SELECT (SELECT count(*)::int FROM neighbourhoods) AS neighbourhoods,
-      (SELECT count(*)::int FROM neighbourhoods WHERE id LIKE ${WATERLOO_ID_PREFIX + "%"}) AS waterloo,
-      (SELECT count(*)::int FROM buildings) AS buildings`;
+      (SELECT count(*)::int FROM neighbourhoods WHERE id LIKE ${WATERLOO_ID_PREFIX + "%"}) AS waterloo`;
 
   if (neighbourhoods) {
     result.areaJoined = (
@@ -298,22 +293,5 @@ export async function geocodeStored(
     ).count;
   }
 
-  if (buildings) {
-    result.buildings = (
-      await sql`
-        UPDATE listings l SET
-          building_id = b.id,
-          year_built = coalesce(b.year_built, l.year_built),
-          year_built_source = CASE WHEN b.year_built IS NOT NULL THEN 'rentsafeto'
-            ELSE l.year_built_source END,
-          updated_at = now()
-        -- A few Address Points have two RentSafeTO registrations: always take the same one.
-        FROM (
-          SELECT DISTINCT ON (address_point_id) * FROM buildings
-          WHERE address_point_id IS NOT NULL ORDER BY address_point_id, id
-        ) b
-        WHERE b.address_point_id = l.address_point_id AND l.building_id IS DISTINCT FROM b.id`
-    ).count;
-  }
   return result;
 }
