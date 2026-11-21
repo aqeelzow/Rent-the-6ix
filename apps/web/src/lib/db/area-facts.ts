@@ -1,7 +1,7 @@
 import { AreaFactsSchema, type AreaFact, type AreaFacts } from "@rentthe6ix/shared/schemas";
 import { getClient } from "../db";
 
-// One area's facts with the city value beside each (P3.10 core, SPEC 9.1–9.3). Owner: D. The ward
+// One area's facts with the city value beside each (P3.10 core, SPEC 9.1–9.3). Owner: D. An area
 // page's "at a glance" table reads this object. Crime rates are left out: they are opt-in only
 // (SPEC 9.4), never part of a default view.
 //
@@ -9,7 +9,7 @@ import { getClient } from "../db";
 // weighted by area; the renter share by households; the RentSafeTO average is over every evaluated
 // building. A median of medians is not the city median, so median income has no city value.
 
-export type AreaKind = "neighbourhood" | "ward";
+export type AreaKind = "neighbourhood";
 
 /** Fewer listings than this and a median asking rent is "not enough data" (null). */
 export const MIN_LISTINGS = 5;
@@ -165,8 +165,8 @@ export function assembleAreaFacts(input: {
   return AreaFactsSchema.parse({ area: { kind, ...area }, facts, sources });
 }
 
-const TABLES = { neighbourhood: "neighbourhoods", ward: "wards" } as const;
-const LISTING_COLUMN = { neighbourhood: "neighbourhood_id", ward: "ward_id" } as const;
+const TABLES = { neighbourhood: "neighbourhoods" } as const;
+const LISTING_COLUMN = { neighbourhood: "neighbourhood_id" } as const;
 
 /** The area's facts from the database, or null when the area doesn't exist. */
 export async function loadAreaFacts(
@@ -217,10 +217,9 @@ export async function loadAreaFacts(
   });
 }
 
-/** A URL number as the stored id: wards "1" → "01" (1–25), neighbourhoods "83" → "083". */
+/** A URL number as the stored id: neighbourhoods "83" → "083". */
 export function areaIdFor(kind: AreaKind, raw: string): string | null {
   if (!/^\d{1,3}$/.test(raw)) return null;
   const n = Number(raw);
-  if (kind === "ward") return n >= 1 && n <= 25 ? String(n).padStart(2, "0") : null;
   return n >= 1 && n <= 999 ? String(n).padStart(3, "0") : null;
 }

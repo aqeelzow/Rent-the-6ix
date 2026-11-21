@@ -24,7 +24,7 @@ export type PreferredAreaInput = {
 
 /**
  * The reference point, in order of how specifically the renter named it: a place target they gave
- * coordinates for, then a radius area. Neighbourhood and ward filters carry no point here — the
+ * coordinates for, then a radius area. Neighbourhood filters carry no point here — the
  * listing's own `neighbourhoodId` already answers "is it in there", and inventing a centroid
  * would invent a distance.
  */

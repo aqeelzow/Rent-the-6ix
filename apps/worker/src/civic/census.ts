@@ -10,7 +10,7 @@
 // Rows are found by their label, not their position, so a re-published file with an extra row
 // still loads; a missing label fails loudly instead of loading the wrong row. Labels repeat across
 // tables ("Renter" appears more than once), so "Renter" is the one right after its tenure total.
-// Wards have no census feed (the Ward Profiles are HTML only), so these are neighbourhoods only.
+// Neighbourhoods only.
 import type { Sql } from "postgres";
 import { CITY_LICENCE, cityResourceUrl } from "./lib/ckan.ts";
 import { fetchBuffer } from "./lib/http.ts";

@@ -2,7 +2,7 @@ import { test } from "vitest";
 import assert from "node:assert/strict";
 import { areaPointsLookup, areaResolution } from "./areas";
 
-const row = (name: string, kind: "neighbourhood" | "ward", lat: number, lng: number, exact = false, contains = true) => ({
+const row = (name: string, kind: "neighbourhood", lat: number, lng: number, exact = false, contains = true) => ({
   name,
   kind,
   lat,

@@ -4,7 +4,7 @@ import { DestinationChoiceSchema, type DestinationResolution } from "../../../..
 import type { AddressLookup } from "./resolve";
 
 /**
- * Toronto area names → representative points, from the `neighbourhoods` and `wards` tables.
+ * Area names → representative points, from the `neighbourhoods` table.
  *
  * Parsed intents name places the way renters say them ("Liberty Village", "downtown",
  * "Scarborough"), and almost none of those are full street addresses. Without this lookup the
@@ -21,7 +21,7 @@ const AREA_LIMIT = 8;
 
 const rowSchema = z.object({
   name: z.string().trim().min(1),
-  kind: z.enum(["neighbourhood", "ward"]),
+  kind: z.literal("neighbourhood"),
   lng: z.number().min(-180).max(180),
   lat: z.number().min(-90).max(90),
   exact: z.boolean(),
@@ -34,15 +34,12 @@ type AreaRow = z.infer<typeof rowSchema>;
 /**
  * `$1` is the normalized query. Exact names win over "the query is part of the name" (so
  * "liberty village" finds "Fort York-Liberty Village"), which wins over trigram similarity for
- * typos ("kensingtn"). Both tables are small (158 + 25 rows), so the ORDER BY is cheap.
+ * typos ("kensingtn"). The table is small, so the ORDER BY is cheap.
  */
 export const areaStatement = `
   WITH matches AS (
     SELECT name, 'neighbourhood'::text AS kind, ST_Centroid(geometry) AS point
     FROM neighbourhoods
-    UNION ALL
-    SELECT name, 'ward'::text AS kind, ST_Centroid(geometry) AS point
-    FROM wards
   )
   SELECT
     m.name,
@@ -70,7 +67,7 @@ const mean = (values: number[]) => Math.round((values.reduce((total, value) => t
 export function areaResolution(query: string, rows: readonly unknown[]): DestinationResolution | undefined {
   const parsed = z.array(rowSchema).max(AREA_LIMIT).safeParse(rows);
   if (!parsed.success || !parsed.data.length) return undefined;
-  // Only the strongest tier counts: an exact ward name must not be diluted by fuzzy neighbours.
+  // Only the strongest tier counts: an exact name must not be diluted by fuzzy neighbours.
   const best = parsed.data.filter((row) => row.exact === parsed.data[0].exact && row.contains === parsed.data[0].contains);
   const lat = mean(best.map((row) => row.lat));
   const lng = mean(best.map((row) => row.lng));

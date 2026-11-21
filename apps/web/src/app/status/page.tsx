@@ -71,7 +71,6 @@ export default async function StatusPage() {
             <StatusRow label={t("status.observations")} value={status.tables.listingObservations} />
             <StatusRow label={t("status.sources")} value={status.tables.sources} />
             <StatusRow label={t("status.neighbourhoods")} value={status.tables.neighbourhoods} />
-            <StatusRow label={t("status.wards")} value={status.tables.wards} />
           </dl>
         )}
       </section>

@@ -101,7 +101,7 @@ test('briefing data failures use a translatable service error', async () => {
   const original = process.env.DATABASE_URL;
   delete process.env.DATABASE_URL;
   try {
-    const response = await api.briefing(request('areas/ward/1/briefing'), { params: Promise.resolve({ kind: 'ward', id: '1' }) });
+    const response = await api.briefing(request('areas/neighbourhood/WPD-uptown/briefing'), { params: Promise.resolve({ kind: 'neighbourhood', id: 'WPD-uptown' }) });
     assert.equal(response.status, 503);
     assert.deepEqual(await response.json(), { error: { code: 'service_unavailable', message: 'Area briefings temporarily unavailable' } });
   } finally { if (original === undefined) delete process.env.DATABASE_URL; else process.env.DATABASE_URL = original; }

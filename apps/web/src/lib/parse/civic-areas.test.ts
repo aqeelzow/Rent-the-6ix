@@ -6,26 +6,24 @@ import { civicAreasLookup, civicAreasStatement } from './civic-areas-db';
 import type { CivicArea } from './civic-areas';
 const areas: CivicArea[] = [
   { kind: 'neighbourhood', id: '095', name: 'Annex', number: 95 },
-  { kind: 'ward', id: '01', name: 'Etobicoke North', number: 1 },
+  { kind: 'neighbourhood', id: '010', name: 'Uptown', number: 10 },
   { kind: 'neighbourhood', id: '001', name: 'Shared Name', number: 1 },
-  { kind: 'ward', id: '02', name: 'Shared Name', number: 2 },
+  { kind: 'neighbourhood', id: '002', name: 'Shared Name', number: 2 },
 ];
-test('fallback uses exact civic names and explicit ward numbers without guessing destination areas', () => {
+test('fallback uses exact civic names without guessing destination areas', () => {
   for (const prompt of ['in Annex', 'in the Annex', 'Annex', 'in neighbourhood Annex']) assert.deepEqual(fallbackParse(prompt, undefined, areas).areas, [{ kind: 'neighbourhood', id: '095' }]);
-  assert.deepEqual(fallbackParse('in ward 01 under $2000', undefined, areas).areas, [{ kind: 'ward', id: '01' }]);
-  assert.deepEqual(fallbackParse('in Etobicoke North', undefined, areas).areas, [{ kind: 'ward', id: '01' }]);
-  for (const prompt of ['near Annex', '10 min walk to Annex', 'near ward 01', 'near ward Etobicoke North', 'not in Annex', 'under $2000', 'in Annexation', 'in ward Annex']) assert.deepEqual(fallbackParse(prompt, undefined, areas).areas, [], prompt);
+  assert.deepEqual(fallbackParse('in Uptown under $2000', undefined, areas).areas, [{ kind: 'neighbourhood', id: '010' }]);
+  for (const prompt of ['near Annex', '10 min walk to Annex', 'near Uptown', 'in ward 01', 'not in Annex', 'under $2000', 'in Annexation', 'in ward Annex']) assert.deepEqual(fallbackParse(prompt, undefined, areas).areas, [], prompt);
   const ambiguous = fallbackParse('in Shared Name', undefined, areas);
   assert.equal(ambiguous.areas.length, 0); assert.match(ambiguous.droppedRequests[0].reason, /ambiguous/);
-  assert.deepEqual(fallbackParse('in ward Shared Name', undefined, areas).areas, [{ kind: 'ward', id: '02' }]);
   assert.equal(fallbackParse('in downtown', undefined, areas).areas[0].kind, 'configured');
 });
-test('AI civic IDs require exact catalogue identity and evidence for that actual name or ward number', () => {
+test('AI civic IDs require exact catalogue identity and evidence for that actual name', () => {
   const prompt = 'in Annex under $2000';
   for (const [area, phrase, accepted] of [
     [{ kind: 'neighbourhood', id: '095' }, 'in Annex', true],
     [{ kind: 'neighbourhood', id: '095' }, 'under $2000', false],
-    [{ kind: 'ward', id: '01' }, 'in Annex', false],
+    [{ kind: 'neighbourhood', id: '010' }, 'in Annex', false],
     [{ kind: 'neighbourhood', id: '95' }, 'in Annex', false],
   ] as const) {
     const intent = fallbackParse(prompt); intent.areas = [area]; intent.fieldSources.areas = { source: 'ai_prompt', phrase };
@@ -50,7 +48,7 @@ test('parse input includes authoritative catalogue and known labels; catalogue c
   } });
   assert.equal((await service.parse({ prompt: 'in Annex' }, 'test')).intent.areas[0].kind, 'neighbourhood');
   await service.parse({ prompt: 'in Annex' }, 'test'); assert.equal(calls, 1);
-  catalogue = [...areas, { kind: 'ward', id: '03', name: 'New Area', number: 3 }];
+  catalogue = [...areas, { kind: 'neighbourhood', id: '003', name: 'New Area', number: 3 }];
   await service.parse({ prompt: 'in Annex' }, 'test'); assert.equal(calls, 2);
 });
 test('catalogue read validates rows, bounds latency, shares unfinished reads and caches validated results', async () => {

@@ -2,7 +2,7 @@ import type { AIProvider } from './index';
 import { inputHash } from '../parse/cache';
 
 export type BriefingIndicator = { indicatorId: string; value: number; unit: string; period: string; sourceId: string; sourceTitle: string; sourceUrl: string; note: string | null };
-export type BriefingFacts = { area: { kind: 'ward' | 'neighbourhood'; id: string; name: string; number: number | null }; indicators: BriefingIndicator[]; cityIndicators: BriefingIndicator[] };
+export type BriefingFacts = { area: { kind: 'neighbourhood'; id: string; name: string; number: number | null }; indicators: BriefingIndicator[]; cityIndicators: BriefingIndicator[] };
 export type BriefingResponse = BriefingFacts & { status: 'available' | 'insufficient_data'; paragraphs: string[]; source: 'gemini' | 'template' };
 
 const groups = [

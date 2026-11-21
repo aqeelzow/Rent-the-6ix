@@ -41,7 +41,7 @@ export function createRuntime(options: RuntimeOptions = {}) {
   const resolver = options.resolver ?? new DestinationResolver({
     maptilerKey: env.NEXT_PUBLIC_MAPTILER_KEY,
     addressLookup: env.SEARCH_FIXTURES !== '1' && env.DATABASE_URL ? addressPointsLookup() : undefined,
-    // Neighbourhood and ward names ("Liberty Village", "Scarborough") before geocoding.
+    // Neighbourhood names ("Uptown", "Beechwood") before geocoding.
     areaLookup: env.SEARCH_FIXTURES !== '1' && env.DATABASE_URL ? areaPointsLookup() : undefined,
   });
   const parser = options.parser ?? new ParseService({ provider: providerFromEnv(env), resolver, civicAreas: env.SEARCH_FIXTURES !== '1' && env.DATABASE_URL ? civicAreasLookup() : undefined, cacheNamespace: `${env.AI_PROVIDER}:${env.GEMINI_MODEL_FAST ?? env.GEMINI_MODEL}`, intentCache: env.SEARCH_FIXTURES !== '1' && env.DATABASE_URL && env.AI_PROVIDER === 'gemini' ? databaseIntentCache() : undefined });
@@ -65,7 +65,7 @@ export function createRuntime(options: RuntimeOptions = {}) {
   const params = z.strictObject({ id: z.uuid() });
   const explainBody = z.strictObject({ intent: SearchIntentSchema.optional() });
   const token = z.strictObject({ token: z.string().regex(/^[A-Za-z0-9_-]{32,128}$/) });
-  const areaParams = z.strictObject({ kind: z.enum(['ward', 'neighbourhood']), id: z.string().regex(/^[A-Za-z0-9_-]{1,64}$/) });
+  const areaParams = z.strictObject({ kind: z.literal('neighbourhood'), id: z.string().regex(/^[A-Za-z0-9_-]{1,64}$/) });
   const query = (request: Request, field: string) => {
     const url = new URL(request.url);
     if (url.searchParams.getAll(field).length !== 1) throw new ApiError(422, 'validation_error', 'Exactly one query value is required');
@@ -94,7 +94,7 @@ export function createRuntime(options: RuntimeOptions = {}) {
     await routeCandidateContexts(deps, [listing], targets, scoringByListing);
     await fillAmenityDistances(deps, [listing], targets, scoringByListing);
     const fixture = !deps.loadCandidates && !deps.loadListing && listing.dataStatus === 'demo';
-    return DetailResponseSchema.parse({ listing, valuation: owner.valuation, travel: scoring.travel, safety: scoring.safety, matchScore: scoreListing(listing, intent, scoring), areas: fixture ? areas.filter(a => a.id === listing.neighbourhoodId || a.id === listing.wardId) : [], indicators: fixture ? detailFixture.indicators.filter(i => i.areaId === listing.neighbourhoodId) : [], duplicates: fixture ? deps.listings.filter(l => l.duplicateOf === id) : [], ...extras });
+    return DetailResponseSchema.parse({ listing, valuation: owner.valuation, travel: scoring.travel, safety: scoring.safety, matchScore: scoreListing(listing, intent, scoring), areas: fixture ? areas.filter(a => a.id === listing.neighbourhoodId) : [], indicators: fixture ? detailFixture.indicators.filter(i => i.areaId === listing.neighbourhoodId) : [], duplicates: fixture ? deps.listings.filter(l => l.duplicateOf === id) : [], ...extras });
   };
   return {
     jobs,

@@ -52,8 +52,8 @@ describe("cityValueOf", () => {
 
 describe("assembleAreaFacts", () => {
   const facts = assembleAreaFacts({
-    kind: "ward",
-    area: { id: "10", name: "Spadina-Fort York", number: 10 },
+    kind: "neighbourhood",
+    area: { id: "10", name: "Uptown", number: 10 },
     indicators: [
       row("10", "libraries", 3, { source_id: "library-branch-general-information" }),
       row("13", "libraries", 3, { source_id: "library-branch-general-information" }),
@@ -103,9 +103,7 @@ describe("assembleAreaFacts", () => {
 });
 
 describe("areaIdFor", () => {
-  it("pads ward and neighbourhood numbers and rejects anything else", () => {
-    expect(areaIdFor("ward", "1")).toBe("01");
-    expect(areaIdFor("ward", "26")).toBeNull();
+  it("pads neighbourhood numbers and rejects anything else", () => {
     expect(areaIdFor("neighbourhood", "83")).toBe("083");
     expect(areaIdFor("neighbourhood", "x")).toBeNull();
   });

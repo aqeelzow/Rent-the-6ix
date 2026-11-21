@@ -37,7 +37,7 @@ export class DestinationResolver {
         try { const address = await this.config.addressLookup(query, controller.signal); if (address) { const parsed = DestinationResolutionSchema.parse({ ...address, query }); if (parsed.status !== 'unavailable') return parsed; } } catch { /* unavailable owner lookup falls through to geocoding */ }
       }
       // Area names ("Liberty Village", "Scarborough") are neither addresses nor full POIs; the
-      // City's neighbourhood/ward tables answer them with a labelled representative point.
+      // City's neighbourhood table answers them with a labelled representative point.
       if (this.config.areaLookup && !namedParkMentions(query).length) {
         try { const area = await this.config.areaLookup(query, controller.signal); if (area) { const parsed = DestinationResolutionSchema.parse({ ...area, query }); if (parsed.status !== 'unavailable') return parsed; } } catch { /* fall through to geocoding */ }
       }

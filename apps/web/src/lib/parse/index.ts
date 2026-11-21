@@ -39,7 +39,7 @@ export class ParseService {
         const basic = fallbackParse(prompt, this.options.now?.(), catalogue);
         // A named park the model dropped would turn "near High Park" into any listing in the city.
         if (namedParkMentions(prompt).some(park => !intent.travelTargets.some(target => target.kind === 'place' && target.query?.toLowerCase().includes(park.phrase.toLowerCase())))) throw reject('named_park');
-        if (basic.droppedRequests.some(request => request.reason === 'Area name is ambiguous; specify neighbourhood or ward.')) throw reject('ambiguous_area');
+        if (basic.droppedRequests.some(request => request.reason === 'Area name is ambiguous.')) throw reject('ambiguous_area');
         // Areas are keyword facts, not interpretation. Prefer the deterministic match: requiring
         // the model to reproduce a configured-area object rejected otherwise-good parses, and a
         // union of the two would widen an OR filter.

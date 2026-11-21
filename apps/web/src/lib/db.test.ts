@@ -41,8 +41,7 @@ describe("getDatabaseStatus", () => {
         listings: 12,
         listing_observations: 24,
         sources: 5,
-        neighbourhoods: 158,
-        wards: 25,
+        neighbourhoods: 27,
       },
     ]);
 
@@ -58,8 +57,7 @@ describe("getDatabaseStatus", () => {
         listings: 12,
         listingObservations: 24,
         sources: 5,
-        neighbourhoods: 158,
-        wards: 25,
+        neighbourhoods: 27,
       },
       error: null,
     });

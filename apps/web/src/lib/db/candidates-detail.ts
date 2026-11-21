@@ -14,13 +14,12 @@ export function sqlDetailLoader(client: () => Client | null = getClient): NonNul
       const listing = ListingSchema.parse(input), sql = client();
       if (!sql) throw Error('Database unavailable');
       const [areaRows, indicatorRows, buildingRows, duplicateRows] = await Promise.all([
-        sql.unsafe(`SELECT id, 'neighbourhood' AS kind, name, number, is_nia, ST_AsGeoJSON(geometry)::json AS geometry FROM neighbourhoods WHERE id = $1
-          UNION ALL SELECT id, 'ward' AS kind, name, number, NULL AS is_nia, ST_AsGeoJSON(geometry)::json AS geometry FROM wards WHERE id = $2`, [listing.neighbourhoodId, listing.wardId]),
+        sql.unsafe(`SELECT id, 'neighbourhood' AS kind, name, number, is_nia, ST_AsGeoJSON(geometry)::json AS geometry FROM neighbourhoods WHERE id = $1`, [listing.neighbourhoodId]),
         // Crime indicators obey the same explicit opt-in as the owner safety result.
         sql.unsafe(`SELECT area_id, indicator_id, value, unit, period, source_id, sample_size, note FROM area_indicators
-          WHERE ((area_kind = 'neighbourhood' AND area_id = $1) OR (area_kind = 'ward' AND area_id = $2))
-          AND source_id IS NOT NULL AND unit IS NOT NULL AND ($3 OR indicator_id !~ '^crime[:_]')
-          ORDER BY area_kind, indicator_id, period`, [listing.neighbourhoodId, listing.wardId, intent.safety.enabled]),
+          WHERE area_kind = 'neighbourhood' AND area_id = $1
+          AND source_id IS NOT NULL AND unit IS NOT NULL AND ($2 OR indicator_id !~ '^crime[:_]')
+          ORDER BY indicator_id, period`, [listing.neighbourhoodId, intent.safety.enabled]),
         sql.unsafe(`SELECT id, address, address_point_id, ST_X(location::geometry) AS lng, ST_Y(location::geometry) AS lat,
           year_built, storeys, units, property_type, latest_score, score_date::text, sign_colour, previous_scores, source_id
           FROM buildings WHERE id = $1`, [listing.buildingId]),

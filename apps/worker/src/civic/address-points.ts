@@ -10,7 +10,7 @@
 // The key is that civic address ("WAT:155 CAROLINE ST S"): most points have no ADDRESS_ID, and
 // OBJECTIDs change when the City republishes the layer. Writes are batched upserts on that key,
 // and Waterloo points the City no longer publishes are deleted, so a run can simply be repeated.
-// The source's WARD column is ignored (no wards, #1); `neighbourhood_id` is filled
+// The source's WARD column is ignored (Waterloo has no ward pages); `neighbourhood_id` is filled
 // point-in-polygon afterwards from the neighbourhoods `areas` loaded.
 //
 // Spelling: the City writes "213 PASTERN TRAIL", "12 KING ST N", "15 ABC CRT", "8 XYZ CIR".
@@ -46,7 +46,6 @@ interface AddressRow {
   address_full: string;
   address_norm: string;
   location: string;
-  ward_id: null;
   source_id: string;
 }
 
@@ -54,7 +53,6 @@ export interface AddressPointLoad {
   total: number;
   written: number;
   withNeighbourhood: number;
-  withWard: number;
 }
 
 const clean = (text: string) => text.trim().toUpperCase().replace(/\s+/g, " ");
@@ -117,7 +115,6 @@ export function toBuildingRows(features: GeoJsonFeature<AddressProps>[]): {
     address_full: building,
     address_norm: normalizeAddress(building),
     location: `SRID=4326;POINT(${(lng / n).toFixed(7)} ${(lat / n).toFixed(7)})`,
-    ward_id: null,
     source_id: SOURCE_ID,
   }));
   return { rows, skipped, units };
@@ -153,12 +150,11 @@ export async function loadAddressPoints(sql: Sql): Promise<AddressPointLoad> {
   for (let i = 0; i < rows.length; i += WRITE_BATCH) {
     const batch = rows.slice(i, i + WRITE_BATCH);
     await sql`
-      insert into address_points ${sql(batch, "id", "address_full", "address_norm", "location", "ward_id", "source_id")}
+      insert into address_points ${sql(batch, "id", "address_full", "address_norm", "location", "source_id")}
       on conflict (id) do update set
         address_full = excluded.address_full,
         address_norm = excluded.address_norm,
         location = excluded.location,
-        ward_id = null,
         neighbourhood_id = null,
         source_id = excluded.source_id
     `;
@@ -190,15 +186,13 @@ export async function loadAddressPoints(sql: Sql): Promise<AddressPointLoad> {
      where a.neighbourhood_id is null and a.source_id = ${SOURCE_ID}
   `;
 
-  const [row] = await sql<{ total: number; with_hood: number; with_ward: number }[]>`
+  const [row] = await sql<{ total: number; with_hood: number }[]>`
     select count(*)::int as total,
-           count(*) filter (where neighbourhood_id is not null)::int as with_hood,
-           count(*) filter (where ward_id is not null)::int as with_ward
+           count(*) filter (where neighbourhood_id is not null)::int as with_hood
       from address_points where source_id = ${SOURCE_ID}`;
   return {
     total: row.total,
     written,
     withNeighbourhood: row.with_hood,
-    withWard: row.with_ward,
   };
 }

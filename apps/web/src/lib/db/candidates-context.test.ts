@@ -11,7 +11,7 @@ import { searchPercentileCandidates } from './candidates-percentiles';
 import { SearchUnavailable } from './candidates';
 import { createRuntime } from '../api/runtime';
 vi.mock('../db', () => ({ getClient: vi.fn(() => null) }));
-const listing: Listing = { ...sampleListings[0], monthlyRentCad: 2000, bedrooms: 1, bathrooms: 1, sqft: null, unitType: 'apartment', buildingId: null, neighbourhoodId: null, wardId: null, addressPointId: null, utilitiesIncluded: 'unknown', parking: 'unknown', furnished: 'unknown', laundryInSuite: 'unknown', dataStatus: 'live' };
+const listing: Listing = { ...sampleListings[0], monthlyRentCad: 2000, bedrooms: 1, bathrooms: 1, sqft: null, unitType: 'apartment', buildingId: null, neighbourhoodId: null, addressPointId: null, utilitiesIncluded: 'unknown', parking: 'unknown', furnished: 'unknown', laundryInSuite: 'unknown', dataStatus: 'live' };
 const rowFor = (value: Listing) => ({ ...Object.fromEntries(Object.entries(value).filter(([key]) => key !== 'location').map(([key, val]) => [key.replace(/[A-Z]/g, c => `_${c.toLowerCase()}`), val])), lng: value.location.lng, lat: value.location.lat });
 const five = () => [2400, 2450, 2500, 2550, 2600].map((rent, i) => ({ ...rowFor(listing), id: sampleListings[i + 1].id, monthly_rent_cad: rent, distance_m: 100 + i, last_seen_at: new Date(), duplicate_of: null, building_key: `building-${i}` }));
 type Sql = NonNullable<ReturnType<typeof ClientFactory>>;

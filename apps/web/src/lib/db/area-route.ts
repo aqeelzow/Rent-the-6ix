@@ -4,9 +4,9 @@ import { getClient } from "../db";
 import { areaIdFor, loadAreaFacts } from "./area-facts";
 
 // GET /api/areas/[kind]/[id] (SPEC 13, P3.10). Owner: D. Every indicator for one area with the
-// city value, period and source beside it. `id` is the area's number: /api/areas/ward/10.
+// city value, period and source beside it. `id` is the area's number: /api/areas/neighbourhood/83.
 
-const Params = z.strictObject({ kind: z.enum(["neighbourhood", "ward"]), id: z.string() });
+const Params = z.strictObject({ kind: z.literal("neighbourhood"), id: z.string() });
 type Context = { params: Promise<{ kind: string; id: string }> };
 
 export function createAreaRoute(client: typeof getClient = getClient) {

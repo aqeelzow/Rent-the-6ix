@@ -3,8 +3,7 @@ import { getClient } from '../db';
 import { MemoryCache } from './cache';
 import { civicAreaRow, type CivicArea } from './civic-areas';
 
-export const civicAreasStatement = `SELECT 'neighbourhood' AS kind, id, name, number FROM neighbourhoods
-UNION ALL SELECT 'ward' AS kind, id, name, number FROM wards ORDER BY kind, id LIMIT 513`;
+export const civicAreasStatement = `SELECT 'neighbourhood' AS kind, id, name, number FROM neighbourhoods ORDER BY id LIMIT 513`;
 type Client = { unsafe(statement: string): PromiseLike<unknown> };
 export function civicAreasLookup(client: () => Client | null = getClient, timeoutMs = 1000): () => Promise<CivicArea[]> {
   const cache = new MemoryCache<CivicArea[]>(1);

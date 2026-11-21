@@ -14,9 +14,9 @@ test.skipIf(process.env.RUN_LIVE_STATIC_DETAIL !== '1')('live detail returns civ
   const api = createRuntime({ env: {}, dependencies: sqlSearchDependencies(() => sql) });
   try {
     const [matched] = await sql`SELECT l.id FROM listings l JOIN buildings b ON b.id = l.building_id
-      JOIN neighbourhoods n ON n.id = l.neighbourhood_id JOIN wards w ON w.id = l.ward_id
+      JOIN neighbourhoods n ON n.id = l.neighbourhood_id
       WHERE l.status = 'active' AND l.duplicate_of IS NULL ORDER BY l.last_seen_at DESC LIMIT 1`;
-    assert.ok(matched, 'real listing with matched building and both areas required');
+    assert.ok(matched, 'real listing with matched building and neighbourhood required');
     const [duplicated] = await sql`SELECT l.id FROM listings l WHERE EXISTS (SELECT 1 FROM listings d WHERE d.duplicate_of = l.id) LIMIT 1`;
     assert.ok(duplicated, 'real canonical duplicate group required');
     let buildingVerified = false, duplicatesVerified = false, optInCrime = 0;
@@ -26,9 +26,9 @@ test.skipIf(process.env.RUN_LIVE_STATIC_DETAIL !== '1')('live detail returns civ
         const response = await api.detail(new Request(`http://localhost/api/listings/${id}?intent=${encodeURIComponent(JSON.stringify(intent))}`), { params: Promise.resolve({ id }) });
         assert.equal(response.status, 200);
         const detail = DetailResponseSchema.parse(await response.json());
-        const expectedAreas = await sql`SELECT id FROM neighbourhoods WHERE id = ${detail.listing.neighbourhoodId} UNION ALL SELECT id FROM wards WHERE id = ${detail.listing.wardId}`;
+        const expectedAreas = await sql`SELECT id FROM neighbourhoods WHERE id = ${detail.listing.neighbourhoodId}`;
         assert.deepEqual(detail.areas.map(a => a.id).sort(), expectedAreas.map(a => String(a.id)).sort());
-        const indicators = await sql`SELECT * FROM area_indicators WHERE ((area_kind = 'neighbourhood' AND area_id = ${detail.listing.neighbourhoodId}) OR (area_kind = 'ward' AND area_id = ${detail.listing.wardId})) AND source_id IS NOT NULL AND unit IS NOT NULL AND (${enabled} OR indicator_id !~ '^crime[:_]') ORDER BY area_kind, indicator_id, period`;
+        const indicators = await sql`SELECT * FROM area_indicators WHERE area_kind = 'neighbourhood' AND area_id = ${detail.listing.neighbourhoodId} AND source_id IS NOT NULL AND unit IS NOT NULL AND (${enabled} OR indicator_id !~ '^crime[:_]') ORDER BY indicator_id, period`;
         assert.equal(detail.indicators.length, indicators.length);
         for (const [index, indicator] of detail.indicators.entries()) {
           assert.equal(indicator.value, indicators[index].value); assert.equal(indicator.sourceId, indicators[index].source_id); assert.equal(indicator.period, indicators[index].period);

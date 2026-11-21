@@ -41,7 +41,7 @@ describe("GET /api/areas/[kind]/[id]/safety", () => {
   });
 
   it("has nothing for wards, unknown neighbourhoods or malformed ids", async () => {
-    expect((await call("ward", "10")).status).toBe(404);
+    expect((await call("ward", "10")).status).toBe(422);
     const unknown = await call("neighbourhood", "999");
     expect(unknown.status).toBe(404);
     expect((await unknown.json()).error.code).toBe("area_not_found");

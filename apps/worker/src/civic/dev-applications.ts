@@ -1,5 +1,5 @@
 // P2.14 (development half) — the City's Development Applications into `dev_applications`, then two
-// indicators per neighbourhood and ward (SPEC 5, 9.1): applications submitted in the last 12 months,
+// indicators per neighbourhood (SPEC 5, 9.1): applications submitted in the last 12 months,
 // and the residential units those applications propose.
 //
 // Data traps, each checked against the live dataset (2026-10-17):
@@ -24,7 +24,6 @@ const PAGE_SIZE = 5000;
 const SOURCE_SRID = 7991;
 const KINDS = [
   { kind: "neighbourhood", table: "neighbourhoods" },
-  { kind: "ward", table: "wards" },
 ] as const;
 
 export type DevRecord = Record<string, string | number | null>;

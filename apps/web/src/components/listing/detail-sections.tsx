@@ -403,7 +403,7 @@ function indicatorLabel(id: string): string {
 }
 
 /**
- * P2.34: neighbourhood and ward facts (SPEC 9.1), as small tiles grouped by area. Each tile's
+ * P2.34: neighbourhood facts (SPEC 9.1), as small tiles grouped by area. Each tile's
  * period, source and sample size sit behind an info button, so the figures stay traceable.
  */
 export function AreaCard({

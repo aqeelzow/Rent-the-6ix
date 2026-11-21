@@ -85,13 +85,13 @@ test('travel evidence labels estimated minutes and their straight-line distance'
 });
 
 test('missing civic IDs stay unconfirmed through geographic OR and hide gates', () => {
-  const sparse = ListingSchema.parse({ ...listing, neighbourhoodId: null, wardId: null });
-  assert.equal(sparse.neighbourhoodId, null); assert.equal(sparse.wardId, null);
-  const areas: SearchIntent['areas'] = [{ kind: 'ward', id: 'known-ward' }];
+  const sparse = ListingSchema.parse({ ...listing, neighbourhoodId: null });
+  assert.equal(sparse.neighbourhoodId, null);
+  const areas: SearchIntent['areas'] = [{ kind: 'neighbourhood', id: 'known-hood' }];
   const current = { ...baseIntent, areas };
   assert.deepEqual(filterListing(sparse, current), { passes: true, notes: ['area: not confirmed'] });
   assert.equal(filterListing(sparse, current, {}, true).passes, false);
-  assert.equal(filterListing({ ...sparse, wardId: 'different-ward' }, current).passes, false);
+  assert.equal(filterListing({ ...sparse, neighbourhoodId: 'different-hood' }, current).passes, false);
   const withNear = { ...current, areas: [...areas, { kind: 'near' as const, point: sparse.location, radiusM: 1 }] };
   assert.deepEqual(filterListing(sparse, withNear, {}, true), { passes: true, notes: [] });
   assert.deepEqual(filterListing(sparse, baseIntent, {}, true), { passes: true, notes: [] });
