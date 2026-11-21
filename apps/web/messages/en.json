@@ -1,6 +1,6 @@
 {
   "common": {
-    "appName": "RentThe6ix",
+    "appName": "Rent the Loo",
     "search": "Search",
     "close": "Close",
     "menu": "Menu",
@@ -8,7 +8,7 @@
   },
   "layout": {
     "skipToContent": "Skip to content",
-    "homeLink": "RentThe6ix home",
+    "homeLink": "Rent the Loo home",
     "nav": {
       "label": "Main",
       "areas": "Explore neighbourhoods",
@@ -22,16 +22,16 @@
       "data": "Sources and methods",
       "status": "Status"
     },
-    "metaDescription": "Describe the rental you need. RentThe6ix searches Toronto listings, checks each price against similar homes, and shows the neighbourhood around it.",
+    "metaDescription": "Describe the rental you need. Rent the Loo searches Waterloo listings, checks each price against similar homes, and shows the neighbourhood around it.",
     "theme": {
       "toDark": "Switch to dark mode",
       "toLight": "Switch to light mode"
     }
   },
   "landing": {
-    "tagline": "Toronto home finding, made easy",
+    "tagline": "Waterloo home finding, made easy",
     "logoTop": "Rent the",
-    "logoBottom": "6ix",
+    "logoBottom": "Loo",
     "scrollCue": "Scroll",
     "jump": "Skip to search",
     "say": {
@@ -110,7 +110,7 @@
     "errors": {
       "rate_limited": "Too many searches at once. Try again in {seconds} seconds.",
       "service_unavailable": "Search isn't available right now. Try again in a moment.",
-      "network_error": "Couldn't reach RentThe6ix. Check your connection and try again.",
+      "network_error": "Couldn't reach Rent the Loo. Check your connection and try again.",
       "validation_error": "We couldn't use that request. Try rewording it.",
       "search_timeout": "This search took too long. Try fewer travel targets.",
       "search_capacity": "Lots of people are searching right now. Try again shortly.",
@@ -841,7 +841,7 @@
       "keyDates": "Key election dates",
       "resultsTitle": "Municipal election results",
       "results": "Official results from the City of Toronto",
-      "note": "From the City of Toronto’s election pages. RentThe6ix doesn’t summarize, compare or rank candidates or platforms."
+      "note": "From the City of Toronto’s election pages. Rent the Loo doesn’t summarize, compare or rank candidates or platforms."
     },
     "facts": {
       "thisArea": "This ward",
@@ -854,7 +854,7 @@
       "noCity": "No city-wide figure",
       "listings": "from {n} listings",
       "source": "Source: {source}",
-      "listingsNote": "Asking rents come from listings RentThe6ix collected. They are not official statistics."
+      "listingsNote": "Asking rents come from listings Rent the Loo collected. They are not official statistics."
     },
     "indicators": {
       "median_asking_rent_0br": "Typical asking rent, studio",
@@ -901,13 +901,13 @@
     "checking": "Checking…",
     "privacy": "Pasted listings are never stored on our server. If you save one, it stays in this browser’s shortlist.",
     "unavailableTitle": "Checking pasted listings isn’t available yet",
-    "unavailable": "This part of RentThe6ix is still being built. Nothing you pasted was stored.",
+    "unavailable": "This part of Rent the Loo is still being built. Nothing you pasted was stored.",
     "save": "Save to shortlist",
     "saved": "Saved to your shortlist",
     "errors": {
       "rate_limited": "Too many checks at once. Try again in {seconds} seconds.",
       "service_unavailable": "Checking is busy right now. Try again in a minute.",
-      "network_error": "We couldn’t reach RentThe6ix. Check your connection and try again.",
+      "network_error": "We couldn’t reach Rent the Loo. Check your connection and try again.",
       "default": "Something went wrong checking this listing. Try again, or paste the text instead of a link."
     }
   },
@@ -928,7 +928,7 @@
   },
   "dataPage": {
     "title": "About the data",
-    "intro": "Every number on RentThe6ix comes from public data and our own code. Gemini reads your search and writes plain-language explanations, but it never produces a rent estimate, a travel time, a score or a ranking. AI interprets; code calculates.",
+    "intro": "Every number on Rent the Loo comes from public data and our own code. Gemini reads your search and writes plain-language explanations, but it never produces a rent estimate, a travel time, a score or a ranking. AI interprets; code calculates.",
     "contents": "On this page",
     "sections": {
       "datasets": "Datasets",

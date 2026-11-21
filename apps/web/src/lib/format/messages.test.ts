@@ -3,7 +3,7 @@ import { interpolate, t, type MessageKey } from "./messages";
 
 describe("t", () => {
   it("returns the English string for a key", () => {
-    expect(t("common.appName")).toBe("RentThe6ix");
+    expect(t("common.appName")).toBe("Rent the Loo");
     expect(t("landing.examples.family.label")).toBe("Family");
   });
 

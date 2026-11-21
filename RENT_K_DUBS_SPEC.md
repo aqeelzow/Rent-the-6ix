@@ -1,16 +1,16 @@
-# Rent K-Dubs: porting RentThe6ix to Waterloo
+# Rent the Loo: porting RentThe6ix to Waterloo
 
 Nov 20, 2026 · @az
 
 ## Summary
 
-Rent K-Dubs brings RentThe6ix to the City of Waterloo. It reuses the search and ranking engine, replaces the local data, and prioritizes reliable housing search and a functional shortlist.
+Rent the Loo brings RentThe6ix to the City of Waterloo. It reuses the search and ranking engine, replaces the local data, and prioritizes reliable housing search and a functional shortlist.
 
 **Decided (2026-11-20):**
 
 | Decision | Choice |
 | --- | --- |
-| Name | Rent K-Dubs |
+| Name | Rent the Loo |
 | Coverage | City of Waterloo, Ontario |
 | Data depth | Full port: swap in Waterloo Region equivalents; hide features that have none |
 | This document | The spec for the Waterloo port |
@@ -149,7 +149,7 @@ The explorer shows neighbourhoods only: remove the ward toggle from the map and 
 
 WRPS publishes one occurrence row per call with a "general location", but the page does not say what that location is. P0 opens the 2025 file (38.7 MB XLSX) and decides:
 
-1. **Points, blocks or intersections:** geocode, count by neighbourhood, divide by 2021 Census population from the same DA aggregation, average 2023–2025. Use the closest offence groups to the five TPS indicators (assault, break and enter, auto theft, robbery, theft over $5,000). Rewrite every caveat in `engine/safety.ts` to name WRPS, and state that the rates are computed by Rent K-Dubs from WRPS data, not published by WRPS.
+1. **Points, blocks or intersections:** geocode, count by neighbourhood, divide by 2021 Census population from the same DA aggregation, average 2023–2025. Use the closest offence groups to the five TPS indicators (assault, break and enter, auto theft, robbery, theft over $5,000). Rewrite every caveat in `engine/safety.ts` to name WRPS, and state that the rates are computed by Rent the Loo from WRPS data, not published by WRPS.
 2. **Only municipality or patrol zone:** too coarse for a neighbourhood rate. Turn the safety preference, its chip, and map layer off, and say on `/data` why.
 
 Either way, keep the rules unchanged: opt-in, never "safe" or "unsafe", the disclaimer everywhere crime appears, and the parser never sets a limit. Occurrence data counts calls, not confirmed crimes; that becomes an extra caveat.
@@ -167,7 +167,7 @@ Either way, keep the rules unchanged: opt-in, never "safe" or "unsafe", the disc
 
 - New mark: an original drawing, not a copy of any institution's or transit agency's logo. Suggested: a stylised ION light-rail car seen from the front, or a "K-W" monogram (the name stays, even though coverage is Waterloo only). The new mark replaces the "I" trick in the wordmark.
 - New skyline: generic mid-rise towers, a light-rail train on its own track, and Silver Lake in Waterloo Park. No UW, Laurier, GRT or ION logos.
-- Wordmark "RENT K-DUBS"; page titles "Rent K-Dubs"; package scope `@rentthe6ix/shared` → `@rentkdubs/shared` (touches every import; do it in one commit with a codemod).
+- Wordmark "RENT THE LOO"; page titles "Rent the Loo"; package scope `@rentthe6ix/shared` → `@rentkdubs/shared` (touches every import; do it in one commit with a codemod).
 - Domain: `6ix.casa` needs a successor. Update `Caddyfile`, `deploy.sh` (`/srv/rentthe6ix`), `docker-compose.yml` (`name: rentthe6ix`), `Dockerfile` target tags and `vercel.json` if used.
 
 **Copy.** `apps/web/messages/en.json` (1,039 lines) has about 50 lines naming 6ix, Toronto, TTC, UofT, Scarborough, TPS or RentSafeTO. Every example prompt changes, e.g. "2-bed near UW under $2,200, 15 min by ION, in-suite laundry" and "room near Laurier for the winter term, furnished". Hard-coded English outside `en.json` must also move: `engine/caveats.ts`, `engine/safety.ts`, `engine/benchmark.ts`, `lib/db/area-facts.ts` ("Listings RentThe6ix collected"), `lib/ai/briefing.ts` ("in Toronto").

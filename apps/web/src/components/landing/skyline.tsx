@@ -296,7 +296,7 @@ export function Streetcar({ className }: { className?: string }) {
         fontWeight="700"
         fontFamily="var(--font-sans)"
       >
-        RENT THE 6IX
+        RENT THE LOO
       </text>
 
       {/* low floor: bogies barely show under the skirt */}
