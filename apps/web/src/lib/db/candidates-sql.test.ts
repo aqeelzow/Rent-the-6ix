@@ -12,17 +12,17 @@ const input: SearchRequest = { intent: baseIntent, hideUnconfirmed: false };
 const enrich = async () => ({ valuation: valuations[3], travel: [], safety: null });
 const http = (body: SearchRequest) => new Request('http://localhost/api/listings/search', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
 test('D rows map numeric/date/null fields and reject malformed data without fabricating geography', () => {
-  const row = { ...rowFor(sampleListings[0]), bathrooms: '1.5', monthly_rent_cad: '1500', lng: '-79.4', lat: '43.7', available_from: new Date('2026-10-17T00:00:00Z'), first_seen_at: new Date(sampleListings[0].firstSeenAt), excerpt: null, parking: null, neighbourhood_id: null, ward_id: null };
+  const row = { ...rowFor(sampleListings[0]), bathrooms: '1.5', monthly_rent_cad: '1500', lng: '-79.4', lat: '43.7', available_from: new Date('2026-10-17T00:00:00Z'), first_seen_at: new Date(sampleListings[0].firstSeenAt), excerpt: null, parking: null, neighbourhood_id: null };
   const mapped = listingFromRow(row);
   assert.equal(mapped.monthlyRentCad, 1500); assert.equal(mapped.bathrooms, 1.5); assert.equal(mapped.availableFrom, '2026-10-17');
-  assert.equal(Date.parse(mapped.firstSeenAt), Date.parse(sampleListings[0].firstSeenAt)); assert.equal(mapped.parking, 'unknown'); assert.equal(mapped.excerpt, ''); assert.equal(mapped.neighbourhoodId, null); assert.equal(mapped.wardId, null);
+  assert.equal(Date.parse(mapped.firstSeenAt), Date.parse(sampleListings[0].firstSeenAt)); assert.equal(mapped.parking, 'unknown'); assert.equal(mapped.excerpt, ''); assert.equal(mapped.neighbourhoodId, null);
   for (const patch of [{ monthly_rent_cad: '' }, { bathrooms: 'NaN' }, { lng: 200 }, { field_evidence: null }, { id: 'invalid' }]) assert.throws(() => listingFromRow({ ...row, ...patch }));
 });
 test('all request values are bound; active unique pool has no LIMIT or premature sorting cap', () => {
   const attack = "x' OR true; DROP TABLE listings; --";
-  const query = candidateQuery({ intent: { ...baseIntent, areas: [{ kind: 'ward', id: attack }], criteria: { rent: { hard: true, value: { min: 1000, max: 2000 } }, leaseTerm: { hard: true, value: '12_months' } } }, hideUnconfirmed: false });
+  const query = candidateQuery({ intent: { ...baseIntent, areas: [{ kind: 'neighbourhood', id: attack }], criteria: { rent: { hard: true, value: { min: 1000, max: 2000 } }, leaseTerm: { hard: true, value: '12_months' } } }, hideUnconfirmed: false });
   assert.ok(!query.statement.includes(attack)); assert.deepEqual(query.parameters, [1000, 2000, '12_months', attack]);
-  assert.match(query.statement, /status = 'active' AND duplicate_of IS NULL/); assert.match(query.statement, /ward_id = \$4 OR ward_id IS NULL/); assert.doesNotMatch(query.statement, /LIMIT/i);
+  assert.match(query.statement, /status = 'active' AND duplicate_of IS NULL/); assert.match(query.statement, /neighbourhood_id = \$4 OR neighbourhood_id IS NULL/); assert.doesNotMatch(query.statement, /LIMIT/i);
   const refs = [...query.statement.matchAll(/\$(\d+)/g)].map(match => Number(match[1])); assert.deepEqual(refs, [1, 2, 3, 4]);
 });
 test('hard cheap filters mirror unknown, room/studio, date and amenity semantics; soft values do not gate', () => {
@@ -37,7 +37,7 @@ test('hard cheap filters mirror unknown, room/studio, date and amenity semantics
 });
 test('SQL areas use OR and conservative near gating; pure verification handles exact bounds and unknowns', async () => {
   const first = sampleListings[0];
-  const rows = [rowFor(first), rowFor({ ...first, id: sampleListings[1].id, neighbourhoodId: null, wardId: null }), rowFor({ ...first, id: sampleListings[2].id, location: { lng: -80, lat: 44 } })];
+  const rows = [rowFor(first), rowFor({ ...first, id: sampleListings[1].id, neighbourhoodId: null }), rowFor({ ...first, id: sampleListings[2].id, location: { lng: -80, lat: 44 } })];
   const load = sqlCandidateLoader(() => ({ unsafe: async () => rows }));
   const near: SearchRequest = { ...input, intent: { ...baseIntent, areas: [{ kind: 'near', point: first.location, radiusM: 1 }] } };
   assert.equal((await load(near)).length, 2); assert.match(candidateQuery(near).statement, /AND \(true\)/);

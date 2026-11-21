@@ -1,6 +1,6 @@
 // P2.14 (derived half) — area indicators computed in the database from tables the other civic tasks
 // already loaded: RentSafeTO buildings, TTC stops and City POIs, counted inside each of the 158
-// neighbourhoods and 25 wards (SPEC 5 "Area", 9.1, 9.2). Nothing is fetched; each indicator is one
+// neighbourhoods (SPEC 5 "Area", 9.1, 9.2). Nothing is fetched; each indicator is one
 // `insert … select` so no rows travel to this machine.
 //
 // Every row carries the dataset it was derived from as `source_id` and that dataset's retrieval
@@ -20,7 +20,6 @@ const METRIC_SRID = 2952;
 
 const KINDS = [
   { kind: "neighbourhood", table: "neighbourhoods" },
-  { kind: "ward", table: "wards" },
 ] as const;
 
 export interface DerivedIndicator {

@@ -86,7 +86,7 @@
     },
     "areas": {
       "title": "Explore neighbourhoods",
-      "body": "Rents, renters and housing pressure across Toronto's 158 neighbourhoods and 25 wards."
+      "body": "Rents, renters and housing pressure across Waterloo's neighbourhoods."
     },
     "paste": {
       "title": "Paste a listing",
@@ -144,7 +144,6 @@
     "observations": "Listing observations",
     "sources": "Data sources",
     "neighbourhoods": "Neighbourhoods",
-    "wards": "Wards",
     "notLoaded": "Not loaded",
     "comingSoon": "Other system checks will appear here as those services are connected.",
     "listingSources": {
@@ -707,8 +706,7 @@
       "sample": "based on {n}",
       "sourceAria": "Where {label} comes from",
       "kind": {
-        "neighbourhood": "neighbourhood",
-        "ward": "ward"
+        "neighbourhood": "neighbourhood"
       }
     },
     "check": {
@@ -821,16 +819,7 @@
     }
   },
   "areas": {
-    "mapPending": "The neighbourhood map is still being built. It will show one indicator at a time for the 158 neighbourhoods or 25 wards, with its source.",
-    "wardsTitle": "Ward pages",
-    "wardsIntro": "Each of Toronto’s 25 city wards has a page with its housing figures and official election information.",
-    "ward": {
-      "title": "Ward {n}",
-      "intro": "One of Toronto’s 25 city wards. Figures describe the whole ward, not a street, a building or the people who live there.",
-      "figuresTitle": "This ward at a glance",
-      "figuresPending": "Ward figures aren’t loaded yet. Each one will show this ward, the city, the period it covers and its source.",
-      "titleNamed": "Ward {n}: {name}"
-    },
+    "mapPending": "The neighbourhood map is still being built. It will show one indicator at a time for each Waterloo neighbourhood, with its source.",
     "election": {
       "title": "Municipal election: {date}",
       "hours": "Voting places are open 10 a.m. to 8 p.m. on election day.",
@@ -844,7 +833,7 @@
       "note": "From the City of Toronto’s election pages. Rent the Loo doesn’t summarize, compare or rank candidates or platforms."
     },
     "facts": {
-      "thisArea": "This ward",
+      "thisArea": "This area",
       "city": "Toronto",
       "perMonth": "{amount} a month",
       "outOf100": "{score} / 100",
@@ -873,16 +862,6 @@
       "parks": "Parks",
       "dev_applications_12m": "Development applications",
       "residential_units_proposed_12m": "Homes proposed in rezoning applications"
-    },
-    "crime": {
-      "title": "Reported Crime Levels",
-      "intro": "Toronto Police publish crime rates for neighbourhoods, not wards. These neighbourhoods cover this ward. Each rate compares major crimes per resident with the whole city.",
-      "share": "{share}% of this ward",
-      "rate": "{rate}× the city rate",
-      "noData": "Not enough data",
-      "source": "Toronto Police Service, {years} average.",
-      "show": "Show police-reported crime rates",
-      "hide": "Hide crime rates"
     }
   },
   "paste": {
@@ -949,7 +928,6 @@
         "address-points": "Matching listing addresses to official City addresses and exact locations.",
         "apartment-building-evaluation": "Each building's RentSafeTO inspection score and year built.",
         "apartment-building-registration": "Linking listings to registered apartment buildings.",
-        "city-wards": "Ward boundaries for the area pages and ward facts.",
         "development-applications": "What's being built nearby, on area pages.",
         "library-branch-general-information": "Libraries as nearby places and travel targets.",
         "neighbourhood-crime-rates": "Police-reported crime rates for the optional reported crime levels preference.",

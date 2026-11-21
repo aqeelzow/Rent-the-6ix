@@ -7,13 +7,12 @@ import type { AreaKind } from "./area-facts";
 import { crimeTableSource, safetyForListing, type CrimeTable } from "./safety";
 
 // GET /api/areas?kind=&indicator= (SPEC 13, P3.10 choropleth). Owner: D. One indicator for every
-// neighbourhood or ward, with outlines simplified to ~10 m (131 KB for the 158 neighbourhoods).
-// `crime` is the police-reported major-crime rate relative to the city (SPEC 7.6): neighbourhoods
-// only, because TPS publishes no ward figures, and always with its caveats.
+// neighbourhood, with outlines simplified to ~10 m. `crime` is the police-reported major-crime
+// rate relative to the city (SPEC 7.6), always with its caveats.
 
 /** ~10 m at Toronto's latitude: keeps the shapes, drops 87% of the points. */
 const SIMPLIFY_DEGREES = 0.0001;
-const TABLES = { neighbourhood: "neighbourhoods", ward: "wards" } as const;
+const TABLES = { neighbourhood: "neighbourhoods" } as const;
 
 type OutlineRow = {
   id: string;
@@ -58,7 +57,6 @@ export async function loadChoropleth(
              AS geometry
     FROM ${sql(TABLES[kind])} ORDER BY id`;
   if (indicator === "crime") {
-    if (kind !== "neighbourhood") return null;
     const table = await crimeTable();
     return table ? crimeChoropleth(outlines, table) : null;
   }
@@ -85,7 +83,7 @@ export async function loadChoropleth(
 }
 
 const Query = z.strictObject({
-  kind: z.enum(["neighbourhood", "ward"]),
+  kind: z.literal("neighbourhood"),
   indicator: z
     .string()
     .regex(/^[a-z0-9_]+$/)

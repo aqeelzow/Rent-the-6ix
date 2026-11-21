@@ -1,10 +1,9 @@
 import { AreaSchema, DetailResponseSchema, ListingSchema, MatchScoreSchema, SearchIntentSchema, SearchResponseSchema, ValuationSchema, type Listing, type SearchResult } from '../schemas/index';
 
 export const fixtureTimestamp = '2026-10-16T12:00:00Z';
-const areaNames = ['Synthetic Central', 'Synthetic East', 'Synthetic Ward'];
+const areaNames = ['Synthetic Central', 'Synthetic East', 'Synthetic North'];
 export const areas = areaNames.map((name, i) => AreaSchema.parse({
-  id: i === 2 ? 'demo-ward' : `demo-neighbourhood-${i}`, kind: i === 2 ? 'ward' : 'neighbourhood', name,
-  ...(i === 2 ? { number: 99 } : {}),
+  id: `demo-neighbourhood-${i}`, kind: 'neighbourhood', name,
   // shortcut: these rectangles are synthetic, replace with D's civic boundaries for live integration.
   geometry: { type: 'MultiPolygon', coordinates: [[[[-79.45 + i * .04, 43.64], [-79.41 + i * .04, 43.64], [-79.41 + i * .04, 43.68], [-79.45 + i * .04, 43.68], [-79.45 + i * .04, 43.64]]]] },
 }));
@@ -19,7 +18,7 @@ export const listings: Listing[] = Array.from({ length: 50 }, (_, i) => {
     unitType: unknown ? null : (['apartment', 'condo', 'basement', 'house', 'townhouse', 'room'] as const)[i % 6], sqft: unknown ? null : 400 + i * 20,
     yearBuilt: unknown ? null : 1960 + i, yearBuiltSource: unknown ? null : 'listing', airConditioning: (['unknown', 'central', 'yes', 'no'] as const)[i % 4],
     location: i === 3 ? { lng: -79.25, lat: 43.75 } : { lng: -79.43 + i % 10 * .006, lat: 43.65 + Math.floor(i / 10) * .005 }, locationPrecision: (['area', 'exact', 'street'] as const)[i % 3],
-    addressText: null, addressPointId: null, buildingId: null, neighbourhoodId: `demo-neighbourhood-${i % 2}`, wardId: 'demo-ward',
+    addressText: null, addressPointId: null, buildingId: null, neighbourhoodId: `demo-neighbourhood-${i % 2}`,
     utilitiesIncluded: unknown ? 'unknown' : i % 2 ? 'yes' : 'no', parking: unknown ? 'unknown' : i === 3 ? 'yes' : 'no', petsAllowed: unknown ? 'unknown' : (['yes', 'no', 'cats_only', 'dogs_only'] as const)[i % 4],
     furnished: unknown ? 'unknown' : i === 1 ? 'yes' : 'no', laundryInSuite: unknown ? 'unknown' : 'yes', availableFrom: unknown ? null : '2026-11-01', leaseTerm: unknown ? null : '12_months', imageUrl: null,
     firstSeenAt: '2026-10-01T12:00:00Z', lastSeenAt: fixtureTimestamp, updatedAt: fixtureTimestamp,
@@ -62,4 +61,4 @@ function result(listing: Listing, i: number, withSafety = false): SearchResult {
 }
 export const searchFixture = SearchResponseSchema.parse({ status: 'completed', results: sampleListings.map((l, i) => result(l, i)), eligibleCount: 50, notices: ['Synthetic fixture; not live listings'] });
 export const safetySearchFixture = SearchResponseSchema.parse({ status: 'completed', results: [result(listings[1], 1, true)], eligibleCount: 1, notices: ['Synthetic safety-enabled demonstration'] });
-export const detailFixture = DetailResponseSchema.parse({ ...result(listings[1], 1), areas: [areas[1], areas[2]], indicators: [{ areaId: areas[1].id, indicatorId: 'listing_count_30d', value: 25, unit: 'listings', period: 'Synthetic 2026-10', sourceId: 'synthetic', sampleSize: 25 }], duplicates: [] });
+export const detailFixture = DetailResponseSchema.parse({ ...result(listings[1], 1), areas: [areas[1]], indicators: [{ areaId: areas[1].id, indicatorId: 'listing_count_30d', value: 25, unit: 'listings', period: 'Synthetic 2026-10', sourceId: 'synthetic', sampleSize: 25 }], duplicates: [] });

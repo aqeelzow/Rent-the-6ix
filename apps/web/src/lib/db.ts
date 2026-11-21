@@ -12,7 +12,6 @@ export type DatabaseStatus = {
     listingObservations: number;
     sources: number;
     neighbourhoods: number;
-    wards: number;
   } | null;
   error: "missing_config" | "connection_failed" | null;
 };
@@ -87,8 +86,7 @@ export async function getDatabaseStatus(): Promise<DatabaseStatus> {
         (SELECT count(*)::int FROM listings) AS listings,
         (SELECT count(*)::int FROM listing_observations) AS listing_observations,
         (SELECT count(*)::int FROM sources) AS sources,
-        (SELECT count(*)::int FROM neighbourhoods) AS neighbourhoods,
-        (SELECT count(*)::int FROM wards) AS wards
+        (SELECT count(*)::int FROM neighbourhoods) AS neighbourhoods
     `;
 
     return {
@@ -102,7 +100,6 @@ export async function getDatabaseStatus(): Promise<DatabaseStatus> {
         listingObservations: result.listing_observations,
         sources: result.sources,
         neighbourhoods: result.neighbourhoods,
-        wards: result.wards,
       },
       error: null,
     };

@@ -5,7 +5,7 @@ import { filterListing } from '../../../../../packages/shared/engine/filters';
 import { SearchUnavailable, type SearchDependencies } from './candidates';
 
 type Client = { unsafe: (statement: string, parameters: (string | number | boolean)[]) => PromiseLike<unknown> };
-const columns = ['id', 'source', 'sourceListingId', 'sourceUrl', 'title', 'excerpt', 'monthlyRentCad', 'rentIsPerRoom', 'bedrooms', 'bathrooms', 'unitType', 'sqft', 'yearBuilt', 'yearBuiltSource', 'airConditioning', 'locationPrecision', 'addressText', 'addressPointId', 'buildingId', 'neighbourhoodId', 'wardId', 'utilitiesIncluded', 'parking', 'petsAllowed', 'furnished', 'laundryInSuite', 'availableFrom', 'leaseTerm', 'imageUrl', 'firstSeenAt', 'lastSeenAt', 'updatedAt', 'status', 'duplicateOf', 'dataStatus', 'fieldEvidence'] as const;
+const columns = ['id', 'source', 'sourceListingId', 'sourceUrl', 'title', 'excerpt', 'monthlyRentCad', 'rentIsPerRoom', 'bedrooms', 'bathrooms', 'unitType', 'sqft', 'yearBuilt', 'yearBuiltSource', 'airConditioning', 'locationPrecision', 'addressText', 'addressPointId', 'buildingId', 'neighbourhoodId', 'utilitiesIncluded', 'parking', 'petsAllowed', 'furnished', 'laundryInSuite', 'availableFrom', 'leaseTerm', 'imageUrl', 'firstSeenAt', 'lastSeenAt', 'updatedAt', 'status', 'duplicateOf', 'dataStatus', 'fieldEvidence'] as const;
 // shortcut: retain at most eight unfinished reads after caller cancellation; use cancellable connections for higher production load.
 let candidateReadsInFlight = 0;
 const snake = (value: string) => value.replace(/[A-Z]/g, c => `_${c.toLowerCase()}`);
@@ -51,9 +51,8 @@ export function candidateQuery(input: SearchRequest) {
   if (c.availableBy?.hard) known('available_from', `available_from <= ${bind(c.availableBy.value)}::date`);
   if (c.leaseTerm?.hard) known('lease_term', `lease_term = ${bind(c.leaseTerm.value)}`);
   if (areas.length) gates.push(`(${areas.map(area => {
-    if (area.kind === 'neighbourhood' || area.kind === 'ward') {
-      const column = area.kind === 'ward' ? 'ward_id' : 'neighbourhood_id';
-      return `(${column} = ${bind(area.id)}${request.hideUnconfirmed ? '' : ` OR ${column} IS NULL`})`;
+    if (area.kind === 'neighbourhood') {
+      return `(neighbourhood_id = ${bind(area.id)}${request.hideUnconfirmed ? '' : ' OR neighbourhood_id IS NULL'})`;
     }
     // PostGIS spheroid distance differs at the cutoff; existing haversine verification is authoritative.
     if (area.kind === 'near') return 'true';

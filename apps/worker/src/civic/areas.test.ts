@@ -62,7 +62,6 @@ describe("Waterloo address points", () => {
     expect(rows[1]).toMatchObject({
       id: "WAT:213 PASTERN TRAIL",
       address_norm: "213 PASTERN TRL",
-      ward_id: null,
     });
     expect(addressId(" 213  Pastern Trail ")).toBe("WAT:213 PASTERN TRAIL");
   });

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { canBrief, templateBriefing, validBriefing, writeBriefing, type BriefingFacts } from './briefing';
 
 const indicator = (indicatorId: string, value: number) => ({ indicatorId, value, unit: '%', period: '2021', sourceId: 'census', sourceTitle: '2021 Census', sourceUrl: 'https://example.test/1234', note: null });
-const facts: BriefingFacts = { area: { kind: 'ward', id: '01', name: 'Ward One', number: 1 }, indicators: [indicator('rent_burden', 31), indicator('housing_condition', 12), indicator('development_growth', 5)], cityIndicators: [indicator('rent_burden', 28), indicator('housing_condition', 9), indicator('development_growth', 4)] };
+const facts: BriefingFacts = { area: { kind: 'neighbourhood', id: 'WPD-uptown', name: 'Uptown', number: null }, indicators: [indicator('rent_burden', 31), indicator('housing_condition', 12), indicator('development_growth', 5)], cityIndicators: [indicator('rent_burden', 28), indicator('housing_condition', 9), indicator('development_growth', 4)] };
 const paragraphs = ['Rent burden is 31% here and 28% citywide (2021 Census).', 'Housing condition is 12% here and 9% citywide (2021 Census).', 'Development growth is 5% here and 4% citywide (2021 Census).'];
 
 test('briefings require source-backed matching city context and reject invented numbers or politics', async () => {

@@ -302,7 +302,7 @@ export async function importPastedListing(
 
 /** One indicator for every area with outlines (D's choropleth route), e.g. the crime layer. */
 export async function fetchChoropleth(
-  kind: "neighbourhood" | "ward",
+  kind: "neighbourhood",
   indicator: string,
   options: Pick<ActionOptions, "fetch"> & { signal?: AbortSignal } = {},
 ): Promise<{ ok: true; layer: AreaChoropleth } | { ok: false; error: ApiError }> {

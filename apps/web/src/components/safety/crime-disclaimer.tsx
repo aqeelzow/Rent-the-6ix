@@ -3,7 +3,7 @@ import { t } from "@/lib/format/messages";
 
 /**
  * The disclaimer shown wherever police-reported crime figures appear (the map layer, the safety
- * preference, results, the listing and ward pages): higher reported rates don't necessarily mean a
+ * preference, results and the listing page): higher reported rates don't necessarily mean a
  * greater risk to individuals, and statistics don't always reflect a person's experience of an area.
  */
 export function CrimeDisclaimer({ className = "" }: { className?: string }) {

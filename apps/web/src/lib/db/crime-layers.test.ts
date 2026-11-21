@@ -2,7 +2,6 @@ import { AreaChoroplethSchema } from "@rentthe6ix/shared/schemas";
 import { describe, expect, it, vi } from "vitest";
 import { createChoroplethRoute, crimeChoropleth } from "./area-choropleth";
 import { crimeTableFromRows } from "./safety";
-import { wardCrimeFrom } from "./ward-crime";
 
 vi.mock("../db", () => ({ getClient: vi.fn(() => null) }));
 
@@ -55,24 +54,6 @@ describe("crimeChoropleth", () => {
       cityValue: 1,
     });
     expect(layer.caveats.length).toBeGreaterThan(3);
-  });
-});
-
-describe("wardCrimeFrom", () => {
-  it("lists the neighbourhoods covering a ward, largest share first, without boundary slivers", () => {
-    const crime = wardCrimeFrom(
-      [
-        { id: "084", name: "Little Portugal", share: 0.35 },
-        { id: "083", name: "Dufferin Grove", share: 0.64 },
-        { id: "085", name: "Sliver", share: 0.004 },
-      ],
-      table,
-    );
-    expect(crime.neighbourhoods.map((n) => [n.name, n.safety?.relativeRate])).toEqual([
-      ["Dufferin Grove", 0.8],
-      ["Little Portugal", 1.6],
-    ]);
-    expect(crime.caveats.length).toBeGreaterThan(3);
   });
 });
 

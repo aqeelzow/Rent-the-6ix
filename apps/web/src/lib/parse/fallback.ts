@@ -22,7 +22,7 @@ export function fallbackParse(rawPrompt: string, now = new Date(), catalogue: Ci
   const drop = (phrase: string, reason: string) => intent.droppedRequests.push({ phrase, reason });
   for (const [name, area] of Object.entries(configuredAreas)) { const m = rawPrompt.match(new RegExp(`\\b${name}\\b`, 'i')); if (m) { intent.areas.push(area); source('areas', m[0]); } }
   for (const match of civicAreaMatches(rawPrompt, catalogue)) {
-    if (match.ambiguous) { if (!intent.droppedRequests.some(d => d.phrase === match.phrase)) drop(match.phrase, 'Area name is ambiguous; specify neighbourhood or ward.'); }
+    if (match.ambiguous) { if (!intent.droppedRequests.some(d => d.phrase === match.phrase)) drop(match.phrase, 'Area name is ambiguous.'); }
     else if (!intent.areas.some(a => a.kind === match.area.kind && 'id' in a && a.id === ('id' in match.area ? match.area.id : ''))) { intent.areas.push(match.area); source('areas', match.phrase); }
   }
   const income = rawPrompt.match(/(?:make|earn|income(?: of| is)?)\s+(?:about\s+)?(\$?[\d,]+(?:\.\d+)?k?)/i);

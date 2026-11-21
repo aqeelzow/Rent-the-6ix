@@ -29,7 +29,7 @@ const ORDER = [
 const LISTINGS = "rentthe6ix-listings";
 
 /**
- * "This ward at a glance" (SPEC 9.3): each of the area's figures beside Toronto's, with the period
+ * "This area at a glance" (SPEC 9.3): each of the area's figures beside Toronto's, with the period
  * and a link to its source, so every number can be traced.
  */
 export function AreaFactsList({ facts }: { facts: AreaFacts }) {

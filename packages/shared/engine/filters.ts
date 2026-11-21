@@ -5,7 +5,6 @@ import { SAFETY } from './config';
 export type FilterContext = { valuation?: Valuation; travel?: TravelTimeRow[]; safety?: Safety | null };
 function areaMatches(listing: Listing, area: AreaFilter): boolean | null {
   if (area.kind === 'neighbourhood') return listing.neighbourhoodId === null ? null : listing.neighbourhoodId === area.id;
-  if (area.kind === 'ward') return listing.wardId === null ? null : listing.wardId === area.id;
   if (area.kind === 'near') return distanceM(listing.location, area.point) <= area.radiusM;
   const [west, south, east, north] = area.bounds;
   return listing.location.lng >= west && listing.location.lng <= east && listing.location.lat >= south && listing.location.lat <= north;

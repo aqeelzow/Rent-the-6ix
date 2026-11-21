@@ -4,9 +4,9 @@
 // 2. Fuzzy: same house number, pg_trgm similarity ≥ FUZZY_MIN ("89 CHURCH STR" → "89 CHURCH ST").
 // Either match must lie within MAX_SHIFT_M of the source's own point, so "22 Grand Ave" in
 // another city never moves a listing across the map. A match sets location_precision 'exact',
-// address_point_id and the point's ward / neighbourhood. No match: the source's point stays at
+// address_point_id and the point's neighbourhood. No match: the source's point stays at
 // 'street' precision.
-// Then, once D's tables are loaded: neighbourhood / ward by point-in-polygon for the rest;
+// Then, once D's tables are loaded: neighbourhood by point-in-polygon for the rest;
 // listings outside every Waterloo neighbourhood are dropped (outside the City of Waterloo, which
 // includes Kitchener, except a Waterloo address within EDGE_M of the line, whose point is just
 // imprecise); the RentSafeTO building
@@ -150,7 +150,7 @@ export interface GeocodeResult {
   candidates: number;
   exact: number;
   fuzzy: number;
-  /** Listings given a neighbourhood or ward by point-in-polygon. */
+  /** Listings given a neighbourhood by point-in-polygon. */
   areaJoined: number;
   /** Listings outside every Waterloo neighbourhood, deleted (0 until they are loaded). */
   outsideCoverage: number;
@@ -248,30 +248,26 @@ export async function geocodeStored(
     await sql`
       UPDATE listings l SET
         location = ap.location, location_precision = 'exact', address_point_id = ap.id,
-        ward_id = coalesce(ap.ward_id, l.ward_id),
         neighbourhood_id = coalesce(ap.neighbourhood_id, l.neighbourhood_id), updated_at = now()
       FROM unnest(${batch.map((p) => p[0])}::uuid[], ${batch.map((p) => p[1])}::text[]) AS m(id, ap_id)
       JOIN address_points ap ON ap.id = m.ap_id
       WHERE l.id = m.id AND l.address_point_id IS NULL`;
   }
 
-  const [{ neighbourhoods, waterloo, wards, buildings }] = await sql<
-    { neighbourhoods: number; waterloo: number; wards: number; buildings: number }[]
+  const [{ neighbourhoods, waterloo, buildings }] = await sql<
+    { neighbourhoods: number; waterloo: number; buildings: number }[]
   >`
     SELECT (SELECT count(*)::int FROM neighbourhoods) AS neighbourhoods,
       (SELECT count(*)::int FROM neighbourhoods WHERE id LIKE ${WATERLOO_ID_PREFIX + "%"}) AS waterloo,
-      (SELECT count(*)::int FROM wards) AS wards, (SELECT count(*)::int FROM buildings) AS buildings`;
+      (SELECT count(*)::int FROM buildings) AS buildings`;
 
-  if (neighbourhoods || wards) {
+  if (neighbourhoods) {
     result.areaJoined = (
       await sql`
         UPDATE listings l SET
-          neighbourhood_id = coalesce(l.neighbourhood_id,
-            (SELECT n.id FROM neighbourhoods n WHERE ST_Covers(n.geometry, l.location::geometry) LIMIT 1)),
-          ward_id = coalesce(l.ward_id,
-            (SELECT w.id FROM wards w WHERE ST_Covers(w.geometry, l.location::geometry) LIMIT 1)),
+          neighbourhood_id = (SELECT n.id FROM neighbourhoods n WHERE ST_Covers(n.geometry, l.location::geometry) LIMIT 1),
           updated_at = now()
-        WHERE (l.neighbourhood_id IS NULL OR l.ward_id IS NULL) AND l.status <> 'removed'`
+        WHERE l.neighbourhood_id IS NULL AND l.status <> 'removed'`
     ).count;
   }
   // Waterloo's neighbourhoods cover the City; a point outside every one (Kitchener, Woolwich)

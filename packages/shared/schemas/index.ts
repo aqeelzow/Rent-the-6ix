@@ -20,7 +20,6 @@ const unique = <T extends z.ZodType>(item: T) => z.array(item).min(1).refine(v =
 // DRAFT: root names AreaFilter without a complete shape; publish with A/D before integration.
 export const AreaFilterSchema = z.discriminatedUnion('kind', [
   z.strictObject({ kind: z.literal('neighbourhood'), id: text }),
-  z.strictObject({ kind: z.literal('ward'), id: text }),
   z.strictObject({ kind: z.literal('near'), point: CoordinateSchema, radiusM: positive }),
   z.strictObject({ kind: z.literal('configured'), id: text, label: text, bounds: z.tuple([z.number().min(-180).max(180), z.number().min(-90).max(90), z.number().min(-180).max(180), z.number().min(-90).max(90)]).refine(v => v[0] < v[2] && v[1] < v[3], 'Bounds out of order') }),
 ]);
@@ -72,7 +71,7 @@ export const ListingSchema = z.strictObject({
   airConditioning: z.enum(['central', 'yes', 'no', 'unknown']), location: CoordinateSchema, locationPrecision: z.enum(['exact', 'street', 'area']),
   addressText: text.nullable(), addressPointId: text.nullable(), buildingId: text.nullable(),
   // Null until D's boundaries are loaded; area requirements stay unconfirmed and safety unavailable.
-  neighbourhoodId: text.nullable(), wardId: text.nullable(),
+  neighbourhoodId: text.nullable(),
   utilitiesIncluded: z.enum(['yes', 'partial', 'no', 'unknown']), parking: tri, petsAllowed: z.enum(['yes', 'no', 'unknown', 'cats_only', 'dogs_only']), furnished: tri, laundryInSuite: tri,
   availableFrom: date.nullable(), leaseTerm: text.nullable(), imageUrl: url.nullable(), firstSeenAt: timestamp, lastSeenAt: timestamp, updatedAt: timestamp,
   status: z.enum(['active', 'stale', 'removed']), duplicateOf: z.uuid().nullable(), dataStatus: z.enum(['live', 'snapshot', 'demo']),
@@ -114,7 +113,7 @@ export const TravelTimeRowSchema = z.strictObject({ listingId: z.uuid(), targetI
 export const SafetySchema = z.strictObject({ areaId: text, rate: nonnegative.nullable(), relativeRate: nonnegative.nullable(), byType: z.record(text, nonnegative.nullable()), years: unique(year), caveats: z.array(CaveatSchema).min(1) }).refine(v => (v.rate === null) === (v.relativeRate === null), 'Safety rate and relative rate availability must agree');
 const position = z.tuple([z.number().min(-180).max(180), z.number().min(-90).max(90)]);
 const ring = z.array(position).min(4).refine(v => v[0][0] === v[v.length - 1][0] && v[0][1] === v[v.length - 1][1], 'Polygon ring must close');
-export const AreaSchema = z.strictObject({ id: text, kind: z.enum(['neighbourhood', 'ward']), name: text, number: positive.int().optional(), geometry: z.strictObject({ type: z.literal('MultiPolygon'), coordinates: z.array(z.array(ring).min(1)).min(1) }), isNIA: z.boolean().optional() });
+export const AreaSchema = z.strictObject({ id: text, kind: z.literal('neighbourhood'), name: text, number: positive.int().optional(), geometry: z.strictObject({ type: z.literal('MultiPolygon'), coordinates: z.array(z.array(ring).min(1)).min(1) }), isNIA: z.boolean().optional() });
 export const AreaIndicatorSchema = z.strictObject({ areaId: text, indicatorId: text, value: z.number().finite().nullable(), unit: text, period: text, sourceId: text, sampleSize: nonnegative.int().optional(), note: text.optional() });
 export const MatchScoreSchema = z.strictObject({ total: nonnegative.int().max(100), parts: z.array(z.strictObject({ id: z.enum(['value', 'price', 'travel', 'home', 'safety']), score: nonnegative.max(100).nullable(), weight: nonnegative, effectiveWeight: nonnegative.max(1), evidence: z.array(text) })).length(5), hardFilterNotes: z.array(text), caveats: z.array(CaveatSchema) }).superRefine((v, ctx) => {
   if (new Set(v.parts.map(p => p.id)).size !== 5) ctx.addIssue({ code: 'custom', message: 'Each score part required exactly once' });
@@ -184,7 +183,7 @@ export const AreaFactSchema = z.strictObject({
   sourceId: text, sampleSize: nonnegative.int().nullable(), note: z.string().nullable(),
 });
 export const AreaFactsSchema = z.strictObject({
-  area: z.strictObject({ kind: z.enum(['neighbourhood', 'ward']), id: text, name: text, number: positive.int().nullable() }),
+  area: z.strictObject({ kind: z.literal('neighbourhood'), id: text, name: text, number: positive.int().nullable() }),
   facts: z.array(AreaFactSchema),
   sources: z.array(z.strictObject({ id: text, title: text, url: z.string(), retrievedAt: z.string().nullable() })),
 });
@@ -193,7 +192,7 @@ export type AreaFacts = z.infer<typeof AreaFactsSchema>;
 // One indicator for every area, with simplified outlines (D's P3.10 choropleth; drafted by A for D's review).
 // For `crime`, `value` is the neighbourhood's police-reported rate ÷ the city's (SPEC 7.6) and the caveats travel with it.
 export const AreaChoroplethSchema = z.strictObject({
-  kind: z.enum(['neighbourhood', 'ward']), indicator: text, unit: text, period: text.nullable(), cityValue: z.number().finite().nullable(),
+  kind: z.literal('neighbourhood'), indicator: text, unit: text, period: text.nullable(), cityValue: z.number().finite().nullable(),
   sourceId: text.nullable(), caveats: z.array(CaveatSchema),
   features: z.array(z.strictObject({
     id: text, name: text, value: z.number().finite().nullable(),

@@ -51,7 +51,7 @@ test('straight-line distance never fabricates minutes; routed rows require minut
 });
 test('torontorentals listings and listings not yet geocoded are representable', () => {
   // C ingests torontorentals and geocodes later, so a live row can be missing its area ids.
-  const sourced = { ...listings[1], source: 'torontorentals' as const, neighbourhoodId: null, wardId: null };
+  const sourced = { ...listings[1], source: 'torontorentals' as const, neighbourhoodId: null };
   assert.equal(ListingSchema.safeParse(sourced).success, true);
   assert.equal(ListingSchema.safeParse({ ...sourced, source: 'craigslist' }).success, false);
   const { areas: unusedAreas, indicators, duplicates, ...result } = detailFixture;

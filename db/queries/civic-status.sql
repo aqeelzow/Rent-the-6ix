@@ -12,7 +12,6 @@ select 'listings' as table_name, count(*) as rows from listings
 union all select 'listing_observations', count(*) from listing_observations
 union all select 'sources', count(*) from sources
 union all select 'neighbourhoods', count(*) from neighbourhoods
-union all select 'wards', count(*) from wards
 union all select 'address_points', count(*) from address_points
 union all select 'pois', count(*) from pois
 union all select 'transit_stops', count(*) from transit_stops
@@ -70,7 +69,7 @@ select id, licence, period, retrieved_at
 
 -- 8. One listing resolved through the whole civic layer — the demo query.
 with listing as (
-  select id, location, neighbourhood_id, ward_id, building_id
+  select id, location, neighbourhood_id, building_id
     from listings
    where status = 'active' and location is not null
    order by last_seen_at desc
@@ -79,7 +78,6 @@ with listing as (
 select l.id as listing_id,
        l.neighbourhood_id as neighbourhood,
        (select name from neighbourhoods n where n.id = l.neighbourhood_id) as neighbourhood_name,
-       l.ward_id as ward,
        (select round(st_distance(p.location, l.location)) from pois p
          where p.category = 'grocery' order by p.location <-> l.location limit 1) as metres_to_grocery,
        (select round(st_distance(t.location, l.location)) from transit_stops t

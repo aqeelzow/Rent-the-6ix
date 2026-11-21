@@ -6,7 +6,7 @@
 // as one more area, "Rest of Waterloo", so the neighbourhoods together are exactly the City and
 // geocode can treat "outside every neighbourhood" as "outside Waterloo".
 //
-// Ids are `WPD-<label slug>` (not every plan has a PLANNINGDI code). Wards are not loaded (#1).
+// Ids are `WPD-<label slug>` (not every plan has a PLANNINGDI code). Waterloo has no ward layer here.
 import type { Sql, TransactionSql } from "postgres";
 import { WATERLOO_ID_PREFIX } from "../pipeline/geocode.ts";
 import { itemPageUrl, layerUrl, queryAll, WATERLOO_LICENCE } from "./lib/arcgis.ts";
