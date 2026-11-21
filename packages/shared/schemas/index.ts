@@ -66,7 +66,7 @@ export const SearchIntentSchema = z.strictObject({
   if (!v.safety.enabled && v.weights?.safety) ctx.addIssue({ code: 'custom', message: 'Safety weight requires opt-in' });
 });
 export const ListingSchema = z.strictObject({
-  id: z.uuid(), source: z.enum(['kijiji', 'torontorentals', 'rentals_ca', 'zillow', 'realtor_ca', 'manual', 'pasted']), sourceListingId: text, sourceUrl: url,
+  id: z.uuid(), source: z.enum(['kijiji', 'torontorentals', 'rentals_ca', 'zillow', 'realtor_ca', 'facebook_marketplace', 'manual', 'pasted']), sourceListingId: text, sourceUrl: url,
   title: text, excerpt: z.string().max(280), monthlyRentCad: positive, rentIsPerRoom: z.boolean(), bedrooms: nonnegative.int().nullable(), bathrooms: nonnegative.nullable(),
   unitType: UnitTypeSchema.nullable(), sqft: positive.nullable(), yearBuilt: year.nullable(), yearBuiltSource: z.enum(['listing', 'rentsafeto', 'ai_extracted']).nullable(),
   airConditioning: z.enum(['central', 'yes', 'no', 'unknown']), location: CoordinateSchema, locationPrecision: z.enum(['exact', 'street', 'area']),

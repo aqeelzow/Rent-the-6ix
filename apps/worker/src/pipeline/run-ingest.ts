@@ -73,7 +73,7 @@ export interface IngestResult {
 }
 
 // The sources marked "go" in SOURCES.md.
-const DEFAULT_SOURCES = "kijiji,rentals_ca,zillow,realtor_ca";
+const DEFAULT_SOURCES = "kijiji,rentals_ca,zillow,realtor_ca,facebook_marketplace";
 
 /**
  * Ingest options from env (INGEST_SOURCES, INGEST_MAX_PAGES, INGEST_MAX_DETAILS);
@@ -147,7 +147,7 @@ export async function runIngest(options: IngestOptions): Promise<IngestResult> {
       await writeRows(file, rows);
       if (db) run.stored = await store(db, adapter.id, rows, observedAt);
     };
-    const session = await openSession();
+    const session = await openSession(adapter.sessionOptions?.());
     try {
       let cursor: string | null = options.cursor ?? null;
       do {

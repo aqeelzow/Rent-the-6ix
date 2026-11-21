@@ -1,7 +1,7 @@
 // Shared fetch layer for every source (SPEC 8.4): one CloakBrowser (stealth Chromium driven through
 // Playwright) page per source, a fixed delay between requests, retries on network errors and 5xx, and a hard stop when a site blocks us.
 // A blocked source is never retried around: the run marks it unhealthy and moves on.
-import { launch } from "cloakbrowser";
+import { launch, launchPersistentContext } from "cloakbrowser";
 import type { Browser, BrowserContext, Page, Response } from "playwright-core";
 
 export class SourceBlockedError extends Error {
@@ -44,18 +44,34 @@ export interface SessionOptions {
   userAgent?: string;
   delayMs?: number;
   headless?: boolean;
+  /**
+   * A saved browser profile (cookies, local storage) to run in, e.g. a logged-in Facebook
+   * session created by `pnpm fb:login`. Without one, every session starts clean.
+   */
+  profileDir?: string;
 }
 
 export async function openSession(options: SessionOptions = {}): Promise<Session> {
   const userAgent = options.userAgent ?? process.env.USER_AGENT;
   const delayMs = options.delayMs ?? Number(process.env.INGEST_REQUEST_DELAY_MS ?? 4000);
   // Locale and timezone go through CloakBrowser's binary flags, not context emulation.
-  const browser: Browser = await launch({
+  const launchOptions = {
     headless: options.headless ?? true,
     locale: "en-CA",
     timezone: "America/Toronto",
-  });
-  const context: BrowserContext = await browser.newContext(userAgent ? { userAgent } : {});
+  };
+  let browser: Browser | null = null;
+  let context: BrowserContext;
+  if (options.profileDir) {
+    context = await launchPersistentContext({
+      ...launchOptions,
+      userDataDir: options.profileDir,
+      ...(userAgent ? { userAgent } : {}),
+    });
+  } else {
+    browser = await launch(launchOptions);
+    context = await browser.newContext(userAgent ? { userAgent } : {});
+  }
   // Listing photos are never stored, so don't download them either.
   await context.route("**/*", (route) =>
     ["image", "media", "font"].includes(route.request().resourceType())
@@ -109,7 +125,8 @@ export async function openSession(options: SessionOptions = {}): Promise<Session
       }
     },
     async close() {
-      await browser.close();
+      // A persistent context owns its browser: closing it closes both.
+      await (browser ?? context).close();
     },
   };
 }

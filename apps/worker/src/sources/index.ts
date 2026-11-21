@@ -1,3 +1,4 @@
+import { facebookMarketplace } from "./facebook-marketplace.ts";
 import { kijiji } from "./kijiji.ts";
 import { realtorCa } from "./realtor-ca.ts";
 import { rentalsCa } from "./rentals-network.ts";
@@ -9,4 +10,5 @@ export const sources: Record<AdapterId, SourceAdapter> = {
   rentals_ca: rentalsCa,
   zillow,
   realtor_ca: realtorCa,
+  facebook_marketplace: facebookMarketplace,
 };
