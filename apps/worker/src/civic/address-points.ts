@@ -1,32 +1,35 @@
-// P1.11 — the City's One Address Repository: ~525k address points used for offline geocoding
-// (C), place resolution (B) and building matching (P1.14). The GeoJSON resource is 590 MB, so
-// this loader pages through the CKAN datastore instead of downloading and parsing it in memory.
+// #16 — City of Waterloo address points (~56k), used for offline geocoding (geocode.ts), place
+// resolution and building matching. Paged from the City's `Addresses` hosted feature layer.
 //
-// Writes are per-page bulk upserts keyed on ADDRESS_POINT_ID, so an interrupted run can simply
-// be repeated. `ward_id` comes from the City's own WARD column (validated against `wards`), and
-// `neighbourhood_id` is filled point-in-polygon afterwards — the source has no neighbourhood.
+// The key is the civic address itself ("WAT:213 PASTERN TRAIL"): about 40k of the 56k points
+// have no ADDRESS_ID, and OBJECTIDs change when the City republishes the layer. The address is
+// unique except for ~90 repeats (one address, several points); the first point by OBJECTID is
+// kept. Writes are batched upserts on that key, so an interrupted run can simply be repeated. The source's WARD column is ignored (no wards, #1); `neighbourhood_id` is filled
+// point-in-polygon afterwards from the neighbourhoods `areas` loaded.
+//
+// Spelling: the City writes "213 PASTERN TRAIL", "12 KING ST N", "15 ABC CRT", "8 XYZ CIR".
+// `normalizeAddress` and geocode.ts's listing-side normaliser must agree on every street type
+// that appears here (TRAIL → TRL, LANE → LN, CIR stays CIR, CRT stays CRT).
 import type { Sql } from "postgres";
-import { cityDataset, cityDatastoreId, CITY_LICENCE } from "./lib/ckan.ts";
-import { fetchJson } from "./lib/http.ts";
+import {
+  itemPageUrl,
+  layerUrl,
+  queryAll,
+  WATERLOO_LICENCE,
+  type GeoJsonFeature,
+} from "./lib/arcgis.ts";
 import { normalizeAddress } from "./lib/address.ts";
 import { upsertSource } from "./sources.ts";
 
-const SLUG = "address-points-municipal-toronto-one-address-repository";
-const RESOURCE = "Address Points";
-const SOURCE_ID = "address-points";
-const PAGE_SIZE = 5000;
-const CKAN = "https://ckan0.cf.opendata.inter.prod-toronto.ca/api/3/action/datastore_search";
+const SERVICE = "Addresses";
+const ITEM_ID = "fb1ce9625c634b2dbe1d2be36d419711";
+const SOURCE_ID = "waterloo-address-points";
+const WRITE_BATCH = 2000;
+/** The layer held 55,838 points on 2026-11-20; far fewer means a broken or filtered response. */
+const MIN_EXPECTED = 50_000;
 
-interface DatastoreRecord {
-  ADDRESS_POINT_ID?: number;
-  ADDRESS_FULL?: string;
-  WARD?: string | null;
-  geometry?: string;
-}
-
-interface DatastorePage {
-  success: boolean;
-  result?: { total: number; records?: DatastoreRecord[] };
+interface AddressProps {
+  CIVIC_ADDR?: string | null;
 }
 
 interface AddressRow {
@@ -34,7 +37,7 @@ interface AddressRow {
   address_full: string;
   address_norm: string;
   location: string;
-  ward_id: string | null;
+  ward_id: null;
   source_id: string;
 }
 
@@ -45,100 +48,91 @@ export interface AddressPointLoad {
   withWard: number;
 }
 
-/** EWKT is accepted by the geography input function, so a bulk COPY can carry the point. */
-function toRow(record: DatastoreRecord): AddressRow | null {
-  const id = record.ADDRESS_POINT_ID;
-  const full = record.ADDRESS_FULL?.trim();
-  if (id === undefined || !full || !record.geometry) return null;
-  let coordinates: unknown;
-  try {
-    coordinates = (JSON.parse(record.geometry) as { coordinates?: unknown }).coordinates;
-  } catch {
-    return null;
-  }
-  if (!Array.isArray(coordinates) || coordinates.length < 2) return null;
+/** "213  Pastern Trail " → "WAT:213 PASTERN TRAIL". */
+export function addressId(civic: string): string {
+  return `WAT:${civic.trim().toUpperCase().replace(/\s+/g, " ")}`;
+}
+
+/** EWKT is accepted by the geography input function, so a bulk insert can carry the point. */
+export function toRow(feature: GeoJsonFeature<AddressProps>): AddressRow | null {
+  const full = feature.properties.CIVIC_ADDR?.trim();
+  const coordinates = feature.geometry?.type === "Point" ? feature.geometry.coordinates : null;
+  if (!full || !Array.isArray(coordinates) || coordinates.length < 2) return null;
   const [lng, lat] = coordinates as number[];
   if (typeof lng !== "number" || typeof lat !== "number") return null;
   return {
-    id: String(id),
+    id: addressId(full),
     address_full: full,
     address_norm: normalizeAddress(full),
     location: `SRID=4326;POINT(${lng} ${lat})`,
-    ward_id: record.WARD?.trim() || null,
+    ward_id: null,
     source_id: SOURCE_ID,
   };
 }
 
 export async function loadAddressPoints(sql: Sql): Promise<AddressPointLoad> {
-  const meta = await cityDataset(SLUG);
-  const resourceId = await cityDatastoreId(SLUG, RESOURCE);
-  const dumpUrl = `https://ckan0.cf.opendata.inter.prod-toronto.ca/datastore/dump/${resourceId}`;
+  const url = layerUrl(SERVICE);
   await upsertSource(sql, {
     id: SOURCE_ID,
-    title: meta.title,
-    url: meta.pageUrl,
-    licence: CITY_LICENCE,
-    note: dumpUrl,
+    title: "City of Waterloo Address Points",
+    url: itemPageUrl(ITEM_ID),
+    licence: WATERLOO_LICENCE,
+    note: url,
   });
 
-  let offset = 0;
-  let total = Number.POSITIVE_INFINITY;
-  let written = 0;
-  let skipped = 0;
-  while (offset < total) {
-    const url = `${CKAN}?resource_id=${resourceId}&limit=${PAGE_SIZE}&offset=${offset}&sort=_id`;
-    const page = await fetchJson<DatastorePage>(url);
-    if (!page.success || !page.result)
-      throw new Error(`datastore_search failed at offset ${offset}`);
-    total = page.result.total;
-    const records = page.result.records ?? [];
-    if (records.length === 0) break;
-
-    const rows = records.map(toRow).filter((row): row is AddressRow => row !== null);
-    skipped += records.length - rows.length;
-    if (rows.length > 0) {
-      await sql`
-        insert into address_points ${sql(rows, "id", "address_full", "address_norm", "location", "ward_id", "source_id")}
-        on conflict (id) do update set
-          address_full = excluded.address_full,
-          address_norm = excluded.address_norm,
-          location = excluded.location,
-          ward_id = excluded.ward_id,
-          source_id = excluded.source_id
-      `;
-      written += rows.length;
-    }
-    offset += records.length;
-    if (offset % (PAGE_SIZE * 10) === 0 || offset >= total) {
-      console.log(
-        `  addresses: ${offset.toLocaleString("en-CA")} / ${total.toLocaleString("en-CA")}`,
-      );
-    }
+  const features = await queryAll<AddressProps>(url, {
+    orderBy: "OBJECTID_1",
+    outFields: ["OBJECTID_1", "CIVIC_ADDR"],
+    onPage: (n) => {
+      if (n % 10_000 === 0) console.log(`  addresses: ${n.toLocaleString("en-CA")} fetched`);
+    },
+  });
+  if (features.length < MIN_EXPECTED) {
+    throw new Error(`${SERVICE}: only ${features.length} points (expected ${MIN_EXPECTED}+)`);
   }
-  if (skipped > 0)
-    console.warn(`  addresses: ${skipped} records skipped (no id, address or point)`);
+  const parsed = features.map(toRow).filter((row): row is AddressRow => row !== null);
+  const skipped = features.length - parsed.length;
+  if (skipped > 0) console.warn(`  addresses: ${skipped} points skipped (no address or point)`);
+  // Features arrive ordered by OBJECTID, so the first copy of a repeated address is kept.
+  const byId = new Map<string, AddressRow>();
+  for (const row of parsed) if (!byId.has(row.id)) byId.set(row.id, row);
+  const rows = [...byId.values()];
+  if (parsed.length > rows.length) {
+    console.log(`  addresses: ${parsed.length - rows.length} repeated addresses kept once`);
+  }
 
-  // The City's WARD codes are validated against the boundary table rather than trusted blindly.
-  await sql`
-    update address_points set ward_id = null
-     where ward_id is not null
-       and ward_id not in (select id from wards)
-  `;
+  let written = 0;
+  for (let i = 0; i < rows.length; i += WRITE_BATCH) {
+    const batch = rows.slice(i, i + WRITE_BATCH);
+    await sql`
+      insert into address_points ${sql(batch, "id", "address_full", "address_norm", "location", "ward_id", "source_id")}
+      on conflict (id) do update set
+        address_full = excluded.address_full,
+        address_norm = excluded.address_norm,
+        location = excluded.location,
+        ward_id = null,
+        neighbourhood_id = null,
+        source_id = excluded.source_id
+    `;
+    written += batch.length;
+  }
+  console.log(`  addresses: ${written.toLocaleString("en-CA")} upserted`);
+
   // Point-in-polygon assignment; only rows that have none yet, so re-runs stay cheap.
   console.log("  addresses: assigning neighbourhoods by point-in-polygon");
   await sql`
     update address_points a set neighbourhood_id = n.id
       from neighbourhoods n
      where a.neighbourhood_id is null
-       and st_contains(n.geometry, a.location::geometry)
+       and a.source_id = ${SOURCE_ID}
+       and st_covers(n.geometry, a.location::geometry)
   `;
 
-  const [row] = await sql<
-    { total: number; with_hood: number; with_ward: number }[]
-  >`select count(*)::int as total,
+  const [row] = await sql<{ total: number; with_hood: number; with_ward: number }[]>`
+    select count(*)::int as total,
            count(*) filter (where neighbourhood_id is not null)::int as with_hood,
            count(*) filter (where ward_id is not null)::int as with_ward
-      from address_points`;
+      from address_points where source_id = ${SOURCE_ID}`;
   return {
     total: row.total,
     written,
