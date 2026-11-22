@@ -1,0 +1,71 @@
+id,name,kind,addresses,aliases,strict_aliases,evidence
+icon,ICON,student,330 Phillip St,icon 330;icon waterloo;icon condos;icon on phillip,ICON,OpenStreetMap; Kijiji posts
+sage-i,Sage I,student,8 Hickory St W,sage 1;sage i;sage condos 1;sage condos i,,OpenStreetMap
+sage-ii,Sage II,student,318 Spruce St,sage 2;sage ii;sage condos 2;sage condos ii,,OpenStreetMap
+sage-5,Sage 5,student,280 Lester St,sage 5;sage v,,OpenStreetMap
+sage-6,Sage 6,student,251 Hemlock St,sage 6;sage vi,,OpenStreetMap
+luxe-1,Luxe I,student,333 King St N,luxe 1;luxe i;luxe tower 1;luxe condos 1;luxe condos i;luxe phase 1,,OpenStreetMap
+luxe-2,Luxe II,student,339 King St N,luxe 2;luxe ii;luxe tower 2;luxe condos 2;luxe condos ii;luxe phase 2,,OpenStreetMap; Facebook post
+wcri,WCRI,student,268 Phillip St;280 Phillip St,wcri;waterloo co-operative residence;waterloo cooperative residence;wcri fenwick;wcri kershaw;wcri carver;wcri clayfield,,OpenStreetMap; Kijiji and Facebook posts
+wcri-hammarskjold,WCRI Hammarskjold House,student,139 University Ave W,wcri hammar;hammarskjold house;hammar house,,OpenStreetMap
+elora-house,Elora House,student,250 Phillip St,elora house;rez-one elora,,OpenStreetMap; Kijiji post
+fergus-house,Fergus House,student,254 Phillip St,fergus house;rez-one fergus,,OpenStreetMap
+hespeler-house,Hespeler House,student,252 Phillip St,hespeler house;rez-one hespeler,,OpenStreetMap
+blair-house,Blair House,student,256 Phillip St,blair house;rez-one blair,,OpenStreetMap
+preston-house,Preston House,student,315 King St N,preston house;rez-one preston,,OpenStreetMap
+bridgeport-house,Bridgeport House,student,328 Regina St N,bridgeport house;rez-one bridgeport,,OpenStreetMap
+society-145,Society 145,student,145 Columbia St W,society 145,,OpenStreetMap
+the-marq,The Marq,student,1 Columbia St W,the marq;marq waterloo,,OpenStreetMap
+columbia-crossing,Columbia Crossing,student,110 Columbia St W,columbia crossing,,OpenStreetMap
+columbia-village,Columbia Village,student,130 Columbia St W,columbia village,,Zillow
+vip-student-housing,V.I.P Student Housing,student,110 University Ave W,vip student housing;v.i.p student housing,,OpenStreetMap
+avenue-apartments,Avenue Apartments,student,137 University Ave W,,,Rentals.ca and Zillow
+walnut-village,Walnut Village,student,202 Lester St,walnut village,,Zillow
+ivytowns,Ivytowns,student,253 Albert St,ivytowns;ivy towns,,OpenStreetMap
+one28,One28,student,128 King St N,one28,,OpenStreetMap
+kings-landing,Kings Landing,student,316 King St N,kings landing;king's landing,,OpenStreetMap
+regina-residence,Regina Residence,student,209 Regina St N,regina residence,,OpenStreetMap
+university-view,University View,student,173 King St N,,,OpenStreetMap
+university-place,University Place Residence,student,50 University Ave E,university place residence,,OpenStreetMap
+vogue,Vogue Residences,rental_apartment,155 King St N,vogue residences,,OpenStreetMap; Rentals.ca
+beacon-tower,Beacon Tower,rental_apartment,25 Westmount Rd N,beacon tower,,OpenStreetMap; Rentals.ca and Zillow
+the-bevel,The Bevel,rental_apartment,12 Merchant Ave,the bevel,,OpenStreetMap; Rentals.ca
+the-cooperage,The Cooperage,rental_apartment,16 Barrel Yards Blvd;20 Barrel Yards Blvd,the cooperage,,OpenStreetMap; Rentals.ca
+the-onyx,The Onyx,rental_apartment,23 Barrel Yards Blvd;29 Barrel Yards Blvd,the onyx,,OpenStreetMap; Rentals.ca
+the-staves,The Staves,rental_apartment,17 Barrel Yards Blvd,the staves,,OpenStreetMap; Rentals.ca
+the-red,The Red,condo,188 King St S,red condominium;red condos,,OpenStreetMap; Rentals.ca
+the-now,The Now,rental_apartment,410 Westhaven St,,,Rentals.ca and Zillow
+richmond-square,Richmond Square,rental_apartment,300 Regina St N,richmond square,,OpenStreetMap; Zillow
+metropolitan-towers,Metropolitan Towers,rental_apartment,57 Union St E,metropolitan towers,,Rentals.ca
+parkside-tower,Parkside Tower,rental_apartment,400 Parkside Dr,parkside tower,,Zillow
+parkside-place,Parkside Place Apartments,rental_apartment,477 Parkside Dr,parkside place,,Rentals.ca
+northfield-gardens,Northfield Gardens,rental_apartment,160 Wissler Rd,northfield gardens,,Zillow
+brightwood,Brightwood,rental_apartment,150 Wissler Rd,,,Zillow
+maple-hill-creek,Maple Hill Creek,rental_apartment,274 Erb St W,maple hill creek,,Zillow
+vale-station,Vale Station Apartments,rental_apartment,28 Westhill Dr,vale station,,Zillow
+coldstream,Coldstream,rental_apartment,580 Coldstream Dr,,,Rentals.ca and Zillow
+churchill-townhomes,Churchill Townhomes,rental_apartment,90 Churchill St,churchill townhomes,,Zillow
+uptown-apartments,Uptown Apartments,rental_apartment,154 Erb St E,,,Zillow
+erb-court,Erb Court Apartments,rental_apartment,201 Erb St W,erb court,,Rentals.ca
+pinegrove,Pinegrove Apartments,rental_apartment,145 Lucan Ave,pinegrove apartments,,Rentals.ca
+silverbirch,Silverbirch Apartments,rental_apartment,598 Silverbirch Rd,,,Rentals.ca
+woodland-trail,Woodland Trail Apartments,rental_apartment,515 Albert St,woodland trail apartments,,Rentals.ca
+cedar-creek,Cedar Creek,rental_apartment,736 Old Albert St,,,Rentals.ca
+oakwood-manor,Oakwood Manor,rental_apartment,9 Lodge St,oakwood manor,,Rentals.ca
+auburn-green,Auburn Green,rental_apartment,237 Auburn Dr,auburn green,,Rentals.ca
+auburn-terraces,Auburn Terraces,rental_apartment,239 Auburn Dr,auburn terraces,,Rentals.ca
+westmount-grand,Westmount Grand,rental_apartment,223 Erb St W,westmount grand,,OpenStreetMap
+westmount-towers-ii,Westmount Towers II,rental_apartment,65 Westmount Rd N,westmount towers,,OpenStreetMap
+panorama-terrace,Panorama Terrace,rental_apartment,235 Erb St W,panorama terrace,,OpenStreetMap
+waterloo-heights,Waterloo Heights Apartments,rental_apartment,170 Erb St W,waterloo heights apartments,,OpenStreetMap
+westcourt-towers,Westcourt Towers,rental_apartment,303 Westcourt Pl,westcourt towers,,OpenStreetMap
+keatsway-on-the-park,Keatsway on the Park,rental_apartment,255 Keats Way,keatsway on the park,,OpenStreetMap
+william-place,William Place,rental_apartment,55 William St E,william place,,OpenStreetMap
+spurline-flats,Spurline Flats,rental_apartment,144 Lucan Ave,spurline flats,,OpenStreetMap
+kingsway-apartment,Kingsway Apartment,rental_apartment,32 King St N,kingsway apartment,,OpenStreetMap
+fourteen-princess,Fourteen Princess,condo,14 Princess St W,fourteen princess,,OpenStreetMap
+kraft-block,Kraft Block,condo,43 King St N;45 King St N,kraft block,,OpenStreetMap
+bauer-lofts,Bauer Lofts,condo,191 King St S,bauer lofts,,OpenStreetMap
+the-cortes,The Cortés,condo,222 King St S,the cortes;the cortés,,OpenStreetMap
+silver-thread-lofts,Silver Thread Lofts,condo,15 Devitt Ave S,silver thread lofts,,OpenStreetMap
+the-tailor-shop,The Tailor Shop,condo,89 Caroline St S,tailor shop condos,,OpenStreetMap
