@@ -1,7 +1,7 @@
 import type { CSSProperties } from "react";
 import { CnTower } from "@/components/brand/cn-tower";
 import { t, type MessageKey } from "@/lib/format/messages";
-import { FarSkyline, MidBlocks, NearStreet, Streetcar } from "./skyline";
+import { FarSkyline, IonTrain, MidBlocks, NearStreet } from "./skyline";
 
 type Vars = CSSProperties & Record<`--${string}`, string | number>;
 
@@ -102,14 +102,14 @@ export function SayScene() {
   );
 }
 
-/** A streetcar drives across and pulls the page from night into morning. */
-export function StreetcarScene() {
+/** An ION train drives across and pulls the page from night into morning. */
+export function RideScene() {
   return (
     <section data-scene className="scene scene-ride" aria-hidden>
       <div className="scene-stage">
         <div className="ride-morning" />
         <div className="wire" />
-        <Streetcar className="streetcar" />
+        <IonTrain className="train" />
       </div>
     </section>
   );
