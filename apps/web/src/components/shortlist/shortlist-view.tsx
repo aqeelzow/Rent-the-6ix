@@ -2,6 +2,7 @@
 
 import { Building2, ClipboardPaste, Trash2, X } from "lucide-react";
 import Link from "next/link";
+import { ListingPhoto } from "@/components/listing/listing-photo";
 import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -61,20 +62,17 @@ function ShortlistItem({ entry }: { entry: ShortlistEntry }) {
   return (
     <article className="bg-card relative flex gap-3 rounded-xl border p-4">
       <div className="bg-muted text-muted-foreground grid size-16 shrink-0 place-items-center overflow-hidden rounded-lg">
-        {listing.imageUrl ? (
-          // Hot-linked thumbnail from the source, only when its terms allow (SPEC 8.4).
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={listing.imageUrl}
-            alt=""
-            referrerPolicy="no-referrer"
-            className="size-full object-cover"
-          />
-        ) : entry.kind === "pasted" ? (
-          <ClipboardPaste aria-hidden className="size-5" />
-        ) : (
-          <Building2 aria-hidden className="size-5" />
-        )}
+        <ListingPhoto
+          src={listing.imageUrl}
+          className="size-full object-cover"
+          fallback={
+            entry.kind === "pasted" ? (
+              <ClipboardPaste aria-hidden className="size-5" />
+            ) : (
+              <Building2 aria-hidden className="size-5" />
+            )
+          }
+        />
       </div>
       <div className="min-w-0 flex-1">
         <p className="figures text-lg leading-tight font-semibold">

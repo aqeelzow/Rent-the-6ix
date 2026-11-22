@@ -7,15 +7,24 @@
 // gives title, price, beds/baths and city but no coordinates; the listing's own page adds the
 // description, coordinates, postal code, street and unit details.
 //
-// Never read or stored: the seller (`marketplace_listing_seller`), messaging fields, photos
-// (Facebook's CDN links expire and the terms of hot-linking are unchecked).
+// The cover photo is kept as a link to Facebook's CDN, hot-linked like every source's photo. Its
+// signed URL expires after about 4 days (checked 2026-11-22), so each run stores a fresh one and the
+// site falls back to an icon when an old one stops loading.
+//
+// Never read or stored: the seller (`marketplace_listing_seller`) and messaging fields.
 //
 // Facebook slows clients down after rapid requests, so pages are 10 s apart by default
 // (FB_REQUEST_DELAY_MS). FB_PROFILE_DIR runs the session in a saved browser profile, e.g. a
 // logged-in account, if logged-out access is ever cut off.
 import { htmlToText } from "../lib/text.ts";
 import { SourceBlockedError } from "../lib/fetch.ts";
-import { emptyRawListing, type DetailPatch, type RawListing, type SourceAdapter } from "./types.ts";
+import {
+  emptyRawListing,
+  httpsUrl,
+  type DetailPatch,
+  type RawListing,
+  type SourceAdapter,
+} from "./types.ts";
 
 const ORIGIN = "https://www.facebook.com";
 
@@ -115,6 +124,7 @@ interface FbItem {
   is_live?: boolean | null;
   redacted_description?: { text?: string | null } | null;
   home_address?: { street?: string | null } | null;
+  primary_listing_photo?: { image?: { uri?: string | null } | null } | null;
   pdp_display_sections?:
     { section_type?: string; pdp_fields?: { display_label?: string | null }[] | null }[] | null;
 }
@@ -249,7 +259,14 @@ function toRawListing(item: FbItem): RawListing | null {
     lat,
     lng,
     postedAt: item.creation_time ? new Date(item.creation_time * 1000).toISOString() : null,
+    imageUrl: coverPhoto(item),
   };
+}
+
+/** The listing's cover photo on Facebook's CDN (`*.fbcdn.net`), or null. */
+export function coverPhoto(item: FbItem): string | null {
+  const url = httpsUrl(item.primary_listing_photo?.image?.uri);
+  return url && /(^|\.)fbcdn\.net$/.test(new URL(url).hostname) ? url : null;
 }
 
 /** The listings on one property-rentals feed page (feed and map entries). */

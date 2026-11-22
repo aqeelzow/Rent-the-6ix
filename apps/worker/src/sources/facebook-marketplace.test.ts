@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  coverPhoto,
   addressText,
   detailFields,
   facebookMarketplace,
@@ -189,9 +190,20 @@ describe("facebook marketplace index", () => {
     });
   });
 
-  it("never carries the seller or Facebook's photo links", () => {
+  it("never carries the seller", () => {
     const text = JSON.stringify(parseFacebookIndex(index));
-    expect(text).not.toMatch(/Jane Example|pfbid|scontent/);
+    expect(text).not.toMatch(/Jane Example|pfbid/);
+  });
+
+  it("keeps the cover photo only when it's on Facebook's CDN", () => {
+    const photo = (uri: string) => coverPhoto({ primary_listing_photo: { image: { uri } } });
+    expect(photo("https://scontent.fyto3-1.fna.fbcdn.net/v/x.jpg?oe=1")).toBe(
+      "https://scontent.fyto3-1.fna.fbcdn.net/v/x.jpg?oe=1",
+    );
+    expect(photo("https://scontent.example/x.jpg")).toBeNull();
+    expect(photo("http://scontent.fbcdn.net/x.jpg")).toBeNull();
+    expect(photo("https://evilfbcdn.net/x.jpg")).toBeNull();
+    expect(coverPhoto({})).toBeNull();
   });
 
   it("builds one search URL per 1 km tile", () => {

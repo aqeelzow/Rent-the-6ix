@@ -14,6 +14,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import Link from "next/link";
+import { ListingPhoto } from "@/components/listing/listing-photo";
 import { modeIcons } from "@/components/mode-icons";
 import { formatDaysAgo } from "@/lib/format/date";
 import { t, type MessageKey } from "@/lib/format/messages";
@@ -177,18 +178,11 @@ export function ResultCard({
             )}
           </div>
           <div className="grid size-24 shrink-0 place-items-center overflow-hidden rounded-2xl bg-black/[0.06] shadow-md sm:size-28 dark:bg-white/10">
-            {listing.imageUrl ? (
-              // Hot-linked thumbnail from the source, only when its terms allow (SPEC 8.4).
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={listing.imageUrl}
-                alt=""
-                referrerPolicy="no-referrer"
-                className="size-full object-cover"
-              />
-            ) : (
-              <Building2 aria-hidden className="size-8 opacity-50" />
-            )}
+            <ListingPhoto
+              src={listing.imageUrl}
+              className="size-full object-cover"
+              fallback={<Building2 aria-hidden className="size-8 opacity-50" />}
+            />
           </div>
         </div>
 
