@@ -30,7 +30,7 @@ export function templateBriefing(facts: BriefingFacts): BriefingResponse {
     if (!row) return `Not enough data is available to describe ${description} in ${facts.area.name}.`;
     const city = facts.cityIndicators.find(i => i.indicatorId === row.indicatorId && i.unit === row.unit && i.period === row.period);
     return city
-      ? `For ${description}, ${row.indicatorId.replace(/[_:]/g, ' ')} is ${row.value} ${row.unit} in ${facts.area.name} and ${city.value} ${city.unit} in Toronto (${row.period}; ${row.sourceTitle}; ${city.sourceTitle}).`
+      ? `For ${description}, ${row.indicatorId.replace(/[_:]/g, ' ')} is ${row.value} ${row.unit} in ${facts.area.name} and ${city.value} ${city.unit} across Waterloo (${row.period}; ${row.sourceTitle}; ${city.sourceTitle}).`
       : `The available ${description} data for ${facts.area.name} includes ${row.indicatorId.replace(/[_:]/g, ' ')}: ${row.value} ${row.unit} (${row.period}; ${row.sourceTitle}). Further sourced context is needed for a full comparison with Toronto.`;
   });
   return { ...facts, status: canBrief(facts) ? 'available' : 'insufficient_data', paragraphs, source: 'template' };

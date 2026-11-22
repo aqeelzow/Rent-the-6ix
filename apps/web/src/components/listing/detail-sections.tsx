@@ -429,6 +429,8 @@ export function AreaCard({
       items: indicators.filter((indicator) => !areas.some((area) => area.id === indicator.areaId)),
     },
   ].filter((group) => group.items.length > 0);
+  // An area with no facts loaded yet: no empty heading.
+  if (groups.length === 0) return null;
 
   return (
     <DetailSection id="area" title={l("sections.area")} className={className}>
