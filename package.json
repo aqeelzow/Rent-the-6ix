@@ -22,9 +22,9 @@
     "postgres": "^3.4.5"
   },
   "devDependencies": {
-    "next": "16.4.2",
+    "@types/node": "^26.6.5",
+    "next": "16.4.6",
     "prettier": "^3.9.10",
-    "typescript": "^5.9.3",
-    "@types/node": "^26.6.5"
+    "typescript": "^5.9.3"
   }
 }
