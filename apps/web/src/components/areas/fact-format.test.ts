@@ -47,7 +47,7 @@ describe("labels", () => {
     expect(periodLabel("12 months to 2026-10")).toBe("12 months to October 2026");
     expect(periodLabel("2021 Census")).toBe("2021 Census");
     expect(factLabel("rapid_transit_within_800m_pct")).toBe(
-      "Area within 800 m of a subway or rail stop",
+      "Area within 800 m of an ION or rail stop",
     );
     expect(factLabel("something_new")).toBe("something_new");
   });

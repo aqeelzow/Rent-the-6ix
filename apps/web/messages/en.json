@@ -11,7 +11,6 @@
     "homeLink": "Rent the Loo home",
     "nav": {
       "label": "Main",
-      "areas": "Explore neighbourhoods",
       "paste": "Paste a listing",
       "shortlist": "Shortlist",
       "data": "About the data"
@@ -84,10 +83,6 @@
         "prompt": "3 bedrooms in Beechwood under $3,000, near a public school and a park, parking."
       }
     },
-    "areas": {
-      "title": "Explore neighbourhoods",
-      "body": "Rents, renters and housing pressure across Waterloo's neighbourhoods."
-    },
     "paste": {
       "title": "Paste a listing",
       "body": "Found a place on Facebook or anywhere else? Paste it to check the price and the area."
@@ -148,7 +143,7 @@
     "comingSoon": "Other system checks will appear here as those services are connected.",
     "listingSources": {
       "title": "Listing sources",
-      "intro": "The worker collects listings from each site on a schedule. A site that blocks it is skipped until the next run: we never solve captchas or use proxies.",
+      "intro": "The worker collects listings from each site on a schedule. When a site blocks it, it waits, retries through another connection and completes the site's check page where it can. If it still can't get through, that site is skipped until the next run.",
       "loadFailed": "Source health couldn't be read from the database.",
       "none": "No listings collected yet.",
       "never": "Never",
@@ -333,7 +328,7 @@
       "leaseTerm": "Lease",
       "leaseShort": "Short-term",
       "lease12": "12 months",
-      "travelHelp": "Transit times use TTC schedules for a weekday at 8:30 am. Driving times assume no traffic.",
+      "travelHelp": "Transit times use published schedules for a weekday at 8:30 am. Driving times assume no traffic.",
       "noTargets": "No places or amenities yet.",
       "removeTarget": "Remove {label}",
       "addPlace": "Add a place",
@@ -350,7 +345,7 @@
       "add": "Add",
       "amenities": {
         "grocery": "Supermarket",
-        "rapid_transit": "Subway or LRT station",
+        "rapid_transit": "ION or rail station",
         "school": "School",
         "park": "Park",
         "library": "Library",
@@ -360,9 +355,9 @@
         "university": "University or college"
       },
       "safetyToggle": "Consider reported crime levels",
-      "safetyHelp": "Uses Toronto Police neighbourhood crime rates compared with the city rate. Off unless you turn it on. Rates describe whole neighbourhoods, not a street, a building or the people who live there.",
+      "safetyHelp": "Uses police-reported neighbourhood crime rates compared with the city rate. Off unless you turn it on. Rates describe whole neighbourhoods, not a street, a building or the people who live there.",
       "areaHelp": "Areas come from your request. Picking neighbourhoods on a map comes with the explorer.",
-      "noAreas": "All of Toronto.",
+      "noAreas": "All of Waterloo.",
       "removeArea": "Remove {label}",
       "sortBy": "Sort by",
       "priorities": {
@@ -468,7 +463,7 @@
       "transport": "{km} km to {target} — take transit or a car",
       "missing": "Location for {target} unavailable"
     },
-    "safety": "Police-reported crime: {rate}× the city rate (TPS {years})",
+    "safety": "Police-reported crime: {rate}× the city rate ({years})",
     "safetyNoData": "Police-reported crime: not enough data",
     "notConfirmed": "Not confirmed: {items}",
     "sources": {
@@ -516,7 +511,7 @@
         "hint": "Hover or tap a neighbourhood for its rate.",
         "hover": "{name}: {rate}× the city rate",
         "hoverNoData": "{name}: no data",
-        "source": "Toronto Police Service, {years} average, by neighbourhood.",
+        "source": "Police-reported crime, {years} average, by neighbourhood.",
         "unavailable": "Crime rates couldn't be loaded. Try again later."
       },
       "approxTip": "Approximate location: within about {m} m"
@@ -529,7 +524,7 @@
     "safetyInfo": {
       "open": "How this works",
       "title": "How reported crime levels work",
-      "what": "Reported crime levels are optional and off unless you turn them on. They use Toronto Police Service neighbourhood crime rates.",
+      "what": "Reported crime levels are optional and off unless you turn them on. They use police-reported neighbourhood crime rates.",
       "measure": "We add up five major crime types (assault, break and enter, auto theft, robbery, theft over $5,000) per 100,000 residents, averaged over the last three published years, and compare the neighbourhood with the city. \"0.7× the city rate\" means 30% below it.",
       "ranking": "When they're on, reported crime levels are {weight}% of the match score: {full}× the city rate or lower scores 100, {zero}× or higher scores 0, in a straight line between.",
       "mustHave": "With a limit set, it keeps only neighbourhoods at or below that many times the city rate (the city rate unless you move the slider).",
@@ -683,7 +678,7 @@
       "note": "Times are rough estimates from straight-line distance, allowing for route detours and typical access or waiting time. They do not use live traffic, timetables, weather or road conditions."
     },
     "safety": {
-      "rate": "Police-reported major crime here: {rate}× the city rate ({years} average, Toronto Police Service).",
+      "rate": "Police-reported major crime here: {rate}× the city rate ({years} average).",
       "noData": "Police-reported crime rates for this neighbourhood aren't available.",
       "byType": "By type, per 100,000 residents",
       "types": {
@@ -768,7 +763,7 @@
         "clinic": "Clinics and doctors",
         "community_centre": "Community centres",
         "university": "Colleges and universities",
-        "stop": "More TTC stops"
+        "stop": "More transit stops"
       },
       "school": {
         "elementary": "elementary",
@@ -786,8 +781,8 @@
         "clinic": "Clinic or doctor",
         "community_centre": "Community centre",
         "university": "College",
-        "stop": "TTC stop",
-        "rapid": "Subway or rail"
+        "stop": "Transit stop",
+        "rapid": "ION or rail"
       },
       "more": "Show more nearby",
       "tileNote": "Straight-line distance from the listing."
@@ -812,22 +807,9 @@
     }
   },
   "areas": {
-    "mapPending": "The neighbourhood map is still being built. It will show one indicator at a time for each Waterloo neighbourhood, with its source.",
-    "election": {
-      "title": "Municipal election: {date}",
-      "hours": "Voting places are open 10 a.m. to 8 p.m. on election day.",
-      "advanceUpcoming": "Advance voting: {dates}, 10 a.m. to 7 p.m.",
-      "advancePast": "Advance voting ran {dates}.",
-      "myVote": "Find where and when to vote (MyVote)",
-      "candidates": "Official candidate list",
-      "keyDates": "Key election dates",
-      "resultsTitle": "Municipal election results",
-      "results": "Official results from the City of Toronto",
-      "note": "From the City of Toronto’s election pages. Rent the Loo doesn’t summarize, compare or rank candidates or platforms."
-    },
     "facts": {
       "thisArea": "This area",
-      "city": "Toronto",
+      "city": "Waterloo",
       "perMonth": "{amount} a month",
       "outOf100": "{score} / 100",
       "perKm2": "{n} per km²",
@@ -847,8 +829,8 @@
       "renter_households_pct": "Households that rent",
       "renters_shelter_cost_30pct": "Renters spending 30% or more of income on shelter",
       "median_household_income": "Median household income (2020)",
-      "transit_stops_per_km2": "TTC stops per km²",
-      "rapid_transit_within_800m_pct": "Area within 800 m of a subway or rail stop",
+      "transit_stops_per_km2": "Transit stops per km²",
+      "rapid_transit_within_800m_pct": "Area within 800 m of an ION or rail stop",
       "libraries": "Public libraries",
       "parks": "Parks",
       "dev_applications_12m": "Development applications",
@@ -889,7 +871,7 @@
     "carbon": {
       "carFree": "No car needed for your trips — no direct emissions",
       "figure": "≈ {co2e} CO₂e per one-way trip by {mode}",
-      "transitUnknown": "Transit not counted (no published factor for Toronto)",
+      "transitUnknown": "Transit not counted (no published per-passenger factor)",
       "transitUnknownDrive": "Transit not counted (no published factor) — ≈ {co2e} if you drove",
       "unrouted": "Emissions need routed travel times — not estimated yet",
       "sortLabel": "Lowest-carbon trips first",
@@ -908,6 +890,7 @@
       "travel": "Travel times",
       "safety": "Reported Crime Levels",
       "ai": "How we use AI",
+      "renting": "Renting in Waterloo",
       "limits": "Limitations"
     },
     "datasets": {
@@ -926,10 +909,7 @@
         "openstreetmap": "Groceries, pharmacies and other everyday places near each listing.",
         "parks-and-recreation-facilities": "Parks and recreation centres as nearby places.",
         "school-locations-all-types": "Schools as nearby places and travel targets.",
-        "statcan-46100092": "The Toronto-area average asking rent shown under each rent check.",
-        "toronto-amr-utility-allowances": "Typical utility costs for the true monthly cost.",
-        "ttc-fares": "The TTC fare used in the true monthly cost.",
-        "ttc-routes-and-schedules": "TTC stops near each listing."
+        "statcan-46100092": "The regional average asking rent shown under each rent check."
       },
       "mapOpenFreeMap": "Map: base map tiles from OpenFreeMap, built from OpenStreetMap data (ODbL 1.0), credited in the corner of every map.",
       "mapMaptiler": "Map: base map tiles from MapTiler, built from OpenStreetMap data (ODbL 1.0), credited in the corner of every map."
@@ -942,7 +922,7 @@
         "2": "Photos are never downloaded or stored: the cover photo is shown straight from the source site.",
         "3": "The same unit listed on several sites is shown once, as its cheapest copy, unless that copy is more than {belowNext}% below the others (often a copied ad). The other copies and their prices appear under “Also on”.",
         "4": "A listing not seen for {staleDays} days is marked stale, and after 21 days it is removed from search.",
-        "5": "If a site blocks or rate-limits our collector, it stops for that run. We never solve captchas or use proxies."
+        "5": "If a site blocks or rate-limits our collector, it waits, retries through another connection and completes the site's check page where it can. If it still can't get through, it stops for that run."
       }
     },
     "rent": {
@@ -954,7 +934,7 @@
         "4": "Comparables are adjusted to the listing's terms: utilities included {utilities}, parking {parking}, furnished {furnished}, in-suite laundry {laundry} a month.",
         "5": "The estimate is the weighted median. A listing more than {band}% below it is “Underpriced”, more than {band}% above is “Overpriced” ({lowBand}% when confidence is low), and in between “Reasonably priced”.",
         "6": "More than {farBelow}% below the estimate is flagged “Unusually low for this area”: check that the listing is real before sending money.",
-        "7": "The Statistics Canada Toronto-area average asking rent is shown for context. It never changes the estimate."
+        "7": "The Statistics Canada average asking rent for the region is shown for context. It never changes the estimate."
       }
     },
     "score": {
@@ -979,7 +959,7 @@
       "modeNoOverhead": "{mode}: {speed} km/h along streets about {detour}× the straight-line distance"
     },
     "safety": {
-      "body": "Reported crime levels are off unless you turn them on. They use the Toronto Police Service's police-reported rates for five major crime types in the listing's neighbourhood, compared with the city average. Reported crime isn't all crime, rates move from year to year, and they say nothing about any street or building. We never call an area safe or unsafe."
+      "body": "Reported crime levels are off unless you turn them on. They use police-reported rates for five major crime types in the listing's neighbourhood, compared with the city average. Reported crime isn't all crime, rates move from year to year, and they say nothing about any street or building. We never call an area safe or unsafe."
     },
     "ai": {
       "rules": {
@@ -1002,6 +982,15 @@
       "bike": "Bike",
       "transit": "Transit",
       "drive": "Car"
+    },
+    "renting": {
+      "intro": "A few City of Waterloo rules worth knowing before you rent. This is a summary of the City's pages, not legal advice.",
+      "licence": "Most rental units in buildings up to 3 storeys need a City rental licence. Larger apartment buildings don't. You can check online whether a property has a valid licence.",
+      "licenceLink": "Check a rental licence",
+      "renovation": "Since July 1, 2026, a landlord who gives you an N13 notice (ending your tenancy for renovations or repairs) must apply for a City renovation licence within 7 days and pay $1,000 toward moving costs, shared among the unit's tenants. If you choose to move back in after the work, they must also either pay the difference between your rent and the average market rent for a similar unit, or arrange temporary housing you agree to, for the whole renovation.",
+      "renovationLink": "Rental housing renovation licence by-law",
+      "repairs": "Landlords must keep rental units safe and in good repair. You can ask the City to inspect your unit without telling your landlord first.",
+      "repairsLink": "Rental housing support from the City"
     }
   }
 }

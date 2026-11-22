@@ -70,6 +70,8 @@ export const ListingSchema = z.strictObject({
   unitType: UnitTypeSchema.nullable(), sqft: positive.nullable(), yearBuilt: year.nullable(), yearBuiltSource: z.enum(['listing', 'ai_extracted']).nullable(),
   airConditioning: z.enum(['central', 'yes', 'no', 'unknown']), location: CoordinateSchema, locationPrecision: z.enum(['exact', 'street', 'area']),
   addressText: text.nullable(), addressPointId: text.nullable(), buildingId: text.nullable(),
+  // The catalogue building's name ("ICON"), when the listing is in one (#30).
+  buildingName: text.nullable().optional(),
   // Null until D's boundaries are loaded; area requirements stay unconfirmed and safety unavailable.
   neighbourhoodId: text.nullable(),
   utilitiesIncluded: z.enum(['yes', 'partial', 'no', 'unknown']), parking: tri, petsAllowed: z.enum(['yes', 'no', 'unknown', 'cats_only', 'dogs_only']), furnished: tri, laundryInSuite: tri,

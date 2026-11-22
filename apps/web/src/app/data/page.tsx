@@ -31,8 +31,17 @@ const SECTIONS = [
   "travel",
   "safety",
   "ai",
+  "renting",
   "limits",
 ] as const;
+
+/** City of Waterloo pages the renter-rules section links to. */
+const CITY_LINKS = {
+  licence: "https://mypermits.waterloo.ca/bylaw/#/home",
+  renovation:
+    "https://www.waterloo.ca/bylaws-and-enforcement/bylaw-directory/rental-housing-renovation-licence-bylaw/",
+  repairs: "https://www.waterloo.ca/community-support/get-rental-housing-support/",
+} as const;
 
 /** Worker constants shown here (dedupe.ts DEDUPE.maxBelowNextCopy, scrub.ts EXCERPT_MAX). */
 const WORKER = { belowNextPct: 15, excerptMax: 280 };
@@ -237,6 +246,24 @@ export default async function DataPage() {
 
       <Section id="ai">
         <Rules list={en.dataPage.ai.rules} prefix="ai.rules" />
+      </Section>
+
+      <Section id="renting">
+        <p>{d("renting.intro")}</p>
+        {(["licence", "renovation", "repairs"] as const).map((rule) => (
+          <p key={rule}>
+            {d(`renting.${rule}`)}{" "}
+            <a
+              href={CITY_LINKS[rule]}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 font-medium underline underline-offset-2"
+            >
+              {d(`renting.${rule}Link`)}
+              <ExternalLink aria-hidden className="size-3.5 shrink-0" />
+            </a>
+          </p>
+        ))}
       </Section>
 
       <Section id="limits">

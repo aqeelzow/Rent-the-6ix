@@ -24,6 +24,10 @@ const nextConfig: NextConfig = {
   // Self-contained server bundle for the Docker image on Vultr.
   output: "standalone",
   outputFileTracingRoot: repoRoot,
+  experimental: {
+    // Agent-run Next.js upgrades are limited to security releases.
+    agentUpgrade: "security",
+  },
   turbopack: {
     rules: {
       "*.css": {

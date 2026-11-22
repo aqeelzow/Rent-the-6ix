@@ -9,7 +9,8 @@ const columns = ['id', 'source', 'sourceListingId', 'sourceUrl', 'title', 'excer
 // shortcut: retain at most eight unfinished reads after caller cancellation; use cancellable connections for higher production load.
 let candidateReadsInFlight = 0;
 const snake = (value: string) => value.replace(/[A-Z]/g, c => `_${c.toLowerCase()}`);
-export const candidateColumns = `${columns.map(snake).join(', ')}, ST_X(location::geometry) AS lng, ST_Y(location::geometry) AS lat`;
+export const candidateColumns = `${columns.map(snake).join(', ')}, ST_X(location::geometry) AS lng, ST_Y(location::geometry) AS lat,
+  (SELECT b.name FROM buildings b WHERE b.id = listings.building_id) AS building_name`;
 const numeric = (value: unknown) => typeof value === 'string' && /^-?\d+(?:\.\d+)?$/.test(value) ? Number(value) : value;
 export function listingFromRow(input: unknown): Listing {
   if (typeof input !== 'object' || input === null || Array.isArray(input)) throw new Error('Invalid listing row');
@@ -20,6 +21,7 @@ export function listingFromRow(input: unknown): Listing {
   for (const key of ['monthlyRentCad', 'bedrooms', 'bathrooms', 'sqft', 'yearBuilt']) listing[key] = numeric(listing[key]);
   for (const key of ['firstSeenAt', 'lastSeenAt', 'updatedAt', 'availableFrom']) if (listing[key] instanceof Date) listing[key] = key === 'availableFrom' ? listing[key].toISOString().slice(0, 10) : listing[key].toISOString();
   listing.location = { lng: numeric(row.lng), lat: numeric(row.lat) };
+  if (typeof row.building_name === 'string') listing.buildingName = row.building_name;
   return ListingSchema.parse(listing);
 }
 

@@ -1,16 +1,12 @@
-import { ArrowDown, ArrowRight, MapIcon } from "lucide-react";
+import { ArrowDown } from "lucide-react";
 import Link from "next/link";
-import { HeroScene, SayScene, StreetcarScene } from "@/components/landing/scenes";
+import { HeroScene, RideScene, SayScene } from "@/components/landing/scenes";
 import { ScrollScenes } from "@/components/landing/scroll-scenes";
 import { PromptBox } from "@/components/search/prompt-box";
 import { t, type MessageKey } from "@/lib/format/messages";
 import "@/components/landing/landing.css";
 
 const examples = ["student", "couple", "family"] as const;
-
-const secondary = [
-  { href: "/areas", id: "areas", icon: MapIcon },
-] as const;
 
 function searchHref(prompt: string) {
   return `/search?q=${encodeURIComponent(prompt)}`;
@@ -26,7 +22,7 @@ export default async function Home({ searchParams }: PageProps<"/">) {
       <ScrollScenes />
       <HeroScene />
       <SayScene />
-      <StreetcarScene />
+      <RideScene />
       <a href="#start" className="jump">
         {t("landing.jump")}
         <ArrowDown aria-hidden className="size-4" />
@@ -67,30 +63,6 @@ export default async function Home({ searchParams }: PageProps<"/">) {
                 })}
               </ul>
             </div>
-          </section>
-
-          <section className="grid gap-3 sm:grid-cols-2">
-            {secondary.map(({ href, id, icon: Icon }) => (
-              <Link
-                key={id}
-                href={href}
-                className="bg-card hover:bg-accent focus-visible:ring-ring/50 group flex gap-3 rounded-xl border p-4 outline-none focus-visible:ring-3"
-              >
-                <Icon aria-hidden className="text-primary mt-0.5 size-5 shrink-0" />
-                <span className="flex flex-col gap-1">
-                  <span className="flex items-center gap-1 font-semibold">
-                    {t(`landing.${id}.title` as MessageKey)}
-                    <ArrowRight
-                      aria-hidden
-                      className="size-4 transition-transform group-hover:translate-x-0.5"
-                    />
-                  </span>
-                  <span className="text-muted-foreground text-sm">
-                    {t(`landing.${id}.body` as MessageKey)}
-                  </span>
-                </span>
-              </Link>
-            ))}
           </section>
         </div>
       </div>

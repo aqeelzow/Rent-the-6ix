@@ -7,7 +7,7 @@
   --l-mid: #1d1846;
   --l-near: #120f2e;
   --l-glow: #f6a75a;
-  --streetcar: #da291c;
+  --ion-blue: #1f6cc6;
   --mist: #e4ecf6;
   --ink: #120f2e;
   --ink-soft: #4a4670;
@@ -292,7 +292,7 @@ body:has(.landing) > footer {
   opacity: clamp(0, calc((var(--c) - 0.6) * 3), 1);
 }
 
-/* ---------- Streetcar into morning ---------- */
+/* ---------- ION train into morning ---------- */
 .scene-ride {
   --car: 210vw;
   --w: clamp(0, calc(var(--p, 0) / 0.85), 1);
@@ -317,7 +317,7 @@ body:has(.landing) > footer {
   background: #4a4380;
   opacity: calc(1 - var(--w));
 }
-.streetcar {
+.train {
   position: absolute;
   z-index: 2;
   top: 50svh;
