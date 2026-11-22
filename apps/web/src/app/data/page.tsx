@@ -195,6 +195,7 @@ export default async function DataPage() {
             radii,
             minComparables: VALUATION.minComparables,
             perBuilding: VALUATION.maxPerBuilding,
+            leaseWeight: Math.round(VALUATION.leaseMismatch * 100),
             utilities: formatCad(VALUATION.adjustmentsCad.utilitiesIncluded),
             parking: formatCad(VALUATION.adjustmentsCad.parking),
             furnished: formatCad(VALUATION.adjustmentsCad.furnished),

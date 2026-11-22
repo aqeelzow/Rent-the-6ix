@@ -935,7 +935,7 @@
       "rules": {
         "1": "Comparables have the same number of bedrooms (rooms are compared only with rooms), at most {bathrooms} bathroom more or less, and were seen in the last {windowDays} days.",
         "2": "We search within {radii}, widening until there are at least {minComparables}. With fewer, the listing shows “Not enough data”.",
-        "3": "Closer, more recent and more similar listings count more. One building counts as at most {perBuilding} comparables, so a single tower can't set the price.",
+        "3": "Closer, more recent and more similar listings count more. One building counts as at most {perBuilding} comparables, so a single tower can't set the price. A sublet or a lease of 8 months or less counts {leaseWeight}% as much when the listing is on a year lease, and the reverse, so 4-month student sublets don't set the price of year leases.",
         "4": "Comparables are adjusted to the listing's terms: utilities included {utilities}, parking {parking}, furnished {furnished}, in-suite laundry {laundry} a month.",
         "5": "The estimate is the weighted median. A listing more than {band}% below it is “Underpriced”, more than {band}% above is “Overpriced” ({lowBand}% when confidence is low), and in between “Reasonably priced”.",
         "6": "More than {farBelow}% below the estimate is flagged “Unusually low for this area”: check that the listing is real before sending money.",
