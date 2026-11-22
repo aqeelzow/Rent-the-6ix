@@ -1,6 +1,6 @@
 import { ArrowDown, ArrowRight, MapIcon } from "lucide-react";
 import Link from "next/link";
-import { HeroScene, SayScene, StreetcarScene } from "@/components/landing/scenes";
+import { HeroScene, RideScene, SayScene } from "@/components/landing/scenes";
 import { ScrollScenes } from "@/components/landing/scroll-scenes";
 import { PromptBox } from "@/components/search/prompt-box";
 import { t, type MessageKey } from "@/lib/format/messages";
@@ -8,9 +8,7 @@ import "@/components/landing/landing.css";
 
 const examples = ["student", "couple", "family"] as const;
 
-const secondary = [
-  { href: "/areas", id: "areas", icon: MapIcon },
-] as const;
+const secondary = [{ href: "/areas", id: "areas", icon: MapIcon }] as const;
 
 function searchHref(prompt: string) {
   return `/search?q=${encodeURIComponent(prompt)}`;
@@ -26,7 +24,7 @@ export default async function Home({ searchParams }: PageProps<"/">) {
       <ScrollScenes />
       <HeroScene />
       <SayScene />
-      <StreetcarScene />
+      <RideScene />
       <a href="#start" className="jump">
         {t("landing.jump")}
         <ArrowDown aria-hidden className="size-4" />

@@ -191,24 +191,29 @@ export function NearStreet({ className }: { className?: string }) {
   );
 }
 
-/** A TTC Flexity Outlook streetcar, side view, facing left: five sections joined by black bellows. */
-export function Streetcar({ className }: { className?: string }) {
-  const red = "var(--streetcar)";
-  const white = "#fbfaf7";
-  const glass = "#121022";
-  const seam = "#0c0a17";
-  // Sections run between the bellows; each gets one double door.
-  const bellows = [352, 666, 980, 1294];
-  const doors = [262, 520, 840, 1150, 1450];
-  const mullions = [214, 318, 410, 470, 610, 724, 790, 920, 1040, 1100, 1230, 1350, 1410, 1530];
+/**
+ * An ION light-rail car (Waterloo Region), side view, facing left: white body, a blue roof band
+ * that sweeps down beside the raked windshield, dark tinted windows and doors, and black bellows
+ * between four sections. An original drawing in the line's colours, without its logos.
+ */
+export function IonTrain({ className }: { className?: string }) {
+  const blue = "var(--ion-blue)";
+  const white = "#f6f7f5";
+  const skirt = "#c9cdd3";
+  const glass = "#141a2b";
+  const seam = "#0c0f18";
+  // Sections run between the bellows; each gets double doors.
+  const bellows = [452, 852, 1252];
+  const doors = [300, 560, 760, 980, 1160, 1400];
+  const mullions = [230, 390, 500, 640, 700, 840, 900, 1060, 1100, 1240, 1300, 1480, 1540];
 
   return (
     <svg viewBox="0 0 1600 240" className={className} aria-hidden>
       <defs>
-        <clipPath id="streetcar-body">
-          <path d="M1576 40 H190 C96 40 52 58 38 104 L26 160 H8 V182 H18 V196 Q18 204 28 204 H1576 Q1592 204 1592 188 V56 Q1592 40 1576 40 Z" />
+        <clipPath id="train-body">
+          <path d="M1576 40 H176 C104 40 62 62 46 112 L32 170 Q28 204 60 204 H1576 Q1592 204 1592 188 V56 Q1592 40 1576 40 Z" />
         </clipPath>
-        <linearGradient id="streetcar-glow" x1="0" y1="0" x2="0" y2="1">
+        <linearGradient id="train-glow" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0" stopColor="var(--l-glow)" stopOpacity="0.22" />
           <stop offset="1" stopColor="var(--l-glow)" stopOpacity="0.03" />
         </linearGradient>
@@ -219,52 +224,55 @@ export function Streetcar({ className }: { className?: string }) {
         <path d="M800 36 L836 14 L800 6" />
         <path d="M776 6 H840" />
       </g>
-      <g fill="#a51d14">
+      <g fill="#d6dae0">
         <rect x="740" y="30" width="120" height="12" rx="4" />
-        <rect x="420" y="32" width="90" height="10" rx="4" />
-        <rect x="1100" y="32" width="90" height="10" rx="4" />
+        <rect x="300" y="32" width="110" height="10" rx="4" />
+        <rect x="1100" y="32" width="110" height="10" rx="4" />
       </g>
 
-      <g clipPath="url(#streetcar-body)">
-        <rect x="0" y="0" width="1600" height="240" fill={red} />
-        {/* livery: white, black window band, white, red */}
-        <rect x="150" y="62" width="1450" height="14" fill={white} />
-        <rect x="150" y="76" width="1450" height="76" fill={glass} />
-        <rect x="150" y="152" width="1450" height="14" fill={white} />
-        <rect x="150" y="80" width="1450" height="68" fill="url(#streetcar-glow)" />
-        <g fill={seam}>
+      <g clipPath="url(#train-body)">
+        <rect x="0" y="0" width="1600" height="240" fill={white} />
+        {/* livery: blue roof band, tinted windows, white flanks, grey skirt */}
+        <rect x="0" y="40" width="1600" height="22" fill={blue} />
+        <rect x="150" y="72" width="1450" height="70" fill={glass} />
+        <rect x="150" y="76" width="1450" height="62" fill="url(#train-glow)" />
+        <rect x="0" y="192" width="1600" height="12" fill={skirt} />
+        <g fill={white}>
           {mullions.map((x) => (
-            <rect key={x} x={x} y="76" width="4" height="76" />
-          ))}
-        </g>
-        <g stroke="#b3241a" strokeWidth="2">
-          {mullions.map((x) => (
-            <path key={x} d={`M${x + 2} 168 V202`} />
+            <rect key={x} x={x} y="72" width="6" height="70" />
           ))}
         </g>
 
-        {/* doors: glass from the window band to the floor */}
+        {/* doors: dark glass leaves from the window band to the floor */}
         {doors.map((x) => (
           <g key={x}>
-            <rect x={x} y="78" width="56" height="124" fill={glass} stroke={seam} strokeWidth="3" />
-            <rect x={x + 4} y="82" width="48" height="66" fill="url(#streetcar-glow)" />
-            <path d={`M${x + 28} 78 V202`} stroke={seam} strokeWidth="3" />
+            <rect
+              x={x}
+              y="70"
+              width="60"
+              height="124"
+              fill={glass}
+              stroke="#3a4152"
+              strokeWidth="3"
+            />
+            <rect x={x + 4} y="74" width="52" height="66" fill="url(#train-glow)" />
+            <path d={`M${x + 30} 70 V194`} stroke="#3a4152" strokeWidth="3" />
           </g>
         ))}
 
-        {/* cab: raked windshield, white swoosh down the nose, bumper and skirt */}
-        <path d="M0 50 H300 C200 74 128 118 92 212 H0 Z" fill={glass} />
-        <rect x="70" y="56" width="150" height="15" rx="2" fill="#2a2010" />
-        <rect x="0" y="150" width="120" height="40" fill={red} />
-        <path d="M300 69 C200 74 128 118 92 212" stroke={white} strokeWidth="18" fill="none" />
-        <rect x="0" y="182" width="88" height="24" fill={white} />
-        <rect x="0" y="160" width="112" height="22" fill={red} />
-        <rect x="0" y="166" width="74" height="3" fill="#a51d14" />
-        <circle cx="24" cy="173" r="5" fill="#fff6dd" />
-        <circle cx="40" cy="173" r="5" fill="#fff6dd" />
+        {/* cab: raked windshield with the blue band sweeping down beside it to the nose */}
+        <path d="M0 44 H250 C176 60 124 110 104 204 H0 Z" fill={glass} />
+        <path d="M0 48 H250 C176 64 124 114 104 210" stroke={blue} strokeWidth="26" fill="none" />
+        <path d="M268 50 C192 66 138 116 120 210" stroke={blue} strokeWidth="22" fill="none" />
+        <rect x="54" y="52" width="150" height="16" rx="2" fill="#2a2010" />
+        {/* white nose cap, bumper and headlights */}
+        <path d="M0 168 H96 L90 204 H0 Z" fill={white} />
+        <rect x="0" y="194" width="92" height="10" fill={skirt} />
+        <rect x="10" y="174" width="30" height="10" rx="4" fill="#fff1c4" />
+        <rect x="46" y="174" width="18" height="10" rx="4" fill="#fff1c4" />
 
-        {/* rear: the stripes wrap round a rounded tail */}
-        <rect x="1580" y="76" width="20" height="76" fill={glass} />
+        {/* rear: the windows wrap round a rounded tail */}
+        <rect x="1580" y="72" width="20" height="70" fill={glass} />
       </g>
 
       {/* bellows between sections */}
@@ -272,25 +280,26 @@ export function Streetcar({ className }: { className?: string }) {
         <g key={x}>
           <rect x={x} y="44" width="24" height="160" rx="3" fill={seam} />
           {[5, 10, 15, 20].map((dx) => (
-            <rect key={dx} x={x + dx - 1} y="48" width="1.5" height="152" fill="#2a2638" />
+            <rect key={dx} x={x + dx - 1} y="48" width="1.5" height="152" fill="#252a38" />
           ))}
         </g>
       ))}
 
       {/* fleet number */}
       <text
-        x="384"
-        y="163"
-        fill={seam}
-        fontSize="12"
+        x="170"
+        y="168"
+        fill={blue}
+        fontSize="13"
         fontWeight="700"
         fontFamily="var(--font-sans)"
       >
-        4400
+        519A
       </text>
+      {/* destination sign */}
       <text
-        x="80"
-        y="67.5"
+        x="64"
+        y="64.5"
         fill="var(--l-glow)"
         fontSize="10"
         fontWeight="700"
@@ -301,7 +310,7 @@ export function Streetcar({ className }: { className?: string }) {
 
       {/* low floor: bogies barely show under the skirt */}
       <g fill={seam}>
-        {[150, 600, 1000, 1480].map((x) => (
+        {[170, 640, 1040, 1460].map((x) => (
           <rect key={x} x={x} y="204" width="70" height="7" rx="3" />
         ))}
       </g>
