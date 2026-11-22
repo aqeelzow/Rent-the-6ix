@@ -158,15 +158,6 @@ body:has(.landing) > footer {
   letter-spacing: -0.01em;
   text-shadow: 0 0 80px rgb(242 162 92 / 0.35);
 }
-/* The CN Tower "I": its pod and shaft fill the cap height and the antenna rises above it. */
-.wordmark-tower {
-  display: inline-block;
-  height: 0.98em;
-  width: auto;
-  margin-inline: 0.02em 0.04em;
-  vertical-align: baseline;
-  filter: drop-shadow(0 0 40px rgb(242 162 92 / 0.35));
-}
 @media (min-width: 768px) {
   .hero-mark {
     top: 12svh;
