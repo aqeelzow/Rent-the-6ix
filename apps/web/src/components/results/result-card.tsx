@@ -33,6 +33,7 @@ import { TravelFacts } from "./travel-facts";
 import { SafetyInfoButton } from "@/components/safety/safety-info";
 import { PriceBadge } from "./price-badge";
 import { ScoreBar } from "./score-bar";
+import { addressLine } from "@/components/listing/address-line";
 
 const r = (key: string, params?: Record<string, string | number>) =>
   t(`results.${key}` as MessageKey, params);
@@ -157,8 +158,8 @@ export function ResultCard({
                 {listing.title}
               </Link>
             </h3>
-            {listing.addressText && listing.addressText !== listing.title && (
-              <p className="-mt-1 line-clamp-1 text-sm opacity-75">{listing.addressText}</p>
+            {addressLine(listing) && (
+              <p className="-mt-1 line-clamp-1 text-sm opacity-75">{addressLine(listing)}</p>
             )}
             {facts.length > 0 && (
               <ul className="figures flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">

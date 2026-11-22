@@ -30,6 +30,7 @@ import { scoreBreakdown, travelTable } from "./detail-data";
 import { NearbySection, NearbyTile } from "./nearby-section";
 import { useListingDetail } from "./use-listing-detail";
 import { useNearby, type NearbyState } from "./use-nearby";
+import { addressLine } from "@/components/listing/address-line";
 
 const l = (key: string, params?: Record<string, string | number>) =>
   t(`listing.${key}` as MessageKey, params);
@@ -286,7 +287,7 @@ function Header({
           {listing.title}
         </h1>
         {listing.addressText !== listing.title && (
-          <p className="text-hero-muted">{listing.addressText ?? l("approxAddress")}</p>
+          <p className="text-hero-muted">{addressLine(listing) ?? l("approxAddress")}</p>
         )}
         {facts.length > 0 && (
           <ul className="figures flex flex-wrap gap-2">
