@@ -5,6 +5,7 @@ import {
   findResults,
   parseRentalListings,
   rentalsCa,
+  WATERLOO_BBOX,
 } from "./rentals-network.ts";
 import { NoResultsError } from "./types.ts";
 
@@ -222,5 +223,22 @@ describe("fetchIndex", () => {
       stats: () => NO_STATS,
     };
     await expect(rentalsCa.fetchIndex(session, "409")).rejects.toBeInstanceOf(NoResultsError);
+  });
+  it("searches only the City of Waterloo's box, on every page", async () => {
+    const urls: string[] = [];
+    const session = {
+      visit: async (url: string) => {
+        urls.push(url);
+        return { status: 200, url, html: "<html></html>", json: [] };
+      },
+      close: async () => {},
+      stats: () => NO_STATS,
+    };
+    await rentalsCa.fetchIndex(session, null).catch(() => {});
+    await rentalsCa.fetchIndex(session, "2").catch(() => {});
+    expect(urls).toEqual([
+      `https://rentals.ca/waterloo?bbox=${WATERLOO_BBOX}`,
+      `https://rentals.ca/waterloo?bbox=${WATERLOO_BBOX}&p=2`,
+    ]);
   });
 });
