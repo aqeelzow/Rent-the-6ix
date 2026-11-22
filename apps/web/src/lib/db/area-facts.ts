@@ -1,4 +1,4 @@
-import { AreaFactsSchema, type AreaFact, type AreaFacts } from "@rentthe6ix/shared/schemas";
+import { AreaFactsSchema, type AreaFact, type AreaFacts } from "@rentkdubs/shared/schemas";
 import { getClient } from "../db";
 
 // One area's facts with the city value beside each (P3.10 core, SPEC 9.1–9.3). Owner: D. An area
@@ -20,7 +20,7 @@ const SUM = new Set([
 ]);
 const AREA_WEIGHTED = new Set(["transit_stops_per_km2", "rapid_transit_within_800m_pct"]);
 const NOT_FACTS = new Set(["population"]);
-export const LISTINGS_SOURCE = "rentthe6ix-listings";
+export const LISTINGS_SOURCE = "rentkdubs-listings";
 
 export type IndicatorRow = {
   area_id: string;

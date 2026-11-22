@@ -1,5 +1,5 @@
-import { searchFixture, travelIntent, valuations } from "@rentthe6ix/shared/fixtures";
-import { WALKABLE_M, travelAdvice } from "@rentthe6ix/shared/engine/travel";
+import { searchFixture, travelIntent, valuations } from "@rentkdubs/shared/fixtures";
+import { WALKABLE_M, travelAdvice } from "@rentkdubs/shared/engine/travel";
 import { describe, expect, it } from "vitest";
 import { t, type MessageKey } from "@/lib/format/messages";
 import type { SearchResultItem } from "@/lib/store/types";

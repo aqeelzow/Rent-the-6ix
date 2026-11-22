@@ -316,7 +316,7 @@ Six phases; each keeps `main` deployable. Phase K0 decides what K2 and K3 can bu
 
 **K1 — Rename and neutralise (app still runs on sample data)**
 
-- [ ] K1.1 Package scope and project names (`rentthe6ix` → `rentkdubs`), one codemod commit.
+- [x] K1.1 Package scope and project names (`rentthe6ix` → `rentkdubs`), one codemod commit.
 - [ ] K1.2 Brand mark, favicon, landing skyline, wordmark.
 - [ ] K1.3 `en.json` and hard-coded copy; example prompts.
 - [x] K1.4 Remove RentSafeTO from engine, schemas, UI; tests green.

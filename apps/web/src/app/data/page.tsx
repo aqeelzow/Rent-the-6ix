@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { ExternalLink } from "lucide-react";
 import en from "../../../messages/en.json";
-import { CAVEATS, engineConfig, VALUATION } from "@rentthe6ix/shared/engine/config";
+import { CAVEATS, engineConfig, VALUATION } from "@rentkdubs/shared/engine/config";
 import { getClient } from "@/lib/db";
 import { loadDataPage, type DataSource, type ListingSite } from "@/lib/db/data-sources";
 import { formatDate } from "@/lib/format/date";

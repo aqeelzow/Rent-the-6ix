@@ -1,4 +1,4 @@
-import { detailFixture, listings, searchFixture, travelIntent } from "@rentthe6ix/shared/fixtures";
+import { detailFixture, listings, searchFixture, travelIntent } from "@rentkdubs/shared/fixtures";
 import { describe, expect, it } from "vitest";
 import type { SearchResultItem } from "@/lib/store/types";
 import { homeFields, scoreBreakdown, travelTable } from "./detail-data";

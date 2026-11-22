@@ -1,7 +1,7 @@
-import { baseIntent, sampleListings, valuations } from "@rentthe6ix/shared/fixtures";
-import { scoreListing } from "@rentthe6ix/shared/engine/score";
-import { engineConfig } from "@rentthe6ix/shared/engine/config";
-import { SearchIntentSchema } from "@rentthe6ix/shared/schemas";
+import { baseIntent, sampleListings, valuations } from "@rentkdubs/shared/fixtures";
+import { scoreListing } from "@rentkdubs/shared/engine/score";
+import { engineConfig } from "@rentkdubs/shared/engine/config";
+import { SearchIntentSchema } from "@rentkdubs/shared/schemas";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { ScoreBreakdown } from "./score-breakdown";

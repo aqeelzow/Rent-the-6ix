@@ -1,5 +1,5 @@
-import { SAFETY } from "@rentthe6ix/shared/engine/config";
-import { defaultMinutes, targetModes } from "@rentthe6ix/shared/engine/travel";
+import { SAFETY } from "@rentkdubs/shared/engine/config";
+import { defaultMinutes, targetModes } from "@rentkdubs/shared/engine/travel";
 import { formatDate } from "@/lib/format/date";
 import { t, type MessageKey } from "@/lib/format/messages";
 import { formatCad, formatCount } from "@/lib/format/number";

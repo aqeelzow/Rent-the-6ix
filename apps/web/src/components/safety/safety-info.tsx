@@ -1,9 +1,9 @@
 "use client";
 
-import { SAFETY, engineConfig } from "@rentthe6ix/shared/engine/config";
-import { SAFETY_CAVEATS } from "@rentthe6ix/shared/engine/safety";
+import { SAFETY, engineConfig } from "@rentkdubs/shared/engine/config";
+import { SAFETY_CAVEATS } from "@rentkdubs/shared/engine/safety";
 import { CrimeDisclaimer } from "./crime-disclaimer";
-import type { Caveat } from "@rentthe6ix/shared/schemas";
+import type { Caveat } from "@rentkdubs/shared/schemas";
 import {
   Dialog,
   DialogContent,

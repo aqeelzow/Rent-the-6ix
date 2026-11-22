@@ -1,4 +1,4 @@
-import type { Listing } from "@rentthe6ix/shared/schemas";
+import type { Listing } from "@rentkdubs/shared/schemas";
 
 /**
  * The line under a listing's title: "ICON · 330 Phillip St" when the listing is in a named

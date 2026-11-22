@@ -1,4 +1,4 @@
-import type { AreaFact } from "@rentthe6ix/shared/schemas";
+import type { AreaFact } from "@rentkdubs/shared/schemas";
 import { formatDate } from "@/lib/format/date";
 import { t, type MessageKey } from "@/lib/format/messages";
 import { formatCad, formatCount } from "@/lib/format/number";

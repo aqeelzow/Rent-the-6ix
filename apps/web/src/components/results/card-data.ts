@@ -4,7 +4,7 @@ import {
   estimateTravelMinutes,
   targetDistanceM,
   targetModes,
-} from "@rentthe6ix/shared/engine/travel";
+} from "@rentkdubs/shared/engine/travel";
 
 // Result presentation uses the same distance-based time estimates as filtering and scoring.
 

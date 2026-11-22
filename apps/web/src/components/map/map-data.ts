@@ -4,7 +4,7 @@ import {
   estimateTravelMinutes,
   targetDistanceM,
   targetModes,
-} from "@rentthe6ix/shared/engine/travel";
+} from "@rentkdubs/shared/engine/travel";
 import type { AreaChoropleth, SearchIntent, SearchResultItem } from "@/lib/store/types";
 
 // GeoJSON for the results map (SPEC 12). Pure, so it's tested without a browser.

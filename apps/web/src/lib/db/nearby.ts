@@ -3,7 +3,7 @@ import {
   PoiCategorySchema,
   type NearbyResponse,
   type PoiCategory,
-} from "@rentthe6ix/shared/schemas";
+} from "@rentkdubs/shared/schemas";
 import { z } from "zod";
 import { ApiError, jsonRoute } from "../api/json-route";
 import { getClient } from "../db";

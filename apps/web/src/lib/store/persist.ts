@@ -1,4 +1,4 @@
-import { ListingSchema, SearchIntentSchema } from "@rentthe6ix/shared/schemas";
+import { ListingSchema, SearchIntentSchema } from "@rentkdubs/shared/schemas";
 import { z } from "zod";
 import type { ShortlistEntry } from "./searchSlice";
 import { appStore } from "./store";
@@ -11,8 +11,14 @@ import { safetyPreference } from "../parse/safety-preference";
 // and write is wrapped and the app works the same without it. What comes back is validated:
 // anything that doesn't match is dropped, one shortlist entry at a time.
 
-export const SHORTLIST_KEY = "rentthe6ix.shortlist.v1";
-export const LAST_SEARCH_KEY = "rentthe6ix.lastSearch.v1";
+export const SHORTLIST_KEY = "rentkdubs.shortlist.v1";
+export const LAST_SEARCH_KEY = "rentkdubs.lastSearch.v1";
+/** Keys from before the rename (#10), moved once so saved shortlists and searches survive. */
+const LEGACY_KEYS: [from: string, to: string][] = [
+  ["rentthe6ix.shortlist.v1", SHORTLIST_KEY],
+  ["rentthe6ix.lastSearch.v1", LAST_SEARCH_KEY],
+];
+const PREFIXES = ["rentkdubs.", "rentthe6ix."];
 /** Enough for any real shortlist; bounds what a tampered value can make us parse. */
 const MAX_ENTRIES = 200;
 
@@ -53,20 +59,59 @@ export type LastSearch = z.infer<typeof LastSearchSchema>;
 
 /** Failed basic interpretations must not bypass parser fixes on later visits. Preserve renter edits. */
 export function needsReinterpretation(intent: SearchIntent): boolean {
-  if (Object.values(intent.fieldSources).some(source => source.source === 'user')) return false;
+  if (Object.values(intent.fieldSources).some((source) => source.source === "user")) return false;
   const safety = safetyPreference(intent.rawPrompt);
-  return !!safety && (safety.enabled !== intent.safety.enabled || safety.hard !== intent.safety.hard) ||
-    intent.droppedRequests.some(request => request.phrase === intent.rawPrompt && request.reason === 'Basic parser could not identify supported constraints; edit filters or clarify.') ||
-    intent.travelTargets.some(target => target.kind === 'amenity' && target.category === 'park') &&
-    namedParkMentions(intent.rawPrompt).some(park => !intent.travelTargets.some(target => target.kind === 'place' && target.query?.toLowerCase().includes(park.phrase.toLowerCase())));
+  return (
+    (!!safety &&
+      (safety.enabled !== intent.safety.enabled || safety.hard !== intent.safety.hard)) ||
+    intent.droppedRequests.some(
+      (request) =>
+        request.phrase === intent.rawPrompt &&
+        request.reason ===
+          "Basic parser could not identify supported constraints; edit filters or clarify.",
+    ) ||
+    (intent.travelTargets.some(
+      (target) => target.kind === "amenity" && target.category === "park",
+    ) &&
+      namedParkMentions(intent.rawPrompt).some(
+        (park) =>
+          !intent.travelTargets.some(
+            (target) =>
+              target.kind === "place" &&
+              target.query?.toLowerCase().includes(park.phrase.toLowerCase()),
+          ),
+      ))
+  );
 }
 
 /** `localStorage`, or null where the browser blocks it. */
+let legacyMoved = false;
+
 export function browserStorage(): Storage | null {
   try {
-    return typeof window === "undefined" ? null : window.localStorage;
+    if (typeof window === "undefined") return null;
+    const storage = window.localStorage;
+    if (!legacyMoved) {
+      legacyMoved = true;
+      moveLegacyKeys(storage);
+    }
+    return storage;
   } catch {
     return null;
+  }
+}
+
+/** Copies values saved under the old key names to the new ones (never overwriting) and drops the old. */
+export function moveLegacyKeys(storage: Storage): void {
+  try {
+    for (const [from, to] of LEGACY_KEYS) {
+      const value = storage.getItem(from);
+      if (value === null) continue;
+      if (storage.getItem(to) === null) storage.setItem(to, value);
+      storage.removeItem(from);
+    }
+  } catch {
+    // Blocked or full: the old values stay where they are.
   }
 }
 
@@ -136,7 +181,7 @@ export function clearStoredData(storage = browserStorage()): void {
   try {
     if (!storage) return;
     const ours = Array.from({ length: storage.length }, (_, i) => storage.key(i)).filter(
-      (key): key is string => key?.startsWith("rentthe6ix.") ?? false,
+      (key): key is string => PREFIXES.some((prefix) => key?.startsWith(prefix)),
     );
     for (const key of ours) storage.removeItem(key);
   } catch {

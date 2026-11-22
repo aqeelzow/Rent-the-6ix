@@ -1,5 +1,5 @@
-import { safetyCaveats } from "@rentthe6ix/shared/engine/safety";
-import { AreaChoroplethSchema, type AreaChoropleth } from "@rentthe6ix/shared/schemas";
+import { safetyCaveats } from "@rentkdubs/shared/engine/safety";
+import { AreaChoroplethSchema, type AreaChoropleth } from "@rentkdubs/shared/schemas";
 import { z } from "zod";
 import { ApiError, jsonRoute } from "../api/json-route";
 import { getClient } from "../db";

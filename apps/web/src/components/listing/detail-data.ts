@@ -2,7 +2,7 @@ import { formatDate } from "@/lib/format/date";
 import { t, type MessageKey } from "@/lib/format/messages";
 import { formatCount } from "@/lib/format/number";
 import type { SearchIntent, SearchResultItem } from "@/lib/store/types";
-import { estimateTravelMinutes, targetDistanceM } from "@rentthe6ix/shared/engine/travel";
+import { estimateTravelMinutes, targetDistanceM } from "@rentkdubs/shared/engine/travel";
 
 // What the listing detail page shows (SPEC 11.3), from B's SearchResult / DetailResponse.
 // Pure, so the honest-label rules are tested: unknown is "Not stated", never "no".

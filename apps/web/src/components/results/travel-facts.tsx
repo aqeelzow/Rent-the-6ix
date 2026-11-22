@@ -1,10 +1,10 @@
 "use client";
 
-import { commuteCarbon } from "@rentthe6ix/shared/engine/carbon";
+import { commuteCarbon } from "@rentkdubs/shared/engine/carbon";
 import {
   distanceToPreferredArea,
   preferredReference,
-} from "@rentthe6ix/shared/engine/preferred-area";
+} from "@rentkdubs/shared/engine/preferred-area";
 import { Leaf, MapPin } from "lucide-react";
 import { modeIcons } from "@/components/mode-icons";
 import { t, type MessageKey } from "@/lib/format/messages";

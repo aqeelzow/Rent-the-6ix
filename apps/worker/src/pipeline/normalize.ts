@@ -3,7 +3,7 @@
 // fieldEvidence records which one each value came from. Unknown stays unknown, never "no".
 // Location, area ids, building match, timestamps and status are added by geocode/upsert (P1.5–P1.6).
 // TODO(P0.5): switch these types to B's `Listing` schema in packages/shared/schemas when it lands.
-import { asksForMoneyBeforeViewing } from "@rentthe6ix/shared/engine/scam";
+import { asksForMoneyBeforeViewing } from "@rentkdubs/shared/engine/scam";
 import { httpsUrl, type RawListing, type SourceId, type TriState } from "../sources/types.ts";
 import { excerpt, scrub } from "./scrub.ts";
 

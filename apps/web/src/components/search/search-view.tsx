@@ -22,7 +22,7 @@ import { CrimeDisclaimer } from "@/components/safety/crime-disclaimer";
 import { DestinationChoices } from "./destination-choices";
 import { ShareSearch } from "./share-search";
 import { SortSelect } from "./sort-select";
-import { commuteCarbon } from "@rentthe6ix/shared/engine/carbon";
+import { commuteCarbon } from "@rentkdubs/shared/engine/carbon";
 import { t, type MessageKey } from "@/lib/format/messages";
 import { formatCount } from "@/lib/format/number";
 import { parseAndSearch, restoreSearch, runSearch } from "@/lib/store/actions";

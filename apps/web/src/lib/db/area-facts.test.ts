@@ -1,4 +1,4 @@
-import { AreaFactsSchema } from "@rentthe6ix/shared/schemas";
+import { AreaFactsSchema } from "@rentkdubs/shared/schemas";
 import { describe, expect, it, vi } from "vitest";
 import { areaIdFor, assembleAreaFacts, cityValueOf, type IndicatorRow } from "./area-facts";
 
@@ -93,7 +93,7 @@ describe("assembleAreaFacts", () => {
     expect(facts.facts.at(-1)).toMatchObject({ value: 707, cityValue: 9900 });
     expect(facts.sources.map((s) => s.id)).toEqual([
       "library-branch-general-information",
-      "rentthe6ix-listings",
+      "rentkdubs-listings",
     ]);
   });
 });

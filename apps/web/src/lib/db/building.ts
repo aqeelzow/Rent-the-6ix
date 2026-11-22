@@ -1,4 +1,4 @@
-import type { Listing } from "@rentthe6ix/shared/schemas";
+import type { Listing } from "@rentkdubs/shared/schemas";
 import { getClient } from "../db";
 import { candidateColumns, listingFromRow } from "./candidates-sql";
 

@@ -1,4 +1,4 @@
-import { SafetySchema } from "@rentthe6ix/shared/schemas";
+import { SafetySchema } from "@rentkdubs/shared/schemas";
 import { describe, expect, it, vi } from "vitest";
 import { crimeTableFromRows, crimeTableSource, safetyForListing } from "./safety";
 

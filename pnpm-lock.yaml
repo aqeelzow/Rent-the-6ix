@@ -27,7 +27,7 @@ importers:
 
   apps/web:
     dependencies:
-      '@rentthe6ix/shared':
+      '@rentkdubs/shared':
         specifier: workspace:*
         version: link:../../packages/shared
       '@vercel/analytics':
@@ -115,7 +115,7 @@ importers:
 
   apps/worker:
     dependencies:
-      '@rentthe6ix/shared':
+      '@rentkdubs/shared':
         specifier: workspace:*
         version: link:../../packages/shared
       cloakbrowser:

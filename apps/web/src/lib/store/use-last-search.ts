@@ -1,5 +1,5 @@
 import { useMemo, useSyncExternalStore } from "react";
-import { LAST_SEARCH_KEY, parseLastSearch, type LastSearch } from "./persist";
+import { browserStorage, LAST_SEARCH_KEY, parseLastSearch, type LastSearch } from "./persist";
 
 function subscribeToStorage(onChange: () => void) {
   window.addEventListener("storage", onChange);
@@ -9,7 +9,7 @@ function subscribeToStorage(onChange: () => void) {
 // The stored text, a string, so `useSyncExternalStore` sees no change between identical reads.
 function storedLastSearch(): string | null {
   try {
-    return window.localStorage.getItem(LAST_SEARCH_KEY);
+    return browserStorage()?.getItem(LAST_SEARCH_KEY) ?? null;
   } catch {
     return null;
   }

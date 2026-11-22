@@ -9,7 +9,7 @@
 #
 # Values come from a manually-created `.env` next to this file (variables are listed in
 # SPEC.md §20). `.env` is git-ignored; `DATABASE_URL` and `GEMINI_API_KEY` only live there.
-name: rentthe6ix
+name: rentkdubs
 
 services:
   web:

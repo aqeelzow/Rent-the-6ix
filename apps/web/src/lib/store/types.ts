@@ -1,5 +1,5 @@
 // Shapes come from B's zod schemas (TEAM.md section 3.1).
-import type { ErrorResponse, SearchResult } from "@rentthe6ix/shared/schemas";
+import type { ErrorResponse, SearchResult } from "@rentkdubs/shared/schemas";
 
 export type {
   AreaChoropleth,
@@ -10,7 +10,7 @@ export type {
   ParseResponse,
   SearchIntent,
   SearchResponse,
-} from "@rentthe6ix/shared/schemas";
+} from "@rentkdubs/shared/schemas";
 
 /** One ranked listing in the results list; its id is `listing.id`. */
 export type SearchResultItem = SearchResult;

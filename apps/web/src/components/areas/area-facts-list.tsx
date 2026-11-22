@@ -1,4 +1,4 @@
-import type { AreaFacts } from "@rentthe6ix/shared/schemas";
+import type { AreaFacts } from "@rentkdubs/shared/schemas";
 import Link from "next/link";
 import { t, type MessageKey } from "@/lib/format/messages";
 import { formatCount } from "@/lib/format/number";
@@ -24,7 +24,7 @@ const ORDER = [
   "dev_applications_12m",
   "residential_units_proposed_12m",
 ];
-const LISTINGS = "rentthe6ix-listings";
+const LISTINGS = "rentkdubs-listings";
 
 /**
  * "This area at a glance" (SPEC 9.3): each of the area's figures beside Toronto's, with the period

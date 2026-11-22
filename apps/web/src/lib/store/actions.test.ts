@@ -1,4 +1,4 @@
-import { baseIntent, detailFixture, searchFixture, travelIntent } from "@rentthe6ix/shared/fixtures";
+import { baseIntent, detailFixture, searchFixture, travelIntent } from "@rentkdubs/shared/fixtures";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   fetchListingDetail,

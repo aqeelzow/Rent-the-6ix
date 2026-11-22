@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'vitest';
-import { baseIntent, searchFixture } from '@rentthe6ix/shared/fixtures';
+import { baseIntent, searchFixture } from '@rentkdubs/shared/fixtures';
 import type { DestinationResolution, SearchIntent } from './types';
 import { createAppStore } from './store';
 import { parseAndSearch, restoreSearch, runSearch } from './actions';

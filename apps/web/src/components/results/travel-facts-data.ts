@@ -1,9 +1,9 @@
-import { carbonRank, type CarbonMode, type CommuteCarbon } from "@rentthe6ix/shared/engine/carbon";
+import { carbonRank, type CarbonMode, type CommuteCarbon } from "@rentkdubs/shared/engine/carbon";
 import {
   distanceToPreferredArea,
   preferredReference,
   type PreferredReference,
-} from "@rentthe6ix/shared/engine/preferred-area";
+} from "@rentkdubs/shared/engine/preferred-area";
 import type { ResultOrder } from "@/lib/store/searchSlice";
 import type { SearchIntent, SearchResultItem } from "@/lib/store/types";
 

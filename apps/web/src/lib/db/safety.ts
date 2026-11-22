@@ -1,4 +1,4 @@
-import { SAFETY } from "@rentthe6ix/shared/engine/config";
+import { SAFETY } from "@rentkdubs/shared/engine/config";
 import {
   cityRates,
   safetyFor,
@@ -7,8 +7,8 @@ import {
   type CityRates,
   type CrimeRates,
   type MajorCrimeType,
-} from "@rentthe6ix/shared/engine/safety";
-import type { Safety } from "@rentthe6ix/shared/schemas";
+} from "@rentkdubs/shared/engine/safety";
+import type { Safety } from "@rentkdubs/shared/schemas";
 import { getClient } from "../db";
 
 // Safety lookup (SPEC 7.6). Owner: D. Reads the TPS rates that `pnpm data:civic crime` loads into

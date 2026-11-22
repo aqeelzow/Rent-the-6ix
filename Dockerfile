@@ -4,8 +4,8 @@
 # One file, two runnable targets, because web and worker share the same install and
 # build layers. Compose picks a target with `build.target`.
 #
-#   docker build --target web    -t rentthe6ix-web    .
-#   docker build --target worker -t rentthe6ix-worker .
+#   docker build --target web    -t rentkdubs-web       .
+#   docker build --target worker -t rentkdubs-worker .
 #
 # Node 24 matches package.json `engines`. The web target is Next's `output:
 # "standalone"` bundle (next.config.ts sets `outputFileTracingRoot` to the repo root,

@@ -1,4 +1,4 @@
-import { searchFixture, travelIntent } from "@rentthe6ix/shared/fixtures";
+import { searchFixture, travelIntent } from "@rentkdubs/shared/fixtures";
 import { describe, expect, it } from "vitest";
 import {
   boundsOf,

@@ -1,4 +1,4 @@
-import { SearchIntentSchema } from "@rentthe6ix/shared/schemas";
+import { SearchIntentSchema } from "@rentkdubs/shared/schemas";
 import { z } from "zod";
 import type { SearchIntent } from "./types";
 

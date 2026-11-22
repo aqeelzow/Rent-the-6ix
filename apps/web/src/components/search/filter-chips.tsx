@@ -26,7 +26,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { createElement, useId, useState } from "react";
-import { SAFETY } from "@rentthe6ix/shared/engine/config";
+import { SAFETY } from "@rentkdubs/shared/engine/config";
 import { modeIcons } from "@/components/mode-icons";
 import { SafetyLimit } from "@/components/safety/safety-limit";
 import { CrimeDisclaimer } from "@/components/safety/crime-disclaimer";

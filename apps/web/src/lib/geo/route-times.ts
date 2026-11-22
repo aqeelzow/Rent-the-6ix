@@ -1,5 +1,5 @@
-import { distanceM } from "@rentthe6ix/shared/engine/travel";
-import type { Listing, TravelTarget, TravelTimeRow } from "@rentthe6ix/shared/schemas";
+import { distanceM } from "@rentkdubs/shared/engine/travel";
+import type { Listing, TravelTarget, TravelTimeRow } from "@rentkdubs/shared/schemas";
 import { COMMUTE_TIME, torontoDate, type Departure, type RouteMode, type RoutedTrip } from "./otp";
 
 /**

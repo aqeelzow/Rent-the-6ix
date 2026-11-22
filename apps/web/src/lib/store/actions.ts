@@ -7,7 +7,7 @@ import {
   ParseResponseSchema,
   SearchResponseSchema,
   SearchResultSchema,
-} from "@rentthe6ix/shared/schemas";
+} from "@rentkdubs/shared/schemas";
 import { z } from "zod";
 import { appStore, type createAppStore } from "./store";
 import { needsReinterpretation } from "./persist";
