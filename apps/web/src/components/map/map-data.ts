@@ -23,18 +23,18 @@ export const BAND_COLORS: Record<ScoreBand, string> = {
 export const PLACE_COLOR = "#795bbf";
 
 /**
- * The City of Toronto with a ~10 km margin, [west, south, east, north]. The map fits to listings
+ * The City of Waterloo with a ~10 km margin, [west, south, east, north]. The map fits to listings
  * inside it, so one badly geocoded listing can't zoom the map out to another province or state.
  */
-export const TORONTO_REGION: [number, number, number, number] = [-79.76, 43.49, -78.99, 43.95];
-/** How far the map may be panned: the Greater Toronto Area and a bit more. */
-export const MAP_MAX_BOUNDS: [number, number, number, number] = [-80.6, 43.1, -78.3, 44.4];
+export const WATERLOO_REGION: [number, number, number, number] = [-80.75, 43.35, -80.35, 43.62];
+/** How far the map may be panned: Waterloo Region and a bit more. */
+export const MAP_MAX_BOUNDS: [number, number, number, number] = [-81.0, 43.2, -80.1, 43.75];
 
 const inRegion = ({ lng, lat }: { lng: number; lat: number }) =>
-  lng >= TORONTO_REGION[0] &&
-  lng <= TORONTO_REGION[2] &&
-  lat >= TORONTO_REGION[1] &&
-  lat <= TORONTO_REGION[3];
+  lng >= WATERLOO_REGION[0] &&
+  lng <= WATERLOO_REGION[2] &&
+  lat >= WATERLOO_REGION[1] &&
+  lat <= WATERLOO_REGION[3];
 
 /** Approximate locations are circles, not pins (SPEC 12: 150–300 m). */
 export const APPROX_RADIUS_M = { street: 150, area: 300 } as const;

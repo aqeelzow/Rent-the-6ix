@@ -15,7 +15,15 @@ import {
   crimeBand,
 } from "./map-data";
 
-const results = searchFixture.status === "completed" ? searchFixture.results : [];
+// The shared fixtures sit in Toronto; move them to the same spot in Waterloo, where the map fits.
+const toWaterloo = ({ lng, lat }: { lng: number; lat: number }) => ({
+  lng: lng - 1.1,
+  lat: lat - 0.18,
+});
+const results = (searchFixture.status === "completed" ? searchFixture.results : []).map((r) => ({
+  ...r,
+  listing: { ...r.listing, location: toWaterloo(r.listing.location) },
+}));
 
 describe("scoreBand", () => {
   it("splits scores at 75 and 50", () => {
@@ -72,15 +80,15 @@ describe("places and bounds", () => {
   });
 
   it("bounds every listing and place", () => {
-    const [west, south, east, north] = boundsOf(results, [{ lng: -79.6, lat: 43.9 }])!;
-    expect(west).toBeCloseTo(-79.6, 6);
-    expect(north).toBe(43.9);
+    const [west, south, east, north] = boundsOf(results, [{ lng: -80.7, lat: 43.6 }])!;
+    expect(west).toBeCloseTo(-80.7, 6);
+    expect(north).toBe(43.6);
     expect(east).toBeGreaterThan(west);
     expect(north).toBeGreaterThan(south);
     expect(boundsOf([], [])).toBeNull();
   });
 
-  it("ignores listings and places far outside Toronto (bad geocodes)", () => {
+  it("ignores listings and places far outside Waterloo (bad geocodes)", () => {
     const detroit = {
       ...results[1]!,
       listing: { ...results[1]!.listing, location: { lng: -83.05, lat: 42.33 } },

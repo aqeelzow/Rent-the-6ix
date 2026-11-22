@@ -36,7 +36,7 @@
     "jump": "Skip to search",
     "say": {
       "title": "Say it how you would say it.",
-      "prompt": "2-bed near UofT under $2,800, cat-friendly, with AC",
+      "prompt": "2-bed near UW under $2,200, cat-friendly, with AC",
       "caption": "Every phrase becomes a filter you can change. Solid ones are must-haves; outlined ones only move a listing up or down.",
       "chips": {
         "beds": {
@@ -44,12 +44,12 @@
           "label": "2 bedrooms"
         },
         "near": {
-          "phrase": "near UofT",
-          "label": "Near UofT by transit"
+          "phrase": "near UW",
+          "label": "Near UW by transit"
         },
         "rent": {
-          "phrase": "under $2,800",
-          "label": "Up to $2,800"
+          "phrase": "under $2,200",
+          "label": "Up to $2,200"
         },
         "pets": {
           "phrase": "cat-friendly",
@@ -64,24 +64,24 @@
     "start": {
       "title": "Where do you want to live?"
     },
-    "title": "Find a Toronto rental that fits, at a fair price",
+    "title": "Find a Waterloo rental that fits, at a fair price",
     "subtitle": "Describe what you need in your own words. We search listings from several sites, check each price against similar homes nearby, and show you the neighbourhood around it.",
     "promptLabel": "Describe the place you're looking for",
-    "promptPlaceholder": "e.g. 2-bedroom near UofT under $2,800, 25 minutes by transit, cat-friendly, with AC",
+    "promptPlaceholder": "e.g. 2-bedroom near UW under $2,200, 15 minutes by transit, cat-friendly, with AC",
     "submit": "Search",
     "examplesLabel": "Or try an example",
     "examples": {
       "student": {
         "label": "Student",
-        "prompt": "Room or studio near York University under $1,300, close to the subway, furnished."
+        "prompt": "Room or studio near UW under $1,000, within 15 minutes walking, furnished."
       },
       "couple": {
         "label": "Couple",
-        "prompt": "I need a 2-bedroom near UofT St. George under $2,800, within 25 minutes by transit, close to groceries, cat-friendly, and I really care about getting a good deal. I make about $95k with my roommate."
+        "prompt": "I need a 2-bedroom near Uptown Waterloo under $2,300, within 20 minutes by transit, close to groceries, cat-friendly, and I really care about getting a good deal. I make about $95k with my roommate."
       },
       "family": {
         "label": "Family",
-        "prompt": "3 bedrooms in Scarborough under $3,200, near a public school and a park, parking."
+        "prompt": "3 bedrooms in Beechwood under $3,000, near a public school and a park, parking."
       }
     },
     "areas": {
@@ -338,7 +338,7 @@
       "removeTarget": "Remove {label}",
       "addPlace": "Add a place",
       "placeLabel": "Place or address",
-      "placePlaceholder": "e.g. Union Station, UofT St. George",
+      "placePlaceholder": "e.g. University of Waterloo, Uptown Waterloo",
       "find": "Find",
       "finding": "Finding…",
       "whichOne": "Which one do you mean?",
