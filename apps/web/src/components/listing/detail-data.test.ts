@@ -22,7 +22,7 @@ describe("homeFields", () => {
       bedrooms: 0,
       sqft: 820,
       yearBuilt: 2012,
-      yearBuiltSource: "rentsafeto" as const,
+      yearBuiltSource: "ai_extracted" as const,
       airConditioning: "central" as const,
       petsAllowed: "cats_only" as const,
       utilitiesIncluded: "partial" as const,
@@ -32,7 +32,7 @@ describe("homeFields", () => {
     const byKey = Object.fromEntries(homeFields(listing).map((f) => [f.key, f]));
     expect(byKey.bedrooms!.value).toBe("Studio");
     expect(byKey.sqft!.value).toBe("820 sq ft");
-    expect(byKey.yearBuilt!.value).toBe("2012 (from RentSafeTO)");
+    expect(byKey.yearBuilt!.value).toBe("2012 (from the description)");
     expect(byKey.airConditioning!.value).toBe("Central air");
     expect(byKey.airConditioning!.aiRead).toBe(true);
     expect(byKey.petsAllowed!.value).toBe("Cats only");

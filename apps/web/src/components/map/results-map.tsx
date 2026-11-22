@@ -50,7 +50,8 @@ const STYLE_URLS = MAPTILER_KEY
       light: "https://tiles.openfreemap.org/styles/positron",
       dark: "https://tiles.openfreemap.org/styles/dark",
     };
-const TORONTO: [number, number] = [-79.383, 43.68];
+/** Uptown Waterloo, between the two universities. */
+const WATERLOO: [number, number] = [-80.53, 43.472];
 
 const bandColor: ExpressionSpecification = [
   "match",
@@ -168,8 +169,8 @@ export function ResultsMap({ className = "" }: { className?: string }) {
         map = new maplibregl.Map({
           container: container.current,
           style: STYLE_URLS[theme],
-          center: TORONTO,
-          zoom: 10.5,
+          center: WATERLOO,
+          zoom: 12.5,
           maxBounds: MAP_MAX_BOUNDS,
           attributionControl: { compact: true },
         });

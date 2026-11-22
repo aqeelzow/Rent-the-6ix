@@ -30,7 +30,7 @@ export interface NormalizedListing {
   unitType: UnitType | null;
   sqft: number | null;
   yearBuilt: number | null;
-  /** 'rentsafeto' is filled after the building match (P1.5); 'ai_extracted' by extract.ts. */
+  /** 'ai_extracted' is filled by extract.ts. */
   yearBuiltSource: "listing" | "ai_extracted" | null;
   airConditioning: AirConditioning;
   utilitiesIncluded: Utilities;

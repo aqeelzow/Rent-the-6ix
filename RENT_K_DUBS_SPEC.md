@@ -319,7 +319,7 @@ Six phases; each keeps `main` deployable. Phase K0 decides what K2 and K3 can bu
 - [ ] K1.1 Package scope and project names (`rentthe6ix` → `rentkdubs`), one codemod commit.
 - [ ] K1.2 Brand mark, favicon, landing skyline, wordmark.
 - [ ] K1.3 `en.json` and hard-coded copy; example prompts.
-- [ ] K1.4 Remove RentSafeTO from engine, schemas, UI; tests green.
+- [x] K1.4 Remove RentSafeTO from engine, schemas, UI; tests green.
 - [ ] K1.5 Map centre, resolver bounds, parser instruction, configured areas.
 
 **K2 — Geography and civic data**

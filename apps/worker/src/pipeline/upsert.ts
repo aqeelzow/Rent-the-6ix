@@ -210,11 +210,9 @@ export async function upsertListings(
           bedrooms = excluded.bedrooms,
           bathrooms = excluded.bathrooms,
           unit_type = excluded.unit_type,
-          year_built = CASE WHEN listings.year_built_source = 'rentsafeto'
-              OR (excluded.year_built IS NULL AND listings.year_built_source = 'ai_extracted')
+          year_built = CASE WHEN excluded.year_built IS NULL AND listings.year_built_source = 'ai_extracted'
             THEN listings.year_built ELSE excluded.year_built END,
-          year_built_source = CASE WHEN listings.year_built_source = 'rentsafeto'
-              OR (excluded.year_built IS NULL AND listings.year_built_source = 'ai_extracted')
+          year_built_source = CASE WHEN excluded.year_built IS NULL AND listings.year_built_source = 'ai_extracted'
             THEN listings.year_built_source ELSE excluded.year_built_source END,
           ${setAiKept},
           location = CASE WHEN listings.address_point_id IS NULL

@@ -34,7 +34,7 @@ export interface ComparableCandidate extends ValuationSubject {
   /** ISO timestamp. */
   lastSeenAt: string;
   duplicateOf: string | null;
-  /** Same building (RentSafeTO building id, else Address Points id); null = unknown, counted alone. */
+  /** Same building (Address Points id); null = unknown, counted alone. */
   buildingKey: string | null;
 }
 

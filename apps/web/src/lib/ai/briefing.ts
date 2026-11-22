@@ -7,7 +7,7 @@ export type BriefingResponse = BriefingFacts & { status: 'available' | 'insuffic
 
 const groups = [
   /rent|afford|shelter|income/i,
-  /housing|building|condition|rentsafe|dwelling|tenure/i,
+  /housing|building|condition|dwelling|tenure/i,
   /develop|construction|growth|population/i,
 ];
 const political = /\b(?:candidate|part(?:y|ies)|campaign|vote|voting|election|councillor|mayor|liberal|conservative|ndp|green party|endorse|elect)\b/i;

@@ -189,17 +189,4 @@ describe("listingContext", () => {
     const { caveats } = await listingContext(sql, { ...listing, yearBuilt: 2023 }, NOW);
     expect(caveats.map((c) => c.code)).toContain("newer_building");
   });
-
-  it("reads the RentSafeTO building for the low-score caveat", async () => {
-    const sql = fakeSql(
-      five(),
-      [],
-      [{ latest_score: "58.0", score_date: new Date("2025-03-01T00:00:00Z") }],
-    );
-    const { caveats } = await listingContext(sql, { ...listing, buildingId: "RSN-1" }, NOW);
-    const low = caveats.find((c) => c.code === "rentsafeto_low");
-    expect(low?.explanation).toContain(
-      "58% in its latest City of Toronto RentSafeTO evaluation (2025-03-01)",
-    );
-  });
 });

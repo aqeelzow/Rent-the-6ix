@@ -29,8 +29,8 @@ export const fixtureDependencies: SearchDependencies = {
     const now = new Date(fixtureTimestamp);
     const comparables = sampleListings.map(candidate => ({ ...candidate, distanceM: distanceM(listing.location, candidate.location), buildingKey: candidate.buildingId ?? candidate.addressPointId }));
     const valuation = ValuationSchema.parse(valuate(listing, comparables, null, now));
-    // shortcut: synthetic fixtures have no building evaluation or duplicate-text matches; use owner queries for live data.
-    const listingCaveats = caveats(listing, { valuation, building: null, sameTextElsewhere: 0, now }).map(c => CaveatSchema.parse(c));
+    // shortcut: synthetic fixtures have no duplicate-text matches; use owner queries for live data.
+    const listingCaveats = caveats(listing, { valuation, sameTextElsewhere: 0, now }).map(c => CaveatSchema.parse(c));
     const safety = safetySearchFixture.status === 'completed' ? safetySearchFixture.results[0].safety : null;
     return { valuation, travel: [], safety: intent.safety.enabled && safety && listing.neighbourhoodId !== null ? { ...safety, areaId: listing.neighbourhoodId } : null, safetyScore: 80, caveats: listingCaveats };
   },

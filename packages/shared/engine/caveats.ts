@@ -16,7 +16,6 @@ export type CaveatCode =
   | "approx_location"
   | "stale"
   | "fields_unknown"
-  | "rentsafeto_low"
   | "price_dropped"
   | "newer_building"
   | "insufficient_comparables";
@@ -48,8 +47,6 @@ export interface CaveatListing {
 
 export interface CaveatContext {
   valuation: Pick<Valuation, "status" | "differencePct"> | null;
-  /** The matched RentSafeTO building's latest evaluation, if any. Score is 0–100. */
-  building: { latestScore: number | null; scoreDate: string | null } | null;
   /** Other listings with the same description at a different address or price (from SQL). */
   sameTextElsewhere: number;
   /** The first asking rent seen for this listing (listing_observations), if it's stored. */
@@ -124,15 +121,6 @@ export function caveats(listing: CaveatListing, ctx: CaveatContext): Caveat[] {
       code: "fields_unknown",
       title: "Some details not stated",
       explanation: `The listing doesn't say: ${unknown.join(", ")}. Ask before you apply.`,
-    });
-
-  const score = ctx.building?.latestScore;
-  if (score !== null && score !== undefined && score < C.rentSafeToLowScore)
-    out.push({
-      severity: "info",
-      code: "rentsafeto_low",
-      title: "Low RentSafeTO score",
-      explanation: `The building scored ${Math.round(score)}% in its latest City of Toronto RentSafeTO evaluation${ctx.building?.scoreDate ? ` (${ctx.building.scoreDate})` : ""}. Buildings under ${C.rentSafeToLowScore}% are evaluated every year.`,
     });
 
   const first = ctx.firstSeen;

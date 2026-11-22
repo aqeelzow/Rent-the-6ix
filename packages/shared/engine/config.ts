@@ -75,8 +75,6 @@ export const CAVEATS = {
   staleDays: 8,
   /** fields_unknown: shown when at least this many of utilities, pets, laundry, parking, AC are unknown. */
   minUnknownFields: 2,
-  /** rentsafeto_low: below the City's threshold for yearly evaluation. */
-  rentSafeToLowScore: 66,
   /** price_dropped: the asking rent is at least this much below the first one seen. */
   priceDropMinCad: 25,
   /**

@@ -1,4 +1,4 @@
-// Geocode stored listings against Address Points, boundaries and RentSafeTO (P1.5):
+// Geocode stored listings against Address Points and boundaries (P1.5):
 // `pnpm geocode [--dry-run]`. Also runs at the end of every ingest.
 import { parseArgs } from "node:util";
 import { openDb } from "./lib/db.ts";

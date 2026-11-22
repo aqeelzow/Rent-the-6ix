@@ -17,8 +17,6 @@ const ORDER = [
   "renter_households_pct",
   "renters_shelter_cost_30pct",
   "median_household_income",
-  "rentsafeto_buildings",
-  "rentsafeto_avg_score",
   "transit_stops_per_km2",
   "rapid_transit_within_800m_pct",
   "libraries",

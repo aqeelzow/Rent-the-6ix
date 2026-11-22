@@ -1,18 +1,15 @@
 // P2.14 (derived half) — area indicators computed in the database from tables the other civic tasks
-// already loaded: RentSafeTO buildings, TTC stops and City POIs, counted inside each of the 158
+// already loaded: TTC stops and City POIs, counted inside each of the 158
 // neighbourhoods (SPEC 5 "Area", 9.1, 9.2). Nothing is fetched; each indicator is one
 // `insert … select` so no rows travel to this machine.
 //
 // Every row carries the dataset it was derived from as `source_id` and that dataset's retrieval
-// month as `period` (these are counts "as loaded", not a census). Thin data stays visible as thin:
-// an average over fewer than MIN_SCORED buildings is stored as null with a note, never as a number.
+// month as `period` (these are counts "as loaded", not a census).
 //
 // `parks_ha_per_1000` from SPEC 5 needs park polygons; `pois` holds points, so this stores the
 // count of parks (`parks`) instead.
 import type { Sql } from "postgres";
 
-/** Fewer evaluated buildings than this and the area's average score is "not enough data". */
-export const MIN_SCORED = 3;
 /** "Rapid transit within 800 m" (SPEC 9.1): a ten-minute walk to a subway or LRT stop. */
 export const RAPID_RADIUS_M = 800;
 /** NAD83(CSRS) / MTM zone 10: the City's own metric projection, for buffers and areas. */
@@ -29,12 +26,6 @@ export interface DerivedIndicator {
 }
 
 export const DERIVED_INDICATORS: DerivedIndicator[] = [
-  { id: "rentsafeto_buildings", unit: "buildings", sourceId: "apartment-building-registration" },
-  {
-    id: "rentsafeto_avg_score",
-    unit: "score out of 100",
-    sourceId: "apartment-building-evaluation",
-  },
   { id: "transit_stops_per_km2", unit: "stops per km²", sourceId: "ttc-routes-and-schedules" },
   { id: "rapid_transit_within_800m_pct", unit: "% of area", sourceId: "ttc-routes-and-schedules" },
   { id: "libraries", unit: "libraries", sourceId: "library-branch-general-information" },
@@ -49,21 +40,6 @@ export interface DerivedLoad {
 /** The value expression and joins for one indicator, over area alias `a`. */
 function valueSql(sql: Sql, id: string) {
   switch (id) {
-    case "rentsafeto_buildings":
-      return sql`(select count(*) from buildings b
-                  where b.location is not null and ST_Covers(a.geometry, b.location::geometry))::float8,
-                 null::int, null::text`;
-    case "rentsafeto_avg_score":
-      return sql`(select case when count(b.latest_score) >= ${MIN_SCORED}
-                              then round(avg(b.latest_score), 1)::float8 end
-                  from buildings b
-                  where b.location is not null and ST_Covers(a.geometry, b.location::geometry)),
-                 (select count(b.latest_score)::int from buildings b
-                  where b.location is not null and ST_Covers(a.geometry, b.location::geometry)),
-                 (select case when count(b.latest_score) < ${MIN_SCORED}
-                              then 'fewer than ' || ${MIN_SCORED} || ' evaluated buildings' end
-                  from buildings b
-                  where b.location is not null and ST_Covers(a.geometry, b.location::geometry))`;
     case "transit_stops_per_km2":
       return sql`round(((select count(*) from transit_stops s
                          where ST_Covers(a.geometry, s.location::geometry))

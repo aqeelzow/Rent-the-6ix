@@ -89,7 +89,7 @@ export async function candidatesNear(
 ): Promise<ComparableCandidate[]> {
   const widest = VALUATION.radiiM[VALUATION.radiiM.length - 1];
   const point = sql`ST_SetSRID(ST_MakePoint(${at.lng}, ${at.lat}), 4326)::geography`;
-  // Same building: RentSafeTO building, else Address Point, else the exact same point (~10 m),
+  // Same building: building id, else Address Point, else the exact same point (~10 m),
   // which is how one building's floor plans arrive before geocoding.
   const rows = await sql<CandidateRow[]>`
     SELECT ${sql.unsafe(FIELDS("c"))},
@@ -249,22 +249,12 @@ export async function listingContext(
     remember(key, now, valuation);
     eraShares.set(key, sameEraShare(listing, valuation, fresh.candidates));
   }
-  const [building] = listing.buildingId
-    ? await sql<{ latest_score: string | null; score_date: Date | null }[]>`
-        SELECT latest_score, score_date FROM buildings WHERE id = ${listing.buildingId}`
-    : [];
   return {
     valuation,
     caveats: caveats(
       { ...listing, depositBeforeViewing: stored?.deposit ?? false },
       {
         valuation,
-        building: building
-          ? {
-              latestScore: building.latest_score === null ? null : Number(building.latest_score),
-              scoreDate: building.score_date?.toISOString().slice(0, 10) ?? null,
-            }
-          : null,
         sameTextElsewhere: 0,
         sameEraShare: eraShares.get(key) ?? null,
         firstSeen:
@@ -403,7 +393,6 @@ type StoredFacts = {
   observed_at: Date | null;
   benchmarks?: BenchmarkRow[] | null;
 };
-type BuildingFact = { latest_score: string | number | null; score_date: Date | null };
 
 /**
  * The same valuation and caveats as `listingContext`, for many listings and three queries.
@@ -421,10 +410,9 @@ export async function listingContexts(
   const fresh = listings.filter(listing => !cached(keyOf(listing), now));
   const computed = new Map<string, { valuation: Valuation; candidates: ComparableCandidate[] }>();
 
-  // Stored facts and building scores do not depend on the comparable pool, so they are read in
-  // parallel with it instead of after it.
+  // Stored facts do not depend on the comparable pool, so they are read in parallel with it
+  // instead of after it.
   const ids = listings.map(listing => listing.id);
-  const buildingIds = [...new Set(listings.map(listing => listing.buildingId).filter((id): id is string => id !== null))];
   const facts = Promise.all([
     sql.unsafe(
       `SELECT l.id, (to_jsonb(l) ->> 'deposit_before_viewing')::boolean AS deposit,
@@ -436,9 +424,6 @@ export async function listingContexts(
       WHERE l.id = ANY($1::uuid[])`,
       [ids],
     ),
-    buildingIds.length
-      ? sql.unsafe(`SELECT id, latest_score, score_date FROM buildings WHERE id = ANY($1::text[])`, [buildingIds])
-      : Promise.resolve([]),
   ]);
   // Observed below; if the comparable read fails first this rejection must not go unhandled.
   facts.catch(() => {});
@@ -449,10 +434,9 @@ export async function listingContexts(
       computed.set(keyOf(listing), { valuation: valuate(subjectOfListing(listing), candidates, null, now), candidates });
     }
   }
-  const [storedRows, buildingRows] = await facts;
-  if (!Array.isArray(storedRows) || !Array.isArray(buildingRows)) throw new Error('Invalid context rows');
+  const [storedRows] = await facts;
+  if (!Array.isArray(storedRows)) throw new Error('Invalid context rows');
   const stored = new Map(storedRows.map(row => [(row as unknown as { id: string }).id, row as unknown as StoredFacts]));
-  const buildings = new Map(buildingRows.map(row => [(row as unknown as { id: string }).id, row as unknown as BuildingFact]));
 
   for (const listing of listings) {
     const key = keyOf(listing);
@@ -464,19 +448,12 @@ export async function listingContexts(
       remember(key, now, valuation);
       eraShares.set(key, sameEraShare(listing, valuation, freshValue.candidates));
     }
-    const building = listing.buildingId ? buildings.get(listing.buildingId) : undefined;
     result.set(listing.id, {
       valuation,
       caveats: caveats(
         { ...listing, depositBeforeViewing: facts?.deposit ?? false },
         {
           valuation,
-          building: building
-            ? {
-                latestScore: building.latest_score === null ? null : Number(building.latest_score),
-                scoreDate: building.score_date?.toISOString().slice(0, 10) ?? null,
-              }
-            : null,
           sameTextElsewhere: 0,
           sameEraShare: eraShares.get(key) ?? null,
           firstSeen:
