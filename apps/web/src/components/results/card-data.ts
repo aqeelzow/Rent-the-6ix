@@ -1,6 +1,10 @@
 import { t, type MessageKey } from "@/lib/format/messages";
 import type { SearchIntent, SearchResultItem } from "@/lib/store/types";
-import { estimateTravelMinutes, targetDistanceM, targetModes } from "@rentthe6ix/shared/engine/travel";
+import {
+  estimateTravelMinutes,
+  targetDistanceM,
+  targetModes,
+} from "@rentthe6ix/shared/engine/travel";
 
 // Result presentation uses the same distance-based time estimates as filtering and scoring.
 
@@ -23,7 +27,9 @@ export function travelSummaries(
   return targets.slice(0, limit).map((target) => {
     const metres = targetDistanceM(target, result.travel, result.listing.location);
     if (metres === null) return { kind: "missing", target: target.label, mode: target.mode };
-    const fastest = targetModes(target).map(mode => ({ mode, minutes: estimateTravelMinutes(metres, mode) })).sort((a, b) => a.minutes - b.minutes)[0]!;
+    const fastest = targetModes(target)
+      .map((mode) => ({ mode, minutes: estimateTravelMinutes(metres, mode) }))
+      .sort((a, b) => a.minutes - b.minutes)[0]!;
     return { kind: "estimated", target: target.label, ...fastest, distanceM: metres };
   });
 }
@@ -144,4 +150,17 @@ export function acFact(
   if (airConditioning === "yes") return "yes";
   if (airConditioning === "unknown" && acInSearch) return "not_stated";
   return null;
+}
+
+/**
+ * The lease fact on a card (#35): "Sublet · 4 months", "Sublet", or "8-month lease" for a short
+ * term. Year leases and unstated terms show nothing.
+ */
+export function termFact(
+  listing: { leaseTerm: string | null; sublet?: "yes" | "no" | "unknown" },
+  say: (key: "sublet" | "subletFor" | "shortLease", params?: { months: number }) => string,
+): string | null {
+  const months = Number(listing.leaseTerm?.match(/^(\d+) months?$/)?.[1]) || null;
+  if (listing.sublet === "yes") return months ? say("subletFor", { months }) : say("sublet");
+  return months && months < 12 ? say("shortLease", { months }) : null;
 }

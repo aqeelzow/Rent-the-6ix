@@ -108,6 +108,9 @@ export function homeFields(listing: Listing): HomeField[] {
       value: listing.availableFrom === null ? null : formatDate(listing.availableFrom),
     },
     { key: "leaseTerm", label: l("fields.leaseTerm"), value: lease },
+    ...(listing.sublet === "yes"
+      ? [{ key: "sublet", label: l("fields.sublet"), value: l("values.subletYes") }]
+      : []),
     {
       key: "locationPrecision",
       label: l("fields.location"),
@@ -121,8 +124,7 @@ export function homeFields(listing: Listing): HomeField[] {
 }
 
 export type ModeTime =
-  | { mode: Mode; kind: "estimated"; minutes: number }
-  | { mode: Mode; kind: "missing" };
+  { mode: Mode; kind: "estimated"; minutes: number } | { mode: Mode; kind: "missing" };
 
 export type TargetTravel = {
   id: string;
@@ -135,14 +137,19 @@ export type TargetTravel = {
 /**
  * Each travel target with distance-based estimates in all four modes.
  */
-export function travelTable(targets: SearchIntent["travelTargets"], rows: Row[], origin?: SearchResultItem["listing"]["location"]): TargetTravel[] {
+export function travelTable(
+  targets: SearchIntent["travelTargets"],
+  rows: Row[],
+  origin?: SearchResultItem["listing"]["location"],
+): TargetTravel[] {
   return targets.map((target) => ({
     id: target.id,
     label: target.label,
     chosen: [target.mode, ...(target.alternativeModes ?? [])],
     modes: MODES.map((mode): ModeTime => {
       const metres = targetDistanceM(target, rows, origin);
-      if (metres !== null) return { mode, kind: "estimated", minutes: estimateTravelMinutes(metres, mode) };
+      if (metres !== null)
+        return { mode, kind: "estimated", minutes: estimateTravelMinutes(metres, mode) };
       return { mode, kind: "missing" };
     }),
   }));

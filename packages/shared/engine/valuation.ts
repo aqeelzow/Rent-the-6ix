@@ -22,6 +22,10 @@ export interface ValuationSubject {
   sqft: number | null;
   /** Optional: weights comparables of a similar age (SPEC 7.2). */
   yearBuilt?: number | null;
+  /** Optional (#35): lease length as stored ("4 months", "12 months", "short-term"). */
+  leaseTerm?: string | null;
+  /** Optional (#35): "yes" for a sublet or lease takeover. */
+  sublet?: Tri;
   utilitiesIncluded: Utilities;
   parking: Tri;
   furnished: Tri;
@@ -332,7 +336,24 @@ export function buildingSimilarity(subject: ValuationSubject, c: ComparableCandi
     if (apart <= B.sameEraYears) factor *= B.sameEraBoost;
     else if (apart > B.differentEraYears) factor *= B.differentEra;
   }
+  // A 4-month student sublet is a weak comparable for a year lease, and the reverse (#35).
+  const a = leaseClass(subject);
+  const b = leaseClass(c);
+  if (a && b && a !== b) factor *= C.leaseMismatch;
   return factor;
+}
+
+/**
+ * "short" for a sublet or a term of 8 months or less, "long" for 12 months or more; null when
+ * unknown (month-to-month and unstated terms never change a weight).
+ */
+export function leaseClass(
+  l: Pick<ValuationSubject, "leaseTerm" | "sublet">,
+): "short" | "long" | null {
+  if (l.sublet === "yes" || l.leaseTerm === "short-term") return "short";
+  const months = Number(l.leaseTerm?.match(/^(\d+) months?$/)?.[1]);
+  if (!months) return null;
+  return months <= 8 ? "short" : months >= 12 ? "long" : null;
 }
 
 function ageDays(iso: string, now: Date): number {

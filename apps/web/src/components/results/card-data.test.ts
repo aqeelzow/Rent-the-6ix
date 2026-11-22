@@ -12,6 +12,7 @@ import {
   topCaveat,
   travelSummaries,
   yearSpan,
+  termFact,
 } from "./card-data";
 
 // The label the card writes for a distance: under 1.5 km the renter can walk it, beyond that they
@@ -34,7 +35,7 @@ describe("distance advice", () => {
 
 const results = searchFixture.status === "completed" ? searchFixture.results : [];
 const result = results[1]!;
-const campus = travelIntent.travelTargets.map(target => ({ ...target, resolved: undefined }));
+const campus = travelIntent.travelTargets.map((target) => ({ ...target, resolved: undefined }));
 const row = (
   over: Partial<SearchResultItem["travel"][number]>,
 ): SearchResultItem["travel"][number] => ({
@@ -81,8 +82,12 @@ describe("travelSummaries", () => {
       { ...result, travel: [row({ mode: "drive", method: "otp", minutes: 4 })] },
       campus,
     );
-    expect(summary).toEqual([{ kind: "estimated", target: campus[0]!.label, mode: "bike", minutes: 4, distanceM: 600 }]);
-    expect(travelSummaries({ ...result, travel: [] }, campus)).toEqual([{ kind: "missing", target: campus[0]!.label, mode: "bike" }]);
+    expect(summary).toEqual([
+      { kind: "estimated", target: campus[0]!.label, mode: "bike", minutes: 4, distanceM: 600 },
+    ]);
+    expect(travelSummaries({ ...result, travel: [] }, campus)).toEqual([
+      { kind: "missing", target: campus[0]!.label, mode: "bike" },
+    ]);
   });
 
   it("shows at most the first two targets", () => {
@@ -171,5 +176,22 @@ describe("small helpers", () => {
     const now = Date.parse("2026-10-17T12:00:00Z");
     expect(daysSince("2026-10-15T08:00:00Z", now)).toBe(2);
     expect(daysSince("2026-10-18T08:00:00Z", now)).toBe(0);
+  });
+});
+
+describe("termFact", () => {
+  const say = (key: string, params?: { months: number }) =>
+    key === "sublet"
+      ? "Sublet"
+      : key === "subletFor"
+        ? `Sublet · ${params!.months} months`
+        : `${params!.months}-month lease`;
+  it("shows sublets and short terms, never year leases", () => {
+    expect(termFact({ leaseTerm: "4 months", sublet: "yes" }, say)).toBe("Sublet · 4 months");
+    expect(termFact({ leaseTerm: null, sublet: "yes" }, say)).toBe("Sublet");
+    expect(termFact({ leaseTerm: "8 months", sublet: "unknown" }, say)).toBe("8-month lease");
+    expect(termFact({ leaseTerm: "12 months" }, say)).toBeNull();
+    expect(termFact({ leaseTerm: "month-to-month" }, say)).toBeNull();
+    expect(termFact({ leaseTerm: null }, say)).toBeNull();
   });
 });

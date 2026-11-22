@@ -556,7 +556,10 @@
     "scoreRow": "Match score",
     "view": "View",
     "viewAria": "View {title}",
-    "crimeDisclaimer": "Neighbourhoods with higher reported crime rates do not necessarily reflect a greater risk to individuals, as crime statistics do not always accurately reflect an individual's safety or experience living in an area."
+    "crimeDisclaimer": "Neighbourhoods with higher reported crime rates do not necessarily reflect a greater risk to individuals, as crime statistics do not always accurately reflect an individual's safety or experience living in an area.",
+    "sublet": "Sublet",
+    "subletFor": "Sublet · {months} months",
+    "shortLease": "{months}-month lease"
   },
   "listing": {
     "title": "Listing",
@@ -628,7 +631,8 @@
       "utilities": "Utilities",
       "availableFrom": "Available from",
       "leaseTerm": "Lease",
-      "location": "Location"
+      "location": "Location",
+      "sublet": "Sublet"
     },
     "values": {
       "notStated": "Not stated",
@@ -663,7 +667,8 @@
         "exact": "Exact address",
         "street": "Street-level (approximate)",
         "area": "Neighbourhood only (approximate)"
-      }
+      },
+      "subletYes": "Yes, a sublet or lease takeover"
     },
     "travel": {
       "none": "Add a place or an amenity in Filters to see estimated travel times.",

@@ -5,7 +5,7 @@ import { filterListing } from '../../../../../packages/shared/engine/filters';
 import { SearchUnavailable, type SearchDependencies } from './candidates';
 
 type Client = { unsafe: (statement: string, parameters: (string | number | boolean)[]) => PromiseLike<unknown> };
-const columns = ['id', 'source', 'sourceListingId', 'sourceUrl', 'title', 'excerpt', 'monthlyRentCad', 'rentIsPerRoom', 'bedrooms', 'bathrooms', 'unitType', 'sqft', 'yearBuilt', 'yearBuiltSource', 'airConditioning', 'locationPrecision', 'addressText', 'addressPointId', 'buildingId', 'neighbourhoodId', 'utilitiesIncluded', 'parking', 'petsAllowed', 'furnished', 'laundryInSuite', 'availableFrom', 'leaseTerm', 'imageUrl', 'firstSeenAt', 'lastSeenAt', 'updatedAt', 'status', 'duplicateOf', 'dataStatus', 'fieldEvidence'] as const;
+const columns = ['id', 'source', 'sourceListingId', 'sourceUrl', 'title', 'excerpt', 'monthlyRentCad', 'rentIsPerRoom', 'bedrooms', 'bathrooms', 'unitType', 'sqft', 'yearBuilt', 'yearBuiltSource', 'airConditioning', 'locationPrecision', 'addressText', 'addressPointId', 'buildingId', 'neighbourhoodId', 'utilitiesIncluded', 'parking', 'petsAllowed', 'furnished', 'laundryInSuite', 'availableFrom', 'leaseTerm', 'sublet', 'imageUrl', 'firstSeenAt', 'lastSeenAt', 'updatedAt', 'status', 'duplicateOf', 'dataStatus', 'fieldEvidence'] as const;
 // shortcut: retain at most eight unfinished reads after caller cancellation; use cancellable connections for higher production load.
 let candidateReadsInFlight = 0;
 const snake = (value: string) => value.replace(/[A-Z]/g, c => `_${c.toLowerCase()}`);

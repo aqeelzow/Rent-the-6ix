@@ -40,10 +40,11 @@ export interface ListingRow {
   field_evidence: Record<string, string>;
   den: boolean;
   deposit_before_viewing: boolean;
+  sublet: string;
 }
 
-/** Columns from migration 005; written only once the database has them. */
-const OPTIONAL_COLUMNS = ["den", "deposit_before_viewing"] as const;
+/** Columns from migrations 005 and 009; written only once the database has them. */
+const OPTIONAL_COLUMNS = ["den", "deposit_before_viewing", "sublet"] as const;
 const present = new WeakMap<Sql, Promise<(typeof OPTIONAL_COLUMNS)[number][]>>();
 
 function optionalColumns(sql: Sql) {
@@ -167,6 +168,7 @@ export function toRow(l: NormalizedListing, observedAt: string): ListingRow | nu
     field_evidence: l.fieldEvidence,
     den: l.den,
     deposit_before_viewing: l.depositBeforeViewing,
+    sublet: l.sublet,
   };
 }
 
