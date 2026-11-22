@@ -1,4 +1,4 @@
-import { baseIntent, listings, searchFixture } from "@rentthe6ix/shared/fixtures";
+import { baseIntent, listings, searchFixture } from "@rentkdubs/shared/fixtures";
 import { beforeEach, describe, expect, it } from "vitest";
 import { selectIsShortlisted } from "./searchSlice";
 import { createAppStore } from "./store";

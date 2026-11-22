@@ -1,4 +1,4 @@
-import { NearbyResponseSchema } from "@rentthe6ix/shared/schemas";
+import { NearbyResponseSchema } from "@rentkdubs/shared/schemas";
 import { describe, expect, it, vi } from "vitest";
 import { createNearbyRoute, nearbyFromRows, type NearbyRow } from "./nearby";
 

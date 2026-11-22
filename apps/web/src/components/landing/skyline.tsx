@@ -13,7 +13,7 @@ function seeded(seed: number) {
 
 const W = 1600;
 
-/** Downtown on the horizon: towers clustered around the CN Tower and the Rogers Centre dome. */
+/** Waterloo on the horizon: a cluster of student high-rises near the universities, and cranes. */
 export function FarSkyline({ className }: { className?: string }) {
   const H = 600;
   const rand = seeded(6);
@@ -21,7 +21,7 @@ export function FarSkyline({ className }: { className?: string }) {
   for (let x = -10; x < W;) {
     const w = 18 + rand() * 34;
     const near = Math.exp(-(((x - 820) / 330) ** 2));
-    const h = 30 + rand() * 40 + near * (140 + rand() * 170);
+    const h = 30 + rand() * 40 + near * (110 + rand() * 130);
     towers.push({ x, w, h });
     x += w + rand() * 4;
   }
@@ -45,21 +45,27 @@ export function FarSkyline({ className }: { className?: string }) {
         {towers.map((t, i) => (
           <rect key={i} x={t.x} y={H - t.h} width={t.w} height={t.h} />
         ))}
-        {/* CN Tower: tapered shaft, main pod, sky pod, antenna */}
-        <polygon points="914,600 946,600 934,150 926,150" />
-        <ellipse cx="930" cy="160" rx="26" ry="13" />
-        <rect x="917" y="168" width="26" height="10" rx="4" />
-        <rect x="925" y="88" width="10" height="72" />
-        <rect x="921" y="96" width="18" height="14" rx="4" />
-        <rect x="928.5" y="8" width="3" height="88" />
-        {/* Rogers Centre */}
-        <path d="M985 600 L985 566 Q1050 518 1115 566 L1115 600 Z" />
+      </g>
+      {/* tower cranes over the new high-rises: mast, jib and counter-jib, cab, hook line */}
+      <g stroke="var(--l-far)" strokeWidth="5" fill="none">
+        <path d="M700 600 V150 M612 158 H812 M700 150 L760 158 M700 150 L640 158" />
+        <path d="M790 158 V220" strokeWidth="2" />
+        <path d="M1040 600 V196 M972 204 H1128 M1040 196 L1086 204 M1040 196 L994 204" />
+        <path d="M1104 204 V262" strokeWidth="2" />
+      </g>
+      <g fill="var(--l-far)">
+        <rect x="690" y="160" width="20" height="14" />
+        <rect x="612" y="158" width="20" height="16" />
+        <rect x="1030" y="206" width="20" height="14" />
+        <rect x="972" y="204" width="18" height="14" />
       </g>
       <g fill="var(--l-glow)" opacity="0.55">
         {lit.map((w) => (
           <rect key={w.key} x={w.x} y={w.y} width="3" height="4" />
         ))}
-        <rect x="904" y="158" width="52" height="2" />
+        {/* crane warning lights */}
+        <circle cx="700" cy="146" r="4" />
+        <circle cx="1040" cy="192" r="4" />
       </g>
     </svg>
   );

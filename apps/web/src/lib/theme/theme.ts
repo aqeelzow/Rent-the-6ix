@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from "react";
-import { THEME_KEY } from "./theme-script";
+import { LEGACY_THEME_KEY, THEME_KEY } from "./theme-script";
 
 /**
  * Light or dark. The renter's pick is kept in localStorage; with no pick the site follows the
@@ -13,6 +13,7 @@ export function applyTheme(theme: Theme) {
   root.style.colorScheme = theme;
   try {
     localStorage.setItem(THEME_KEY, theme);
+    localStorage.removeItem(LEGACY_THEME_KEY);
   } catch {
     // Private windows can refuse storage; the theme still applies for this visit.
   }

@@ -14,8 +14,8 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { SAFETY, engineConfig } from "@rentthe6ix/shared/engine/config";
-import { scoreWeights } from "@rentthe6ix/shared/engine/score";
+import { SAFETY, engineConfig } from "@rentkdubs/shared/engine/config";
+import { scoreWeights } from "@rentkdubs/shared/engine/score";
 import { Slider } from "@/components/ui/slider";
 import { SafetyInfoButton } from "@/components/safety/safety-info";
 import { CrimeDisclaimer } from "@/components/safety/crime-disclaimer";

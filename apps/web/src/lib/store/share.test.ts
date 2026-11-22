@@ -1,4 +1,4 @@
-import { baseIntent } from "@rentthe6ix/shared/fixtures";
+import { baseIntent } from "@rentkdubs/shared/fixtures";
 import { describe, expect, it } from "vitest";
 import { decodeSharedSearch, encodeSharedSearch, sharedSearchPath } from "./share";
 

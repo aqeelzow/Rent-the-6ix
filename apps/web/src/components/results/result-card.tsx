@@ -6,6 +6,7 @@ import {
   Bookmark,
   Building2,
   CalendarDays,
+  CalendarRange,
   CircleHelp,
   Ruler,
   ShieldQuestion,
@@ -22,6 +23,7 @@ import { useAppStore } from "@/lib/store/store";
 import type { SearchIntent, SearchResultItem } from "@/lib/store/types";
 import {
   acFact,
+  termFact,
   daysSince,
   plainHardFilterNote,
   topCaveat,
@@ -90,6 +92,8 @@ function homeFacts(listing: SearchResultItem["listing"], acInSearch: boolean): H
           ? r("acNotStated")
           : null;
   if (acText) facts.push({ key: "ac", icon: Snowflake, text: acText });
+  const term = termFact(listing, (key, params) => r(key, params));
+  if (term) facts.push({ key: "term", icon: CalendarRange, text: term });
   return facts;
 }
 

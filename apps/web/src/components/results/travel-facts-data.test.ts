@@ -1,6 +1,6 @@
-import { commuteCarbon, type CommuteCarbon } from "@rentthe6ix/shared/engine/carbon";
-import { searchFixture, travelIntent } from "@rentthe6ix/shared/fixtures";
-import { TravelTargetSchema, type TravelTarget, type TravelTimeRow } from "@rentthe6ix/shared/schemas";
+import { commuteCarbon, type CommuteCarbon } from "@rentkdubs/shared/engine/carbon";
+import { searchFixture, travelIntent } from "@rentkdubs/shared/fixtures";
+import { TravelTargetSchema, type TravelTarget, type TravelTimeRow } from "@rentkdubs/shared/schemas";
 import { describe, expect, it } from "vitest";
 import type { SearchResultItem } from "@/lib/store/types";
 import {

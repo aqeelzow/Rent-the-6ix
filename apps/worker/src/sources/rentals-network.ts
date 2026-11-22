@@ -228,6 +228,10 @@ function rentalsNetworkAdapter(
   return {
     id,
     displayName,
+    // Rentals.ca answers 429 after about 18 pages at the default 4 s; read it more slowly.
+    sessionOptions: () => ({
+      delayMs: Number(process.env.RENTALS_REQUEST_DELAY_MS ?? 20_000),
+    }),
     async fetchIndex(session, cursor) {
       const page = cursor ? Number(cursor) : 1;
       const url = `${origin}${searchPath}${page > 1 ? `?p=${page}` : ""}`;

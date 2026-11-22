@@ -1,4 +1,4 @@
-import { AreaChoroplethSchema } from "@rentthe6ix/shared/schemas";
+import { AreaChoroplethSchema } from "@rentkdubs/shared/schemas";
 import { describe, expect, it, vi } from "vitest";
 import { createChoroplethRoute, crimeChoropleth } from "./area-choropleth";
 import { crimeTableFromRows } from "./safety";

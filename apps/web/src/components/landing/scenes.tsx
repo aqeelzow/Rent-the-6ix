@@ -1,5 +1,4 @@
 import type { CSSProperties } from "react";
-import { CnTower } from "@/components/brand/cn-tower";
 import { t, type MessageKey } from "@/lib/format/messages";
 import { FarSkyline, IonTrain, MidBlocks, NearStreet } from "./skyline";
 
@@ -16,17 +15,7 @@ export function HeroScene() {
           <p className="hero-tagline">{t("landing.tagline")}</p>
           <h1 id="hero-title" className="wordmark" aria-label={t("common.appName")}>
             <span className="wordmark-top">{t("landing.logoTop")}</span>
-            <span className="wordmark-big">
-              {t("landing.logoBottom")
-                .split(/(i)/i)
-                .map((part, i) =>
-                  /^i$/i.test(part) ? (
-                    <CnTower key={i} id="wordmark" className="wordmark-tower" />
-                  ) : (
-                    part
-                  ),
-                )}
-            </span>
+            <span className="wordmark-big">{t("landing.logoBottom")}</span>
           </h1>
         </div>
         <MidBlocks className="layer layer-mid" />

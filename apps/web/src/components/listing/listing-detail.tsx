@@ -286,8 +286,22 @@ function Header({
         >
           {listing.title}
         </h1>
-        {listing.addressText !== listing.title && (
-          <p className="text-hero-muted">{addressLine(listing) ?? l("approxAddress")}</p>
+        {listing.buildingId && listing.buildingName ? (
+          <p className="text-hero-muted">
+            <Link
+              href={`/building/${listing.buildingId}`}
+              className="font-medium underline underline-offset-2"
+            >
+              {listing.buildingName}
+            </Link>
+            {listing.addressText && listing.addressText !== listing.title
+              ? ` · ${listing.addressText}`
+              : ""}
+          </p>
+        ) : (
+          listing.addressText !== listing.title && (
+            <p className="text-hero-muted">{addressLine(listing) ?? l("approxAddress")}</p>
+          )
         )}
         {facts.length > 0 && (
           <ul className="figures flex flex-wrap gap-2">

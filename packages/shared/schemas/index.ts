@@ -75,7 +75,9 @@ export const ListingSchema = z.strictObject({
   // Null until D's boundaries are loaded; area requirements stay unconfirmed and safety unavailable.
   neighbourhoodId: text.nullable(),
   utilitiesIncluded: z.enum(['yes', 'partial', 'no', 'unknown']), parking: tri, petsAllowed: z.enum(['yes', 'no', 'unknown', 'cats_only', 'dogs_only']), furnished: tri, laundryInSuite: tri,
-  availableFrom: date.nullable(), leaseTerm: text.nullable(), imageUrl: url.nullable(), firstSeenAt: timestamp, lastSeenAt: timestamp, updatedAt: timestamp,
+  availableFrom: date.nullable(), leaseTerm: text.nullable(),
+  // "yes" when the post is a sublet or lease takeover (#35); never inferred as "no".
+  sublet: tri.optional(), imageUrl: url.nullable(), firstSeenAt: timestamp, lastSeenAt: timestamp, updatedAt: timestamp,
   status: z.enum(['active', 'stale', 'removed']), duplicateOf: z.uuid().nullable(), dataStatus: z.enum(['live', 'snapshot', 'demo']),
   fieldEvidence: z.record(text, z.enum(['structured', 'parsed_from_text', 'ai_extracted'])),
 }).superRefine((v, ctx) => {

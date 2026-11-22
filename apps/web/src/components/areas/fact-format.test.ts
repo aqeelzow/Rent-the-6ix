@@ -13,7 +13,7 @@ const fact = (over: Partial<Parameters<typeof factValueText>[0]> = {}) => ({
   cityValue: 2199,
   unit: "CAD/month",
   period: "30 days to 2026-10-17",
-  sourceId: "rentthe6ix-listings",
+  sourceId: "rentkdubs-listings",
   sampleSize: 703,
   note: null,
   ...over,

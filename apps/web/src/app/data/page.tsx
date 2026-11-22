@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { ExternalLink } from "lucide-react";
 import en from "../../../messages/en.json";
-import { CAVEATS, engineConfig, VALUATION } from "@rentthe6ix/shared/engine/config";
+import { CAVEATS, engineConfig, VALUATION } from "@rentkdubs/shared/engine/config";
 import { getClient } from "@/lib/db";
 import { loadDataPage, type DataSource, type ListingSite } from "@/lib/db/data-sources";
 import { formatDate } from "@/lib/format/date";
@@ -195,6 +195,7 @@ export default async function DataPage() {
             radii,
             minComparables: VALUATION.minComparables,
             perBuilding: VALUATION.maxPerBuilding,
+            leaseWeight: Math.round(VALUATION.leaseMismatch * 100),
             utilities: formatCad(VALUATION.adjustmentsCad.utilitiesIncluded),
             parking: formatCad(VALUATION.adjustmentsCad.parking),
             furnished: formatCad(VALUATION.adjustmentsCad.furnished),

@@ -278,7 +278,7 @@ const homeGroups = {
     "furnished",
     "petsAllowed",
   ],
-  terms: ["availableFrom", "leaseTerm"],
+  terms: ["availableFrom", "leaseTerm", "sublet"],
 } as const;
 
 /**

@@ -1,6 +1,6 @@
 import { expect, test } from 'vitest';
-import { baseIntent, sampleListings, travelIntent } from '@rentthe6ix/shared/fixtures';
-import { DetailResponseSchema } from '@rentthe6ix/shared/schemas';
+import { baseIntent, sampleListings, travelIntent } from '@rentkdubs/shared/fixtures';
+import { DetailResponseSchema } from '@rentkdubs/shared/schemas';
 import { parseAndSearch, resolveDestination, restoreSearch, runSearch } from '../store/actions';
 import { placePins } from '../../components/map/map-data';
 import { travelSummaries } from '../../components/results/card-data';

@@ -1,4 +1,4 @@
-import type { TravelTimeRow } from "@rentthe6ix/shared/schemas";
+import type { TravelTimeRow } from "@rentkdubs/shared/schemas";
 
 /**
  * OpenTripPlanner client (P2.11). Owner: D.

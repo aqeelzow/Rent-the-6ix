@@ -5,7 +5,7 @@
 #
 #   DEPLOY_HOST=root@203.0.113.7 SITE_HOST=203-0-113-7.sslip.io ./deploy.sh
 #
-# Optional: DEPLOY_PATH (default /srv/rentthe6ix), SERVICES (default "web worker"),
+# Optional: DEPLOY_PATH (default /srv/rentkdubs), SERVICES (default "web worker"),
 # NO_HEALTHCHECK=1 to skip the final HTTP check.
 #
 # What it does: SSH in, hard-reset the checkout to origin/main (the box is a mirror of
@@ -15,7 +15,7 @@
 set -euo pipefail
 
 : "${DEPLOY_HOST:?set DEPLOY_HOST, e.g. root@203.0.113.7}"
-DEPLOY_PATH="${DEPLOY_PATH:-/srv/rentthe6ix}"
+DEPLOY_PATH="${DEPLOY_PATH:-/srv/rentkdubs}"
 SERVICES="${SERVICES:-web worker}"
 BRANCH="${BRANCH:-main}"
 

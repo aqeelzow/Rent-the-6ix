@@ -1,4 +1,4 @@
-import { SearchIntentSchema } from "@rentthe6ix/shared/schemas";
+import { SearchIntentSchema } from "@rentkdubs/shared/schemas";
 import type { SearchIntent } from "@/lib/store/types";
 
 // Pure edits used by the filters panel (SPEC 11.2). Like the chip edits, each returns a new intent

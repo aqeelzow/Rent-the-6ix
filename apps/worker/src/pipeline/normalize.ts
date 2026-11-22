@@ -3,7 +3,7 @@
 // fieldEvidence records which one each value came from. Unknown stays unknown, never "no".
 // Location, area ids, building match, timestamps and status are added by geocode/upsert (P1.5–P1.6).
 // TODO(P0.5): switch these types to B's `Listing` schema in packages/shared/schemas when it lands.
-import { asksForMoneyBeforeViewing } from "@rentthe6ix/shared/engine/scam";
+import { asksForMoneyBeforeViewing } from "@rentkdubs/shared/engine/scam";
 import { httpsUrl, type RawListing, type SourceId, type TriState } from "../sources/types.ts";
 import { excerpt, scrub } from "./scrub.ts";
 
@@ -40,6 +40,8 @@ export interface NormalizedListing {
   laundryInSuite: Tri;
   availableFrom: string | null;
   leaseTerm: string | null;
+  /** "yes" when the post is a sublet or lease takeover; never inferred as "no". */
+  sublet: Tri;
   addressText: string | null;
   /** Geocoding inputs (P1.5): not Listing fields themselves. */
   postalCode: string | null;
@@ -155,6 +157,7 @@ export function normalize(raw: RawListing, now = new Date()): NormalizedListing 
       availableFromText(text, posted ?? now.toISOString()),
     ),
     leaseTerm: pick("leaseTerm", raw.leaseTerm, () => leaseTermFromText(text)),
+    sublet: subletFromText(text),
     addressText: raw.address?.replace(/\s+/g, " ").trim() || null,
     postalCode: postalCode(raw.postalCode),
     sourceLocation:
@@ -438,13 +441,82 @@ function availableFromText(text: string, postedIso: string): string | null {
   return isoDate(`${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`);
 }
 
-function leaseTermFromText(text: string): string | null {
+// --- Lease terms and sublets (#35) -------------------------------------------------------
+// Waterloo leases follow co-op terms: 4 months (one term), 8 (two) or 12. Student posts say it in
+// many ways: "4 month sublet", "Jan - Apr 2027", "May 1 to August 27", "winter term sublet".
+
+const SUBLET =
+  /\bsub-?(?:let|lease|letting|leasing)s?\b|\blease (?:take ?-?over|transfer|assignment)\b|\btak(?:e|ing) over (?:my|the|our|a) (?:lease|room|unit)\b/;
+const NO_SUBLET = /\bno sub-?(?:let|lease|letting|leasing)/;
+/** Words that make a month range a lease ("Jan–Apr sublet"), not an availability date. */
+const TERM_CONTEXT = /\bsub-?(?:let|lease)|\blease\b|\btake ?-?over\b|\bterm\b|\bsemester\b/;
+const MONTH =
+  "(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|june?|july?|aug(?:ust)?|sept?(?:ember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)";
+const DAY = "(?:\\s+\\d{1,2}(?:st|nd|rd|th)?)?";
+const YEAR = "(?:,?\\s+20\\d\\d)?";
+const MONTH_RANGE = new RegExp(
+  `\\b${MONTH}\\.?${DAY}${YEAR}\\s*(?:-|–|—|to|until|through|thru)\\s*${MONTH}\\b\\.?(?:\\s+(\\d{1,2})(?:st|nd|rd|th)?\\b)?`,
+  "g",
+);
+const MONTH_INDEX = [
+  "jan",
+  "feb",
+  "mar",
+  "apr",
+  "may",
+  "jun",
+  "jul",
+  "aug",
+  "sep",
+  "oct",
+  "nov",
+  "dec",
+];
+
+/** "yes" for a sublet or lease takeover; "unknown" otherwise ("no" is never inferred). */
+export function subletFromText(text: string): Tri {
+  return SUBLET.test(text) && !NO_SUBLET.test(text) ? "yes" : "unknown";
+}
+
+/** Lease length as text ("4 months", "12 months", "month-to-month", "short-term"), or null. */
+export function leaseTermFromText(text: string): string | null {
   if (/\bmonth[- ]to[- ]month\b/.test(text)) return "month-to-month";
-  const months = text.match(/\b(\d{1,2})[- ]months? lease\b/);
-  if (months) return `${Number(months[1])} months`;
-  if (/\b(?:one|1)[- ]year lease\b/.test(text)) return "12 months";
+  // "4 month sublet", "8-month lease", "lease for 4 months"; "4 or 8 months" is no single term.
+  const counts = [
+    ...text.matchAll(
+      /\b(\d{1,2})[- ]?(?:months?|mos?)\.?[- ](?:lease|sub-?let|sub-?lease|term|contract|stay|rental)\b|\b(?:lease|sub-?let|sub-?lease|term|contract) (?:of|for) (\d{1,2})[- ]?months?\b/g,
+    ),
+  ].map((m) => Number(m[1] ?? m[2]));
+  if (/\b\d{1,2}\s*(?:or|\/)\s*\d{1,2}[- ]?(?:months?|mos?)\b/.test(text)) return null;
+  const distinct = [...new Set(counts.filter((n) => n >= 1 && n <= 36))];
+  if (distinct.length === 1) return `${distinct[0]} months`;
+  if (distinct.length > 1) return null;
+  if (/\b(?:one|1)[- ]year (?:lease|contract)\b|\b12[- ]month\b/.test(text)) return "12 months";
+  if (TERM_CONTEXT.test(text)) {
+    // "Jan - Apr 2027", "May 1 to August 27": inclusive months, one range only.
+    // A range ending in a month's first days ("January 1 – May 1") ends the month before.
+    const ranges = [
+      ...new Set(
+        [...text.matchAll(MONTH_RANGE)].map(
+          (m) => monthSpan(m[1], m[2]) - (m[3] && Number(m[3]) <= 5 ? 1 : 0),
+        ),
+      ),
+    ];
+    if (ranges.length === 1 && ranges[0] >= 2 && ranges[0] <= 12) return `${ranges[0]} months`;
+    // One co-op term named with a sublet: "winter term sublet", "fall 2027 sublet".
+    const terms =
+      text.match(/\b(?:winter|spring|summer|fall|autumn)(?: term| semester| 20\d\d)\b/g) ?? [];
+    if (terms.length === 1 && SUBLET.test(text)) return "4 months";
+  }
   if (/\bshort[- ]term\b/.test(text)) return "short-term";
   return null;
+}
+
+/** Months from one month to another, inclusive and wrapping the year: Sep–Dec = 4, Nov–Feb = 4. */
+function monthSpan(from: string, to: string): number {
+  const a = MONTH_INDEX.indexOf(from.slice(0, 3));
+  const b = MONTH_INDEX.indexOf(to.slice(0, 3));
+  return ((b - a + 12) % 12) + 1;
 }
 
 /** YYYY-MM-DD for a real calendar date, else null. */

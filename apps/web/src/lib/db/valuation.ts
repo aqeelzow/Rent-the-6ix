@@ -38,6 +38,8 @@ interface ListingFields {
   parking: Tri;
   furnished: Tri;
   laundry_in_suite: Tri;
+  lease_term: string | null;
+  sublet: Tri;
 }
 
 interface CandidateRow extends ListingFields {
@@ -60,6 +62,8 @@ function subjectOf(row: ListingFields): ValuationSubject {
     parking: row.parking,
     furnished: row.furnished,
     laundryInSuite: row.laundry_in_suite,
+    leaseTerm: row.lease_term,
+    sublet: row.sublet,
   };
 }
 
@@ -78,7 +82,8 @@ const FIELDS = (t: string) => `
   ${t}.id, ${t}.monthly_rent_cad, ${t}.unit_type, ${t}.bedrooms, ${t}.bathrooms::float8 AS bathrooms,
   ${t}.sqft, ${t}.year_built, coalesce(${t}.utilities_included, 'unknown') AS utilities_included,
   coalesce(${t}.parking, 'unknown') AS parking, coalesce(${t}.furnished, 'unknown') AS furnished,
-  coalesce(${t}.laundry_in_suite, 'unknown') AS laundry_in_suite`;
+  coalesce(${t}.laundry_in_suite, 'unknown') AS laundry_in_suite, ${t}.lease_term,
+  coalesce(${t}.sublet, 'unknown') AS sublet`;
 
 /** Candidate comparables around a point for a subject that may not be stored (pasted listings). */
 export async function candidatesNear(
@@ -277,7 +282,8 @@ export async function listingContext(
 /** A comparable pool row with the coordinates needed to measure it from any subject. */
 type PoolComparable = ComparableCandidate & { lng: number; lat: number };
 
-const numberOrNull = (value: unknown): number | null => value === null || value === undefined ? null : Number(value);
+const numberOrNull = (value: unknown): number | null =>
+  value === null || value === undefined ? null : Number(value);
 
 function subjectOfListing(listing: Listing): ValuationSubject {
   return {
@@ -292,14 +298,18 @@ function subjectOfListing(listing: Listing): ValuationSubject {
     parking: listing.parking,
     furnished: listing.furnished,
     laundryInSuite: listing.laundryInSuite,
+    leaseTerm: listing.leaseTerm,
+    sublet: listing.sublet,
   };
 }
 
 function poolComparable(row: Record<string, unknown>): PoolComparable | null {
-  const id = typeof row.id === 'string' ? row.id : null;
+  const id = typeof row.id === "string" ? row.id : null;
   const rent = numberOrNull(row.monthly_rent_cad);
-  const lng = numberOrNull(row.lng), lat = numberOrNull(row.lat);
-  if (!id || rent === null || lng === null || lat === null || !(row.last_seen_at instanceof Date)) return null;
+  const lng = numberOrNull(row.lng),
+    lat = numberOrNull(row.lat);
+  if (!id || rent === null || lng === null || lat === null || !(row.last_seen_at instanceof Date))
+    return null;
   return {
     id,
     monthlyRentCad: rent,
@@ -308,10 +318,12 @@ function poolComparable(row: Record<string, unknown>): PoolComparable | null {
     bathrooms: numberOrNull(row.bathrooms),
     sqft: numberOrNull(row.sqft),
     yearBuilt: numberOrNull(row.year_built),
-    utilitiesIncluded: (row.utilities_included ?? 'unknown') as Utilities,
-    parking: (row.parking ?? 'unknown') as Tri,
-    furnished: (row.furnished ?? 'unknown') as Tri,
-    laundryInSuite: (row.laundry_in_suite ?? 'unknown') as Tri,
+    utilitiesIncluded: (row.utilities_included ?? "unknown") as Utilities,
+    parking: (row.parking ?? "unknown") as Tri,
+    furnished: (row.furnished ?? "unknown") as Tri,
+    laundryInSuite: (row.laundry_in_suite ?? "unknown") as Tri,
+    leaseTerm: typeof row.lease_term === "string" ? row.lease_term : null,
+    sublet: (row.sublet ?? "unknown") as Tri,
     lastSeenAt: row.last_seen_at.toISOString(),
     duplicateOf: (row.duplicate_of ?? null) as string | null,
     buildingKey: (row.building_key ?? null) as string | null,
@@ -326,11 +338,23 @@ function poolComparable(row: Record<string, unknown>): PoolComparable | null {
  * The SQL filters are the same ones `candidatesNear` applies per subject; distance, the widest
  * radius and the nearest-first limit are applied in `comparablesFor`.
  */
-export async function comparablePool(sql: Sql, subjects: readonly Listing[], now: Date): Promise<PoolComparable[]> {
-  const bedrooms = [...new Set(subjects.filter(listing => listing.unitType !== 'room' && listing.bedrooms !== null).map(listing => listing.bedrooms!))];
-  const classFilter = bedrooms.length ? `(c.unit_type = 'room' OR c.bedrooms = ANY($2::int[]))` : `c.unit_type = 'room'`;
+export async function comparablePool(
+  sql: Sql,
+  subjects: readonly Listing[],
+  now: Date,
+): Promise<PoolComparable[]> {
+  const bedrooms = [
+    ...new Set(
+      subjects
+        .filter((listing) => listing.unitType !== "room" && listing.bedrooms !== null)
+        .map((listing) => listing.bedrooms!),
+    ),
+  ];
+  const classFilter = bedrooms.length
+    ? `(c.unit_type = 'room' OR c.bedrooms = ANY($2::int[]))`
+    : `c.unit_type = 'room'`;
   const statement = `
-    SELECT ${FIELDS('c')},
+    SELECT ${FIELDS("c")},
       ST_X(c.location::geometry) AS lng, ST_Y(c.location::geometry) AS lat,
       c.last_seen_at, c.duplicate_of,
       coalesce(c.building_id, c.address_point_id,
@@ -340,10 +364,14 @@ export async function comparablePool(sql: Sql, subjects: readonly Listing[], now
       AND c.duplicate_of IS NULL
       AND c.last_seen_at >= $1::timestamptz - make_interval(days => ${VALUATION.windowDays})
       AND ${classFilter}`;
-  const parameters: (string | number[])[] = bedrooms.length ? [now.toISOString(), bedrooms] : [now.toISOString()];
+  const parameters: (string | number[])[] = bedrooms.length
+    ? [now.toISOString(), bedrooms]
+    : [now.toISOString()];
   const rows = await sql.unsafe(statement, parameters);
-  if (!Array.isArray(rows)) throw new Error('Invalid comparable rows');
-  return rows.map(row => poolComparable(row as Record<string, unknown>)).filter((row): row is PoolComparable => row !== null);
+  if (!Array.isArray(rows)) throw new Error("Invalid comparable rows");
+  return rows
+    .map((row) => poolComparable(row as Record<string, unknown>))
+    .filter((row): row is PoolComparable => row !== null);
 }
 
 /** The pool sorted by latitude; lets one subject skip the rest of the city with a binary search. */
@@ -353,18 +381,23 @@ export function comparablePoolIndex(pool: readonly PoolComparable[]): PoolCompar
 
 /** First index whose latitude is at least `value`; `index` is sorted by latitude. */
 function firstAtOrAbove(index: readonly PoolComparable[], value: number): number {
-  let low = 0, high = index.length;
+  let low = 0,
+    high = index.length;
   while (low < high) {
     const middle = (low + high) >> 1;
-    if (index[middle].lat < value) low = middle + 1; else high = middle;
+    if (index[middle].lat < value) low = middle + 1;
+    else high = middle;
   }
   return low;
 }
 
 /** The nearest comparables for one subject, in the same order and with the same cap as `candidatesNear`. */
-export function comparablesFor(subject: Listing, index: readonly PoolComparable[]): ComparableCandidate[] {
+export function comparablesFor(
+  subject: Listing,
+  index: readonly PoolComparable[],
+): ComparableCandidate[] {
   const wanted = subjectOfListing(subject);
-  if (wanted.unitType !== 'room' && wanted.bedrooms === null) return [];
+  if (wanted.unitType !== "room" && wanted.bedrooms === null) return [];
   const widest = VALUATION.radiiM[VALUATION.radiiM.length - 1];
   // A cheap latitude/longitude box rejects most of the city before trigonometry. Without it every
   // subject measured its distance to every active two-bedroom listing in Toronto.
@@ -372,11 +405,24 @@ export function comparablesFor(subject: Listing, index: readonly PoolComparable[
   const lngSpan = latSpan / Math.max(0.1, Math.cos((subject.location.lat * Math.PI) / 180));
   const nearby: PoolComparable[] = [];
   const north = subject.location.lat + latSpan;
-  for (let i = firstAtOrAbove(index, subject.location.lat - latSpan); i < index.length && index[i].lat <= north; i++) {
+  for (
+    let i = firstAtOrAbove(index, subject.location.lat - latSpan);
+    i < index.length && index[i].lat <= north;
+    i++
+  ) {
     const candidate = index[i];
     if (candidate.id === wanted.id) continue;
-    if (wanted.unitType === 'room' ? candidate.unitType !== 'room' : candidate.unitType === 'room' || candidate.bedrooms !== wanted.bedrooms) continue;
-    if (Math.abs(candidate.lat - subject.location.lat) > latSpan || Math.abs(candidate.lng - subject.location.lng) > lngSpan) continue;
+    if (
+      wanted.unitType === "room"
+        ? candidate.unitType !== "room"
+        : candidate.unitType === "room" || candidate.bedrooms !== wanted.bedrooms
+    )
+      continue;
+    if (
+      Math.abs(candidate.lat - subject.location.lat) > latSpan ||
+      Math.abs(candidate.lng - subject.location.lng) > lngSpan
+    )
+      continue;
     // The SQL pool already applied the window and duplicate filters; the engine re-checks both.
     const metres = distanceM(subject.location, candidate);
     if (metres > widest) continue;
@@ -407,12 +453,12 @@ export async function listingContexts(
   const result = new Map<string, { valuation: Valuation; caveats: Caveat[] }>();
   if (!listings.length) return result;
   const keyOf = (listing: Listing) => `${listing.id}:${listing.monthlyRentCad}`;
-  const fresh = listings.filter(listing => !cached(keyOf(listing), now));
+  const fresh = listings.filter((listing) => !cached(keyOf(listing), now));
   const computed = new Map<string, { valuation: Valuation; candidates: ComparableCandidate[] }>();
 
   // Stored facts do not depend on the comparable pool, so they are read in parallel with it
   // instead of after it.
-  const ids = listings.map(listing => listing.id);
+  const ids = listings.map((listing) => listing.id);
   const facts = Promise.all([
     sql.unsafe(
       `SELECT l.id, (to_jsonb(l) ->> 'deposit_before_viewing')::boolean AS deposit,
@@ -431,12 +477,17 @@ export async function listingContexts(
     const index = comparablePoolIndex(await comparablePool(sql, fresh, now));
     for (const listing of fresh) {
       const candidates = comparablesFor(listing, index);
-      computed.set(keyOf(listing), { valuation: valuate(subjectOfListing(listing), candidates, null, now), candidates });
+      computed.set(keyOf(listing), {
+        valuation: valuate(subjectOfListing(listing), candidates, null, now),
+        candidates,
+      });
     }
   }
   const [storedRows] = await facts;
-  if (!Array.isArray(storedRows)) throw new Error('Invalid context rows');
-  const stored = new Map(storedRows.map(row => [(row as unknown as { id: string }).id, row as unknown as StoredFacts]));
+  if (!Array.isArray(storedRows)) throw new Error("Invalid context rows");
+  const stored = new Map(
+    storedRows.map((row) => [(row as unknown as { id: string }).id, row as unknown as StoredFacts]),
+  );
 
   for (const listing of listings) {
     const key = keyOf(listing);

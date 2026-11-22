@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildingSimilarity,
   inPool,
+  leaseClass,
   sameEraShare,
   priceLabel,
   valuate,
@@ -191,6 +192,27 @@ describe("building similarity", () => {
     expect(buildingSimilarity(tower, cand({ yearBuilt: 1965 }))).toBe(0.5);
     expect(buildingSimilarity(tower, cand({ yearBuilt: 2000 }))).toBe(1);
     expect(buildingSimilarity(tower, cand({ yearBuilt: null }))).toBe(1);
+  });
+
+  it("weights a short student term against a year lease down (#35)", () => {
+    const year = { ...subject, leaseTerm: "12 months" };
+    expect(buildingSimilarity(year, cand({ sublet: "yes" }))).toBe(0.3);
+    expect(buildingSimilarity(year, cand({ leaseTerm: "4 months" }))).toBe(0.3);
+    expect(buildingSimilarity(year, cand({ leaseTerm: "13 months" }))).toBe(1);
+    expect(buildingSimilarity(year, cand({ leaseTerm: null }))).toBe(1);
+    expect(buildingSimilarity({ ...subject, sublet: "yes" }, cand({ leaseTerm: "8 months" }))).toBe(
+      1,
+    );
+  });
+
+  it("classes terms as short, long or unknown", () => {
+    expect(leaseClass({ sublet: "yes", leaseTerm: "12 months" })).toBe("short");
+    expect(leaseClass({ leaseTerm: "short-term" })).toBe("short");
+    expect(leaseClass({ leaseTerm: "8 months" })).toBe("short");
+    expect(leaseClass({ leaseTerm: "10 months" })).toBeNull();
+    expect(leaseClass({ leaseTerm: "12 months" })).toBe("long");
+    expect(leaseClass({ leaseTerm: "month-to-month" })).toBeNull();
+    expect(leaseClass({})).toBeNull();
   });
 
   it("a basement is valued mostly from basements", () => {

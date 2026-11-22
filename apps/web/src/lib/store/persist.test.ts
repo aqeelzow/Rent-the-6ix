@@ -1,4 +1,4 @@
-import { baseIntent, listings, searchFixture } from "@rentthe6ix/shared/fixtures";
+import { baseIntent, listings, searchFixture } from "@rentkdubs/shared/fixtures";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   LAST_SEARCH_KEY,
@@ -11,6 +11,7 @@ import {
   startPersistence,
   writeLastSearch,
   writeShortlist,
+  moveLegacyKeys,
 } from "./persist";
 import { savedListing, type ShortlistEntry } from "./searchSlice";
 import { createAppStore } from "./store";
@@ -190,5 +191,33 @@ describe("startPersistence", () => {
     expect(store.getState().shortlist).toEqual([]);
     expect(storage.length).toBe(0);
     stop();
+  });
+});
+
+describe("moveLegacyKeys", () => {
+  const memory = () => {
+    const data = new Map<string, string>();
+    return {
+      get length() {
+        return data.size;
+      },
+      key: (i: number) => [...data.keys()][i] ?? null,
+      getItem: (k: string) => data.get(k) ?? null,
+      setItem: (k: string, v: string) => void data.set(k, v),
+      removeItem: (k: string) => void data.delete(k),
+      clear: () => data.clear(),
+    } as Storage;
+  };
+
+  it("moves a shortlist saved under the old name, never overwriting a newer one", () => {
+    const storage = memory();
+    storage.setItem("rentthe6ix.shortlist.v1", "[1]");
+    storage.setItem("rentthe6ix.lastSearch.v1", "{}");
+    storage.setItem(LAST_SEARCH_KEY, '{"new":true}');
+    moveLegacyKeys(storage);
+    expect(storage.getItem(SHORTLIST_KEY)).toBe("[1]");
+    expect(storage.getItem(LAST_SEARCH_KEY)).toBe('{"new":true}');
+    expect(storage.getItem("rentthe6ix.shortlist.v1")).toBeNull();
+    expect(storage.getItem("rentthe6ix.lastSearch.v1")).toBeNull();
   });
 });

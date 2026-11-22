@@ -1,4 +1,4 @@
-import { SafetySchema } from "@rentthe6ix/shared/schemas";
+import { SafetySchema } from "@rentkdubs/shared/schemas";
 import { z } from "zod";
 import { ApiError, jsonRoute } from "../api/json-route";
 import { crimeTableSource, safetyForListing, type CrimeTable } from "./safety";

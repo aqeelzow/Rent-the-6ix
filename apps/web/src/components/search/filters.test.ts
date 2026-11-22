@@ -1,5 +1,5 @@
-import { baseIntent } from "@rentthe6ix/shared/fixtures";
-import { SearchIntentSchema } from "@rentthe6ix/shared/schemas";
+import { baseIntent } from "@rentkdubs/shared/fixtures";
+import { SearchIntentSchema } from "@rentkdubs/shared/schemas";
 import { describe, expect, it } from "vitest";
 import type { SearchIntent } from "@/lib/store/types";
 import {

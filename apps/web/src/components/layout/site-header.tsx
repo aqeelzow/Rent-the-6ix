@@ -1,6 +1,6 @@
 import { Bookmark } from "lucide-react";
 import Link from "next/link";
-import { CnTower } from "@/components/brand/cn-tower";
+import { IonMark } from "@/components/brand/ion-mark";
 import { ShortlistCount } from "@/components/shortlist/shortlist-count";
 import { t } from "@/lib/format/messages";
 import { MobileNav } from "./mobile-nav";
@@ -23,7 +23,7 @@ export function SiteHeader() {
           className="flex items-center gap-2 text-lg font-semibold tracking-tight"
         >
           <span aria-hidden className="text-primary">
-            <CnTower id="header" className="h-8 w-auto" />
+            <IonMark className="h-8 w-auto" />
           </span>
           {t("common.appName")}
         </Link>

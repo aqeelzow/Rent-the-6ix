@@ -20,7 +20,7 @@ const nextConfig: NextConfig = {
   cacheComponents: false,
   reactCompiler: true,
   // packages/shared is plain TypeScript source with no build step.
-  transpilePackages: ["@rentthe6ix/shared"],
+  transpilePackages: ["@rentkdubs/shared"],
   // Self-contained server bundle for the Docker image on Vultr.
   output: "standalone",
   outputFileTracingRoot: repoRoot,

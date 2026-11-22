@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'vitest';
-import { baseIntent, searchFixture } from '@rentthe6ix/shared/fixtures';
+import { baseIntent, searchFixture } from '@rentkdubs/shared/fixtures';
 import { needsReinterpretation, LAST_SEARCH_KEY, readLastSearch, writeLastSearch } from './persist';
 import { parseAndSearch, restoreSearch, runSearch } from './actions';
 import { createAppStore } from './store';
