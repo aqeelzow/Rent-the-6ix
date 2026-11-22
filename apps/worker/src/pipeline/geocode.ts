@@ -11,6 +11,7 @@
 // includes Kitchener, except a Waterloo address within EDGE_M of the line, whose point is just
 // imprecise).
 import type { Sql } from "postgres";
+import { linkBuildings } from "./link-buildings.ts";
 
 /** A match further than this from the source's point is a different place with the same address. */
 export const MAX_SHIFT_M = 2_000;
@@ -155,6 +156,10 @@ export interface GeocodeResult {
   outsideCoverage: number;
   /** Unmatched listings whose title or address names another city, deleted. */
   otherCity: number;
+  /** Listings linked to a catalogue building by their Address Point. */
+  buildingByAddress: number;
+  /** Listings with no address placed at the building their text names. */
+  buildingByName: number;
 }
 
 /** Listings per matching query, and per UPDATE (short statements: other writers never wait long). */
@@ -183,6 +188,8 @@ export async function geocodeStored(
     areaJoined: 0,
     outsideCoverage: 0,
     otherCity: 0,
+    buildingByAddress: 0,
+    buildingByName: 0,
   };
 
   // 1. Exact address, nearest point if the City has several. `|| ''` keeps the planner off the
@@ -250,9 +257,7 @@ export async function geocodeStored(
       WHERE l.id = m.id AND l.address_point_id IS NULL`;
   }
 
-  const [{ neighbourhoods, waterloo }] = await sql<
-    { neighbourhoods: number; waterloo: number }[]
-  >`
+  const [{ neighbourhoods, waterloo }] = await sql<{ neighbourhoods: number; waterloo: number }[]>`
     SELECT (SELECT count(*)::int FROM neighbourhoods) AS neighbourhoods,
       (SELECT count(*)::int FROM neighbourhoods WHERE id LIKE ${WATERLOO_ID_PREFIX + "%"}) AS waterloo`;
 
@@ -293,5 +298,9 @@ export async function geocodeStored(
     ).count;
   }
 
+  // Building names, both directions, once every address is placed.
+  const links = await linkBuildings(sql);
+  result.buildingByAddress = links.byAddress;
+  result.buildingByName = links.byName;
   return result;
 }
