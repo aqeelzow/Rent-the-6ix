@@ -992,5 +992,37 @@
       "repairs": "Landlords must keep rental units safe and in good repair. You can ask the City to inspect your unit without telling your landlord first.",
       "repairsLink": "Rental housing support from the City"
     }
+  },
+  "building": {
+    "title": "Building",
+    "unavailable": "This building's details aren't available right now.",
+    "kind": {
+      "student": "Student building",
+      "rental_apartment": "Rental apartments",
+      "condo": "Condo building",
+      "other": "Building"
+    },
+    "now": {
+      "title": "Listed now ({n})",
+      "none": "No listings in this building right now."
+    },
+    "perMonth": "{amount}/month",
+    "units": {
+      "room": "Room",
+      "studio": "Studio",
+      "beds": "{n} bed",
+      "unknown": "Bedrooms not stated"
+    },
+    "rents": {
+      "title": "Past asking rents",
+      "intro": "Asking rents seen in this building over the last {days} days, from every listing site we collect.",
+      "none": "No asking rents seen here yet.",
+      "unit": "Unit",
+      "median": "Median",
+      "range": "Range",
+      "listings": "Listings",
+      "seen": "Seen",
+      "note": "Asking rents, not signed leases. A listing seen at more than one price counts each price."
+    }
   }
 }
