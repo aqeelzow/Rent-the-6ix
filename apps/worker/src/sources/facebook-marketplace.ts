@@ -325,6 +325,8 @@ function blockedIfLogin(url: string, finalUrl: string): void {
 export const facebookMarketplace: SourceAdapter = {
   id: "facebook_marketplace",
   displayName: "Facebook Marketplace",
+  // Each index page is one map circle; the first few are farmland at the City's north edge.
+  fullPages: WATERLOO_TILES.length,
   sessionOptions: () => ({
     delayMs: Number(process.env.FB_REQUEST_DELAY_MS ?? 10_000),
     profileDir: process.env.FB_PROFILE_DIR || undefined,

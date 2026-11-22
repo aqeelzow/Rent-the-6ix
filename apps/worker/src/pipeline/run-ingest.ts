@@ -59,7 +59,11 @@ export interface SourceRun {
 
 export interface IngestOptions {
   sources: string[];
-  maxPages: number;
+  /**
+   * Index pages per source per run. Absent: the adapter's own `fullPages`, else
+   * DEFAULT_MAX_PAGES.
+   */
+  maxPages?: number;
   /** Detail pages per source per run; each costs one request (INGEST_REQUEST_DELAY_MS). */
   maxDetails: number;
   /** Resume a single-source run from this index cursor (e.g. "55"); first page if absent. */
@@ -72,6 +76,9 @@ export interface IngestResult {
   finishedAt: string;
   runs: SourceRun[];
 }
+
+/** Index pages per source when neither --pages, INGEST_MAX_PAGES nor the adapter says. */
+export const DEFAULT_MAX_PAGES = 3;
 
 // The sources marked "go" in SOURCES.md.
 const DEFAULT_SOURCES = "kijiji,rentals_ca,zillow,realtor_ca,facebook_marketplace";
@@ -95,11 +102,19 @@ export function ingestOptionsFromEnv(
       .split(",")
       .map((s) => s.trim())
       .filter((s) => s && s !== "manual"),
-    maxPages: Number(overrides.pages ?? process.env.INGEST_MAX_PAGES ?? 3),
+    maxPages:
+      (overrides.pages ?? process.env.INGEST_MAX_PAGES)
+        ? Number(overrides.pages ?? process.env.INGEST_MAX_PAGES)
+        : undefined,
     maxDetails: Number(overrides.details ?? process.env.INGEST_MAX_DETAILS ?? 50),
     cursor: overrides.cursor,
     maxAi: Number(overrides.ai ?? process.env.INGEST_MAX_AI ?? 200),
   };
+}
+
+/** How many index pages to read from `adapter` this run. */
+export function maxPagesFor(adapter: SourceAdapter, options: IngestOptions): number {
+  return options.maxPages ?? adapter.fullPages ?? DEFAULT_MAX_PAGES;
 }
 
 export async function runIngest(options: IngestOptions): Promise<IngestResult> {
@@ -176,7 +191,7 @@ export async function runIngest(options: IngestOptions): Promise<IngestResult> {
         cursor = page.nextCursor;
         console.log(`${adapter.id}: page ${run.pages}, ${page.listings.length} listings`);
         if (run.pages % CHECKPOINT_PAGES === 0) await save(normalizeAll(raws).rows);
-      } while (cursor && run.pages < options.maxPages);
+      } while (cursor && run.pages < maxPagesFor(adapter, options));
       await addDetails(adapter, session, raws, options.maxDetails, run);
     } catch (error) {
       run.status = error instanceof SourceBlockedError ? "unhealthy" : "error";
