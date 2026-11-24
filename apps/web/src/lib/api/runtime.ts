@@ -38,6 +38,18 @@ export const fixtureDependencies: SearchDependencies = {
 type RuntimeOptions = { env?: Record<string, string | undefined>; parser?: ParseService; resolver?: DestinationResolver; dependencies?: SearchDependencies; jobs?: SearchJobs; identity?: (request: Request) => string; limiter?: IpLimiter; startLimiter?: IpLimiter; pollLimiter?: IpLimiter; explainProvider?: import('../ai/index').AIProvider };
 export function createRuntime(options: RuntimeOptions = {}) {
   const env = options.env ?? process.env;
+  const safetyAvailable = env.SEARCH_FIXTURES === '1' || options.dependencies !== undefined;
+  const marketIntent = (intent: z.infer<typeof SearchIntentSchema>) => {
+    if (safetyAvailable || !intent.safety.enabled) return intent;
+    const fieldSources = { ...intent.fieldSources };
+    delete fieldSources.safety;
+    return {
+      ...intent,
+      safety: { enabled: false, hard: false },
+      fieldSources,
+      ...(intent.weights ? { weights: { ...intent.weights, safety: 0 } } : {}),
+    };
+  };
   const resolver = options.resolver ?? new DestinationResolver({
     maptilerKey: env.NEXT_PUBLIC_MAPTILER_KEY,
     addressLookup: env.SEARCH_FIXTURES !== '1' && env.DATABASE_URL ? addressPointsLookup() : undefined,
@@ -53,7 +65,7 @@ export function createRuntime(options: RuntimeOptions = {}) {
   const SEARCH_CACHE_TTL_MS = 60_000, SEARCH_CACHE_SIZE = 64;
   // Wired on the base dependencies, not only when a router is: a card the router never reached must
   // still show a distance rather than a blank, and there is no router by default.
-  const dependencies = options.dependencies ?? (env.SEARCH_FIXTURES === '1' ? fixtureDependencies : env.DATABASE_URL ? { ...sqlSearchDependencies(), amenityDistances: amenityDistances() } : undefined);
+  const dependencies = options.dependencies ?? (env.SEARCH_FIXTURES === '1' ? fixtureDependencies : env.DATABASE_URL ? { ...sqlSearchDependencies(undefined, async () => null), amenityDistances: amenityDistances() } : undefined);
   // Vercel overwrites this header; other deployments need their own trusted identity callback.
   const identity = options.identity ?? ((request: Request) => {
     const ip = env.VERCEL === '1' ? request.headers.get('x-vercel-forwarded-for') : null;
@@ -74,7 +86,7 @@ export function createRuntime(options: RuntimeOptions = {}) {
   const checkedIntent = (input: unknown) => {
     const intent = SearchIntentSchema.parse(input);
     if (intent.rawPrompt || Object.keys(intent.fieldSources).length || intent.droppedRequests.length) throw new ApiError(422, 'validation_error', 'Detail intent must redact rawPrompt, fieldSources and droppedRequests');
-    return intent;
+    return marketIntent(intent);
   };
   const loadDetail = async (id: string, intent: z.infer<typeof SearchIntentSchema>) => {
     const deps = requireDependencies();
@@ -98,9 +110,13 @@ export function createRuntime(options: RuntimeOptions = {}) {
   };
   return {
     jobs,
-    parse: jsonRoute({ name: 'search.parse', body: ParseRequestSchema, rateLimit: limit }, async (input, raw) => parser.parse(input, identity(raw))),
+    parse: jsonRoute({ name: 'search.parse', body: ParseRequestSchema, rateLimit: limit }, async (input, raw) => {
+      const parsed = await parser.parse(input, identity(raw));
+      return { ...parsed, intent: marketIntent(parsed.intent) };
+    }),
     resolve: jsonRoute({ name: 'geo.resolve', rateLimit: limit }, async (_input, request) => resolver.resolve(z.string().trim().min(1).max(500).parse(query(request, 'q')))),
     search: jsonRoute({ name: 'listings.search', body: SearchRequestSchema, rateLimit: limit }, async (request, raw) => {
+      request = { ...request, intent: marketIntent(request.intent) };
       const deps = requireDependencies();
       if (request.intent.numericExtreme?.field === 'travel') {
         startLimiter.check(identity(raw));

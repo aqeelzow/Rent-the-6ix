@@ -106,7 +106,7 @@ export async function candidatesNear(
     WHERE ST_DWithin(c.location, ${point}, ${widest})
       AND c.id <> ${subject.id}
       AND c.duplicate_of IS NULL
-      AND c.status IN ('active', 'stale')
+      AND c.status IN ('active', 'stale') AND c.data_status <> 'demo'
       AND c.last_seen_at >= ${now} - make_interval(days => ${VALUATION.windowDays})
       AND ${
         subject.unitType === "room"
@@ -168,7 +168,7 @@ function remember(key: string, now: Date, value: Valuation) {
  */
 const BENCHMARK_ROWS = `(SELECT jsonb_agg(jsonb_build_object('id', b.id, 'key', b.key,
     'valueCad', b.value_cad::float8, 'period', b.period, 'sourceId', b.source_id))
-  FROM benchmarks b WHERE b.kind = 'rent' AND b.value_cad IS NOT NULL) AS benchmarks`;
+  FROM benchmarks b WHERE b.kind = 'rent' AND b.key->>'geo' = 'Kitchener–Cambridge–Waterloo CMA' AND b.value_cad IS NOT NULL) AS benchmarks`;
 
 /** The benchmark line (P2.3): context under the rent check, never part of the estimate. */
 function benchmarkOf(
@@ -360,7 +360,7 @@ export async function comparablePool(
       coalesce(c.building_id, c.address_point_id,
         'pt:' || round(ST_X(c.location::geometry)::numeric, 4) || ':' || round(ST_Y(c.location::geometry)::numeric, 4)) AS building_key
     FROM listings c
-    WHERE c.status IN ('active', 'stale')
+    WHERE c.status IN ('active', 'stale') AND c.data_status <> 'demo'
       AND c.duplicate_of IS NULL
       AND c.last_seen_at >= $1::timestamptz - make_interval(days => ${VALUATION.windowDays})
       AND ${classFilter}`;

@@ -14,12 +14,9 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { SAFETY, engineConfig } from "@rentkdubs/shared/engine/config";
+import { engineConfig } from "@rentkdubs/shared/engine/config";
 import { scoreWeights } from "@rentkdubs/shared/engine/score";
 import { Slider } from "@/components/ui/slider";
-import { SafetyInfoButton } from "@/components/safety/safety-info";
-import { CrimeDisclaimer } from "@/components/safety/crime-disclaimer";
-import { SafetyLimit } from "@/components/safety/safety-limit";
 import { Switch } from "@/components/ui/switch";
 import { t, type MessageKey } from "@/lib/format/messages";
 import { resolveDestination, runSearch } from "@/lib/store/actions";
@@ -53,7 +50,6 @@ import {
   range,
   setCriterion,
   setCriterionHard,
-  setSafety,
   type AmenityCategory,
   type CriterionField as Field,
   type ResolvedPlace,
@@ -132,7 +128,6 @@ export function FiltersPanel() {
             <PriceSection draft={draft} edit={edit} />
             <HomeSection draft={draft} edit={edit} />
             <TravelSection draft={draft} edit={edit} destinations={destinations} />
-            <SafetySection draft={draft} edit={edit} />
             <AreaSection draft={draft} edit={edit} />
           </div>
         )}
@@ -661,7 +656,7 @@ function AddAmenity({ edit }: { edit: Edit }) {
   );
 }
 
-const PARTS = ["value", "price", "travel", "home", "safety"] as const;
+const PARTS = ["value", "price", "travel", "home"] as const;
 type Part = (typeof PARTS)[number];
 
 /**
@@ -675,7 +670,7 @@ function PrioritiesSection({ draft, edit }: SectionProps) {
   const set = (part: Part, value: number) =>
     edit((d) => {
       const next = { ...scoreWeights(d), [part]: value };
-      if (!d.safety.enabled) next.safety = 0;
+      next.safety = 0;
       return { ...d, weights: next };
     });
   return (
@@ -687,7 +682,6 @@ function PrioritiesSection({ draft, edit }: SectionProps) {
           part={part}
           value={weights[part]}
           share={total ? Math.round((weights[part] / total) * 100) : 0}
-          disabled={part === "safety" && !draft.safety.enabled}
           onChange={(value) => set(part, value)}
         />
       ))}
@@ -720,13 +714,11 @@ function PriorityRow({
   part,
   value,
   share,
-  disabled,
   onChange,
 }: {
   part: Part;
   value: number;
   share: number;
-  disabled: boolean;
   onChange: (value: number) => void;
 }) {
   const id = useId();
@@ -734,19 +726,9 @@ function PriorityRow({
     <div className="flex flex-col gap-2">
       <div className="flex items-baseline justify-between gap-3">
         <Label htmlFor={id}>{p(`priorities.parts.${part}`)}</Label>
-        {disabled ? (
-          <button
-            type="button"
-            onClick={goToSafety}
-            className="text-primary text-sm underline-offset-2 hover:underline"
-          >
-            {p("priorities.safetyOff")}
-          </button>
-        ) : (
-          <span className="text-muted-foreground figures text-sm">
-            {p("priorities.share", { share })}
-          </span>
-        )}
+        <span className="text-muted-foreground figures text-sm">
+          {p("priorities.share", { share })}
+        </span>
       </div>
       <Slider
         id={id}
@@ -754,68 +736,10 @@ function PriorityRow({
         max={engineConfig.fairnessWeight * 2}
         step={5}
         value={[value]}
-        disabled={disabled}
         onValueChange={([next]) => onChange(next)}
         aria-label={p(`priorities.parts.${part}`)}
       />
     </div>
-  );
-}
-
-/** The Safety section's switch; the priorities' "Turn on safety to use" scrolls to it. */
-const SAFETY_SWITCH_ID = "filters-safety-switch";
-
-const SAFETY_ROW_ID = "filters-safety-row";
-/** Classes the Safety row flashes when the priorities send the renter to it. */
-const HIGHLIGHT = ["bg-primary/10", "ring-2", "ring-primary"];
-
-function goToSafety() {
-  const toggle = document.getElementById(SAFETY_SWITCH_ID);
-  const row = document.getElementById(SAFETY_ROW_ID);
-  toggle?.scrollIntoView({ behavior: "smooth", block: "center" });
-  toggle?.focus({ preventScroll: true });
-  if (!row) return;
-  row.classList.add(...HIGHLIGHT);
-  window.setTimeout(() => row.classList.remove(...HIGHLIGHT), 1600);
-}
-
-function SafetySection({ draft, edit }: SectionProps) {
-  const { enabled, hard } = draft.safety;
-  return (
-    <PanelSection title={p("sections.safety")}>
-      <div
-        id={SAFETY_ROW_ID}
-        className="-m-2 flex flex-col gap-2 rounded-lg p-2 transition-[background-color,box-shadow] duration-700"
-      >
-        <div className="flex items-center justify-between gap-3">
-          <Label htmlFor={SAFETY_SWITCH_ID}>{p("safetyToggle")}</Label>
-          <Switch
-            id={SAFETY_SWITCH_ID}
-            checked={enabled}
-            onCheckedChange={(on) => edit((d) => setSafety(d, { enabled: on, hard: false }))}
-          />
-        </div>
-        <p className="text-muted-foreground text-xs">
-          {p("safetyHelp")} <SafetyInfoButton />
-        </p>
-      </div>
-      {/* Shown whether or not safety is on, so it's read before turning it on. */}
-      <CrimeDisclaimer />
-      {enabled && (
-        <SafetyLimit
-          value={hard ? (draft.safety.maxRelativeRate ?? SAFETY.hardMaxRelativeRate) : null}
-          onChange={(limit) =>
-            edit((d) =>
-              setSafety(d, {
-                enabled: true,
-                hard: limit !== null,
-                maxRelativeRate: limit ?? undefined,
-              }),
-            )
-          }
-        />
-      )}
-    </PanelSection>
   );
 }
 

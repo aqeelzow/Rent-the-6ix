@@ -10,8 +10,6 @@ import { loadAddressPoints } from "./address-points.ts";
 import { loadDerivedIndicators } from "./area-indicators.ts";
 import { loadBoundaries } from "./areas.ts";
 import { loadBuildings } from "./buildings.ts";
-import { loadCensus } from "./census.ts";
-import { loadCrimeRates } from "./crime.ts";
 import { loadDevApplications } from "./dev-applications.ts";
 import { loadPois } from "./pois.ts";
 import { loadTransitStops } from "./transit-stops.ts";
@@ -69,29 +67,15 @@ async function buildings(sql: Sql): Promise<void> {
   );
 }
 
-async function crime(sql: Sql): Promise<void> {
-  const load = await loadCrimeRates(sql);
-  console.log(`  area_indicators: ${load.indicators} crime rows for ${load.period}`);
-}
-
 async function indicators(sql: Sql): Promise<void> {
   const load = await loadDerivedIndicators(sql);
   console.log(`  area_indicators: ${load.rows} derived rows`, load.byIndicator);
 }
 
-async function census(sql: Sql): Promise<void> {
-  const load = await loadCensus(sql);
-  console.log(
-    `  area_indicators: ${load.indicators} census rows for ${load.neighbourhoods} neighbourhoods`,
-  );
-  if (load.neighbourhoods !== 158)
-    throw new Error("expected all 158 neighbourhoods in the profiles");
-}
-
 async function devapps(sql: Sql): Promise<void> {
   const load = await loadDevApplications(sql);
   console.log(
-    `  dev_applications: ${load.applications} applications from ${load.records} rows (${load.withUnits} with a unit count); area_indicators: ${load.indicators} rows for ${load.period}`,
+    `  dev_applications: ${load.applications} mapped applications from ${load.records} rows`,
   );
 }
 
@@ -102,8 +86,6 @@ const TASKS: Record<string, Task> = {
   pois,
   stops,
   buildings,
-  crime,
-  census,
   devapps,
   indicators,
 };

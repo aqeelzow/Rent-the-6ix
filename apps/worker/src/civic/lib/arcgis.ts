@@ -29,6 +29,7 @@ export interface GeoJsonFeature<P = Record<string, unknown>> {
 interface GeoJsonPage<P> {
   type?: string;
   features?: GeoJsonFeature<P>[];
+  exceededTransferLimit?: boolean;
   properties?: { exceededTransferLimit?: boolean };
   error?: { code?: number; message?: string };
 }
@@ -73,6 +74,6 @@ export async function queryAll<P = Record<string, unknown>>(
     features.push(...page.features);
     options.onPage?.(features.length);
     // Hosted layers flag a truncated page; an empty page also ends it, in case a server doesn't.
-    if (!page.properties?.exceededTransferLimit || page.features.length === 0) return features;
+    if (!(page.exceededTransferLimit ?? page.properties?.exceededTransferLimit) || page.features.length === 0) return features;
   }
 }

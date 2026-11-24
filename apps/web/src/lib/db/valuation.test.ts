@@ -60,14 +60,14 @@ afterEach(() => clearValuationCache());
 // D's StatCan rows as the benchmarks subselect returns them.
 const statcan = (bedrooms: number, valueCad: number, basis = "asking") => ({
   id: `apt-${bedrooms}-${basis}`,
-  key: { geo: "Toronto CMA", dwelling: "Apartment", bedrooms, basis },
+  key: { geo: "Kitchener–Cambridge–Waterloo CMA", dwelling: "Apartment", bedrooms, basis },
   valueCad,
   period: "2026 Q2",
   sourceId: "statcan-46100092",
 });
 const benchmarks = [statcan(1, 1840, "paid"), statcan(1, 2090), statcan(2, 2650)];
 const statcan1br = {
-  label: "Toronto-area average asking rent, 1-bedroom apartments",
+  label: "Waterloo-area average asking rent, 1-bedroom apartments",
   valueCad: 2090,
   period: "2026 Q2",
   sourceId: "statcan-46100092",
@@ -93,7 +93,7 @@ describe("listingValuation", () => {
 
   it("output passes the shared ValuationSchema, with or without a benchmark", async () => {
     const benchmark = {
-      label: "Toronto CMA asking rent, 1 bedroom",
+      label: "Kitchener–Cambridge–Waterloo CMA asking rent, 1 bedroom",
       valueCad: 2500,
       period: "2026 Q2",
       sourceId: "statcan",

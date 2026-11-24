@@ -1,5 +1,5 @@
 // P2.14 (derived half) — area indicators computed in the database from tables the other civic tasks
-// already loaded: TTC stops and City POIs, counted inside each of the 158
+// already loaded: GRT stops and OpenStreetMap POIs, counted inside Waterloo
 // neighbourhoods (SPEC 5 "Area", 9.1, 9.2). Nothing is fetched; each indicator is one
 // `insert … select` so no rows travel to this machine.
 //
@@ -26,10 +26,10 @@ export interface DerivedIndicator {
 }
 
 export const DERIVED_INDICATORS: DerivedIndicator[] = [
-  { id: "transit_stops_per_km2", unit: "stops per km²", sourceId: "ttc-routes-and-schedules" },
-  { id: "rapid_transit_within_800m_pct", unit: "% of area", sourceId: "ttc-routes-and-schedules" },
-  { id: "libraries", unit: "libraries", sourceId: "library-branch-general-information" },
-  { id: "parks", unit: "parks", sourceId: "parks-and-recreation-facilities" },
+  { id: "transit_stops_per_km2", unit: "stops per km²", sourceId: "grt-gtfs" },
+  { id: "rapid_transit_within_800m_pct", unit: "% of area", sourceId: "grt-gtfs" },
+  { id: "libraries", unit: "libraries", sourceId: "openstreetmap" },
+  { id: "parks", unit: "parks", sourceId: "openstreetmap" },
 ];
 
 export interface DerivedLoad {
@@ -71,7 +71,7 @@ export async function loadDerivedIndicators(sql: Sql): Promise<DerivedLoad> {
     }
     byIndicator[indicator.id] = 0;
     for (const { kind, table } of KINDS) {
-      // The rapid-transit zone is built once per statement: 148 stop buffers unioned.
+      // The rapid-transit zone is built once per statement: ION stop buffers unioned.
       const result = await sql`
         with r as (
           select ST_Union(ST_Buffer(ST_Transform(location::geometry, ${METRIC_SRID}::int), ${RAPID_RADIUS_M})) as zone
@@ -82,6 +82,7 @@ export async function loadDerivedIndicators(sql: Sql): Promise<DerivedLoad> {
         select a.id, ${kind}, ${indicator.id}, ${valueSql(sql, indicator.id)},
                ${indicator.unit}, ${source.period}, ${indicator.sourceId}
         from ${sql(table)} a cross join r
+        where a.source_id in ('waterloo-district-plans', 'waterloo-city-boundary')
         on conflict (area_id, indicator_id, period) do update set
           value = excluded.value,
           sample_size = excluded.sample_size,

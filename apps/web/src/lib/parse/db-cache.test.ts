@@ -19,14 +19,14 @@ function database() {
 const provider = (prompt: string, counter: { calls: number }) => ({ generateStructured: async <T>() => { counter.calls++; return fallbackParse(prompt) as T; }, generateText: async () => '' });
 test('new services reuse DB parses without storing prompt/evidence or resolved destinations', async () => {
   const db = database(); const counter = { calls: 0 };
-  const prompt = '10 min walk to Union Station, under $2500';
+  const prompt = '10 min walk to Kitchener GO Station, under $2500';
   const make = () => new ParseService({ provider: provider(prompt, counter), intentCache: databaseIntentCache(db.client) });
   const first = await make().parse({ prompt }, 'ip');
   const second = await make().parse({ prompt }, 'ip');
   assert.deepEqual(second, first); assert.equal(counter.calls, 1);
   assert.equal(first.destinations[0].resolution.status, 'resolved');
   const serialized = JSON.stringify([...db.rows.values()]);
-  for (const value of [prompt, 'Union Station', 'under $2500', '10 min walk', 'known_place']) assert.equal(serialized.includes(value), false, value);
+  for (const value of [prompt, 'Kitchener GO Station', 'under $2500', '10 min walk', 'known_place']) assert.equal(serialized.includes(value), false, value);
   const parameters = db.calls.find(call => call.statement === parseCacheWrite)!.parameters;
   assert.match(String(parameters[0]), /^[0-9a-f]{64}$/); assert.equal(parameters[1], 'search.parse');
   const intent = second.intent; intent.criteria.rent!.value.max = 1;
@@ -35,7 +35,7 @@ test('new services reuse DB parses without storing prompt/evidence or resolved d
 test('unavailable resolution is retried on DB hit; fallback failures are never persisted', async () => {
   const db = database(); const counter = { calls: 0 }; let resolved = false;
   const prompt = '10 min walk to an unknown place';
-  const resolver = new DestinationResolver({ addressLookup: async query => resolved ? { status: 'resolved', query, destination: { id: 'lookup', label: 'Now available', resolved: { lng: -79.4, lat: 43.7, source: 'address_points' } } } : undefined });
+  const resolver = new DestinationResolver({ addressLookup: async query => resolved ? { status: 'resolved', query, destination: { id: 'lookup', label: 'Now available', resolved: { lng: -80.5, lat: 43.5, source: 'address_points' } } } : undefined });
   const make = () => new ParseService({ resolver, provider: provider(prompt, counter), intentCache: databaseIntentCache(db.client) });
   assert.equal((await make().parse({ prompt }, 'ip')).destinations[0].resolution.status, 'unavailable');
   resolved = true;
@@ -62,7 +62,7 @@ test('expiry, model/date namespaces and malformed payloads miss safely', async (
 test('ungrounded labels and generated dropped text skip persistence, but response stays complete', async () => {
   const db = database();
   for (const kind of ['label', 'drop'] as const) {
-    const prompt = '10 min walk to Union Station'; const intent = fallbackParse(prompt);
+    const prompt = '10 min walk to Kitchener GO Station'; const intent = fallbackParse(prompt);
     if (kind === 'label') intent.travelTargets[0].label = 'Generated destination label';
     else intent.droppedRequests.push({ phrase: 'arbitrary phone 1234', reason: 'Generated clarification' });
     const service = new ParseService({ intentCache: databaseIntentCache(db.client), provider: { generateStructured: async <T>() => structuredClone(intent) as T, generateText: async () => '' } });

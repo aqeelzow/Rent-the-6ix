@@ -7,8 +7,8 @@ import { getClient } from '../db';
 import { normalizeAddress } from '../../../../worker/src/civic/lib/address';
 vi.mock('../db', () => ({ getClient: vi.fn(() => null) }));
 const sample = [
-  { id: 'city-1', address_full: '100 Queen St W', lng: -79.384, lat: 43.653 },
-  { id: 'city-2', address_full: '200 King St W', lng: -79.388, lat: 43.647 },
+  { id: 'city-1', address_full: '100 Queen St W', lng: -80.484, lat: 43.453 },
+  { id: 'city-2', address_full: '200 King St W', lng: -80.488, lat: 43.447 },
 ];
 const signal = () => new AbortController().signal;
 test('small Address Points sample uses bound exact-address SQL and validates all row output', async () => {
@@ -47,9 +47,9 @@ test('absent/failed client falls through; cancellation ignores late reads and bo
   assert.equal(await addressPointsLookup(() => ({ unsafe: async () => [] }))('x', signal()), undefined);
 });
 test('resolver preserves known places, fallback and total deadline without late geocoder calls', async () => {
-  const fallback = vi.fn(async () => Response.json({ features: [{ id: 'm1', place_name: 'Address', relevance: 1, center: [-79.38, 43.65] }] }));
+  const fallback = vi.fn(async () => Response.json({ features: [{ id: 'm1', place_name: 'Address', relevance: 1, center: [-80.48, 43.45] }] }));
   const resolver = new DestinationResolver({ addressLookup: addressPointsLookup(() => ({ unsafe: async () => [] })), maptilerKey: 'test', fetch: fallback });
-  assert.equal((await resolver.resolve('Union Station')).status, 'resolved'); assert.equal(fallback.mock.calls.length, 0);
+  assert.equal((await resolver.resolve('Kitchener GO Station')).status, 'resolved'); assert.equal(fallback.mock.calls.length, 0);
   assert.equal((await resolver.resolve('unknown exact address')).status, 'resolved'); assert.equal(fallback.mock.calls.length, 1);
   let finish!: (rows: unknown) => void;
   const slow = new DestinationResolver({ timeoutMs: 5, addressLookup: addressPointsLookup(() => ({ unsafe: () => new Promise(resolve => { finish = resolve; }) })), maptilerKey: 'test', fetch: fallback });

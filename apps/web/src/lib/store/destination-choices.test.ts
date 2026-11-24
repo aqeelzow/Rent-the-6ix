@@ -8,14 +8,14 @@ import { chooseDestination } from '../../components/search/filters';
 import { DestinationResolver } from '../parse/resolve';
 
 const choices = [
-  { id: 'spadina', label: 'The Well, 16 Spadina Avenue', resolved: { lng: -79.3944, lat: 43.6433, source: 'maptiler' as const, representativePoint: true, label: 'The Well, 16 Spadina Avenue representative point' } },
-  { id: 'downtown', label: 'The Well, Downtown', resolved: { lng: -79.3961, lat: 43.6429, source: 'maptiler' as const, representativePoint: true, label: 'The Well, Downtown representative point' } },
+  { id: 'spadina', label: 'The Well, Waterloo', resolved: { lng: -80.4944, lat: 43.4433, source: 'maptiler' as const, representativePoint: true, label: 'The Well, Waterloo representative point' } },
+  { id: 'downtown', label: 'The Well, Downtown', resolved: { lng: -80.4961, lat: 43.4429, source: 'maptiler' as const, representativePoint: true, label: 'The Well, Downtown representative point' } },
 ];
 const resolution: DestinationResolution = { status: 'ambiguous', query: 'the well', choices };
 const intent: SearchIntent = {
   ...structuredClone(baseIntent), rawPrompt: 'under $2500 near the well',
   criteria: { rent: { value: { max: 2500 }, hard: true } },
-  travelTargets: [{ id: 'well', kind: 'place', label: 'the well', query: 'the well', normalizedQuery: 'The Well, Toronto', mode: 'walk', maxMinutes: 15, hard: true }],
+  travelTargets: [{ id: 'well', kind: 'place', label: 'the well', query: 'the well', normalizedQuery: 'The Well, Waterloo', mode: 'walk', maxMinutes: 15, hard: true }],
 };
 
 test('parsed POI choices pause listings, survive retries, and search with the selected location', async () => {
@@ -92,7 +92,7 @@ test('a restored unresolved place also pauses when its lookup finds several cand
 test('one lower-score POI suggestion passes browser validation and waits for explicit confirmation', async () => {
   const store = createAppStore();
   const resolver = new DestinationResolver({ maptilerKey: 'test', fetch: async () => Response.json({ features: [
-    { id: 'spadina', text: 'The Well', place_name: choices[0].label, relevance: 0.75, place_type: ['poi'], center: [-79.3944, 43.6433] },
+    { id: 'spadina', text: 'The Well', place_name: choices[0].label, relevance: 0.75, place_type: ['poi'], center: [-80.4944, 43.4433] },
   ] }) });
   const suggestion = await resolver.resolve('the well');
   let searches = 0;

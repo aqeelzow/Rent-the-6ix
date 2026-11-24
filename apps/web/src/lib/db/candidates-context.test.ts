@@ -31,7 +31,7 @@ function client(options: { candidates?: unknown[]; observations?: unknown[]; com
     if (text.includes('FROM listings c')) return Promise.resolve(options.pool ?? five());
     if (text.includes('listing_observations')) return Promise.resolve((parameters[0] as string[]).map(id => ({ id, deposit: true, asking_rent_cad: 2200, observed_at: new Date('2026-10-01'), benchmarks: null })));
     if (text.includes('FROM buildings WHERE')) return Promise.resolve([]);
-    if (text.includes('FROM neighbourhoods') || text.includes('FROM area_indicators') || text.includes('WHERE duplicate_of =')) return Promise.resolve([]);
+    if (text.includes('FROM neighbourhoods WHERE id') || text.includes('FROM area_indicators') || text.includes('WHERE duplicate_of =')) return Promise.resolve([]);
     return Promise.resolve(options.candidates ?? [rowFor(listing)]);
   });
   Object.assign(sql, { unsafe });
@@ -69,7 +69,7 @@ test('default config gate retains missing-config 503 and fixture opt-in wins ove
   vi.mocked(getClient).mockImplementation(() => { throw new Error('private invalid connection URL'); });
   const invalid = createRuntime({ env: { DATABASE_URL: 'invalid' } });
   const failed = await invalid.search(http(input), undefined); assert.equal(failed.status, 503); assert.doesNotMatch(JSON.stringify(await failed.json()), /private/);
-  const resolved = await invalid.resolve(new Request('http://localhost/api/geo/resolve?q=Union%20Station'), undefined); assert.equal(resolved.status, 200);
+  const resolved = await invalid.resolve(new Request('http://localhost/api/geo/resolve?q=Kitchener%20GO%20Station'), undefined); assert.equal(resolved.status, 200);
 });
 test('SQL context failures and malformed owner results return private 503 responses', async () => {
   for (const db of [client({ candidates: [{}] }), client({ unsafeQuery: async () => { throw new Error('secret database message'); } }), client({ pool: five().map(row => ({ ...row, monthly_rent_cad: NaN })) })]) {

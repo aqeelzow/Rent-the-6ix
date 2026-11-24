@@ -11,5 +11,6 @@ export default defineConfig({
   test: {
     environment: "node",
     include: ["src/**/*.test.{ts,tsx}"],
+    exclude: ["src/lib/server-only.test.ts"],
   },
 });

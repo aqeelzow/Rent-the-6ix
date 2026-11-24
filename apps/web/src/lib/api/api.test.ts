@@ -83,7 +83,7 @@ test('default listing dependencies unavailable; parsing/resolution work; fixture
   assert.equal((await api.search(request('listings/search', { intent: baseIntent }), undefined)).status, 503);
   assert.equal((await api.detail(request('listings/x?intent='+encodeURIComponent(JSON.stringify(baseIntent))), context(sampleListings[0].id))).status, 503);
   assert.equal((await api.parse(request('search/parse', { prompt: 'cheapest' }), undefined)).status, 200);
-  assert.equal((await api.resolve(request('geo/resolve?q=University%20of%20Toronto'), undefined)).status, 200);
+  assert.equal((await api.resolve(request('geo/resolve?q=University%20of%20Waterloo'), undefined)).status, 200);
   const fixtures = createRuntime({ env: { SEARCH_FIXTURES: '1' } });
   const response = await fixtures.search(request('listings/search', { intent: travelIntent }), undefined);
   const search = SearchResponseSchema.parse(await response.json()); assert.equal(search.status, 'completed'); if (search.status !== 'completed') return;
@@ -137,12 +137,12 @@ test('search validates user weights and rescores the same listing', async () => 
   }
 });
 const prompts = [
-  "I'm looking for houses or apartments around the university of toronto. Should be within 10 minutes biking distance. Around 3-5k per",
-  "I work at TD Canada on bay st and queens st w. I'm looking for a place to commute, bike, or walk to work, and it should take no longer than 10 minutes.",
-  "I'm on a budget. I wanna live in downtown at the cheapest cost",
-  'Room or studio near York University under $1,300, close to the subway, furnished.',
-  'I need a 2-bedroom near UofT St. George under $2,800, within 25 minutes by transit, close to groceries, cat-friendly, and I really care about getting a good deal. I make about $95k with my roommate.',
-  '3 bedrooms in Scarborough under $3,200, near a public school and a park, parking.',
+  "I'm looking for houses or apartments around the university of waterloo. Should be within 10 minutes biking distance. Around 3-5k per",
+  "I work at Grand River Hospital. I'm looking for a place to commute, bike, or walk to work, and it should take no longer than 10 minutes.",
+  "I'm on a budget. I wanna live in Uptown at the cheapest cost",
+  'Room or studio near Wilfrid Laurier University under $1,300, close to an ION station, furnished.',
+  'I need a 2-bedroom near University of Waterloo under $2,800, within 25 minutes by transit, close to groceries, cat-friendly, and I really care about getting a good deal. I make about $95k with my roommate.',
+  '3 bedrooms in Beechwood under $3,200, near a public school and a park, parking.',
 ];
 test('all six acceptance prompts traverse fallback and mocked Gemini APIs, with search/detail consistency', async () => {
   for (const gemini of [false, true]) {
@@ -165,7 +165,7 @@ test('all six acceptance prompts traverse fallback and mocked Gemini APIs, with 
         const detail = DetailResponseSchema.parse(await (await api.detail(request('listings/x?intent='+encodeURIComponent(JSON.stringify(intent))), context(row.listing.id))).json()); assert.deepEqual(detail.matchScore, row.matchScore);
       }
     }
-    const resolved = await (await api.resolve(request('geo/resolve?q=UofT%20St.%20George'), undefined)).json(); assert.equal(resolved.status, 'resolved'); assert.equal(resolved.destination.resolved.representativePoint, true);
+    const resolved = await (await api.resolve(request('geo/resolve?q=UW'), undefined)).json(); assert.equal(resolved.status, 'resolved'); assert.equal(resolved.destination.resolved.representativePoint, true);
   }
 });
 test('async API completion, incomplete routing, terminal consumption, unknown/restarted tokens', async () => {

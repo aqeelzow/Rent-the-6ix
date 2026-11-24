@@ -20,7 +20,8 @@ if (!sql) {
   process.exit(1);
 }
 try {
-  const { written, noLocation } = await upsertListings(sql, rows, new Date().toISOString());
+  const { written, noLocation } = await upsertListings(sql, rows, new Date().toISOString(), "demo");
+  if (rows.length === 0 || noLocation > 0) throw new Error("Demo listings need valid locations");
   console.log(`manual: ${written} upserted, ${noLocation} without lat/lng skipped`);
 } finally {
   await sql.end();

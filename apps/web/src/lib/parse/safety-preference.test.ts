@@ -3,7 +3,7 @@ import { test } from 'vitest';
 import { NoneProvider } from '../ai';
 import { fallbackParse, ParseService } from './index';
 
-const query = 'Room or studio near York University under $1,300, close to the subway, furnished';
+const query = 'Room or studio near Wilfrid Laurier University under $1,300, close to the ION station, furnished';
 
 test('both parsers retain explicit safety preferences and the rest of the York search', async () => {
   for (const phrase of ['safe neighborhood', 'safe neighbourhood', 'safe area', 'safer', 'low crime']) {
@@ -19,7 +19,7 @@ test('both parsers retain explicit safety preferences and the rest of the York s
       assert.deepEqual(result.intent.criteria.unitTypes?.value, ['room', 'studio']);
       assert.equal(result.intent.criteria.rent?.value.max, 1300);
       assert.equal(result.intent.criteria.furnished?.value, true);
-      assert.ok(result.intent.travelTargets.some(target => target.query === 'York University'));
+      assert.ok(result.intent.travelTargets.some(target => target.query === 'Wilfrid Laurier University'));
       assert.ok(result.intent.travelTargets.some(target => target.category === 'rapid_transit'));
     }
   }

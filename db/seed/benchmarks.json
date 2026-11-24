@@ -1,6 +1,6 @@
 {
-  "_comment": "Reference figures the valuation and affordability checks compare against (P2.15). Every row is an official published number, not an estimate: `sample` stays false unless a value was interpolated or derived. Source URLs are the stable StatCan/CMHC/TTC pages, never the CSV we happened to download. Reload with `pnpm --filter worker load:benchmarks`.",
-  "retrievedAt": "2026-10-17",
+  "_comment": "Official Waterloo-area reference figures. Reload with pnpm --filter worker load:benchmarks.",
+  "retrievedAt": "2026-11-24",
   "sources": [
     {
       "id": "statcan-46100092",
@@ -8,199 +8,149 @@
       "url": "https://www150.statcan.gc.ca/t1/tbl1/en/tv.action?pid=4610009201",
       "licence": "Statistics Canada Open Licence",
       "period": "2026 Q2",
-      "note": "Table 46-10-0092-01, downloaded as 46100092-eng.zip. Toronto, Census metropolitan area (CMA), DGUID 2021S0503535. Asking rent = advertised rent on vacant units; paid rent = rent existing tenants pay. Experimental estimates, subject to revision."
+      "note": "Table 46-10-0092-01, Kitchener–Cambridge–Waterloo CMA (2021S0503541). Experimental estimates, subject to revision."
     },
     {
-      "id": "ttc-fares",
-      "title": "TTC fares and passes",
-      "url": "https://www.ttc.ca/Fares-and-passes",
-      "licence": "City of Toronto — TTC fare schedule (public information)",
-      "period": "2026-09",
-      "note": "Adult PRESTO fare $3.30. Monthly fare capping started 2026-09-01 and replaced the Adult Monthly Pass, which TTC discontinued 2026-08-31; the cap is 47 eligible fares per calendar month."
-    },
-    {
-      "id": "toronto-amr-utility-allowances",
-      "title": "City of Toronto Average Market Rents and Utility Allowances",
-      "url": "https://www.toronto.ca/community-people/community-partners/social-housing-providers/affordable-housing-operators/current-city-of-toronto-average-market-rents-and-utility-allowances",
-      "licence": "City of Toronto — published rent and allowance tables (public information)",
-      "period": "2026",
-      "note": "Read from the page's own tables (modified 2026-09-24). Average Market Rents: CMHC Rental Market Report Tables 1.1.2 and 2.1.2, Zones 1-17 (the City of Toronto), as the City publishes them for 2026 — the average rent of occupied purpose-built rental units, i.e. sitting tenants, not asking rents for vacant units. Utility allowances: the City's 2026 monthly allowances for tenants who pay their own hydro, water, gas heat and gas hot water; a 2027 table is also published."
+      "id": "grt-fares",
+      "title": "Grand River Transit fare prices",
+      "url": "https://www.grt.ca/fares-and-payment/fare-prices/",
+      "licence": "Grand River Transit published fare schedule",
+      "note": "Adult monthly pass. An active student U-Pass is paid through student fees."
     }
   ],
   "rows": [
     {
-      "id": "statcan-46100092-2026q2-apt-0br-asking",
+      "id": "statcan-46100092-2026q2-house-2-asking",
       "kind": "rent",
-      "key": { "geo": "Toronto CMA", "dwelling": "Apartment", "bedrooms": 0, "basis": "asking" },
-      "valueCad": 1750,
+      "key": {
+        "geo": "Kitchener–Cambridge–Waterloo CMA",
+        "dwelling": "House",
+        "basis": "asking",
+        "bedrooms": 2
+      },
+      "valueCad": 2210,
       "unit": "CAD/month",
       "period": "2026 Q2",
       "sourceId": "statcan-46100092",
       "sample": false
     },
     {
-      "id": "statcan-46100092-2026q2-apt-1br-asking",
+      "id": "statcan-46100092-2026q2-house-3-asking",
       "kind": "rent",
-      "key": { "geo": "Toronto CMA", "dwelling": "Apartment", "bedrooms": 1, "basis": "asking" },
-      "valueCad": 2090,
+      "key": {
+        "geo": "Kitchener–Cambridge–Waterloo CMA",
+        "dwelling": "House",
+        "basis": "asking",
+        "bedrooms": 3,
+        "bedroomsPlus": true
+      },
+      "valueCad": 2760,
       "unit": "CAD/month",
       "period": "2026 Q2",
       "sourceId": "statcan-46100092",
       "sample": false
     },
     {
-      "id": "statcan-46100092-2026q2-apt-2br-asking",
+      "id": "statcan-46100092-2026q2-apartment-0-asking",
       "kind": "rent",
-      "key": { "geo": "Toronto CMA", "dwelling": "Apartment", "bedrooms": 2, "basis": "asking" },
-      "valueCad": 2650,
+      "key": {
+        "geo": "Kitchener–Cambridge–Waterloo CMA",
+        "dwelling": "Apartment",
+        "basis": "asking",
+        "bedrooms": 0
+      },
+      "valueCad": 1470,
       "unit": "CAD/month",
       "period": "2026 Q2",
       "sourceId": "statcan-46100092",
       "sample": false
     },
     {
-      "id": "statcan-46100092-2026q2-apt-3br-asking",
+      "id": "statcan-46100092-2026q2-apartment-1-asking",
       "kind": "rent",
-      "key": { "geo": "Toronto CMA", "dwelling": "Apartment", "bedrooms": 3, "bedroomsPlus": true, "basis": "asking" },
-      "valueCad": 3270,
+      "key": {
+        "geo": "Kitchener–Cambridge–Waterloo CMA",
+        "dwelling": "Apartment",
+        "basis": "asking",
+        "bedrooms": 1
+      },
+      "valueCad": 1740,
       "unit": "CAD/month",
       "period": "2026 Q2",
       "sourceId": "statcan-46100092",
       "sample": false
     },
     {
-      "id": "statcan-46100092-2026q2-house-2br-asking",
+      "id": "statcan-46100092-2026q2-apartment-2-asking",
       "kind": "rent",
-      "key": { "geo": "Toronto CMA", "dwelling": "House", "bedrooms": 2, "basis": "asking" },
-      "valueCad": 2710,
+      "key": {
+        "geo": "Kitchener–Cambridge–Waterloo CMA",
+        "dwelling": "Apartment",
+        "basis": "asking",
+        "bedrooms": 2
+      },
+      "valueCad": 2120,
       "unit": "CAD/month",
       "period": "2026 Q2",
       "sourceId": "statcan-46100092",
       "sample": false
     },
     {
-      "id": "statcan-46100092-2026q2-house-3br-asking",
+      "id": "statcan-46100092-2026q2-apartment-2-paid",
       "kind": "rent",
-      "key": { "geo": "Toronto CMA", "dwelling": "House", "bedrooms": 3, "bedroomsPlus": true, "basis": "asking" },
-      "valueCad": 3630,
+      "key": {
+        "geo": "Kitchener–Cambridge–Waterloo CMA",
+        "dwelling": "Apartment",
+        "basis": "paid",
+        "bedrooms": 2
+      },
+      "valueCad": 1720,
       "unit": "CAD/month",
       "period": "2026 Q2",
       "sourceId": "statcan-46100092",
       "sample": false
     },
     {
-      "id": "statcan-46100092-2026q2-room-asking",
+      "id": "statcan-46100092-2026q2-apartment-3-asking",
       "kind": "rent",
-      "key": { "geo": "Toronto CMA", "dwelling": "Room", "basis": "asking" },
-      "valueCad": 840,
+      "key": {
+        "geo": "Kitchener–Cambridge–Waterloo CMA",
+        "dwelling": "Apartment",
+        "basis": "asking",
+        "bedrooms": 3,
+        "bedroomsPlus": true
+      },
+      "valueCad": 2410,
       "unit": "CAD/month",
       "period": "2026 Q2",
       "sourceId": "statcan-46100092",
       "sample": false
     },
     {
-      "id": "statcan-46100092-2026q2-apt-1br-paid",
+      "id": "statcan-46100092-2026q2-room-any-asking",
       "kind": "rent",
-      "key": { "geo": "Toronto CMA", "dwelling": "Apartment", "bedrooms": 1, "basis": "paid" },
-      "valueCad": 1840,
+      "key": {
+        "geo": "Kitchener–Cambridge–Waterloo CMA",
+        "dwelling": "Room",
+        "basis": "asking"
+      },
+      "valueCad": 770,
       "unit": "CAD/month",
       "period": "2026 Q2",
       "sourceId": "statcan-46100092",
       "sample": false
     },
     {
-      "id": "statcan-46100092-2026q2-apt-2br-paid",
-      "kind": "rent",
-      "key": { "geo": "Toronto CMA", "dwelling": "Apartment", "bedrooms": 2, "basis": "paid" },
-      "valueCad": 2160,
-      "unit": "CAD/month",
-      "period": "2026 Q2",
-      "sourceId": "statcan-46100092",
-      "sample": false
-    },
-    {
-      "id": "ttc-adult-single-fare",
-      "kind": "transit",
-      "key": { "product": "single fare", "rider": "adult", "payment": "PRESTO" },
-      "valueCad": 3.3,
-      "unit": "CAD/ride",
-      "period": "2026-09",
-      "sourceId": "ttc-fares",
-      "sample": false
-    },
-    {
-      "id": "ttc-adult-monthly-cap",
+      "id": "grt-adult-monthly-pass",
       "kind": "transit",
       "key": {
-        "product": "monthly cost of unlimited riding",
-        "rider": "adult",
-        "payment": "PRESTO or card",
-        "derivation": "47 eligible fares × $3.30; TTC does not publish a monthly pass price any more"
+        "product": "monthly pass",
+        "rider": "adult"
       },
-      "valueCad": 155.1,
+      "valueCad": 104,
       "unit": "CAD/month",
-      "period": "2026-09",
-      "sourceId": "ttc-fares",
-      "sample": true
-    },
-    {
-      "id": "toronto-amr-2026-room",
-      "kind": "rent",
-      "key": { "geo": "City of Toronto (CMHC zones 1-17)", "dwelling": "Room", "basis": "cmhc_average" },
-      "valueCad": 1246,
-      "unit": "CAD/month",
-      "period": "2026",
-      "sourceId": "toronto-amr-utility-allowances",
-      "sample": false
-    },
-    {
-      "id": "toronto-amr-2026-apt-0br",
-      "kind": "rent",
-      "key": { "geo": "City of Toronto (CMHC zones 1-17)", "dwelling": "Apartment", "bedrooms": 0, "basis": "cmhc_average" },
-      "valueCad": 1499,
-      "unit": "CAD/month",
-      "period": "2026",
-      "sourceId": "toronto-amr-utility-allowances",
-      "sample": false
-    },
-    {
-      "id": "toronto-amr-2026-apt-1br",
-      "kind": "rent",
-      "key": { "geo": "City of Toronto (CMHC zones 1-17)", "dwelling": "Apartment", "bedrooms": 1, "basis": "cmhc_average" },
-      "valueCad": 1763,
-      "unit": "CAD/month",
-      "period": "2026",
-      "sourceId": "toronto-amr-utility-allowances",
-      "sample": false
-    },
-    {
-      "id": "toronto-amr-2026-apt-2br",
-      "kind": "rent",
-      "key": { "geo": "City of Toronto (CMHC zones 1-17)", "dwelling": "Apartment", "bedrooms": 2, "basis": "cmhc_average" },
-      "valueCad": 2055,
-      "unit": "CAD/month",
-      "period": "2026",
-      "sourceId": "toronto-amr-utility-allowances",
-      "sample": false
-    },
-    {
-      "id": "toronto-amr-2026-apt-3br",
-      "kind": "rent",
-      "key": { "geo": "City of Toronto (CMHC zones 1-17)", "dwelling": "Apartment", "bedrooms": 3, "basis": "cmhc_average" },
-      "valueCad": 2361,
-      "unit": "CAD/month",
-      "period": "2026",
-      "sourceId": "toronto-amr-utility-allowances",
-      "sample": false
-    },
-    {
-      "id": "toronto-amr-2026-apt-4br",
-      "kind": "rent",
-      "key": { "geo": "City of Toronto (CMHC zones 1-17)", "dwelling": "Apartment", "bedrooms": 4, "basis": "cmhc_average" },
-      "valueCad": 2905,
-      "unit": "CAD/month",
-      "period": "2026",
-      "sourceId": "toronto-amr-utility-allowances",
+      "period": "2026-11",
+      "sourceId": "grt-fares",
       "sample": false
     }
   ]

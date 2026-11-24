@@ -6,24 +6,25 @@ import { SearchIntentSchema } from '../../../../../packages/shared/schemas/index
 import { GeminiProvider, AIUnavailable, NoneProvider } from '../ai/index';
 import { fallbackParse, ParseService, DestinationResolver, IpLimiter, RateLimitError, MemoryCache } from './index';
 
+const areas = [{ kind: "neighbourhood" as const, id: "WPD-beechwood", name: "Beechwood", number: null }, { kind: "neighbourhood" as const, id: "WPD-uptown", name: "Uptown", number: null }];
 const local = [
-  "I'm looking for houses or apartments around the university of toronto. Should be within 10 minutes biking distance. Around 3-5k per",
-  "I work at TD Canada on bay st and queens st w. I'm looking for a place to commute, bike, or walk to work, and it should take no longer than 10 minutes.",
-  "I'm on a budget. I wanna live in downtown at the cheapest cost",
+  "I'm looking for houses or apartments around the university of waterloo. Should be within 10 minutes biking distance. Around 3-5k per",
+  "I work at Grand River Hospital. I'm looking for a place to commute, bike, or walk to work, and it should take no longer than 10 minutes.",
+  "I'm on a budget. I wanna live in Uptown at the cheapest cost",
 ];
 const demos = [
-  'Room or studio near York University under $1,300, close to the subway, furnished.',
-  'I need a 2-bedroom near UofT St. George under $2,800, within 25 minutes by transit, close to groceries, cat-friendly, and I really care about getting a good deal. I make about $95k with my roommate.',
-  '3 bedrooms in Scarborough under $3,200, near a public school and a park, parking.',
+  'Room or studio near Wilfrid Laurier University under $1,300, close to the ION station, furnished.',
+  'I need a 2-bedroom near University of Waterloo under $2,800, within 25 minutes by transit, close to groceries, cat-friendly, and I really care about getting a good deal. I make about $95k with my roommate.',
+  '3 bedrooms in Beechwood under $3,200, near a public school and a park, parking.',
 ];
 test('all six acceptance prompts parse and do not infer unstated criteria', async () => {
   for (const prompt of [...local, ...demos]) assert.equal(SearchIntentSchema.safeParse(fallbackParse(prompt)).success, true);
   const one = fallbackParse(local[0]); assert.deepEqual(one.criteria.rent, { value: { min: 3000, max: 5000 }, hard: false }); assert.equal(one.travelTargets[0].mode, 'bike'); assert.equal(one.travelTargets[0].maxMinutes, 10); assert.equal(one.travelTargets[0].hard,true); assert.equal(one.criteria.bedrooms, undefined);
   const two = fallbackParse(local[1]); assert.deepEqual(new Set([two.travelTargets[0].mode, ...two.travelTargets[0].alternativeModes!]), new Set(['transit','bike','walk'])); assert.deepEqual(two.criteria, {}); assert.equal(two.household, undefined);
-  const three = fallbackParse(local[2]); assert.equal(three.sortBy, 'lowest_rent'); assert.equal(three.areas[0].kind, 'configured');
+  const three = fallbackParse(local[2], undefined, areas); assert.equal(three.sortBy, 'lowest_rent'); assert.equal(three.areas[0].kind, 'neighbourhood');
   const student = fallbackParse(demos[0]); assert.deepEqual(student.criteria.unitTypes?.value, ['room', 'studio']); assert.equal(student.criteria.bedrooms, undefined); assert.equal(student.criteria.furnished?.value, true);
   const couple = fallbackParse(demos[1]); assert.deepEqual(couple.criteria.bedrooms?.value, { min: 2, max: 2 }); assert.equal(couple.criteria.rent?.value.max, 2800); assert.equal(couple.household?.annualIncomeCad, 95000); assert.equal(couple.travelTargets.length, 2); assert.equal(couple.travelTargets[0].maxMinutes, 25); assert.equal(couple.travelTargets[1].maxMinutes, undefined); assert.equal(couple.criteria.priceFairness?.hard, false);
-  const family = fallbackParse(demos[2]); assert.equal(family.travelTargets.length, 2); assert.equal(family.areas[0].kind, 'configured');
+  const family = fallbackParse(demos[2], undefined, areas); assert.equal(family.travelTargets.length, 2); assert.equal(family.areas[0].kind, 'neighbourhood');
   const service = new ParseService({ provider: new NoneProvider() });
   for (const prompt of [...local, ...demos]) { const response = await service.parse({ prompt }, 'trusted-ip'); assert.equal(response.parser, 'fallback'); }
 });
@@ -41,10 +42,10 @@ test('percentiles, minima, travel selectors, independent destinations and clarif
   }
   assert.equal(fallbackParse('bottom 5% rent minimum 100 results').numericExtreme?.minimumCount, 100);
   assert.equal(fallbackParse('top 5% largest').numericExtreme?.field, 'sizeSqft');
-  assert.equal(fallbackParse('top 5% shortest travel to Union Station by bike').numericExtreme?.targetId, 'target-1');
+  assert.equal(fallbackParse('top 5% shortest travel to Kitchener GO Station by bike').numericExtreme?.targetId, 'target-1');
   const multiple = fallbackParse('bottom 5% rent and top 10% size'); assert.equal(multiple.numericExtreme, undefined); assert.equal(multiple.droppedRequests.length, 2);
   assert.ok(fallbackParse('bottom 5%').droppedRequests.length); assert.ok(fallbackParse('spacious').droppedRequests.length);
-  const independent = fallbackParse('10 min walk to Union Station and 20 min bike to Eaton Centre'); assert.equal(independent.travelTargets.length, 2); assert.equal(independent.travelTargets[0].maxMinutes, 10); assert.equal(independent.travelTargets[0].alternativeModes,undefined); assert.equal(independent.travelTargets[1].maxMinutes, 20); assert.equal(independent.travelTargets[1].mode, 'bike');
+  const independent = fallbackParse('10 min walk to Kitchener GO Station and 20 min bike to Conestoga Mall'); assert.equal(independent.travelTargets.length, 2); assert.equal(independent.travelTargets[0].maxMinutes, 10); assert.equal(independent.travelTargets[0].alternativeModes,undefined); assert.equal(independent.travelTargets[1].maxMinutes, 20); assert.equal(independent.travelTargets[1].mode, 'bike');
   assert.deepEqual(fallbackParse('rent at least $1,800').criteria.rent?.value, { min: 1800 });
 });
 test('rent parsing skips earlier bedroom, size and travel quantities', async () => {
@@ -54,7 +55,7 @@ test('rent parsing skips earlier bedroom, size and travel quantities', async () 
     'Budget for at least 2-bedroom apartments, under $3000',
     'At least 800 sqft and under $3000',
     'Under 30 years old and under $3000',
-    'Within 15 minutes walk to Union Station and under $3000',
+    'Within 15 minutes walk to Kitchener GO Station and under $3000',
   ]) {
     const { intent } = await service.parse({ prompt }, 'rent-order-test');
     assert.deepEqual(intent.criteria.rent?.value, { max: 3000 }, prompt);
@@ -83,7 +84,7 @@ test('explicit static sorts and both building-age directions survive basic parsi
   assert.equal(fallbackParse('Apartments at least 300 years old', now).droppedRequests.length, 1);
   assert.equal(fallbackParse('best value apartments').sortBy, 'best_value');
   assert.equal(fallbackParse('lowest true monthly cost near work').sortBy, 'lowest_true_cost');
-  assert.equal(fallbackParse('shortest commute to Union Station').sortBy, 'shortest_trips');
+  assert.equal(fallbackParse('shortest commute to Kitchener GO Station').sortBy, 'shortest_trips');
   for (const phrase of ['newest listings', 'latest listings', 'most recently listed', 'newest first']) {
     const intent = fallbackParse(`${phrase} under $2500`);
     assert.equal(intent.sortBy, 'newest');
@@ -98,41 +99,33 @@ test('known places ambiguity, representative labels and honest unknown business'
   const resolver = new DestinationResolver();
   // A bare university name takes its main campus, because choices left the target without a
   // coordinate and every travel figure on the result cards blank.
-  const broad = await resolver.resolve('University of Toronto'); assert.equal(broad.status, 'resolved'); if (broad.status === 'resolved') assert.equal(broad.destination.id, 'uoft-st-george');
-  const york = await resolver.resolve('York University'); assert.equal(york.status, 'resolved'); if (york.status === 'resolved') assert.equal(york.destination.id, 'york-keele');
-  const campuses = await resolver.resolve('UofT'); assert.equal(campuses.status, 'resolved'); if (campuses.status === 'resolved') assert.equal(campuses.destination.id, 'uoft-st-george');
-  const specific = await resolver.resolve('UofT St. George'); assert.equal(specific.status, 'resolved'); if (specific.status === 'resolved') assert.equal(specific.destination.resolved.representativePoint, true);
-  const scarborough = await resolver.resolve('UofT Scarborough'); assert.equal(scarborough.status, 'resolved'); if (scarborough.status === 'resolved') assert.equal(scarborough.destination.id, 'uoft-scarborough');
-  // The campus picker still exists for callers that want every campus offered.
+  const broad = await resolver.resolve('University of Waterloo'); assert.equal(broad.status, 'resolved'); if (broad.status === 'resolved') assert.equal(broad.destination.id, 'uw');
+  const york = await resolver.resolve('Wilfrid Laurier University'); assert.equal(york.status, 'resolved'); if (york.status === 'resolved') assert.equal(york.destination.id, 'laurier');
+  const campuses = await resolver.resolve('UW'); assert.equal(campuses.status, 'resolved'); if (campuses.status === 'resolved') assert.equal(campuses.destination.id, 'uw');
+  const specific = await resolver.resolve('University of Waterloo'); assert.equal(specific.status, 'resolved'); if (specific.status === 'resolved') assert.equal(specific.destination.resolved.representativePoint, true);
+  const doon = await resolver.resolve('Conestoga Doon'); assert.equal(doon.status, 'resolved'); if (doon.status === 'resolved') assert.equal(doon.destination.id, 'conestoga-doon');
+  const primary = await resolver.resolve('Conestoga College');
+  assert.equal(primary.status, 'resolved'); if (primary.status === 'resolved') assert.equal(primary.destination.id, 'conestoga-waterloo');
   const offered = new DestinationResolver({ preferPrimaryCampus: false });
-  const chosen = await offered.resolve('York University'); assert.equal(chosen.status, 'ambiguous'); if (chosen.status === 'ambiguous') assert.equal(chosen.choices.length, 3);
-  const offeredBroad = await offered.resolve('University of Toronto'); assert.equal(offeredBroad.status, 'ambiguous');
+  const chosen = await offered.resolve('Conestoga College'); assert.equal(chosen.status, 'ambiguous'); if (chosen.status === 'ambiguous') assert.equal(chosen.choices.length, 2);
   for (const query of ['TD', 'TD Canada', 'TD at Bay and King', 'TD at Queen Street West']) assert.equal((await resolver.resolve(query)).status, 'unavailable');
 });
-test('verified TD Bay and Queen aliases resolve without guessing other branches', async () => {
-  const resolver = new DestinationResolver();
-  for (const query of ['TD Canada on bay st and queens st w.', 'TD at Bay St. and Queen St. W.', 'TD on Bay Street and Queen Street W', 'TD Canada at Bay Street and Queens St W']) {
-    const resolved = await resolver.resolve(query);
-    assert.equal(resolved.status, 'resolved');
-    if (resolved.status === 'resolved') {
-      assert.equal(resolved.destination.id, 'td-bay-queen');
-      assert.equal(resolved.destination.resolved.source, 'known_place');
-      assert.equal(resolved.destination.resolved.representativePoint, true);
-      assert.match(resolved.destination.label, /394 Bay St/);
-    }
-  }
-  const result = await new ParseService({ provider: new NoneProvider(), resolver }).parse({ prompt: local[1] }, 'trusted-ip');
-  assert.equal(result.intent.travelTargets.length, 1);
-  assert.equal(result.destinations[0].resolution.status, 'resolved');
-  assert.deepEqual(new Set([result.intent.travelTargets[0].mode, ...result.intent.travelTargets[0].alternativeModes!]), new Set(['transit', 'bike', 'walk']));
-  assert.equal(result.intent.travelTargets[0].maxMinutes, 10);
+test('room near UW resolves to the Waterloo campus', async () => {
+  const { intent, destinations } = await new ParseService().parse({ prompt: 'room near UW under $900' }, 'waterloo-test');
+  assert.deepEqual(intent.criteria.unitTypes?.value, ['room']);
+  assert.equal(intent.criteria.rent?.value.max, 900);
+  assert.deepEqual(intent.travelTargets.map(t => t.query), ['UW']);
+  const resolution = destinations[0].resolution;
+  assert.equal(resolution.status, 'resolved');
+  if (resolution.status === 'resolved') assert.equal(resolution.destination.id, 'uw');
 });
+
 test('Address Points before MapTiler, validated geocoding ambiguity/cache/timeout', async () => {
   let calls = 0;
-  const fetcher: typeof fetch = async () => { calls++; return Response.json({ features: [{ id: 'a', place_name: 'Toronto configured neighbourhood', relevance: 1, place_type: ['neighbourhood'], center: [-79.4,43.7] },{ id:'b',place_name:'second',relevance:1,center:[-79.3,43.8] }] }); };
+  const fetcher: typeof fetch = async () => { calls++; return Response.json({ features: [{ id: 'a', place_name: 'Waterloo configured neighbourhood', relevance: 1, place_type: ['neighbourhood'], center: [-80.5,43.5] },{ id:'b',place_name:'second',relevance:1,center:[-80.4,43.5] }] }); };
   const resolver = new DestinationResolver({ addressLookup: async query => ({ status:'unavailable',query,reason:'no match' }), maptilerKey:'test',fetch:fetcher });
   assert.equal((await resolver.resolve('unlisted destination')).status, 'ambiguous'); await resolver.resolve('unlisted destination'); assert.equal(calls, 1);
-  const resolved = new DestinationResolver({ addressLookup: async query => ({ status:'resolved',query,destination:{ id:'fixture-address',label:'fixture address',resolved:{ lng:-79.4,lat:43.7,source:'address_points' } } }), fetch:fetcher, maptilerKey:'test' });
+  const resolved = new DestinationResolver({ addressLookup: async query => ({ status:'resolved',query,destination:{ id:'fixture-address',label:'fixture address',resolved:{ lng:-80.5,lat:43.5,source:'address_points' } } }), fetch:fetcher, maptilerKey:'test' });
   assert.equal((await resolved.resolve('123 fixture street')).status, 'resolved'); assert.equal(calls, 1);
   const invalid = new DestinationResolver({ maptilerKey:'test',fetch:async () => Response.json({ features: [{ id:'a',place_name:'bad',relevance:1,center:[900,0] }] }) }); assert.equal((await invalid.resolve('bad')).status, 'unavailable');
   const timeout = new DestinationResolver({ timeoutMs:5,addressLookup:async () => new Promise(() => {}) }); assert.equal((await timeout.resolve('hang')).status, 'unavailable');
@@ -185,10 +178,10 @@ test('hash cache is bounded/expiring/copy isolated and per-IP limits cannot evic
   const limiter = new IpLimiter(1,100,1,() => time); limiter.check('ip'); assert.throws(() => limiter.check('ip'),RateLimitError); assert.throws(() => limiter.check('second-ip'),RateLimitError); time+=101; limiter.check('second-ip');
 });
 test('service validates boundaries, AI output, cache and resolved targets', async () => {
-  let calls = 0; const provider = { generateStructured: async <T>() => { calls++; return fallbackParse('10 min walk to Union Station') as T; }, generateText:async () => 'unused' };
+  let calls = 0; const provider = { generateStructured: async <T>() => { calls++; return fallbackParse('10 min walk to Kitchener GO Station') as T; }, generateText:async () => 'unused' };
   const service = new ParseService({provider, limiter:new IpLimiter(5)});
-  const parsed = await service.parse({prompt:'10 min walk to Union Station'},'ip'); assert.equal(parsed.parser,'gemini'); assert.equal(parsed.intent.rawPrompt,'10 min walk to Union Station'); assert.equal(parsed.destinations[0].resolution.status,'resolved');
-  await service.parse({prompt:'10 min walk to Union Station'},'ip'); assert.equal(calls,1);
+  const parsed = await service.parse({prompt:'10 min walk to Kitchener GO Station'},'ip'); assert.equal(parsed.parser,'gemini'); assert.equal(parsed.intent.rawPrompt,'10 min walk to Kitchener GO Station'); assert.equal(parsed.destinations[0].resolution.status,'resolved');
+  await service.parse({prompt:'10 min walk to Kitchener GO Station'},'ip'); assert.equal(calls,1);
   await assert.rejects(service.parse({prompt:''},'ip'));
 });
 
@@ -198,10 +191,10 @@ test('no inverted exclusions or implied room type and unsupported requests remai
   const unknowns = fallbackParse('I need 2 bedrooms, no pets, and a balcony'); assert.ok(unknowns.droppedRequests.some(d => d.phrase === 'no pets')); assert.ok(unknowns.droppedRequests.some(d => d.phrase === 'balcony'));
   assert.equal(fallbackParse('low crime').safety.enabled,true); assert.equal(fallbackParse('safe area').safety.enabled,true);
   assert.equal(fallbackParse('budget under 750 sqft').criteria.rent,undefined);
-  const separate = fallbackParse('10 min walk to Union Station and near Eaton Centre'); assert.equal(separate.travelTargets[1].maxMinutes,undefined); assert.equal(separate.travelTargets[1].mode,'transit');
+  const separate = fallbackParse('10 min walk to Kitchener GO Station and near Conestoga Mall'); assert.equal(separate.travelTargets[1].maxMinutes,undefined); assert.equal(separate.travelTargets[1].mode,'transit');
 });
 test('schema-valid AI hallucinations do not become constraints or coordinates', async () => {
-  const invented = fallbackParse('under $2000 safe area 10 min walk to Union Station'); invented.fieldSources={}; invented.travelTargets[0].resolved={lng:1,lat:1,source:'known_place'};
+  const invented = fallbackParse('under $2000 safe area 10 min walk to Kitchener GO Station'); invented.fieldSources={}; invented.travelTargets[0].resolved={lng:1,lat:1,source:'known_place'};
   const service = new ParseService({provider:{ generateStructured:async <T>() => invented as T, generateText:async () => '' }});
   const parsed = await service.parse({prompt:'hello'},'ip'); assert.deepEqual(parsed.intent.criteria,{}); assert.equal(parsed.intent.safety.enabled,false); assert.equal(parsed.intent.travelTargets.length,0); assert.equal(parsed.parser,'fallback'); assert.ok(parsed.notice);
 });
@@ -221,7 +214,7 @@ test('AI source contract uses target IDs and missing travel evidence is repaired
   assert.ok(parseInstruction.includes('within 10 minutes biking'));
   assert.ok(parseInstruction.includes('only for the criterion they modify'));
   assert.ok(parseInstruction.includes('verbatim substring'));
-  const prompt = '10 min walk to Union Station';
+  const prompt = '10 min walk to Kitchener GO Station';
   const invalid = fallbackParse(prompt);
   invalid.fieldSources['travelTargets.0'] = invalid.fieldSources['travelTargets.target-1'];
   delete invalid.fieldSources['travelTargets.target-1'];
@@ -235,21 +228,21 @@ test('AI source contract uses target IDs and missing travel evidence is repaired
 });
 
 
-test('AI interpretation takes the deterministic configured area when the model omits it', async () => {
-  const prompt = '3 bedrooms in Scarborough under $3,200, near a public school and a park, parking.';
+test('AI interpretation takes the deterministic civic area when the model omits it', async () => {
+  const prompt = '3 bedrooms in Beechwood under $3,200, near a public school and a park, parking.';
   const intent = fallbackParse(prompt);
   intent.areas = [];
   delete intent.fieldSources.areas;
-  const service = new ParseService({ provider: { generateStructured: async <T>() => structuredClone(intent) as T, generateText: async () => '' } });
+  const service = new ParseService({ civicAreas: async () => areas, provider: { generateStructured: async <T>() => structuredClone(intent) as T, generateText: async () => '' } });
   const result = await service.parse({ prompt }, 'ip');
   assert.equal(result.parser, 'gemini');
   assert.equal(result.intent.areas.length, 1);
-  assert.equal(result.intent.areas[0].kind, 'configured');
+  assert.equal(result.intent.areas[0].kind, 'neighbourhood');
   assert.equal(result.intent.criteria.rent?.value.max, 3200);
 });
 
 test('MapTiler weak or missing relevance cannot become a destination choice', async () => {
-  const partial = { id: 'wrong', place_name: 'Unrelated landform', place_type: ['major_landform'], center: [-79.4,43.7] };
+  const partial = { id: 'wrong', place_name: 'Unrelated landform', place_type: ['major_landform'], center: [-80.5,43.5] };
   const features = [partial, { ...partial, id: 'partial', relevance: 0.554815 }];
   const resolver = new DestinationResolver({ maptilerKey: 'test', fetch: async () => Response.json({ features }) });
   assert.equal((await resolver.resolve('an exact business branch')).status, 'unavailable');
@@ -261,7 +254,7 @@ test('MapTiler weak or missing relevance cannot become a destination choice', as
 
 
 test('known hard travel bounds cannot be softened, omitted or widened by AI', async () => {
-  const prompt = '10 min walk to Union Station';
+  const prompt = '10 min walk to Kitchener GO Station';
   for (const change of ['soften', 'omit', 'widen'] as const) {
     const intent = fallbackParse(prompt);
     if (change === 'soften') intent.travelTargets[0].hard = false;
@@ -275,7 +268,7 @@ test('known hard travel bounds cannot be softened, omitted or widened by AI', as
     assert.equal(result.intent.travelTargets[0].hard, true);
     assert.equal(result.intent.travelTargets[0].maxMinutes, 10);
   }
-  const preferred = 'Ideally 10 min walk to Union Station';
+  const preferred = 'Ideally 10 min walk to Kitchener GO Station';
   const service = new ParseService({ provider: { generateStructured: async <T>() => fallbackParse(preferred) as T, generateText: async () => '' } });
   const result = await service.parse({ prompt: preferred }, 'ip');
   assert.equal(result.parser, 'gemini');
@@ -310,18 +303,18 @@ test('plain monthly budgets parse without currency signs and do not consume home
   assert.deepEqual(fallbackParse('2 bedrooms under 2500').criteria.rent, { value: { max: 2500 }, hard: true });
   assert.deepEqual(fallbackParse('budget of 2000, 1 bedroom').criteria.rent?.value, { max: 2000 });
   assert.deepEqual(fallbackParse('maximum rent: 1800').criteria.rent?.value, { max: 1800 });
-  for (const prompt of ['under 800 sqft', 'at least 2 bedrooms', 'under 10 minutes walk to Union Station', 'built after 2000']) assert.equal(fallbackParse(prompt).criteria.rent, undefined);
+  for (const prompt of ['under 800 sqft', 'at least 2 bedrooms', 'under 10 minutes walk to Kitchener GO Station', 'built after 2000']) assert.equal(fallbackParse(prompt).criteria.rent, undefined);
 });
 
 
 test('known places use the longest name without adding overlapping aliases', async () => {
-  const prompt = 'room near the university of toronto';
+  const prompt = 'room near the university of waterloo';
   const result = await new ParseService({ provider: new NoneProvider() }).parse({ prompt }, 'overlapping-places');
-  assert.deepEqual(result.intent.travelTargets.map(t => t.query), ['university of toronto']);
+  assert.deepEqual(result.intent.travelTargets.map(t => t.query), ['university of waterloo']);
   assert.equal(result.destinations.length, 1);
   assert.equal(result.destinations[0].resolution.status, 'resolved');
-  assert.deepEqual(fallbackParse('room near kensington market').travelTargets.map(t => t.query), ['kensington market']);
-  assert.deepEqual(fallbackParse('room near the university of toronto and near union station').travelTargets.map(t => t.query), ['university of toronto', 'union station']);
+  assert.deepEqual(fallbackParse('room near conestoga mall').travelTargets.map(t => t.query), ['conestoga mall']);
+  assert.deepEqual(fallbackParse('room near the university of waterloo and near kitchener go station').travelTargets.map(t => t.query), ['university of waterloo', 'kitchener go station']);
 });
 
 test('busy AI resolves sourced places through curated aliases without stale-point ambiguity', async () => {
@@ -329,7 +322,7 @@ test('busy AI resolves sourced places through curated aliases without stale-poin
     provider: { generateStructured: async () => { throw new AIUnavailable('busy', 503); }, generateText: async () => '' },
     resolver: new DestinationResolver({ addressLookup: async () => { assert.fail('Known places must resolve locally'); } }),
   });
-  for (const name of ['jane and finch', 'jane-finch', 'Jane & Finch', 'Jane / Finch']) {
+  for (const name of ['king and university', 'King & University', 'King / University']) {
     const result = await parser.parse({ prompt: `near ${name}` }, 'sourced-places');
     assert.equal(result.parser, 'fallback');
     assert.equal(result.intent.travelTargets.length, 1);
@@ -338,21 +331,21 @@ test('busy AI resolves sourced places through curated aliases without stale-poin
     assert.equal(resolution.status, 'resolved');
     if (resolution.status === 'resolved') {
       assert.equal(resolution.destination.resolved.source, 'known_place');
-      assert.ok(Math.abs(resolution.destination.resolved.lat - 43.75725) < 0.0001);
-      assert.ok(Math.abs(resolution.destination.resolved.lng + 79.51775) < 0.0001);
+      assert.ok(Math.abs(resolution.destination.resolved.lat - 43.476177) < 0.0001);
+      assert.ok(Math.abs(resolution.destination.resolved.lng + 80.524946) < 0.0001);
       assert.deepEqual(result.intent.travelTargets[0].resolved, resolution.destination.resolved);
     }
   }
   const resolver = new DestinationResolver();
-  assert.equal((await resolver.resolve('Kensington Market')).status, 'resolved');
-  assert.equal((await resolver.resolve('Union Station')).status, 'resolved');
-  assert.equal((await resolver.resolve('Eglinton')).status, 'ambiguous');
+  assert.equal((await resolver.resolve('Conestoga Mall')).status, 'resolved');
+  assert.equal((await resolver.resolve('Kitchener GO Station')).status, 'resolved');
+  assert.equal((await resolver.resolve('Conestoga Doon')).status, 'resolved');
 });
 
 test('timed destinations preserve street dots without duplicate campuses or merged trips', async () => {
-  const campus = await new ParseService({ provider: new NoneProvider() }).parse({ prompt: 'Within 25 minutes by transit to UofT St. George.' }, 'destination-regression');
+  const campus = await new ParseService({ provider: new NoneProvider() }).parse({ prompt: 'Within 25 minutes by transit to University of Waterloo.' }, 'destination-regression');
   assert.equal(campus.intent.travelTargets.length, 1);
-  assert.equal(campus.intent.travelTargets[0].query, 'UofT St. George');
+  assert.equal(campus.intent.travelTargets[0].query, 'University of Waterloo');
   assert.equal(campus.intent.travelTargets[0].maxMinutes, 25);
   assert.equal(campus.intent.travelTargets[0].hard, true);
   assert.equal(campus.destinations[0].resolution.status, 'resolved');

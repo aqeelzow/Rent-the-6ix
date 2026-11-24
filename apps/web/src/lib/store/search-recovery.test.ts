@@ -6,7 +6,7 @@ import { parseAndSearch, restoreSearch, runSearch } from './actions';
 import { createAppStore } from './store';
 import { fallbackParse, ParseService } from '../parse';
 
-const prompt = 'near the cn tower';
+const prompt = 'near the conestoga mall';
 const failed = {
   ...structuredClone(baseIntent), rawPrompt: prompt,
   droppedRequests: [{ phrase: prompt, reason: 'Basic parser could not identify supported constraints; edit filters or clarify.' }],
@@ -21,7 +21,7 @@ test('saved searches that missed safety are reparsed while renter edits are pres
   assert.equal(needsReinterpretation(fallbackParse('under $1300')), false);
 });
 
-test('a previously saved failed CN Tower interpretation is parsed again and reaches search with its location', async () => {
+test('a previously saved failed Conestoga Mall interpretation is parsed again and reaches search with its location', async () => {
   const parsed = await new ParseService().parse({ prompt }, 'test');
   const store = createAppStore();
   const calls: string[] = [];
@@ -94,7 +94,7 @@ test('a completely unrecognized request cannot run a citywide search or retain u
 
 test('old generic-park interpretations of named parks are reparsed while generic requests and renter edits are retained', async () => {
   const mistaken = {
-    ...structuredClone(baseIntent), rawPrompt: 'near high park',
+    ...structuredClone(baseIntent), rawPrompt: 'near waterloo park',
     travelTargets: [{ id: 'target-1', kind: 'amenity' as const, label: 'park', category: 'park' as const, mode: 'walk' as const, hard: false }],
     fieldSources: { 'travelTargets.target-1': { source: 'ai_prompt' as const, phrase: 'park' } },
   };
@@ -103,7 +103,7 @@ test('old generic-park interpretations of named parks are reparsed while generic
   assert.equal(needsReinterpretation({ ...mistaken, fieldSources: { 'travelTargets.target-1': { source: 'user' } } }), false);
   const corrected = {
     ...mistaken,
-    travelTargets: [{ id: 'target-1', kind: 'place' as const, label: 'high park', query: 'high park', mode: 'walk' as const, hard: false, resolved: { lng: -79.4, lat: 43.65, source: 'maptiler' as const } }],
+    travelTargets: [{ id: 'target-1', kind: 'place' as const, label: 'waterloo park', query: 'waterloo park', mode: 'walk' as const, hard: false, resolved: { lng: -80.5, lat: 43.45, source: 'maptiler' as const } }],
   };
   assert.equal(needsReinterpretation(corrected), false);
   assert.equal(needsReinterpretation({ ...corrected, travelTargets: [...corrected.travelTargets, mistaken.travelTargets[0]] }), false);
@@ -112,7 +112,7 @@ test('old generic-park interpretations of named parks are reparsed while generic
     calls.push(String(url));
     if (String(url) === '/api/search/parse') return Response.json({ intent: corrected, destinations: [], parser: 'fallback' });
     assert.equal(String(url), '/api/listings/search');
-    assert.equal(JSON.parse(String(options?.body)).intent.travelTargets[0].query, 'high park');
+    assert.equal(JSON.parse(String(options?.body)).intent.travelTargets[0].query, 'waterloo park');
     return Response.json(searchFixture);
   } });
   assert.deepEqual(calls, ['/api/search/parse', '/api/listings/search']);

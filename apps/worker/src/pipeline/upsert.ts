@@ -183,6 +183,7 @@ export async function upsertListings(
   sql: Sql,
   listings: NormalizedListing[],
   observedAt: string,
+  dataStatus?: "demo",
 ): Promise<UpsertResult> {
   const partial = await utilitiesPartialAllowed(sql);
   const rows = listings
@@ -192,12 +193,13 @@ export async function upsertListings(
       !partial && r.utilities_included === "partial" ? { ...r, utilities_included: "unknown" } : r,
     );
   const optional = await optionalColumns(sql);
-  const columns = [...COLUMNS, ...optional];
+  const columns = [...COLUMNS, ...optional, ...(dataStatus ? ["data_status" as const] : [])];
   // Fixed identifiers from OPTIONAL_COLUMNS, so plain SQL text is safe (and empty when absent).
   const setOptional = sql.unsafe(optional.map((c) => `, ${c} = excluded.${c}`).join(""));
+  const setDataStatus = sql.unsafe(dataStatus ? ", data_status = excluded.data_status" : "");
   const setAiKept = sql.unsafe(SET_AI_KEPT);
   for (let i = 0; i < rows.length; i += BATCH) {
-    const batch = rows.slice(i, i + BATCH);
+    const batch = rows.slice(i, i + BATCH).map((row) => ({ ...row, data_status: dataStatus }));
     await sql.begin(async (tx) => {
       const written = await tx<{ id: string; source: string; monthly_rent_cad: number }[]>`
         INSERT INTO listings ${tx(batch, columns)}
@@ -231,7 +233,7 @@ export async function upsertListings(
             SELECT coalesce(jsonb_object_agg(e.key, e.value), '{}'::jsonb)
             FROM jsonb_each(listings.field_evidence) e
             WHERE e.value = '"ai_extracted"'::jsonb AND NOT excluded.field_evidence ? e.key
-          ) || excluded.field_evidence ${setOptional}
+          ) || excluded.field_evidence ${setOptional} ${setDataStatus}
         RETURNING id, source, monthly_rent_cad`;
       const observations = written.map((w) => ({
         listing_id: w.id,

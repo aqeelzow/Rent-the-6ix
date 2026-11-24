@@ -65,7 +65,7 @@ export function benchmarkFor(
   const row = found.length ? latest(found) : undefined;
   if (!row) return null;
   return {
-    label: `Toronto-area average asking rent, ${sizeLabel(row)}`,
+    label: `Waterloo-area average asking rent, ${sizeLabel(row)}`,
     valueCad: row.valueCad,
     period: row.period,
     sourceId: row.sourceId,

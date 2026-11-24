@@ -1,6 +1,6 @@
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
-import { fallbackParse, ParseService, MemoryCache, configuredAreas } from './index';
+import { fallbackParse, ParseService, MemoryCache } from './index';
 import { cleanAIIntent } from './clean';
 import { civicAreasLookup, civicAreasStatement } from './civic-areas-db';
 import type { CivicArea } from './civic-areas';
@@ -16,7 +16,7 @@ test('fallback uses exact civic names without guessing destination areas', () =>
   for (const prompt of ['near Annex', '10 min walk to Annex', 'near Uptown', 'in ward 01', 'not in Annex', 'under $2000', 'in Annexation', 'in ward Annex']) assert.deepEqual(fallbackParse(prompt, undefined, areas).areas, [], prompt);
   const ambiguous = fallbackParse('in Shared Name', undefined, areas);
   assert.equal(ambiguous.areas.length, 0); assert.match(ambiguous.droppedRequests[0].reason, /ambiguous/);
-  assert.equal(fallbackParse('in downtown', undefined, areas).areas[0].kind, 'configured');
+  assert.equal(fallbackParse('in downtown', undefined, areas).areas.length, 0);
 });
 test('AI civic IDs require exact catalogue identity and evidence for that actual name', () => {
   const prompt = 'in Annex under $2000';
@@ -30,8 +30,8 @@ test('AI civic IDs require exact catalogue identity and evidence for that actual
     assert.equal(cleanAIIntent(intent, prompt, areas).areas.length, accepted ? 1 : 0);
   }
   const configured = fallbackParse('in downtown');
-  assert.equal(cleanAIIntent(configured, 'in downtown', areas).areas.length, 1);
-  const inventedConfigured = fallbackParse(prompt); inventedConfigured.areas = [configuredAreas.downtown]; inventedConfigured.fieldSources.areas = { source: 'ai_prompt', phrase: 'Annex' };
+  assert.equal(cleanAIIntent(configured, 'in downtown', areas).areas.length, 0);
+  const inventedConfigured = fallbackParse(prompt); inventedConfigured.areas = [{ kind: "configured", id: "invented", label: "Invented", bounds: [-80.55, 43.45, -80.51, 43.49] }]; inventedConfigured.fieldSources.areas = { source: 'ai_prompt', phrase: 'Annex' };
   assert.equal(cleanAIIntent(inventedConfigured, prompt, areas).areas.length, 0);
   for (const prompt of ['near Annex', 'in Shared Name']) {
     const intent = fallbackParse(prompt); intent.areas = [{ kind: 'neighbourhood', id: prompt.includes('Annex') ? '095' : '001' }]; intent.fieldSources.areas = { source: 'ai_prompt', phrase: prompt };
@@ -42,7 +42,7 @@ test('parse input includes authoritative catalogue and known labels; catalogue c
   let calls = 0, catalogue = areas;
   const service = new ParseService({ cache: new MemoryCache(), civicAreas: async () => catalogue, provider: {
     generateStructured: async <T>(request: { system: string }) => {
-      calls++; assert.match(request.system, /"id":"095"/); assert.match(request.system, /UofT St\. George campus/);
+      calls++; assert.match(request.system, /"id":"095"/); assert.match(request.system, /University of Waterloo/);
       return fallbackParse('in Annex', undefined, catalogue) as T;
     }, generateText: async () => '',
   } });

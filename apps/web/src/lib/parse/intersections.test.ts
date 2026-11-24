@@ -13,8 +13,8 @@ test('detects short street pairs without treating amenities or independent place
   ]) assert.deepEqual(possibleIntersections(prompt), [phrase], prompt);
   for (const prompt of [
     'near parks and schools', 'near grocery and pharmacy', 'furnished and parking',
-    'cats and dogs', 'apartments and condos', 'near Union Station and Eaton Centre',
-    '10 min walk to Union Station and 20 min bike to Eaton Centre',
+    'cats and dogs', 'apartments and condos', 'near Kitchener GO Station and Conestoga Mall',
+    '10 min walk to Kitchener GO Station and 20 min bike to Conestoga Mall',
   ]) assert.deepEqual(possibleIntersections(prompt), [], prompt);
 });
 
@@ -35,7 +35,7 @@ test('an unresolved AI destination gets clarification while a resolved full pair
   for (const resolved of [false, true]) {
     const result = await new ParseService({
       provider: { generateStructured: async <T>() => interpretation() as T, generateText: async () => '' },
-      resolver: new DestinationResolver({ addressLookup: async query => resolved ? { status: 'resolved', query, destination: { id: 'verified', label: query, resolved: { lng: -79.43, lat: 43.67, source: 'address_points' } } } : undefined }),
+      resolver: new DestinationResolver({ addressLookup: async query => resolved ? { status: 'resolved', query, destination: { id: 'verified', label: query, resolved: { lng: -80.53, lat: 43.47, source: 'address_points' } } } : undefined }),
     }).parse({ prompt }, 'test');
     assert.equal(result.intent.droppedRequests.some(request => /Did you mean an intersection\?/.test(request.reason)), !resolved);
     assert.equal(!!result.intent.travelTargets[0].resolved, resolved);
@@ -43,7 +43,7 @@ test('an unresolved AI destination gets clarification while a resolved full pair
 });
 
 test('catalogued intersections resolve locally without an unnecessary clarification', async () => {
-  const result = await new ParseService().parse({ prompt: 'near Concord and Hallam' }, 'catalogued-intersection');
+  const result = await new ParseService().parse({ prompt: 'near King and University' }, 'catalogued-intersection');
   assert.equal(result.destinations[0].resolution.status, 'resolved');
   assert.ok(!result.intent.droppedRequests.some(request => /Did you mean an intersection\?/.test(request.reason)));
 });

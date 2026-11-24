@@ -30,7 +30,7 @@ export function candidateQuery(input: SearchRequest) {
   const request = SearchRequestSchema.parse(input), { criteria: c, areas } = request.intent;
   const parameters: (string | number | boolean)[] = [];
   const bind = (value: string | number | boolean) => { parameters.push(value); return `$${parameters.length}`; };
-  const gates = ["status = 'active'", 'duplicate_of IS NULL'];
+  const gates = ["status = 'active'", 'duplicate_of IS NULL', "EXISTS (SELECT 1 FROM neighbourhoods n WHERE n.source_id IN ('waterloo-district-plans', 'waterloo-city-boundary') AND ST_Covers(n.geometry, listings.location::geometry))"];
   const known = (column: string, matches: string, tri = false) => gates.push(request.hideUnconfirmed ? `(${column} IS NOT NULL${tri ? ` AND ${column} <> 'unknown'` : ''} AND (${matches}))` : `(${column} IS NULL${tri ? ` OR ${column} = 'unknown'` : ''} OR (${matches}))`);
   const range = (column: string, value: { min?: number; max?: number }) => [value.min === undefined ? '' : `${column} >= ${bind(value.min)}`, value.max === undefined ? '' : `${column} <= ${bind(value.max)}`].filter(Boolean).join(' AND ');
   if (c.rent?.hard) gates.push(`(${range('monthly_rent_cad', c.rent.value)})`);

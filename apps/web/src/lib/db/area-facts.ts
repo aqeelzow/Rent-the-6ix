@@ -15,8 +15,7 @@ export const MIN_LISTINGS = 5;
 const SUM = new Set([
   "libraries",
   "parks",
-  "dev_applications_12m",
-  "residential_units_proposed_12m",
+  "dev_applications_under_review",
 ]);
 const AREA_WEIGHTED = new Set(["transit_stops_per_km2", "rapid_transit_within_800m_pct"]);
 const NOT_FACTS = new Set(["population"]);

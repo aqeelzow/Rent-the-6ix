@@ -4,7 +4,7 @@ import { z } from "zod";
 import { ApiError, jsonRoute } from "../api/json-route";
 import { getClient } from "../db";
 import type { AreaKind } from "./area-facts";
-import { crimeTableSource, safetyForListing, type CrimeTable } from "./safety";
+import { safetyForListing, type CrimeTable } from "./safety";
 
 // GET /api/areas?kind=&indicator= (SPEC 13, P3.10 choropleth). Owner: D. One indicator for every
 // neighbourhood, with outlines simplified to ~10 m. `crime` is the police-reported major-crime
@@ -95,7 +95,7 @@ const CACHE_MS = 60 * 60 * 1000;
 
 export function createChoroplethRoute(
   client: typeof getClient = getClient,
-  crimeTable: () => Promise<CrimeTable | null> = crimeTableSource(client),
+  crimeTable: () => Promise<CrimeTable | null> = async () => null,
 ) {
   const cache = new Map<string, { at: number; value: AreaChoropleth }>();
   return jsonRoute({ name: "areas.choropleth" }, async (_input, request) => {

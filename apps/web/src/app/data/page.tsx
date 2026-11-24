@@ -216,7 +216,6 @@ export default async function DataPage() {
           <li>{d("score.parts.price", { weight: w.price })}</li>
           <li>{d("score.parts.travel", { weight: w.travel })}</li>
           <li>{d("score.parts.home", { weight: w.home })}</li>
-          <li>{d("score.parts.safety", { weight: engineConfig.safetyWeight })}</li>
         </ul>
         <Rules list={en.dataPage.score.rules} prefix="score.rules" />
       </Section>
@@ -243,6 +242,7 @@ export default async function DataPage() {
 
       <Section id="safety">
         <p>{d("safety.body")}</p>
+        <p><a className="underline" href="https://wrps.ca/front-page/statistics-and-data">Waterloo Regional Police statistics and data</a></p>
       </Section>
 
       <Section id="ai">

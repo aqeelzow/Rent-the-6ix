@@ -3,7 +3,7 @@ import { test } from 'vitest';
 import { DestinationResolutionSchema } from '../../../../../packages/shared/schemas/index';
 import { DestinationResolver } from './resolve';
 
-const well = { id: 'well', text: 'The Fixture Atrium', place_name: 'The Fixture Atrium, 16 Spadina Avenue, Toronto', relevance: 0.745926, place_type: ['poi'], center: [-79.3944, 43.6433] };
+const well = { id: 'well', text: 'The Fixture Atrium', place_name: 'The Fixture Atrium, 16 Spadina Avenue, Waterloo', relevance: 0.745926, place_type: ['poi'], center: [-80.4944, 43.4433] };
 
 test('a failed normalization retries the exact original once, retains its qualifiers, and caches the result', async () => {
   const calls: string[] = [];
@@ -15,26 +15,26 @@ test('a failed normalization retries the exact original once, retains its qualif
       const parsed = new URL(String(url));
       calls.push(decodeURIComponent(parsed.pathname));
       signals.push(options?.signal);
-      assert.equal(parsed.searchParams.get('bbox'), '-79.65,43.58,-79.1,43.87');
+      assert.equal(parsed.searchParams.get('bbox'), '-80.68,43.35,-80.32,43.57');
       assert.equal(parsed.searchParams.get('country'), 'ca');
       return Response.json({ features: calls.length === 1 ? [] : [{ ...well, relevance: 1 }] });
     },
   });
   const query = 'The Fixture Atrium on Wellington Street';
-  const result = await resolver.resolve(query, 'Unhelpful normalization, Toronto');
+  const result = await resolver.resolve(query, 'Unhelpful normalization, Waterloo');
   assert.equal(result.status, 'resolved');
   assert.equal(result.query, query);
-  assert.deepEqual(calls, ['/geocoding/Unhelpful normalization, Toronto.json', '/geocoding/The Fixture Atrium on Wellington Street.json']);
+  assert.deepEqual(calls, ['/geocoding/Unhelpful normalization, Waterloo.json', '/geocoding/The Fixture Atrium on Wellington Street.json']);
   assert.equal(signals[0], signals[1]);
   assert.equal(addressLookups, 1);
-  assert.deepEqual(await resolver.resolve(query, 'Unhelpful normalization, Toronto'), result);
+  assert.deepEqual(await resolver.resolve(query, 'Unhelpful normalization, Waterloo'), result);
   assert.equal(calls.length, 2);
 });
 
 test('a lower-score exact POI name is a confirmation choice, never an automatic pin', async () => {
   const resolver = new DestinationResolver({ maptilerKey: 'test', fetch: async () => Response.json({ features: [
     well,
-    { ...well, id: 'bar', text: 'The Fixture Atrium Bar Restaurant', place_name: 'The Fixture Atrium Bar Restaurant, Queen Street West, Toronto', relevance: 0.77 },
+    { ...well, id: 'bar', text: 'The Fixture Atrium Bar Restaurant', place_name: 'The Fixture Atrium Bar Restaurant, Queen Street West, Waterloo', relevance: 0.77 },
     { ...well, id: 'weld', text: 'The Weld Building', relevance: 0.75 },
   ] }) });
   const result = DestinationResolutionSchema.parse(await resolver.resolve('the fixture atrium'));
@@ -48,12 +48,12 @@ test('exact POI names outrank high-scoring similarly named businesses across bot
     calls++;
     return Response.json({ features: [
       { ...well, relevance: calls === 1 ? 0.745926 : 1 },
-      { ...well, id: 'bar', text: 'The Fixture Atrium Bar Restaurant', place_name: 'The Fixture Atrium Bar Restaurant, Queen Street West, Toronto', relevance: 1 },
+      { ...well, id: 'bar', text: 'The Fixture Atrium Bar Restaurant', place_name: 'The Fixture Atrium Bar Restaurant, Queen Street West, Waterloo', relevance: 1 },
       { ...well, id: 'wellington', text: 'The Fixture Atriumington', relevance: 1 },
       { ...well, id: 'wellesdale', text: 'The Fixture Atriumesdale', relevance: 1 },
     ] });
   } });
-  const result = await resolver.resolve('the fixture atrium', 'The Fixture Atrium, Wellington Street, Toronto');
+  const result = await resolver.resolve('the fixture atrium', 'The Fixture Atrium, Wellington Street, Waterloo');
   assert.equal(calls, 2);
   assert.equal(result.status, 'resolved');
   if (result.status === 'resolved') assert.equal(result.destination.id, 'well');
@@ -65,7 +65,7 @@ test('original wording can recover strong matches before offering lower-score no
     calls++;
     return Response.json({ features: [{ ...well, relevance: calls === 1 ? 0.745926 : 1 }] });
   } });
-  const result = await resolver.resolve('the fixture atrium', 'The Fixture Atrium, Wellington Street, Toronto');
+  const result = await resolver.resolve('the fixture atrium', 'The Fixture Atrium, Wellington Street, Waterloo');
   assert.equal(calls, 2);
   assert.equal(result.status, 'resolved');
   if (result.status === 'resolved') assert.equal(result.destination.id, 'well');
@@ -82,20 +82,20 @@ test('suggestions survive an empty or failed retry, and duplicate POIs do not cr
       if (retry === 'malformed') return Response.json({ features: [{ ...well, center: [900, 0] }] });
       return Response.json({ features: retry === 'duplicate' ? [well] : [] });
     } });
-    const result = await resolver.resolve('the fixture atrium', 'The Fixture Atrium, Wellington Street, Toronto');
+    const result = await resolver.resolve('the fixture atrium', 'The Fixture Atrium, Wellington Street, Waterloo');
     assert.equal(calls, 2);
     assert.equal(result.status, 'ambiguous');
     if (result.status === 'ambiguous') assert.equal(result.choices.length, 1);
   }
 });
 
-test('weak names, unsupported types, explicit qualifiers, missing scores and locations outside Toronto cannot become suggestions', async () => {
+test('weak names, unsupported types, explicit qualifiers, missing scores and locations outside Waterloo cannot become suggestions', async () => {
   for (const [query, features] of [
     ['the fixture atrium', [{ ...well, relevance: 0.69 }]],
     ['the fixture atrium', [{ ...well, relevance: undefined }]],
     ['the fixture atrium', [{ ...well, place_type: ['road'] }]],
-    ['the fixture atrium', [{ ...well, text: undefined, place_name: 'The Fixture Atrium Bar Restaurant, Toronto' }]],
-    ['the fixture atrium', [{ ...well, text: undefined, place_name: 'Wellington Street, Toronto' }]],
+    ['the fixture atrium', [{ ...well, text: undefined, place_name: 'The Fixture Atrium Bar Restaurant, Waterloo' }]],
+    ['the fixture atrium', [{ ...well, text: undefined, place_name: 'Wellington Street, Waterloo' }]],
     ['The Fixture Atrium on Wellington Street', [well]],
     ['The Fixture Atrium, Ottawa', [well]],
     ['the fixture atrium', [{ ...well, relevance: 1, center: [-75.7, 45.4] }]],
@@ -110,20 +110,20 @@ test('lower-score POI labels can match without text metadata, while stronger alt
     const resolver = new DestinationResolver({ maptilerKey: 'test', fetch: async () => Response.json({ features: [
       { ...well, text }, { ...well, id: 'second', relevance: 0.95 },
     ] }) });
-    const result = await resolver.resolve('The Fixture Atrium, Toronto');
+    const result = await resolver.resolve('The Fixture Atrium, Waterloo');
     assert.equal(result.status, 'ambiguous');
     if (result.status === 'ambiguous') assert.deepEqual(result.choices.map(choice => choice.id), ['second', 'well']);
   }
 });
 
 test('identical query text and strong first responses do not trigger retries', async () => {
-  for (const normalizedQuery of [undefined, 'THE FIXTURE ATRIUM', 'The Fixture Atrium, Toronto']) {
+  for (const normalizedQuery of [undefined, 'THE FIXTURE ATRIUM', 'The Fixture Atrium, Waterloo']) {
     let calls = 0;
     const resolver = new DestinationResolver({ maptilerKey: 'test', fetch: async () => {
       calls++;
-      return Response.json({ features: [{ ...well, relevance: normalizedQuery === 'The Fixture Atrium, Toronto' ? 1 : 0.75 }] });
+      return Response.json({ features: [{ ...well, relevance: normalizedQuery === 'The Fixture Atrium, Waterloo' ? 1 : 0.75 }] });
     } });
-    assert.equal((await resolver.resolve('the fixture atrium', normalizedQuery)).status, normalizedQuery === 'The Fixture Atrium, Toronto' ? 'resolved' : 'ambiguous');
+    assert.equal((await resolver.resolve('the fixture atrium', normalizedQuery)).status, normalizedQuery === 'The Fixture Atrium, Waterloo' ? 'resolved' : 'ambiguous');
     assert.equal(calls, 1);
   }
 });

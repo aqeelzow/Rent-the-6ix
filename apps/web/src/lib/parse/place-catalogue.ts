@@ -11,7 +11,7 @@ export type PlaceEntity = PlaceRecord & { sourceIds: string[] };
 type Match = { places: PlaceEntity[]; canonical: string; match: 'exact' | 'fuzzy'; group?: string };
 export type PlaceMention = { start: number; end: number; query: string; normalizedQuery?: string };
 const baseName = (label: string) => label.replace(/ representative point$/, '');
-const sourceRank = (p: PlaceRecord) => p.id.startsWith('toronto-intersection:') ? 0 : p.id.startsWith('osm:') ? 1 : 2;
+const sourceRank = (p: PlaceRecord) => /^waterloo-intersection:/.test(p.id) ? 0 : p.id.startsWith('osm:') ? 1 : 2;
 const compareSources = (a: PlaceRecord, b: PlaceRecord) => sourceRank(a) - sourceRank(b) || a.id.localeCompare(b.id);
 const streetWords: Record<string, string> = { street: 'st', avenue: 'ave', road: 'rd', boulevard: 'blvd', drive: 'dr', crescent: 'cres', court: 'ct', place: 'pl', highway: 'hwy', lane: 'ln', trail: 'trl', terrace: 'ter', north: 'n', south: 's', east: 'e', west: 'w' };
 const street = (name: string) => normalizePlace(name).split(' ').map(word => streetWords[word] ?? word).join(' ');
@@ -19,13 +19,14 @@ const street = (name: string) => normalizePlace(name).split(' ').map(word => str
 function intersectionNames(label: string): string[] {
   if (!label.endsWith(' intersection')) return [];
   const roads = baseName(label).replace(/ intersection$/, '').split(/\s+(?:&|\/|and)\s+/i).map(street);
-  if (roads.length !== 2) return [];
+  if (roads.length < 2) return [];
   const variants = roads.map(road => {
     const short = road.replace(/\b(?:st|ave|rd|blvd|dr|cres|ct|pl|hwy|ln|trl|ter)(?=\s+[nsew]$|$)/, '').replace(/\s+/g, ' ').trim();
     return [...new Set([road, short, road.replace(/\s+[nsew]$/, ''), short.replace(/\s+[nsew]$/, '')])];
   });
   // Omitted directions broaden the candidates; explicit directions always stay in their own key.
-  return variants[0].flatMap(a => variants[1].flatMap(b => [ `${a} and ${b}`, `${b} and ${a}` ]));
+  return variants.flatMap((left, i) => variants.slice(i + 1).flatMap(right =>
+    left.flatMap(a => right.flatMap(b => a === b ? [] : [`${a} and ${b}`, `${b} and ${a}`]))));
 }
 
 // Complete-link clusters avoid merging a chain of entrances spanning several distinct branches.
@@ -49,7 +50,6 @@ function oneEdit(a: string, b: string): boolean {
 export class PlaceCatalogue {
   private names = new Map<string, PlaceEntity[]>();
   private fuzzyEdges = new Map<string, Set<string>>();
-  private groups = new Map<string, PlaceEntity[]>();
   private maxWords = 1;
   readonly conflicts: { name: string; curatedId: string; sourcedIds: string[] }[] = [];
 
@@ -75,16 +75,12 @@ export class PlaceCatalogue {
         const aliases = new Set([...cluster, ...old].flatMap(p => [p.label, baseName(p.label), `${baseName(p.label)} representative point`, ...p.aliases, ...intersectionNames(p.label)]));
         entity.aliases = [...aliases];
         for (const alias of aliases) this.addName(normalizePlace(alias), entity);
-        if (entity.group) this.groups.set(entity.group, [...this.groups.get(entity.group) ?? [], entity]);
       }
     }
     this.mergeEntities(coordinates);
-    for (const [group, aliases] of [['University of Toronto', ['university of toronto', 'uoft', 'u of t']], ['York University', ['york', 'york university']]] as const) {
-      for (const alias of aliases) if (this.groups.has(group)) this.names.set(alias, this.groups.get(group)!);
-    }
     for (const [name, places] of this.names) {
       const words = name.split(' '); this.maxWords = Math.max(this.maxWords, words.length);
-      if (words.length < 2 || name.length < 8 || places.some(p => p.id.startsWith('toronto-intersection:'))) continue;
+      if (words.length < 2 || name.length < 8 || places.some(p => /^waterloo-intersection:/.test(p.id))) continue;
       for (const edge of [words[0], words.at(-1)!]) {
         const names = this.fuzzyEdges.get(edge) ?? new Set<string>(); names.add(name); this.fuzzyEdges.set(edge, names);
       }
@@ -93,7 +89,7 @@ export class PlaceCatalogue {
 
   private addName(name: string, entity: PlaceEntity) {
     // Two-letter labels such as bank brands do not identify a destination reliably.
-    if (name.replace(/\s/g, '').length < 3) return;
+    if (name !== 'uw' && name.replace(/\s/g, '').length < 3) return;
     const places = this.names.get(name) ?? [];
     if (!places.includes(entity)) places.push(entity);
     this.names.set(name, places);
@@ -124,7 +120,6 @@ export class PlaceCatalogue {
       entity.aliases = [...new Set(members.get(entity)!.flatMap(p => p.aliases))];
     }
     for (const [name, candidates] of this.names) this.names.set(name, [...new Set(candidates.map(root))]);
-    for (const [name, candidates] of this.groups) this.groups.set(name, [...new Set(candidates.map(root))]);
   }
 
   lookup(query: string, fuzzy = true): Match | undefined {
@@ -148,7 +143,7 @@ export class PlaceCatalogue {
 
   private result(canonical: string, places: PlaceEntity[], match: Match['match']): Match {
     const distinct = [...new Set(places)];
-    const group = ['university of toronto', 'uoft', 'u of t'].includes(canonical) ? 'University of Toronto' : ['york', 'york university'].includes(canonical) ? 'York University' : undefined;
+    const group = distinct.length > 1 && distinct.every(place => place.group === distinct[0].group) ? distinct[0].group : undefined;
     return { places: distinct, canonical, match, ...(group ? { group } : {}) };
   }
 

@@ -2,7 +2,7 @@
 // rows it describes. `/data` renders this table, so the page can never claim a dataset the
 // loaders did not actually read. Every civic table has an FK to `sources`, which is why this is
 // the first thing every loader calls.
-import type { Sql } from "postgres";
+import type { Sql, TransactionSql } from "postgres";
 
 export interface SourceInput {
   /** Dataset slug, e.g. "neighbourhoods" — also the FK value on the data rows. */
@@ -18,7 +18,7 @@ export interface SourceInput {
 }
 
 /** Upsert one provenance row and record today as the retrieval date. */
-export async function upsertSource(sql: Sql, source: SourceInput): Promise<void> {
+export async function upsertSource(sql: Sql | TransactionSql, source: SourceInput): Promise<void> {
   const retrievedAt = new Date().toISOString().slice(0, 10);
   await sql`
     insert into sources (id, title, url, licence, retrieved_at, period, note)

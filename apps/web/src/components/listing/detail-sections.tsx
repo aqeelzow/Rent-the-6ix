@@ -563,6 +563,7 @@ function CheckPill({
 
 /** "View on Kijiji" — renters contact landlords on the source site (SPEC 2.6). */
 export function SourceButton({ result, onDark }: { result: SearchResultItem; onDark?: boolean }) {
+  if (result.listing.dataStatus === "demo") return null;
   const source = t(`results.sources.${result.listing.source}` as MessageKey);
   return (
     <a

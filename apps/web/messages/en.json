@@ -740,7 +740,7 @@
       "renter_households_pct": "Renter households",
       "renters_shelter_cost_30pct": "Renters spending 30%+ of income on shelter",
       "median_household_income": "Median household income",
-      "dev_applications_12m": "Development applications in the last 12 months",
+      "dev_applications_under_review": "Mapped major developments under review",
       "residential_units_proposed_12m": "Homes proposed in the last 12 months",
       "transit_stops_per_km2": "Transit stops per km²",
       "rapid_transit_within_800m_pct": "Area within 800 m of rapid transit",
@@ -860,7 +860,7 @@
       "rapid_transit_within_800m_pct": "Area within 800 m of an ION or rail stop",
       "libraries": "Public libraries",
       "parks": "Parks",
-      "dev_applications_12m": "Development applications",
+      "dev_applications_under_review": "Major developments under review",
       "residential_units_proposed_12m": "Homes proposed in rezoning applications"
     }
   },
@@ -986,7 +986,7 @@
       "modeNoOverhead": "{mode}: {speed} km/h along streets about {detour}× the straight-line distance"
     },
     "safety": {
-      "body": "Reported crime levels are off unless you turn them on. They use police-reported rates for five major crime types in the listing's neighbourhood, compared with the city average. Reported crime isn't all crime, rates move from year to year, and they say nothing about any street or building. We never call an area safe or unsafe."
+      "body": "Neighbourhood safety scoring is unavailable in Waterloo. Waterloo Regional Police publish calls for service with locations approximated to nearby intersections. These data cannot support a reliable neighbourhood crime rate."
     },
     "ai": {
       "rules": {

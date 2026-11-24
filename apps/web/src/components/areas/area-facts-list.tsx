@@ -21,8 +21,7 @@ const ORDER = [
   "rapid_transit_within_800m_pct",
   "libraries",
   "parks",
-  "dev_applications_12m",
-  "residential_units_proposed_12m",
+  "dev_applications_under_review",
 ];
 const LISTINGS = "rentkdubs-listings";
 

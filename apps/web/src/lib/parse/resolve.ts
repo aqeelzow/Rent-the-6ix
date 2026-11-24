@@ -6,7 +6,7 @@ import { placeCatalogue, type PlaceEntity } from './place-catalogue';
 import { namedParkMentions } from './named-parks';
 export { normalizePlace } from './place-name';
 const choice = (p: PlaceEntity) => DestinationChoiceSchema.parse({ id: p.id, label: p.label, resolved: { lng: p.lng, lat: p.lat, source: 'known_place', representativePoint: true, label: p.label } });
-const torontoBounds = [-79.65, 43.58, -79.10, 43.87] as const;
+const waterlooRegionBounds = [-80.68, 43.35, -80.32, 43.57] as const;
 const geocodingFeature = z.object({ id: z.string().trim().min(1), place_name: z.string().trim().min(1), text: z.string().optional(), relevance: z.number().min(0).max(1).optional(), place_type: z.array(z.string()).optional(), bbox: z.array(z.number()).optional(), center: z.tuple([z.number().min(-180).max(180), z.number().min(-90).max(90)]) });
 const poiName = (name: string) => normalizePlace(name).replace(/^the /, '');
 function knownResolution(normalized: string, query: string, preferPrimaryCampus: boolean, fuzzy = false): DestinationResolution | undefined {
@@ -44,10 +44,10 @@ export class DestinationResolver {
       if (controller.signal.aborted) return unavailable('Destination lookup timed out.');
       if (!this.config.maptilerKey) return unavailable('Address Points unavailable or unmatched; geocoding is not configured. Choose a pin or provide an exact address.');
       const features = new Map<string, z.infer<typeof geocodingFeature>>();
-      const requestedName = poiName(query.replace(/(?:,\s*|\s+)toronto(?:,?\s+ontario)?(?:,?\s+canada)?\s*$/i, ''));
+      const requestedName = poiName(query.replace(/(?:,\s*|\s+)(?:waterloo|kitchener)(?:,?\s+ontario)?(?:,?\s+canada)?\s*$/i, ''));
       const matchesName = (feature: z.infer<typeof geocodingFeature>) => feature.place_type?.includes('poi') && poiName(feature.text ?? feature.place_name.split(',')[0]) === requestedName;
       const matchingFeatures = () => {
-        // shortcut: lower-score suggestions require an exact POI name at 0.7 or above; tune with labelled Toronto examples.
+        // shortcut: lower-score suggestions require an exact POI name at 0.7 or above; tune with labelled Waterloo Region examples.
         const candidates = [...features.values()].filter(feature => (feature.relevance ?? 0) >= 0.9 || (feature.relevance ?? 0) >= 0.7 && matchesName(feature));
         const named = candidates.filter(matchesName);
         return named.length ? named : candidates;
@@ -59,13 +59,13 @@ export class DestinationResolver {
         try {
           const url = new URL(`https://api.maptiler.com/geocoding/${encodeURIComponent(lookupQuery)}.json`);
           // MapTiler excludes named POIs by default; retain its other default types as well.
-          url.search = new URLSearchParams({ key: this.config.maptilerKey, country: 'ca', bbox: torontoBounds.join(','), limit: '5', types: 'continental_marine,country,major_landform,region,subregion,county,joint_municipality,joint_submunicipality,municipality,municipal_district,locality,neighbourhood,place,postal_code,address,road,poi' }).toString();
+          url.search = new URLSearchParams({ key: this.config.maptilerKey, country: 'ca', bbox: waterlooRegionBounds.join(','), limit: '5', types: 'continental_marine,country,major_landform,region,subregion,county,joint_municipality,joint_submunicipality,municipality,municipal_district,locality,neighbourhood,place,postal_code,address,road,poi' }).toString();
           const response = await (this.config.fetch ?? fetch)(url, { signal: controller.signal });
           if (!response.ok) { failure = 'Geocoding provider unavailable.'; break; }
           const body = z.object({ features: z.array(geocodingFeature) }).parse(await response.json());
           for (const feature of body.features) {
             const [lng, lat] = feature.center;
-            if (lng < torontoBounds[0] || lng > torontoBounds[2] || lat < torontoBounds[1] || lat > torontoBounds[3]) continue;
+            if (lng < waterlooRegionBounds[0] || lng > waterlooRegionBounds[2] || lat < waterlooRegionBounds[1] || lat > waterlooRegionBounds[3]) continue;
             if (!features.has(feature.id) || (feature.relevance ?? 0) > (features.get(feature.id)!.relevance ?? 0)) features.set(feature.id, feature);
           }
           if (matchingFeatures().some(feature => (feature.relevance ?? 0) >= 0.9)) break;

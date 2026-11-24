@@ -1,19 +1,13 @@
-// P1.12 — TTC stops from the GTFS feed. `is_rapid` drives the "rapid transit within 800 m"
-// indicator (SPEC 9.2), so it is derived from the feed rather than guessed: a stop is rapid when
-// it is served by a route with route_type 1 or 2 (subway/rail). TTC streetcars are route_type 0.
-//
-// The feed is a 36 MB ZIP published as one resource; it is read in memory and the three tables
-// are indexed once, then `stop_times.txt` (the large one) is streamed line by line.
 import type { Sql } from "postgres";
-import { cityDataset, cityResourceUrl, CITY_LICENCE } from "./lib/ckan.ts";
 import { parseCsvLine } from "./lib/csv.ts";
 import { fetchBuffer } from "./lib/http.ts";
 import { lines, readZipText } from "./lib/zip.ts";
 import { upsertSource } from "./sources.ts";
 
-const SLUG = "ttc-routes-and-schedules";
-const SOURCE_ID = "ttc-routes-and-schedules";
-const RESOURCE = "TTC Routes and Schedules Data";
+const FEEDS = [
+  { id: "grt-bus", feed: 1 },
+  { id: "grt-ion", feed: 2 },
+] as const;
 
 interface StopRow {
   id: string;
@@ -42,37 +36,28 @@ export interface TransitStopLoad {
   rapid: number;
 }
 
-export async function loadTransitStops(sql: Sql): Promise<TransitStopLoad> {
-  const meta = await cityDataset(SLUG);
-  const url = await cityResourceUrl(SLUG, RESOURCE);
-  const archive = await fetchBuffer(url);
-
+export function parseTransitStops(archive: Buffer, sourceId: string): StopRow[] {
   const stopsText = readZipText(archive, "stops.txt");
   const routesText = readZipText(archive, "routes.txt");
   const tripsText = readZipText(archive, "trips.txt");
   const stopTimesText = readZipText(archive, "stop_times.txt");
-  const feedInfo = archive.includes(Buffer.from("feed_info.txt"))
-    ? readZipText(archive, "feed_info.txt")
-    : null;
-
-  // route_type 1 = subway, 2 = rail; both are "rapid". 0 (streetcar) and 3 (bus) are not.
+  const routes = new Map<string, string>();
   const rapidRoutes = new Set<string>();
-  const routeTypes = new Map<string, Set<string>>();
   {
     const { header, rows } = table(routesText);
     const idAt = header.indexOf("route_id");
     const typeAt = header.indexOf("route_type");
+    const numberAt = header.indexOf("route_short_name");
     for (const row of rows) {
       const id = row[idAt];
       const type = row[typeAt];
-      if (!id || type === undefined) continue;
-      routeTypes.set(id, new Set([type]));
-      if (type === "1" || type === "2") rapidRoutes.add(id);
+      if (!id || !type) continue;
+      routes.set(id, type);
+      if (type === "0" && row[numberAt] === "301") rapidRoutes.add(id);
     }
   }
 
-  // trip_id → route_type, but only for trips that can make a stop rapid plus every type for the
-  // stop's `route_types` array. Keeping the type (not the route) bounds memory to a few strings.
+  const rapidTrips = new Set<string>();
   const tripType = new Map<string, string>();
   {
     const { header, rows } = table(tripsText);
@@ -82,11 +67,13 @@ export async function loadTransitStops(sql: Sql): Promise<TransitStopLoad> {
       const trip = row[tripAt];
       const route = row[routeAt];
       if (!trip || !route) continue;
-      const types = routeTypes.get(route);
-      if (types) for (const type of types) tripType.set(trip, type);
+      const type = routes.get(route);
+      if (type !== undefined) tripType.set(trip, type);
+      if (rapidRoutes.has(route)) rapidTrips.add(trip);
     }
   }
 
+  const rapidStops = new Set<string>();
   const stopTypes = new Map<string, Set<string>>();
   {
     const { header, rows } = table(stopTimesText);
@@ -100,6 +87,7 @@ export async function loadTransitStops(sql: Sql): Promise<TransitStopLoad> {
       let set = stopTypes.get(stop);
       if (!set) stopTypes.set(stop, (set = new Set()));
       set.add(type);
+      if (rapidTrips.has(row[tripAt])) rapidStops.add(stop);
     }
   }
 
@@ -113,55 +101,50 @@ export async function loadTransitStops(sql: Sql): Promise<TransitStopLoad> {
     for (const row of stopRows) {
       const id = row[idAt];
       const name = row[nameAt];
-      const lat = Number(row[latAt]);
-      const lon = Number(row[lonAt]);
+      const lat = Number(row[latAt] || NaN);
+      const lon = Number(row[lonAt] || NaN);
       if (!id || !name || !Number.isFinite(lat) || !Number.isFinite(lon)) continue;
       const types = [...(stopTypes.get(id) ?? [])].sort();
       rows.push({
-        id: `ttc:${id}`,
+        id: `${sourceId}:${id}`,
         name,
         location: `SRID=4326;POINT(${lon} ${lat})`,
         route_types: types,
-        is_rapid: types.some((type) => type === "1" || type === "2"),
-        source_id: SOURCE_ID,
+        is_rapid: rapidStops.has(id),
+        source_id: "grt-gtfs",
       });
     }
   }
 
-  let period: string | null = null;
-  if (feedInfo) {
-    const { header, rows: infoRows } = table(feedInfo);
-    const start = header.indexOf("feed_start_date");
-    const end = header.indexOf("feed_end_date");
-    const first = infoRows.next();
-    if (!first.done && start >= 0 && end >= 0) {
-      period = `${first.value[start]}–${first.value[end]}`;
-    }
-  }
+  return rows;
+}
 
-  await upsertSource(sql, {
-    id: SOURCE_ID,
-    title: meta.title,
-    url: meta.pageUrl,
-    licence: CITY_LICENCE,
-    period,
-    note: url,
-  });
-
-  for (let i = 0; i < rows.length; i += 500) {
-    const chunk = rows.slice(i, i + 500);
-    await sql`
-      insert into transit_stops ${sql(chunk, "id", "name", "location", "route_types", "is_rapid", "source_id")}
-      on conflict (id) do update set
-        name = excluded.name,
-        location = excluded.location,
-        route_types = excluded.route_types,
-        is_rapid = excluded.is_rapid,
-        source_id = excluded.source_id
-    `;
-  }
-
+export async function loadTransitStops(sql: Sql): Promise<TransitStopLoad> {
+  const feeds = await Promise.all(FEEDS.map(async (feed) => {
+    const url = `https://webapps.regionofwaterloo.ca/api/grt-routes/api/staticfeeds/${feed.feed}`;
+    return { ...feed, url, rows: parseTransitStops(await fetchBuffer(url), feed.id) };
+  }));
+  const rows = feeds.flatMap((feed) => feed.rows);
   const rapid = rows.filter((row) => row.is_rapid).length;
-  if (rapid === 0) throw new Error("no rapid-transit stops found — route_type mapping is wrong");
+  if (feeds.some((feed) => feed.rows.length === 0) || rapid === 0) {
+    throw new Error("Expected bus stops and ION rapid-transit stops");
+  }
+
+  await sql.begin(async (tx) => {
+    await upsertSource(tx, {
+      id: "grt-gtfs",
+      title: "Grand River Transit bus and ION light rail schedules",
+      url: "https://www.grt.ca/about-grt/open-data/",
+      licence: "Region of Waterloo Open Data Licence v2.0",
+      note: feeds.map((feed) => feed.url).join(", "),
+    });
+    await tx`delete from transit_stops where source_id in ('ttc-routes-and-schedules', 'grt-gtfs')`;
+    for (let i = 0; i < rows.length; i += 500) {
+      const chunk = rows.slice(i, i + 500);
+      await tx`
+        insert into transit_stops ${tx(chunk, "id", "name", "location", "route_types", "is_rapid", "source_id")}
+      `;
+    }
+  });
   return { stops: rows.length, rapid };
 }

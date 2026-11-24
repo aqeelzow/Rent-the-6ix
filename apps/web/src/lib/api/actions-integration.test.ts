@@ -23,18 +23,18 @@ function bridge(api: ReturnType<typeof createRuntime>) {
   return { fetch: fetcher, paths };
 }
 
-test('a saved unresolved UofT search regains its pin and time estimates without reparsing edited filters', async () => {
+test('a saved unresolved UW search regains its pin and time estimates without reparsing edited filters', async () => {
   const api = createRuntime({ env: {}, dependencies: fixtureDependencies });
   const store = createAppStore();
   const transport = bridge(api);
-  const intent = { ...baseIntent, rawPrompt: 'near uoft', criteria: { rent: { value: { max: 5000 }, hard: true } }, travelTargets: [{ id: 'campus', kind: 'place' as const, label: 'UofT St. George campus', query: 'uoft', mode: 'walk' as const, maxMinutes: 60, hard: true }] };
+  const intent = { ...baseIntent, rawPrompt: 'near uw', criteria: { rent: { value: { max: 5000 }, hard: true } }, travelTargets: [{ id: 'campus', kind: 'place' as const, label: 'University of Waterloo', query: 'uw', mode: 'walk' as const, maxMinutes: 60, hard: false }] };
   try {
     await restoreSearch({ intent, hideUnconfirmed: false }, { store, ...transport });
     expect(transport.paths).toEqual(['/api/geo/resolve', '/api/listings/search']);
     const state = store.getState();
     expect(state.status).toBe('ready');
     expect(state.intent?.criteria).toEqual(intent.criteria);
-    expect(state.intent?.travelTargets[0].resolved).toMatchObject({ lng: -79.3957, lat: 43.6629, source: 'known_place' });
+    expect(state.intent?.travelTargets[0].resolved).toMatchObject({ lng: -80.5398, lat: 43.4723, source: 'known_place' });
     expect(placePins(state.intent!.travelTargets)).toHaveLength(1);
     expect(state.results.length).toBeGreaterThan(0);
     expect(travelSummaries(state.results[0], state.intent!.travelTargets)[0].kind).toBe('estimated');
@@ -43,7 +43,7 @@ test('a saved unresolved UofT search regains its pin and time estimates without 
 });
 
 test('within ten minutes of an arbitrary place is a strict walking cutoff even without Gemini', async () => {
-  const destination = { lng: -79.3743315, lat: 43.6618956 };
+  const destination = { lng: -80.4743315, lat: 43.4618956 };
   const listings = sampleListings.slice(0, 4).map((listing, index) => ({ ...listing, location: { lng: destination.lng, lat: destination.lat + [0, 640, 641, 5000][index] / 6371000 * 180 / Math.PI } }));
   const resolver = new DestinationResolver({ maptilerKey: 'mock', fetch: async () => Response.json({ features: [{ id: 'allan-gardens', place_name: 'Allan Gardens', relevance: 1, center: [destination.lng, destination.lat] }] }) });
   const api = createRuntime({ env: {}, parser: new ParseService({ resolver }), dependencies: { ...fixtureDependencies, listings } });
@@ -67,11 +67,11 @@ test('actual A actions consume B responses and retain nested listing selection a
   const store = createAppStore();
   const transport = bridge(api);
   try {
-    const choice = await resolveDestination('University of Toronto', transport);
+    const choice = await resolveDestination('Conestoga College', transport);
     expect(choice.ok).toBe(true);
     if (!choice.ok || choice.resolution.status !== 'ambiguous') throw Error('Expected campus choices');
     expect(choice.resolution.choices.length).toBeGreaterThan(1);
-    await parseAndSearch('near University of Toronto', { store, ...transport });
+    await parseAndSearch('near Conestoga College', { store, ...transport });
     expect(store.getState().destinations[0].resolution.status).toBe('ambiguous');
     const selected = choice.resolution.choices[0];
     store.getState().updateIntent(intent => ({ ...intent, travelTargets: intent.travelTargets.map(target => ({ ...target, resolved: selected.resolved, label: selected.label })) }));
