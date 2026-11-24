@@ -86,6 +86,15 @@ export function overpassQuery(bbox = WATERLOO_BBOX): string {
   ].join("\n");
 }
 
+/**
+ * Campuses whose OSM shape is several far-apart pieces, placed at their main campus instead: the
+ * nearest piece of the University of Waterloo is often a parcel south of University Avenue or the
+ * north campus research lands, not where students go. (Davis Centre / Student Life Centre.)
+ */
+export const CAMPUS_ANCHORS: Record<string, { lat: number; lon: number }> = {
+  "University of Waterloo": { lat: 43.4723, lon: -80.5449 },
+};
+
 /** A relation part smaller than this (about 1 ha) is a parcel, not a place of its own. */
 const MIN_PART_AREA = 1e-6;
 const [SOUTH, WEST, NORTH, EAST] = WATERLOO_BBOX.split(",").map(Number) as [
@@ -150,6 +159,12 @@ export function schoolLevel(name: string, isced?: string): "secondary" | "elemen
  * "#1", "#2"…). Empty when it's unnamed, unplaced or not one of ours.
  */
 export function poiRows(element: OverpassElement): PoiRow[] {
+  const anchor = CAMPUS_ANCHORS[element.tags?.name?.trim() ?? ""];
+  if (anchor) {
+    // One point at the heart of the main campus, whatever shape OSM gives it.
+    const row = poiRow({ ...element, lat: anchor.lat, lon: anchor.lon });
+    return row ? [row] : [];
+  }
   if (element.type !== "relation") {
     const row = poiRow(element);
     return row ? [row] : [];

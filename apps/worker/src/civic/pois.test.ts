@@ -74,8 +74,8 @@ describe("poiRows", () => {
   it("places each large part of a campus at its own centroid, skipping slivers and far sites", () => {
     const rows = poiRows({
       type: "relation",
-      id: 11680616,
-      tags: { name: "University of Waterloo", amenity: "university" },
+      id: 42,
+      tags: { name: "Example Polytechnic", amenity: "university" },
       members: [
         { type: "way", role: "outer", geometry: square(-80.55, 43.465, 0.01) }, // main campus
         { type: "way", role: "outer", geometry: square(-80.54, 43.474, 0.0001) }, // a sliver
@@ -85,9 +85,9 @@ describe("poiRows", () => {
     });
     expect(rows).toHaveLength(1);
     expect(rows[0]).toMatchObject({
-      id: "osm:relation/11680616#1",
+      id: "osm:relation/42#1",
       category: "university",
-      name: "University of Waterloo",
+      name: "Example Polytechnic",
     });
     const [lon, lat] = rows[0]!.location
       .match(/POINT\((\S+) (\S+)\)/)!
@@ -95,6 +95,24 @@ describe("poiRows", () => {
       .map(Number);
     expect(lon).toBeCloseTo(-80.545, 5);
     expect(lat).toBeCloseTo(43.47, 5);
+  });
+
+  it("puts the University of Waterloo at its main campus, as one row", () => {
+    const rows = poiRows({
+      type: "relation",
+      id: 11680616,
+      tags: { name: "University of Waterloo", amenity: "university" },
+      members: [
+        { type: "way", role: "outer", geometry: square(-80.56, 43.47, 0.01) },
+        { type: "way", role: "outer", geometry: square(-80.54, 43.465, 0.01) },
+      ],
+    });
+    expect(rows).toEqual([
+      expect.objectContaining({
+        id: "osm:relation/11680616",
+        location: "SRID=4326;POINT(-80.5449 43.4723)",
+      }),
+    ]);
   });
 
   it("keeps a node or way as one row", () => {
