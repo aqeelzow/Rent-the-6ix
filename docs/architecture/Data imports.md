@@ -1,6 +1,6 @@
 # Data imports
 
-The worker loads City of Waterloo boundaries and development applications, GRT bus and ION stops, and OpenStreetMap amenities. The known-place generator separately builds an app-local catalogue of Waterloo intersections and ION destinations.
+The worker loads City of Waterloo boundaries and development applications, GRT bus and ION stops, and OpenStreetMap amenities. The known-place generator separately builds an app-local catalogue of Waterloo intersections, ION destinations, and UW campus buildings.
 
 The 2021 Census snapshot contains 155 dissemination areas and 764 dissemination blocks. The loader assigns each to one district. It sums DA tenure counts and block population and dwelling counts. Multi-DA shelter-cost estimates use published tenant counts as weights and preserve missing data.
 

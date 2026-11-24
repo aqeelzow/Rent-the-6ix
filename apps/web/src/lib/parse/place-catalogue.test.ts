@@ -77,7 +77,7 @@ test('busy AI preserves locally resolved places and independent travel bounds', 
 test('every eligible generated name and alias remains locally reachable with source provenance', () => {
   for (const record of generated) {
     for (const name of [record.label, ...record.aliases]) {
-      if (normalizePlace(name).replace(/\s/g, '').length < 3) continue;
+      if (!record.id.startsWith('uw-building:') && normalizePlace(name).replace(/\s/g, '').length < 3) continue;
       const match = placeCatalogue.lookup(name, false);
       assert.ok(match, `${record.id}: ${name}`);
       // A university's bare name intentionally selects its campuses rather than a namesake station.

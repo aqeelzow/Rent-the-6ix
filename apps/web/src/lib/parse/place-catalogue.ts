@@ -30,10 +30,12 @@ function intersectionNames(label: string): string[] {
 }
 
 // Complete-link clusters avoid merging a chain of entrances spanning several distinct branches.
-function clusters<T extends { lng: number; lat: number }>(items: T[]): T[][] {
-  const groups: T[][] = [];
+const campusBuilding = (place: PlaceRecord) => place.id.startsWith('uw-building:');
+
+function clusters(items: PlaceRecord[]): PlaceRecord[][] {
+  const groups: PlaceRecord[][] = [];
   for (const item of items) {
-    const group = groups.find(group => group.every(member => distanceM(item, member) <= 250));
+    const group = groups.find(group => group.every(member => !campusBuilding(item) && !campusBuilding(member) && distanceM(item, member) <= 250));
     if (group) group.push(item); else groups.push([item]);
   }
   return groups;
@@ -88,8 +90,8 @@ export class PlaceCatalogue {
   }
 
   private addName(name: string, entity: PlaceEntity) {
-    // Two-letter labels such as bank brands do not identify a destination reliably.
-    if (name !== 'uw' && name.replace(/\s/g, '').length < 3) return;
+    // Short labels need an explicit campus building record to resolve reliably.
+    if (name !== 'uw' && name.replace(/\s/g, '').length < 3 && !campusBuilding(entity)) return;
     const places = this.names.get(name) ?? [];
     if (!places.includes(entity)) places.push(entity);
     this.names.set(name, places);
@@ -108,7 +110,7 @@ export class PlaceCatalogue {
       if (candidates.length < 2) continue;
       for (let i = 0; i < candidates.length; i++) for (let j = i + 1; j < candidates.length; j++) {
         let a = root(candidates[i]), b = root(candidates[j]);
-        if (a === b || a.group !== b.group) continue;
+        if (a === b || a.group !== b.group || campusBuilding(a) || campusBuilding(b)) continue;
         if (!coordinates.get(a)!.every(left => coordinates.get(b)!.every(right => distanceM(left, right) <= 250))) continue;
         if (compareSources(a, b) > 0) [a, b] = [b, a];
         owner.set(b, a); members.set(a, [...members.get(a)!, ...members.get(b)!]);

@@ -22,6 +22,7 @@ flowchart LR
   DB --> Search
   Search --> Map[Results map and listing cards]
   DB --> Facts[Listing details and area facts]
+  WRPS[WRPS police activity feed] --> Facts
   Pref[Browser U-Pass choice] --> Facts
 ```
 

@@ -1,6 +1,6 @@
 # Database
 
-PostgreSQL stores listings, benchmarks and source records. PostGIS stores neighbourhood polygons, transit stops, amenities and development application points. The civic loader writes derived measures to `area_indicators`.
+PostgreSQL stores listings, benchmarks, source records and civic data. The PostGIS extension provides the spatial types and queries used for neighbourhood polygons, transit stops, amenities and development application points. The civic loader writes derived measures to `area_indicators`.
 
 Candidate search checks listing coordinates against the Waterloo boundary. The demo loader attaches districts to seeded listings. Valuation and area rent statistics exclude demo prices. Area facts join indicator values to districts and source records.
 

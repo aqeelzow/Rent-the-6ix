@@ -358,3 +358,18 @@ test('timed destinations preserve street dots without duplicate campuses or merg
   const joined = fallbackParse('10 min walk to 100 Queen St. W and 20 min bike to 200 King St. E');
   assert.deepEqual(joined.travelTargets.map(t => [t.query, t.mode, t.maxMinutes]), [['100 Queen St. W', 'walk', 10], ['200 King St. E', 'bike', 20]]);
 });
+
+test('UW building codes resolve to distinct campus buildings, including the former E7', async () => {
+  const service = new ParseService();
+  const cases = [['CMH', 'cmh'], ['E5', 'e5'], ['E6', 'e6'], ['E7', 'pse'], ['MC', 'mc']];
+  const locations = new Set<string>();
+  for (const [alias, id] of cases) {
+    const parsed = await service.parse({ prompt: `room near ${alias} under $900` }, 'uw-building-test');
+    const resolution = parsed.destinations[0]?.resolution;
+    assert.equal(resolution?.status, 'resolved', alias);
+    if (resolution?.status !== 'resolved') continue;
+    assert.equal(resolution.destination.id, `uw-building:${id}`);
+    locations.add(JSON.stringify(resolution.destination.resolved));
+  }
+  assert.equal(locations.size, cases.length);
+});
