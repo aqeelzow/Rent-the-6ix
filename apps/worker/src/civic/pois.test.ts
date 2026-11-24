@@ -34,7 +34,7 @@ describe("poiRow", () => {
     };
     expect(poiRow(way)).toMatchObject({
       id: "osm:way/7",
-      location: "SRID=4326;POINT(-80.5449 43.4723)",
+      location: "SRID=4326;POINT(-80.5398 43.4723)",
       source_id: "openstreetmap",
     });
     expect(poiRow(node(2, { shop: "supermarket" }))).toBeNull();

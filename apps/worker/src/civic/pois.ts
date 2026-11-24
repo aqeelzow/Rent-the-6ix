@@ -89,10 +89,11 @@ export function overpassQuery(bbox = WATERLOO_BBOX): string {
 /**
  * Campuses whose OSM shape is several far-apart pieces, placed at their main campus instead: the
  * nearest piece of the University of Waterloo is often a parcel south of University Avenue or the
- * north campus research lands, not where students go. (Davis Centre / Student Life Centre.)
+ * north campus research lands, not where students go. (Student Life Centre.)
  */
 export const CAMPUS_ANCHORS: Record<string, { lat: number; lon: number }> = {
-  "University of Waterloo": { lat: 43.4723, lon: -80.5449 },
+  // Google Maps' pin for the university (plus code FFC4+W3), just north of the SLC.
+  "University of Waterloo": { lat: 43.4723, lon: -80.5398 },
 };
 
 /** A relation part smaller than this (about 1 ha) is a parcel, not a place of its own. */
