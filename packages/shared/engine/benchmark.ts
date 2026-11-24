@@ -1,5 +1,7 @@
 import type { Benchmark, UnitType } from "./valuation";
 
+export const GRT_MONTHLY_PASS_CAD = 104;
+
 // The benchmark line under the rent check (SPEC 7.2), owner C. Context only: the estimate never
 // uses it. Rows come from D's `benchmarks` table (db/seed/benchmarks.json, StatCan 46-10-0092-01).
 // Only asking rents are used: paid rent is what sitting tenants pay, so it sits below any listing.
@@ -65,7 +67,7 @@ export function benchmarkFor(
   const row = found.length ? latest(found) : undefined;
   if (!row) return null;
   return {
-    label: `Waterloo-area average asking rent, ${sizeLabel(row)}`,
+    label: `${row.key.geo ?? "Kitchener–Cambridge–Waterloo CMA"} average asking rent, ${sizeLabel(row)}`,
     valueCad: row.valueCad,
     period: row.period,
     sourceId: row.sourceId,

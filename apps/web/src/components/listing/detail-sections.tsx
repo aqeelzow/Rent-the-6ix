@@ -12,7 +12,8 @@ import {
 import Link from "next/link";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useState, useSyncExternalStore } from "react";
+import { GRT_MONTHLY_PASS_CAD } from "@rentkdubs/shared/engine/benchmark";
 import { SafetyInfoButton } from "@/components/safety/safety-info";
 import { CrimeDisclaimer } from "@/components/safety/crime-disclaimer";
 import { daysSince, plainHardFilterNote, yearSpan } from "@/components/results/card-data";
@@ -20,6 +21,7 @@ import { formatDaysAgo } from "@/lib/format/date";
 import { t, type MessageKey } from "@/lib/format/messages";
 import { formatCad, formatCount } from "@/lib/format/number";
 import { redactIntent } from "@/lib/store/actions";
+import { browserStorage } from "@/lib/store/persist";
 import type { DetailResponse, SearchIntent, SearchResultItem } from "@/lib/store/types";
 import { AdjustmentBars, PricePosition } from "./detail-charts";
 import { homeFields } from "./detail-data";
@@ -121,6 +123,72 @@ function ExplanationSlot({
         {text}
       </p>
     </div>
+  );
+}
+
+const uPassKey = "rentkdubs.uPass.v1";
+const uPassChanges = new EventTarget();
+let sessionUPass: boolean | undefined;
+
+function subscribeUPass(update: () => void) {
+  uPassChanges.addEventListener("change", update);
+  window.addEventListener("storage", update);
+  return () => {
+    uPassChanges.removeEventListener("change", update);
+    window.removeEventListener("storage", update);
+  };
+}
+
+export function MonthlyCost({ listing }: { listing: SearchResultItem["listing"] }) {
+  const hasUPass = useSyncExternalStore(
+    subscribeUPass,
+    () => {
+      try {
+        return sessionUPass ?? (browserStorage()?.getItem(uPassKey) === "1");
+      } catch {
+        return sessionUPass ?? false;
+      }
+    },
+    () => false,
+  );
+  const transit = hasUPass ? 0 : GRT_MONTHLY_PASS_CAD;
+  const costs = [
+    [l(listing.rentIsPerRoom ? "monthly.roomRent" : "monthly.rent"), listing.monthlyRentCad],
+    [l("monthly.transit"), transit],
+    [l("monthly.total"), listing.monthlyRentCad + transit],
+  ] as const;
+
+  return (
+    <DetailSection id="monthly-cost" title={l("monthly.title")}>
+      <label className="flex items-center gap-2 text-sm">
+        <input
+          type="checkbox"
+          checked={hasUPass}
+          onChange={(event) => {
+            const checked = event.currentTarget.checked;
+            try {
+              const storage = browserStorage();
+              storage?.setItem(uPassKey, checked ? "1" : "0");
+              sessionUPass = storage ? undefined : checked;
+            } catch {
+              sessionUPass = checked;
+            }
+            uPassChanges.dispatchEvent(new Event("change"));
+          }}
+        />
+        {l("monthly.hasUPass")}
+      </label>
+      <p className="text-muted-foreground text-sm">{l("monthly.uPassNote")}</p>
+      <dl className="figures grid grid-cols-[1fr_auto] gap-x-3 gap-y-1 text-sm" aria-live="polite">
+        {costs.map(([label, value]) => (
+          <div key={label} className="contents">
+            <dt>{label}</dt>
+            <dd className="text-right">{formatCad(value)}</dd>
+          </div>
+        ))}
+      </dl>
+      <p className="text-muted-foreground text-sm">{l("monthly.scope")}</p>
+    </DetailSection>
   );
 }
 

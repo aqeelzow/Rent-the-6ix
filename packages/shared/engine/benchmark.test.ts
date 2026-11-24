@@ -1,5 +1,6 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { benchmarkFor, type BenchmarkRow } from "./benchmark";
+import { benchmarkFor, GRT_MONTHLY_PASS_CAD, type BenchmarkRow } from "./benchmark";
 
 const row = (
   id: string,
@@ -9,7 +10,7 @@ const row = (
   period = "2026 Q2",
 ): BenchmarkRow => ({
   id,
-  key: { geo: "Toronto CMA", dwelling, basis: "asking", ...extra },
+  key: { geo: "Kitchener–Cambridge–Waterloo CMA", dwelling, basis: "asking", ...extra },
   valueCad,
   period,
   sourceId: "statcan-46100092",
@@ -33,7 +34,7 @@ const value = (unitType: Parameters<typeof benchmarkFor>[0]["unitType"], bedroom
 describe("benchmarkFor", () => {
   it("picks the asking rent for the dwelling and bedroom count, never paid rent", () => {
     expect(benchmarkFor({ unitType: "condo", bedrooms: 1 }, rows)).toEqual({
-      label: "Waterloo-area average asking rent, 1-bedroom apartments",
+      label: "Kitchener–Cambridge–Waterloo CMA average asking rent, 1-bedroom apartments",
       valueCad: 1740,
       period: "2026 Q2",
       sourceId: "statcan-46100092",
@@ -49,13 +50,13 @@ describe("benchmarkFor", () => {
   it("uses the 3+ row for larger units and apartments for small houses", () => {
     expect(value("apartment", 5)).toBe(2410);
     expect(benchmarkFor({ unitType: "house", bedrooms: 4 }, rows)?.label).toBe(
-      "Waterloo-area average asking rent, 3+-bedroom houses",
+      "Kitchener–Cambridge–Waterloo CMA average asking rent, 3+-bedroom houses",
     );
     expect(benchmarkFor({ unitType: "house", bedrooms: 1 }, rows)?.label).toBe(
-      "Waterloo-area average asking rent, 1-bedroom apartments",
+      "Kitchener–Cambridge–Waterloo CMA average asking rent, 1-bedroom apartments",
     );
     expect(benchmarkFor({ unitType: "apartment", bedrooms: 0 }, rows)?.label).toBe(
-      "Waterloo-area average asking rent, studio apartments",
+      "Kitchener–Cambridge–Waterloo CMA average asking rent, studio apartments",
     );
   });
 
@@ -69,4 +70,12 @@ describe("benchmarkFor", () => {
       benchmarkFor({ unitType: "apartment", bedrooms: 1 }, [older, newer, ...rows]),
     ).toMatchObject({ valueCad: 2100, period: "2026 Q3" });
   });
+});
+
+it("seeds the GRT pass used in the monthly cost view and eight asking-rent quarters", () => {
+  const { rows } = JSON.parse(
+    readFileSync(new URL("../../../db/seed/benchmarks.json", import.meta.url), "utf8"),
+  ) as { rows: (BenchmarkRow & { kind: string })[] };
+  expect(rows.find((row) => row.kind === "transit")?.valueCad).toBe(GRT_MONTHLY_PASS_CAD);
+  expect(new Set(rows.filter((row) => row.key.basis === "asking").map((row) => row.period)).size).toBe(8);
 });

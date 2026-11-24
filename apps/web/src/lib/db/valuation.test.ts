@@ -67,7 +67,7 @@ const statcan = (bedrooms: number, valueCad: number, basis = "asking") => ({
 });
 const benchmarks = [statcan(1, 1840, "paid"), statcan(1, 2090), statcan(2, 2650)];
 const statcan1br = {
-  label: "Waterloo-area average asking rent, 1-bedroom apartments",
+  label: "Kitchener–Cambridge–Waterloo CMA average asking rent, 1-bedroom apartments",
   valueCad: 2090,
   period: "2026 Q2",
   sourceId: "statcan-46100092",

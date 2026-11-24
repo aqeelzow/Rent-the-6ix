@@ -639,6 +639,16 @@
       "chipRadius": "within {km} km",
       "chipDays": "last {days} days"
     },
+    "monthly": {
+      "title": "Monthly cost",
+      "rent": "Asking rent",
+      "roomRent": "Asking rent per room",
+      "transit": "GRT transit",
+      "total": "Rent and transit per month",
+      "hasUPass": "I have a U-Pass",
+      "uPassNote": "Eligible UW, Laurier and Conestoga students pay for the U-Pass through student fees.",
+      "scope": "Utilities and other expenses are excluded."
+    },
     "fields": {
       "bedrooms": "Bedrooms",
       "bathrooms": "Bathrooms",

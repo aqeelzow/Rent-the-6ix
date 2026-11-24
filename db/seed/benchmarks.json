@@ -152,6 +152,748 @@
       "period": "2026-11",
       "sourceId": "grt-fares",
       "sample": false
+    },
+    {
+      "id": "statcan-46100092-2026q1-house-2-asking",
+      "kind": "rent",
+      "key": {
+        "geo": "Kitchener–Cambridge–Waterloo CMA",
+        "dwelling": "House",
+        "basis": "asking",
+        "bedrooms": 2
+      },
+      "valueCad": 2200,
+      "unit": "CAD/month",
+      "period": "2026 Q1",
+      "sourceId": "statcan-46100092",
+      "sample": false
+    },
+    {
+      "id": "statcan-46100092-2026q1-house-3-asking",
+      "kind": "rent",
+      "key": {
+        "geo": "Kitchener–Cambridge–Waterloo CMA",
+        "dwelling": "House",
+        "basis": "asking",
+        "bedrooms": 3,
+        "bedroomsPlus": true
+      },
+      "valueCad": 2830,
+      "unit": "CAD/month",
+      "period": "2026 Q1",
+      "sourceId": "statcan-46100092",
+      "sample": false
+    },
+    {
+      "id": "statcan-46100092-2026q1-apartment-0-asking",
+      "kind": "rent",
+      "key": {
+        "geo": "Kitchener–Cambridge–Waterloo CMA",
+        "dwelling": "Apartment",
+        "basis": "asking",
+        "bedrooms": 0
+      },
+      "valueCad": 1490,
+      "unit": "CAD/month",
+      "period": "2026 Q1",
+      "sourceId": "statcan-46100092",
+      "sample": false
+    },
+    {
+      "id": "statcan-46100092-2026q1-apartment-1-asking",
+      "kind": "rent",
+      "key": {
+        "geo": "Kitchener–Cambridge–Waterloo CMA",
+        "dwelling": "Apartment",
+        "basis": "asking",
+        "bedrooms": 1
+      },
+      "valueCad": 1770,
+      "unit": "CAD/month",
+      "period": "2026 Q1",
+      "sourceId": "statcan-46100092",
+      "sample": false
+    },
+    {
+      "id": "statcan-46100092-2026q1-apartment-2-asking",
+      "kind": "rent",
+      "key": {
+        "geo": "Kitchener–Cambridge–Waterloo CMA",
+        "dwelling": "Apartment",
+        "basis": "asking",
+        "bedrooms": 2
+      },
+      "valueCad": 2110,
+      "unit": "CAD/month",
+      "period": "2026 Q1",
+      "sourceId": "statcan-46100092",
+      "sample": false
+    },
+    {
+      "id": "statcan-46100092-2026q1-apartment-3-asking",
+      "kind": "rent",
+      "key": {
+        "geo": "Kitchener–Cambridge–Waterloo CMA",
+        "dwelling": "Apartment",
+        "basis": "asking",
+        "bedrooms": 3,
+        "bedroomsPlus": true
+      },
+      "valueCad": 2440,
+      "unit": "CAD/month",
+      "period": "2026 Q1",
+      "sourceId": "statcan-46100092",
+      "sample": false
+    },
+    {
+      "id": "statcan-46100092-2026q1-room-any-asking",
+      "kind": "rent",
+      "key": {
+        "geo": "Kitchener–Cambridge–Waterloo CMA",
+        "dwelling": "Room",
+        "basis": "asking"
+      },
+      "valueCad": 780,
+      "unit": "CAD/month",
+      "period": "2026 Q1",
+      "sourceId": "statcan-46100092",
+      "sample": false
+    },
+    {
+      "id": "statcan-46100092-2025q4-house-2-asking",
+      "kind": "rent",
+      "key": {
+        "geo": "Kitchener–Cambridge–Waterloo CMA",
+        "dwelling": "House",
+        "basis": "asking",
+        "bedrooms": 2
+      },
+      "valueCad": 2230,
+      "unit": "CAD/month",
+      "period": "2025 Q4",
+      "sourceId": "statcan-46100092",
+      "sample": false
+    },
+    {
+      "id": "statcan-46100092-2025q4-house-3-asking",
+      "kind": "rent",
+      "key": {
+        "geo": "Kitchener–Cambridge–Waterloo CMA",
+        "dwelling": "House",
+        "basis": "asking",
+        "bedrooms": 3,
+        "bedroomsPlus": true
+      },
+      "valueCad": 2770,
+      "unit": "CAD/month",
+      "period": "2025 Q4",
+      "sourceId": "statcan-46100092",
+      "sample": false
+    },
+    {
+      "id": "statcan-46100092-2025q4-apartment-0-asking",
+      "kind": "rent",
+      "key": {
+        "geo": "Kitchener–Cambridge–Waterloo CMA",
+        "dwelling": "Apartment",
+        "basis": "asking",
+        "bedrooms": 0
+      },
+      "valueCad": 1480,
+      "unit": "CAD/month",
+      "period": "2025 Q4",
+      "sourceId": "statcan-46100092",
+      "sample": false
+    },
+    {
+      "id": "statcan-46100092-2025q4-apartment-1-asking",
+      "kind": "rent",
+      "key": {
+        "geo": "Kitchener–Cambridge–Waterloo CMA",
+        "dwelling": "Apartment",
+        "basis": "asking",
+        "bedrooms": 1
+      },
+      "valueCad": 1790,
+      "unit": "CAD/month",
+      "period": "2025 Q4",
+      "sourceId": "statcan-46100092",
+      "sample": false
+    },
+    {
+      "id": "statcan-46100092-2025q4-apartment-2-asking",
+      "kind": "rent",
+      "key": {
+        "geo": "Kitchener–Cambridge–Waterloo CMA",
+        "dwelling": "Apartment",
+        "basis": "asking",
+        "bedrooms": 2
+      },
+      "valueCad": 2120,
+      "unit": "CAD/month",
+      "period": "2025 Q4",
+      "sourceId": "statcan-46100092",
+      "sample": false
+    },
+    {
+      "id": "statcan-46100092-2025q4-apartment-3-asking",
+      "kind": "rent",
+      "key": {
+        "geo": "Kitchener–Cambridge–Waterloo CMA",
+        "dwelling": "Apartment",
+        "basis": "asking",
+        "bedrooms": 3,
+        "bedroomsPlus": true
+      },
+      "valueCad": 2450,
+      "unit": "CAD/month",
+      "period": "2025 Q4",
+      "sourceId": "statcan-46100092",
+      "sample": false
+    },
+    {
+      "id": "statcan-46100092-2025q4-room-any-asking",
+      "kind": "rent",
+      "key": {
+        "geo": "Kitchener–Cambridge–Waterloo CMA",
+        "dwelling": "Room",
+        "basis": "asking"
+      },
+      "valueCad": 780,
+      "unit": "CAD/month",
+      "period": "2025 Q4",
+      "sourceId": "statcan-46100092",
+      "sample": false
+    },
+    {
+      "id": "statcan-46100092-2025q3-house-2-asking",
+      "kind": "rent",
+      "key": {
+        "geo": "Kitchener–Cambridge–Waterloo CMA",
+        "dwelling": "House",
+        "basis": "asking",
+        "bedrooms": 2
+      },
+      "valueCad": 2270,
+      "unit": "CAD/month",
+      "period": "2025 Q3",
+      "sourceId": "statcan-46100092",
+      "sample": false
+    },
+    {
+      "id": "statcan-46100092-2025q3-house-3-asking",
+      "kind": "rent",
+      "key": {
+        "geo": "Kitchener–Cambridge–Waterloo CMA",
+        "dwelling": "House",
+        "basis": "asking",
+        "bedrooms": 3,
+        "bedroomsPlus": true
+      },
+      "valueCad": 2870,
+      "unit": "CAD/month",
+      "period": "2025 Q3",
+      "sourceId": "statcan-46100092",
+      "sample": false
+    },
+    {
+      "id": "statcan-46100092-2025q3-apartment-0-asking",
+      "kind": "rent",
+      "key": {
+        "geo": "Kitchener–Cambridge–Waterloo CMA",
+        "dwelling": "Apartment",
+        "basis": "asking",
+        "bedrooms": 0
+      },
+      "valueCad": 1490,
+      "unit": "CAD/month",
+      "period": "2025 Q3",
+      "sourceId": "statcan-46100092",
+      "sample": false
+    },
+    {
+      "id": "statcan-46100092-2025q3-apartment-1-asking",
+      "kind": "rent",
+      "key": {
+        "geo": "Kitchener–Cambridge–Waterloo CMA",
+        "dwelling": "Apartment",
+        "basis": "asking",
+        "bedrooms": 1
+      },
+      "valueCad": 1820,
+      "unit": "CAD/month",
+      "period": "2025 Q3",
+      "sourceId": "statcan-46100092",
+      "sample": false
+    },
+    {
+      "id": "statcan-46100092-2025q3-apartment-2-asking",
+      "kind": "rent",
+      "key": {
+        "geo": "Kitchener–Cambridge–Waterloo CMA",
+        "dwelling": "Apartment",
+        "basis": "asking",
+        "bedrooms": 2
+      },
+      "valueCad": 2150,
+      "unit": "CAD/month",
+      "period": "2025 Q3",
+      "sourceId": "statcan-46100092",
+      "sample": false
+    },
+    {
+      "id": "statcan-46100092-2025q3-apartment-3-asking",
+      "kind": "rent",
+      "key": {
+        "geo": "Kitchener–Cambridge–Waterloo CMA",
+        "dwelling": "Apartment",
+        "basis": "asking",
+        "bedrooms": 3,
+        "bedroomsPlus": true
+      },
+      "valueCad": 2500,
+      "unit": "CAD/month",
+      "period": "2025 Q3",
+      "sourceId": "statcan-46100092",
+      "sample": false
+    },
+    {
+      "id": "statcan-46100092-2025q3-room-any-asking",
+      "kind": "rent",
+      "key": {
+        "geo": "Kitchener–Cambridge–Waterloo CMA",
+        "dwelling": "Room",
+        "basis": "asking"
+      },
+      "valueCad": 770,
+      "unit": "CAD/month",
+      "period": "2025 Q3",
+      "sourceId": "statcan-46100092",
+      "sample": false
+    },
+    {
+      "id": "statcan-46100092-2025q2-house-2-asking",
+      "kind": "rent",
+      "key": {
+        "geo": "Kitchener–Cambridge–Waterloo CMA",
+        "dwelling": "House",
+        "basis": "asking",
+        "bedrooms": 2
+      },
+      "valueCad": 2240,
+      "unit": "CAD/month",
+      "period": "2025 Q2",
+      "sourceId": "statcan-46100092",
+      "sample": false
+    },
+    {
+      "id": "statcan-46100092-2025q2-house-3-asking",
+      "kind": "rent",
+      "key": {
+        "geo": "Kitchener–Cambridge–Waterloo CMA",
+        "dwelling": "House",
+        "basis": "asking",
+        "bedrooms": 3,
+        "bedroomsPlus": true
+      },
+      "valueCad": 2820,
+      "unit": "CAD/month",
+      "period": "2025 Q2",
+      "sourceId": "statcan-46100092",
+      "sample": false
+    },
+    {
+      "id": "statcan-46100092-2025q2-apartment-0-asking",
+      "kind": "rent",
+      "key": {
+        "geo": "Kitchener–Cambridge–Waterloo CMA",
+        "dwelling": "Apartment",
+        "basis": "asking",
+        "bedrooms": 0
+      },
+      "valueCad": 1490,
+      "unit": "CAD/month",
+      "period": "2025 Q2",
+      "sourceId": "statcan-46100092",
+      "sample": false
+    },
+    {
+      "id": "statcan-46100092-2025q2-apartment-1-asking",
+      "kind": "rent",
+      "key": {
+        "geo": "Kitchener–Cambridge–Waterloo CMA",
+        "dwelling": "Apartment",
+        "basis": "asking",
+        "bedrooms": 1
+      },
+      "valueCad": 1820,
+      "unit": "CAD/month",
+      "period": "2025 Q2",
+      "sourceId": "statcan-46100092",
+      "sample": false
+    },
+    {
+      "id": "statcan-46100092-2025q2-apartment-2-asking",
+      "kind": "rent",
+      "key": {
+        "geo": "Kitchener–Cambridge–Waterloo CMA",
+        "dwelling": "Apartment",
+        "basis": "asking",
+        "bedrooms": 2
+      },
+      "valueCad": 2160,
+      "unit": "CAD/month",
+      "period": "2025 Q2",
+      "sourceId": "statcan-46100092",
+      "sample": false
+    },
+    {
+      "id": "statcan-46100092-2025q2-apartment-3-asking",
+      "kind": "rent",
+      "key": {
+        "geo": "Kitchener–Cambridge–Waterloo CMA",
+        "dwelling": "Apartment",
+        "basis": "asking",
+        "bedrooms": 3,
+        "bedroomsPlus": true
+      },
+      "valueCad": 2490,
+      "unit": "CAD/month",
+      "period": "2025 Q2",
+      "sourceId": "statcan-46100092",
+      "sample": false
+    },
+    {
+      "id": "statcan-46100092-2025q2-room-any-asking",
+      "kind": "rent",
+      "key": {
+        "geo": "Kitchener–Cambridge–Waterloo CMA",
+        "dwelling": "Room",
+        "basis": "asking"
+      },
+      "valueCad": 760,
+      "unit": "CAD/month",
+      "period": "2025 Q2",
+      "sourceId": "statcan-46100092",
+      "sample": false
+    },
+    {
+      "id": "statcan-46100092-2025q1-house-2-asking",
+      "kind": "rent",
+      "key": {
+        "geo": "Kitchener–Cambridge–Waterloo CMA",
+        "dwelling": "House",
+        "basis": "asking",
+        "bedrooms": 2
+      },
+      "valueCad": 2210,
+      "unit": "CAD/month",
+      "period": "2025 Q1",
+      "sourceId": "statcan-46100092",
+      "sample": false
+    },
+    {
+      "id": "statcan-46100092-2025q1-house-3-asking",
+      "kind": "rent",
+      "key": {
+        "geo": "Kitchener–Cambridge–Waterloo CMA",
+        "dwelling": "House",
+        "basis": "asking",
+        "bedrooms": 3,
+        "bedroomsPlus": true
+      },
+      "valueCad": 2770,
+      "unit": "CAD/month",
+      "period": "2025 Q1",
+      "sourceId": "statcan-46100092",
+      "sample": false
+    },
+    {
+      "id": "statcan-46100092-2025q1-apartment-0-asking",
+      "kind": "rent",
+      "key": {
+        "geo": "Kitchener–Cambridge–Waterloo CMA",
+        "dwelling": "Apartment",
+        "basis": "asking",
+        "bedrooms": 0
+      },
+      "valueCad": 1480,
+      "unit": "CAD/month",
+      "period": "2025 Q1",
+      "sourceId": "statcan-46100092",
+      "sample": false
+    },
+    {
+      "id": "statcan-46100092-2025q1-apartment-1-asking",
+      "kind": "rent",
+      "key": {
+        "geo": "Kitchener–Cambridge–Waterloo CMA",
+        "dwelling": "Apartment",
+        "basis": "asking",
+        "bedrooms": 1
+      },
+      "valueCad": 1810,
+      "unit": "CAD/month",
+      "period": "2025 Q1",
+      "sourceId": "statcan-46100092",
+      "sample": false
+    },
+    {
+      "id": "statcan-46100092-2025q1-apartment-2-asking",
+      "kind": "rent",
+      "key": {
+        "geo": "Kitchener–Cambridge–Waterloo CMA",
+        "dwelling": "Apartment",
+        "basis": "asking",
+        "bedrooms": 2
+      },
+      "valueCad": 2150,
+      "unit": "CAD/month",
+      "period": "2025 Q1",
+      "sourceId": "statcan-46100092",
+      "sample": false
+    },
+    {
+      "id": "statcan-46100092-2025q1-apartment-3-asking",
+      "kind": "rent",
+      "key": {
+        "geo": "Kitchener–Cambridge–Waterloo CMA",
+        "dwelling": "Apartment",
+        "basis": "asking",
+        "bedrooms": 3,
+        "bedroomsPlus": true
+      },
+      "valueCad": 2480,
+      "unit": "CAD/month",
+      "period": "2025 Q1",
+      "sourceId": "statcan-46100092",
+      "sample": false
+    },
+    {
+      "id": "statcan-46100092-2025q1-room-any-asking",
+      "kind": "rent",
+      "key": {
+        "geo": "Kitchener–Cambridge–Waterloo CMA",
+        "dwelling": "Room",
+        "basis": "asking"
+      },
+      "valueCad": 740,
+      "unit": "CAD/month",
+      "period": "2025 Q1",
+      "sourceId": "statcan-46100092",
+      "sample": false
+    },
+    {
+      "id": "statcan-46100092-2024q4-house-2-asking",
+      "kind": "rent",
+      "key": {
+        "geo": "Kitchener–Cambridge–Waterloo CMA",
+        "dwelling": "House",
+        "basis": "asking",
+        "bedrooms": 2
+      },
+      "valueCad": 2290,
+      "unit": "CAD/month",
+      "period": "2024 Q4",
+      "sourceId": "statcan-46100092",
+      "sample": false
+    },
+    {
+      "id": "statcan-46100092-2024q4-house-3-asking",
+      "kind": "rent",
+      "key": {
+        "geo": "Kitchener–Cambridge–Waterloo CMA",
+        "dwelling": "House",
+        "basis": "asking",
+        "bedrooms": 3,
+        "bedroomsPlus": true
+      },
+      "valueCad": 2800,
+      "unit": "CAD/month",
+      "period": "2024 Q4",
+      "sourceId": "statcan-46100092",
+      "sample": false
+    },
+    {
+      "id": "statcan-46100092-2024q4-apartment-0-asking",
+      "kind": "rent",
+      "key": {
+        "geo": "Kitchener–Cambridge–Waterloo CMA",
+        "dwelling": "Apartment",
+        "basis": "asking",
+        "bedrooms": 0
+      },
+      "valueCad": 1520,
+      "unit": "CAD/month",
+      "period": "2024 Q4",
+      "sourceId": "statcan-46100092",
+      "sample": false
+    },
+    {
+      "id": "statcan-46100092-2024q4-apartment-1-asking",
+      "kind": "rent",
+      "key": {
+        "geo": "Kitchener–Cambridge–Waterloo CMA",
+        "dwelling": "Apartment",
+        "basis": "asking",
+        "bedrooms": 1
+      },
+      "valueCad": 1850,
+      "unit": "CAD/month",
+      "period": "2024 Q4",
+      "sourceId": "statcan-46100092",
+      "sample": false
+    },
+    {
+      "id": "statcan-46100092-2024q4-apartment-2-asking",
+      "kind": "rent",
+      "key": {
+        "geo": "Kitchener–Cambridge–Waterloo CMA",
+        "dwelling": "Apartment",
+        "basis": "asking",
+        "bedrooms": 2
+      },
+      "valueCad": 2190,
+      "unit": "CAD/month",
+      "period": "2024 Q4",
+      "sourceId": "statcan-46100092",
+      "sample": false
+    },
+    {
+      "id": "statcan-46100092-2024q4-apartment-3-asking",
+      "kind": "rent",
+      "key": {
+        "geo": "Kitchener–Cambridge–Waterloo CMA",
+        "dwelling": "Apartment",
+        "basis": "asking",
+        "bedrooms": 3,
+        "bedroomsPlus": true
+      },
+      "valueCad": 2500,
+      "unit": "CAD/month",
+      "period": "2024 Q4",
+      "sourceId": "statcan-46100092",
+      "sample": false
+    },
+    {
+      "id": "statcan-46100092-2024q4-room-any-asking",
+      "kind": "rent",
+      "key": {
+        "geo": "Kitchener–Cambridge–Waterloo CMA",
+        "dwelling": "Room",
+        "basis": "asking"
+      },
+      "valueCad": 770,
+      "unit": "CAD/month",
+      "period": "2024 Q4",
+      "sourceId": "statcan-46100092",
+      "sample": false
+    },
+    {
+      "id": "statcan-46100092-2024q3-house-2-asking",
+      "kind": "rent",
+      "key": {
+        "geo": "Kitchener–Cambridge–Waterloo CMA",
+        "dwelling": "House",
+        "basis": "asking",
+        "bedrooms": 2
+      },
+      "valueCad": 2290,
+      "unit": "CAD/month",
+      "period": "2024 Q3",
+      "sourceId": "statcan-46100092",
+      "sample": false
+    },
+    {
+      "id": "statcan-46100092-2024q3-house-3-asking",
+      "kind": "rent",
+      "key": {
+        "geo": "Kitchener–Cambridge–Waterloo CMA",
+        "dwelling": "House",
+        "basis": "asking",
+        "bedrooms": 3,
+        "bedroomsPlus": true
+      },
+      "valueCad": 2900,
+      "unit": "CAD/month",
+      "period": "2024 Q3",
+      "sourceId": "statcan-46100092",
+      "sample": false
+    },
+    {
+      "id": "statcan-46100092-2024q3-apartment-0-asking",
+      "kind": "rent",
+      "key": {
+        "geo": "Kitchener–Cambridge–Waterloo CMA",
+        "dwelling": "Apartment",
+        "basis": "asking",
+        "bedrooms": 0
+      },
+      "valueCad": 1550,
+      "unit": "CAD/month",
+      "period": "2024 Q3",
+      "sourceId": "statcan-46100092",
+      "sample": false
+    },
+    {
+      "id": "statcan-46100092-2024q3-apartment-1-asking",
+      "kind": "rent",
+      "key": {
+        "geo": "Kitchener–Cambridge–Waterloo CMA",
+        "dwelling": "Apartment",
+        "basis": "asking",
+        "bedrooms": 1
+      },
+      "valueCad": 1880,
+      "unit": "CAD/month",
+      "period": "2024 Q3",
+      "sourceId": "statcan-46100092",
+      "sample": false
+    },
+    {
+      "id": "statcan-46100092-2024q3-apartment-2-asking",
+      "kind": "rent",
+      "key": {
+        "geo": "Kitchener–Cambridge–Waterloo CMA",
+        "dwelling": "Apartment",
+        "basis": "asking",
+        "bedrooms": 2
+      },
+      "valueCad": 2230,
+      "unit": "CAD/month",
+      "period": "2024 Q3",
+      "sourceId": "statcan-46100092",
+      "sample": false
+    },
+    {
+      "id": "statcan-46100092-2024q3-apartment-3-asking",
+      "kind": "rent",
+      "key": {
+        "geo": "Kitchener–Cambridge–Waterloo CMA",
+        "dwelling": "Apartment",
+        "basis": "asking",
+        "bedrooms": 3,
+        "bedroomsPlus": true
+      },
+      "valueCad": 2550,
+      "unit": "CAD/month",
+      "period": "2024 Q3",
+      "sourceId": "statcan-46100092",
+      "sample": false
+    },
+    {
+      "id": "statcan-46100092-2024q3-room-any-asking",
+      "kind": "rent",
+      "key": {
+        "geo": "Kitchener–Cambridge–Waterloo CMA",
+        "dwelling": "Room",
+        "basis": "asking"
+      },
+      "valueCad": 780,
+      "unit": "CAD/month",
+      "period": "2024 Q3",
+      "sourceId": "statcan-46100092",
+      "sample": false
     }
   ]
 }
