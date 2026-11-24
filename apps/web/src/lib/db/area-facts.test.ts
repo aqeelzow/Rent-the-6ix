@@ -99,7 +99,8 @@ describe("assembleAreaFacts", () => {
 });
 
 describe("areaIdFor", () => {
-  it("pads neighbourhood numbers and rejects anything else", () => {
+  it("accepts Waterloo district IDs, pads legacy numbers, and rejects invalid IDs", () => {
+    expect(areaIdFor("neighbourhood", "WPD-lincoln")).toBe("WPD-lincoln");
     expect(areaIdFor("neighbourhood", "83")).toBe("083");
     expect(areaIdFor("neighbourhood", "x")).toBeNull();
   });

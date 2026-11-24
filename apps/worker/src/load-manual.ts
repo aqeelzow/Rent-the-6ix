@@ -22,6 +22,17 @@ if (!sql) {
 try {
   const { written, noLocation } = await upsertListings(sql, rows, new Date().toISOString(), "demo");
   if (rows.length === 0 || noLocation > 0) throw new Error("Demo listings need valid locations");
+  await sql`
+    update listings l
+    set neighbourhood_id = (
+      select n.id from neighbourhoods n
+      where n.source_id in ('waterloo-district-plans', 'waterloo-city-boundary')
+        and ST_Covers(n.geometry, l.location::geometry)
+      order by n.source_id = 'waterloo-city-boundary', n.id
+      limit 1
+    )
+    where l.source = 'manual' and l.data_status = 'demo'
+  `;
   console.log(`manual: ${written} upserted, ${noLocation} without lat/lng skipped`);
 } finally {
   await sql.end();

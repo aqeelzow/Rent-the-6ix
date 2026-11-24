@@ -167,6 +167,7 @@ export async function loadAreaFacts(
 ): Promise<AreaFacts | null> {
   const table = sql(TABLES[kind]);
   const column = sql(LISTING_COLUMN[kind]);
+  const waterloo = areaId.startsWith("WPD-");
   const [areas, indicators, rents, sources] = await Promise.all([
     sql<{ id: string; name: string; number: number | null }[]>`
       SELECT id, name, number FROM ${table} WHERE id = ${areaId}`,
@@ -179,7 +180,8 @@ export async function loadAreaFacts(
         ORDER BY area_id, indicator_id, period DESC
       )
       SELECT l.*, ST_Area(a.geometry::geography) / 1e6 AS area_km2
-      FROM latest l JOIN ${table} a ON a.id = l.area_id`,
+      FROM latest l JOIN ${table} a ON a.id = l.area_id
+      WHERE (a.id LIKE 'WPD-%') = ${waterloo}`,
     sql<RentRow[]>`
       SELECT bedrooms,
              count(*) FILTER (WHERE ${column} = ${areaId})::int AS n_area,
@@ -189,6 +191,8 @@ export async function loadAreaFacts(
              percentile_cont(0.5) WITHIN GROUP (ORDER BY monthly_rent_cad) AS median_city
       FROM listings
       WHERE status = 'active' AND duplicate_of IS NULL AND NOT rent_is_per_room
+        AND data_status <> 'demo'
+        AND (coalesce(neighbourhood_id, '') LIKE 'WPD-%') = ${waterloo}
         AND last_seen_at >= now() - interval '30 days' AND bedrooms BETWEEN 0 AND 3
       GROUP BY bedrooms`,
     sql<SourceRow[]>`SELECT id, title, url, retrieved_at FROM sources`,
@@ -205,8 +209,9 @@ export async function loadAreaFacts(
   });
 }
 
-/** A URL number as the stored id: neighbourhoods "83" → "083". */
+/** Accept Waterloo district slugs and normalize legacy neighbourhood numbers. */
 export function areaIdFor(kind: AreaKind, raw: string): string | null {
+  if (/^WPD-[a-z0-9]+(?:-[a-z0-9]+)*$/.test(raw)) return raw;
   if (!/^\d{1,3}$/.test(raw)) return null;
   const n = Number(raw);
   return n >= 1 && n <= 999 ? String(n).padStart(3, "0") : null;
