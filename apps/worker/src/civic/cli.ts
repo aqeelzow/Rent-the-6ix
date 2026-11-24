@@ -10,6 +10,7 @@ import { loadAddressPoints } from "./address-points.ts";
 import { loadDerivedIndicators } from "./area-indicators.ts";
 import { loadBoundaries } from "./areas.ts";
 import { loadBuildings } from "./buildings.ts";
+import { loadCensus } from "./census.ts";
 import { loadDevApplications } from "./dev-applications.ts";
 import { loadPois } from "./pois.ts";
 import { loadTransitStops } from "./transit-stops.ts";
@@ -67,6 +68,11 @@ async function buildings(sql: Sql): Promise<void> {
   );
 }
 
+async function census(sql: Sql): Promise<void> {
+  const load = await loadCensus(sql);
+  console.log(`  area_indicators: ${load.indicators} census rows across ${load.neighbourhoods} districts`);
+}
+
 async function indicators(sql: Sql): Promise<void> {
   const load = await loadDerivedIndicators(sql);
   console.log(`  area_indicators: ${load.rows} derived rows`, load.byIndicator);
@@ -87,6 +93,7 @@ const TASKS: Record<string, Task> = {
   stops,
   buildings,
   devapps,
+  census,
   indicators,
 };
 

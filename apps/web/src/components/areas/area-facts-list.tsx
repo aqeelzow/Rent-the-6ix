@@ -14,6 +14,7 @@ const ORDER = [
   "median_asking_rent_2br",
   "median_asking_rent_3br",
   "listing_count_30d",
+  "renter_households",
   "renter_households_pct",
   "renters_shelter_cost_30pct",
   "median_household_income",
@@ -66,6 +67,9 @@ export function AreaFactsList({ facts }: { facts: AreaFacts }) {
                     </>
                   )}
                 </p>
+                {fact.note && fact.sourceId.startsWith("statcan-waterloo-census-") && (
+                  <p className="text-muted-foreground text-xs">{fact.note}</p>
+                )}
               </div>
               <dl className="figures grid grid-cols-2 gap-x-4 text-sm">
                 <div>

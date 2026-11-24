@@ -529,6 +529,7 @@ export function AreaCard({
                       {l("area.source", { period: indicator.period, source: indicator.sourceId })}
                       {indicator.sampleSize !== undefined &&
                         `, ${l("area.sample", { n: formatCount(indicator.sampleSize) })}`}
+                      {indicator.note && <p>{indicator.note}</p>}
                     </TooltipContent>
                   </Tooltip>
                 </dt>

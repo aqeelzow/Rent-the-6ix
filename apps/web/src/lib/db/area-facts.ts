@@ -16,6 +16,9 @@ const SUM = new Set([
   "libraries",
   "parks",
   "dev_applications_under_review",
+  "renter_households",
+  "private_dwellings",
+  "occupied_private_dwellings",
 ]);
 const AREA_WEIGHTED = new Set(["transit_stops_per_km2", "rapid_transit_within_800m_pct"]);
 const NOT_FACTS = new Set(["population"]);
