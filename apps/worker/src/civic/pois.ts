@@ -47,6 +47,8 @@ export interface OverpassElement {
   lon?: number;
   center?: { lat: number; lon: number };
   tags?: Record<string, string>;
+  /** A relation's parts with their shapes (`out geom`). */
+  members?: { type: string; role?: string; geometry?: { lat: number; lon: number }[] }[];
 }
 
 interface OverpassResponse {
@@ -66,9 +68,62 @@ const SELECTORS = [
   `["amenity"="community_centre"]`,
 ];
 
+/**
+ * Nodes and ways come with a point (`out center`). Relations come with their parts' shapes
+ * (`out geom`) instead: a relation's centre is the middle of its bounding box, which for a
+ * campus in several pieces (the University of Waterloo's main campus, north campus and
+ * downtown Kitchener and Stratford sites) lands in a field kilometres from any of them.
+ */
 export function overpassQuery(bbox = WATERLOO_BBOX): string {
-  const lines = SELECTORS.map((selector) => `  nwr${selector}(${bbox});`);
-  return `[out:json][timeout:180];\n(\n${lines.join("\n")}\n);\nout center tags;`;
+  const lines = (kinds: string[]) =>
+    kinds.flatMap((kind) => SELECTORS.map((selector) => `  ${kind}${selector}(${bbox});`));
+  return [
+    "[out:json][timeout:180];",
+    `(\n${lines(["node", "way"]).join("\n")}\n);`,
+    "out center tags;",
+    `(\n${lines(["relation"]).join("\n")}\n);`,
+    "out body geom;",
+  ].join("\n");
+}
+
+/** A relation part smaller than this (about 1 ha) is a parcel, not a place of its own. */
+const MIN_PART_AREA = 1e-6;
+const [SOUTH, WEST, NORTH, EAST] = WATERLOO_BBOX.split(",").map(Number) as [
+  number,
+  number,
+  number,
+  number,
+];
+
+/**
+ * A relation's outer parts as points, each at its own centroid, inside the box and large enough to
+ * count. One point per part means "nearest university" finds the nearest part of the campus.
+ */
+export function relationParts(element: OverpassElement): { lat: number; lon: number }[] {
+  const parts: { lat: number; lon: number }[] = [];
+  for (const member of element.members ?? []) {
+    const ring = member.geometry;
+    if (member.type !== "way" || member.role === "inner" || !ring || ring.length < 4) continue;
+    let area = 0;
+    let lat = 0;
+    let lon = 0;
+    for (let i = 0; i < ring.length - 1; i++) {
+      const a = ring[i]!;
+      const b = ring[i + 1]!;
+      const cross = a.lon * b.lat - b.lon * a.lat;
+      area += cross;
+      lon += (a.lon + b.lon) * cross;
+      lat += (a.lat + b.lat) * cross;
+    }
+    if (Math.abs(area / 2) < MIN_PART_AREA) continue;
+    // OSM's own precision, 7 decimals (about 1 cm).
+    const round = (value: number) => Number(value.toFixed(7));
+    const centroid = { lat: round(lat / (3 * area)), lon: round(lon / (3 * area)) };
+    if (centroid.lat < SOUTH || centroid.lat > NORTH || centroid.lon < WEST || centroid.lon > EAST)
+      continue;
+    parts.push(centroid);
+  }
+  return parts;
 }
 
 /**
@@ -88,6 +143,21 @@ export function schoolLevel(name: string, isced?: string): "secondary" | "elemen
     return "elementary";
   }
   return null;
+}
+
+/**
+ * One OSM element as POI rows: one for a node or way, one per part for a relation (ids suffixed
+ * "#1", "#2"…). Empty when it's unnamed, unplaced or not one of ours.
+ */
+export function poiRows(element: OverpassElement): PoiRow[] {
+  if (element.type !== "relation") {
+    const row = poiRow(element);
+    return row ? [row] : [];
+  }
+  return relationParts(element).flatMap((part, i) => {
+    const row = poiRow({ ...element, center: part });
+    return row ? [{ ...row, id: `${row.id}#${i + 1}` }] : [];
+  });
 }
 
 /** One OSM element as a POI row, or null when it's unnamed, unplaced or not one of ours. */
@@ -140,8 +210,7 @@ export async function loadPois(sql: Sql): Promise<PoiLoad> {
   // An element can match two selectors (a park that's also a community centre); first wins.
   const byId = new Map<string, PoiRow>();
   for (const element of body.elements ?? []) {
-    const row = poiRow(element);
-    if (row && !byId.has(row.id)) byId.set(row.id, row);
+    for (const row of poiRows(element)) if (!byId.has(row.id)) byId.set(row.id, row);
   }
   const rows = [...byId.values()];
   if (rows.length < MIN_ROWS) {
