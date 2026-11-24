@@ -72,20 +72,21 @@
  * lifted in lightness so it keeps its contrast; tinted badges become dark fills with light text.
  */
 .dark {
-  --background: oklch(0.17 0.035 285);
-  --foreground: oklch(0.95 0.01 270);
-  --card: oklch(0.215 0.04 285);
-  --card-foreground: oklch(0.95 0.01 270);
-  --popover: oklch(0.24 0.045 285);
-  --popover-foreground: oklch(0.95 0.01 270);
-  --muted: oklch(0.27 0.04 285);
-  --muted-foreground: oklch(0.75 0.03 275);
-  --secondary: oklch(0.27 0.04 285);
-  --secondary-foreground: oklch(0.95 0.01 270);
-  --accent: oklch(0.29 0.05 280);
-  --accent-foreground: oklch(0.95 0.01 270);
-  --border: oklch(0.32 0.04 285);
-  --input: oklch(0.45 0.045 280);
+  /* Neutral blacks and greys, no blue tint, to sit with the map's charcoal basemap. */
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.96 0 0);
+  --card: oklch(0.19 0.002 286);
+  --card-foreground: oklch(0.96 0 0);
+  --popover: oklch(0.21 0.002 286);
+  --popover-foreground: oklch(0.96 0 0);
+  --muted: oklch(0.24 0.003 286);
+  --muted-foreground: oklch(0.72 0.005 286);
+  --secondary: oklch(0.24 0.003 286);
+  --secondary-foreground: oklch(0.96 0 0);
+  --accent: oklch(0.25 0.004 286);
+  --accent-foreground: oklch(0.96 0 0);
+  --border: oklch(0.29 0.004 286);
+  --input: oklch(0.38 0.005 286);
 
   --primary: oklch(0.74 0.12 245);
   --primary-foreground: oklch(0.18 0.04 270);
@@ -94,8 +95,8 @@
 
   --price-underpriced: oklch(0.32 0.07 155);
   --price-underpriced-foreground: oklch(0.88 0.1 155);
-  --price-reasonable: oklch(0.32 0.03 270);
-  --price-reasonable-foreground: oklch(0.88 0.02 270);
+  --price-reasonable: oklch(0.3 0.004 286);
+  --price-reasonable-foreground: oklch(0.88 0.004 286);
   --price-overpriced: oklch(0.34 0.07 70);
   --price-overpriced-foreground: oklch(0.9 0.1 85);
 
