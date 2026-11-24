@@ -655,7 +655,17 @@
   display: flex;
   align-items: center;
   gap: 0.375rem;
-  pointer-events: none;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+.nearby-pin:hover .nearby-badge,
+.nearby-pin:focus-visible .nearby-badge {
+  box-shadow: 0 0 0 4px rgb(61 220 151 / 0.35);
+}
+.nearby-pin:focus-visible {
+  outline: none;
 }
 .nearby-pin.is-active {
   z-index: 6;

@@ -548,7 +548,7 @@ export function ResultsMap({
       if (!ours) return;
       nearby.places.forEach((place, i) => {
         const marker = new maplibregl.Marker({
-          element: nearbyPinElement(i, place.name, i === nearby.active),
+          element: nearbyPinElement(i, place.name, i === nearby.active, () => nearby.pick(i)),
           anchor: "left",
           offset: [-11, 0],
         })

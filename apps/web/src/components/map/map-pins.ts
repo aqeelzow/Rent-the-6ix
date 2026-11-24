@@ -218,11 +218,26 @@ export function amenityPinElement(name: string, distanceM: number): HTMLDivEleme
   return pin;
 }
 
-/** A numbered place near the selected listing ("01"), mint when it's the one picked. */
-export function nearbyPinElement(index: number, name: string, active: boolean): HTMLDivElement {
-  const pin = document.createElement("div");
+/**
+ * A numbered place near the selected listing ("01"), mint when it's the one picked. A button:
+ * clicking it picks that place, the same as its card in the nearby panel.
+ */
+export function nearbyPinElement(
+  index: number,
+  name: string,
+  active: boolean,
+  onPick: () => void,
+): HTMLButtonElement {
+  const pin = document.createElement("button");
+  pin.type = "button";
   pin.className = active ? "nearby-pin is-active" : "nearby-pin";
   pin.setAttribute("aria-label", name);
+  pin.setAttribute("aria-pressed", String(active));
+  pin.addEventListener("click", (event) => {
+    // Keep the map's own click (which closes the listing's card) from firing too.
+    event.stopPropagation();
+    onPick();
+  });
   const badge = document.createElement("span");
   badge.className = "nearby-badge";
   badge.textContent = String(index + 1).padStart(2, "0");

@@ -17,6 +17,8 @@ type Group = NearbyResponse["categories"][number];
 export interface NearbyFocus {
   places: { name: string; location: { lng: number; lat: number } }[];
   active: number;
+  /** Pick place `index` of this category, as clicking its card does (the map's numbered pins). */
+  pick: (index: number) => void;
 }
 
 /** Wheel steps closer together than this count as one, so a flick doesn't skip categories. */
@@ -55,8 +57,9 @@ export function NearbyPanel({
     onShow({
       places: group.places.map((p) => ({ name: displayName(p.name), location: p.location })),
       active: place,
+      pick: (index) => setView({ id: listingId, category, place: index }),
     });
-  }, [group, place, onShow]);
+  }, [group, place, onShow, listingId, category]);
   useEffect(() => () => onShow(null), [onShow]);
 
   if (groups === undefined) return null;
