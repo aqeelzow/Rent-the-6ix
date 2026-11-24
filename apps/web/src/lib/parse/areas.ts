@@ -40,6 +40,7 @@ export const areaStatement = `
   WITH matches AS (
     SELECT name, 'neighbourhood'::text AS kind, ST_Centroid(geometry) AS point
     FROM neighbourhoods
+    WHERE source_id IN ('waterloo-district-plans', 'waterloo-city-boundary')
   )
   SELECT
     m.name,

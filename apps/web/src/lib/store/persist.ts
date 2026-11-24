@@ -4,7 +4,6 @@ import type { ShortlistEntry } from "./searchSlice";
 import { appStore } from "./store";
 import type { SearchIntent } from "./types";
 import { namedParkMentions } from "../parse/named-parks";
-import { safetyPreference } from "../parse/safety-preference";
 
 // Browser storage (SPEC 15): the shortlist and the last search live only in this browser, never on
 // the server. Storage can be missing, full or blocked (private windows, previews), so every read
@@ -60,10 +59,7 @@ export type LastSearch = z.infer<typeof LastSearchSchema>;
 /** Failed basic interpretations must not bypass parser fixes on later visits. Preserve renter edits. */
 export function needsReinterpretation(intent: SearchIntent): boolean {
   if (Object.values(intent.fieldSources).some((source) => source.source === "user")) return false;
-  const safety = safetyPreference(intent.rawPrompt);
   return (
-    (!!safety &&
-      (safety.enabled !== intent.safety.enabled || safety.hard !== intent.safety.hard)) ||
     intent.droppedRequests.some(
       (request) =>
         request.phrase === intent.rawPrompt &&

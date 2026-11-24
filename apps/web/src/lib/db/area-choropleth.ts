@@ -1,3 +1,4 @@
+import type { TransactionSql } from "postgres";
 import { safetyCaveats } from "@rentkdubs/shared/engine/safety";
 import { AreaChoroplethSchema, type AreaChoropleth } from "@rentkdubs/shared/schemas";
 import { z } from "zod";
@@ -46,7 +47,7 @@ export function crimeChoropleth(outlines: OutlineRow[], table: CrimeTable): Area
 }
 
 export async function loadChoropleth(
-  sql: NonNullable<ReturnType<typeof getClient>>,
+  sql: NonNullable<ReturnType<typeof getClient>> | TransactionSql,
   kind: AreaKind,
   indicator: string,
   crimeTable: () => Promise<CrimeTable | null>,
@@ -55,16 +56,19 @@ export async function loadChoropleth(
     SELECT id, name,
            ST_AsGeoJSON(ST_Multi(ST_SimplifyPreserveTopology(geometry, ${SIMPLIFY_DEGREES}::float8)), 5)::json
              AS geometry
-    FROM ${sql(TABLES[kind])} ORDER BY id`;
+    FROM ${sql(TABLES[kind])}
+    WHERE source_id IN ('waterloo-district-plans', 'waterloo-city-boundary')
+    ORDER BY id`;
   if (indicator === "crime") {
     const table = await crimeTable();
     return table ? crimeChoropleth(outlines, table) : null;
   }
   const values = await sql<ValueRow[]>`
-    SELECT DISTINCT ON (area_id) area_id, value, unit, period, source_id
-    FROM area_indicators
-    WHERE area_kind = ${kind} AND indicator_id = ${indicator}
-    ORDER BY area_id, period DESC`;
+    SELECT DISTINCT ON (i.area_id) i.area_id, i.value, i.unit, i.period, i.source_id
+    FROM area_indicators i JOIN ${sql(TABLES[kind])} n ON n.id = i.area_id
+    WHERE i.area_kind = ${kind} AND i.indicator_id = ${indicator}
+      AND n.source_id IN ('waterloo-district-plans', 'waterloo-city-boundary')
+    ORDER BY i.area_id, i.period DESC`;
   if (values.length === 0) return null;
   const byArea = new Map(values.map((row) => [row.area_id, row]));
   return AreaChoroplethSchema.parse({

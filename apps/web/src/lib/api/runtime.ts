@@ -7,6 +7,7 @@ import { caveats } from '../../../../../packages/shared/engine/caveats';
 import { scoreListing } from '../../../../../packages/shared/engine/score';
 import { distanceM, targetModes } from '../../../../../packages/shared/engine/travel';
 import { ParseService, DestinationResolver, IpLimiter } from '../parse/index';
+import { withoutNeighbourhoodSafety } from '../parse/market-safety';
 import { inputHash } from '../parse/cache';
 import { databaseIntentCache } from '../parse/db-cache';
 import { providerFromEnv } from '../ai/index';
@@ -39,17 +40,8 @@ type RuntimeOptions = { env?: Record<string, string | undefined>; parser?: Parse
 export function createRuntime(options: RuntimeOptions = {}) {
   const env = options.env ?? process.env;
   const safetyAvailable = env.SEARCH_FIXTURES === '1' || options.dependencies !== undefined;
-  const marketIntent = (intent: z.infer<typeof SearchIntentSchema>) => {
-    if (safetyAvailable || !intent.safety.enabled) return intent;
-    const fieldSources = { ...intent.fieldSources };
-    delete fieldSources.safety;
-    return {
-      ...intent,
-      safety: { enabled: false, hard: false },
-      fieldSources,
-      ...(intent.weights ? { weights: { ...intent.weights, safety: 0 } } : {}),
-    };
-  };
+  const marketIntent = (intent: z.infer<typeof SearchIntentSchema>) =>
+    safetyAvailable ? intent : withoutNeighbourhoodSafety(intent);
   const resolver = options.resolver ?? new DestinationResolver({
     maptilerKey: env.NEXT_PUBLIC_MAPTILER_KEY,
     addressLookup: env.SEARCH_FIXTURES !== '1' && env.DATABASE_URL ? addressPointsLookup() : undefined,
@@ -112,7 +104,11 @@ export function createRuntime(options: RuntimeOptions = {}) {
     jobs,
     parse: jsonRoute({ name: 'search.parse', body: ParseRequestSchema, rateLimit: limit }, async (input, raw) => {
       const parsed = await parser.parse(input, identity(raw));
-      return { ...parsed, intent: marketIntent(parsed.intent) };
+      const intent = marketIntent(parsed.intent);
+      const notice = parsed.intent.safety.enabled && !intent.safety.enabled
+        ? [parsed.notice, 'Neighbourhood safety scoring is unavailable in Waterloo.'].filter(Boolean).join(' ')
+        : parsed.notice;
+      return { ...parsed, intent, ...(notice ? { notice } : {}) };
     }),
     resolve: jsonRoute({ name: 'geo.resolve', rateLimit: limit }, async (_input, request) => resolver.resolve(z.string().trim().min(1).max(500).parse(query(request, 'q')))),
     search: jsonRoute({ name: 'listings.search', body: SearchRequestSchema, rateLimit: limit }, async (request, raw) => {

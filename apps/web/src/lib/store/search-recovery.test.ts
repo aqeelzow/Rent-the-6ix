@@ -4,6 +4,7 @@ import { baseIntent, searchFixture } from '@rentkdubs/shared/fixtures';
 import { needsReinterpretation, LAST_SEARCH_KEY, readLastSearch, writeLastSearch } from './persist';
 import { parseAndSearch, restoreSearch, runSearch } from './actions';
 import { createAppStore } from './store';
+import { createRuntime } from '../api/runtime';
 import { fallbackParse, ParseService } from '../parse';
 
 const prompt = 'near the conestoga mall';
@@ -12,13 +13,42 @@ const failed = {
   droppedRequests: [{ phrase: prompt, reason: 'Basic parser could not identify supported constraints; edit filters or clarify.' }],
 };
 
-test('saved searches that missed safety are reparsed while renter edits are preserved', () => {
-  const corrected = fallbackParse('under $1300, safe neighborhood');
-  const missed = { ...corrected, safety: { enabled: false, hard: false } };
-  assert.equal(needsReinterpretation(missed), true);
-  assert.equal(needsReinterpretation(corrected), false);
-  assert.equal(needsReinterpretation({ ...missed, fieldSources: { safety: { source: 'user' } } }), false);
-  assert.equal(needsReinterpretation(fallbackParse('under $1300')), false);
+test('restored searches remove unavailable safety settings without reparsing renter edits', async () => {
+  const parsed = fallbackParse('under $1300, safe neighborhood');
+  const intent = {
+    ...parsed,
+    weights: { value: 20, price: 20, travel: 20, home: 20, safety: 20 },
+    fieldSources: { ...parsed.fieldSources, safety: { source: 'user' as const } },
+  };
+  const store = createAppStore();
+  await restoreSearch({ intent, hideUnconfirmed: true }, { store, fetch: async (url, options) => {
+    assert.equal(String(url), '/api/listings/search');
+    const sent = JSON.parse(String(options?.body));
+    assert.deepEqual(sent.intent.safety, { enabled: false, hard: false });
+    assert.equal(sent.intent.weights.safety, 0);
+    assert.equal(sent.intent.fieldSources.safety, undefined);
+    assert.deepEqual(sent.intent.criteria, parsed.criteria);
+    assert.equal(sent.hideUnconfirmed, true);
+    return Response.json(searchFixture);
+  } });
+  assert.equal(store.getState().intent?.safety.enabled, false);
+  assert.equal(needsReinterpretation({ ...parsed, safety: { enabled: false, hard: false } }), false);
+});
+
+test('a Waterloo prompt with safety wording still runs the requested rent search', async () => {
+  const runtime = createRuntime({ env: {} });
+  const store = createAppStore();
+  const calls: string[] = [];
+  await parseAndSearch('under $1300, safe neighborhood', { store, fetch: async (url, options) => {
+    calls.push(String(url));
+    if (String(url) === '/api/search/parse') return runtime.parse(new Request('http://localhost/api/search/parse', options), undefined);
+    const { intent } = JSON.parse(String(options?.body));
+    assert.deepEqual(intent.safety, { enabled: false, hard: false });
+    assert.equal(intent.criteria.rent.value.max, 1300);
+    return Response.json(searchFixture);
+  } });
+  assert.deepEqual(calls, ['/api/search/parse', '/api/listings/search']);
+  assert.match(store.getState().parseNotice ?? '', /safety scoring is unavailable/);
 });
 
 test('a previously saved failed Conestoga Mall interpretation is parsed again and reaches search with its location', async () => {

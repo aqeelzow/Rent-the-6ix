@@ -10,6 +10,7 @@ import {
 } from "@rentkdubs/shared/schemas";
 import { z } from "zod";
 import { appStore, type createAppStore } from "./store";
+import { withoutNeighbourhoodSafety } from "../parse/market-safety";
 import { needsReinterpretation } from "./persist";
 import type {
   ApiError,
@@ -233,8 +234,9 @@ export async function restoreSearch(
   options: ActionOptions = {},
 ): Promise<void> {
   const store = options.store ?? appStore;
-  store.getState().loadSearch(search.intent, search.hideUnconfirmed);
-  if (needsReinterpretation(search.intent)) return parseAndSearch(search.intent.rawPrompt, options);
+  const intent = withoutNeighbourhoodSafety(search.intent);
+  store.getState().loadSearch(intent, search.hideUnconfirmed);
+  if (needsReinterpretation(intent)) return parseAndSearch(intent.rawPrompt, options);
   await runSearch(options);
 }
 
