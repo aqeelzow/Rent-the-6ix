@@ -11,6 +11,7 @@ import type {
   Popup,
 } from "maplibre-gl";
 import { Layers, LoaderCircle } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { useTheme } from "@/lib/theme/theme";
 import type { AreaChoropleth, SearchResultItem } from "@/lib/store/types";
@@ -35,9 +36,21 @@ import {
   listingsAtSamePlace,
   resultsToGeoJSON,
   routesToPlaces,
+  routeToAmenity,
   type RouteToPlace,
   type ScoreBand,
 } from "./map-data";
+import { nearestPlace, useAmenityPin } from "./amenity-pin";
+import { NearbyPanel, type NearbyFocus } from "./nearby-panel";
+import { fetchPath, pathFeatures, pathMiddle, ridden, type RoutedPath } from "./route-path";
+import {
+  ACTIVE_COLOR,
+  amenityPinElement,
+  greyBasemap,
+  listingCard,
+  nearbyPinElement,
+  pinElement,
+} from "./map-pins";
 
 // Basemap: MapTiler with a key, else OpenFreeMap (no key needed). SPEC 3.
 const MAPTILER_KEY = process.env.NEXT_PUBLIC_MAPTILER_KEY;
@@ -96,9 +109,6 @@ type CrimeHover = { name: string; value: number | null } | null;
  * An opt-in "Crime rates" layer shades neighbourhoods by police-reported
  * crime relative to the city, with its caveats beside it (SPEC 7.6).
  */
-/** The highlighted listing's ring: a warm orange no score band or place pin uses. */
-const ACTIVE_COLOR = "#e8590c";
-
 /** The trip on a route line: an estimate from distance, so it says so, with the distance. */
 function routeLabel(route: RouteToPlace): string {
   return t("results.map.routeEstimate", {
@@ -108,24 +118,52 @@ function routeLabel(route: RouteToPlace): string {
   });
 }
 
+/** The routed trip on a line, once OpenTripPlanner has answered (#24): real minutes, no "Est.". */
+function routedLabel(route: RouteToPlace, path: RoutedPath): string {
+  const routes = ridden(path);
+  const params = {
+    minutes: path.minutes,
+    mode: t(`filters.modes.${route.mode}` as MessageKey),
+    km: new Intl.NumberFormat("en-CA", { maximumFractionDigits: 1 }).format(path.distanceM / 1000),
+  };
+  return routes.length
+    ? t("results.map.routeRoutedVia", { ...params, routes: routes.join(", ") })
+    : t("results.map.routeRouted", params);
+}
+
 /** How close the map comes in on a place pin that's clicked (a few blocks around it). */
 const PLACE_ZOOM = 15;
 
 /** How close the map comes in on a listing hovered in the list (street level). */
 const HOVER_ZOOM = 14.5;
 
-export function ResultsMap({ className = "" }: { className?: string }) {
+export function ResultsMap({
+  className = "",
+  pinCards = true,
+}: {
+  className?: string;
+  /** Open the selected listing's card on its pin. Off where the page shows its own card. */
+  pinCards?: boolean;
+}) {
   const container = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MapLibreMap | null>(null);
   const markers = useRef<Marker[]>([]);
   const popups = useRef<Popup[]>([]);
   const routeMarkers = useRef<Marker[]>([]);
+  const pins = useRef(new Map<string, Pin>());
+  const syncPins = useRef<() => void>(() => {});
+  const card = useRef<Popup | null>(null);
+  const router = useRouter();
   const [ready, setReady] = useState(false);
   const [failed, setFailed] = useState(false);
   const results = useAppStore((s) => s.results);
   const targets = useAppStore((s) => s.intent?.travelTargets);
   const hovered = useAppStore((s) => s.hoveredListingId);
   const selected = useAppStore((s) => s.selectedListingId);
+  const amenity = useAmenityPin((s) => s.pin);
+  const [nearby, setNearby] = useState<NearbyFocus | null>(null);
+  // The listing whose nearby panel has already shown once: only later picks move the view.
+  const nearbyShown = useRef<string | null>(null);
   // The layer is offered only while "Consider reported crime levels" is on; off on every visit,
   // and loaded the first time the renter turns it on. Turning the preference off hides it too.
   const crimeOffered = useAppStore((s) => s.intent?.safety.enabled ?? false);
@@ -182,8 +220,10 @@ export function ResultsMap({ className = "" }: { className?: string }) {
         });
         map.on("load", () => {
           if (!map) return;
+          if (theme === "dark") greyBasemap(map);
           addLayers(map);
           bindEvents(map, maplibregl);
+          syncPins.current = bindPins(map, maplibregl, pins.current);
           mapRef.current = map;
           // Lets browser tests find pins on screen; never in production builds.
           if (process.env.NODE_ENV !== "production") Object.assign(window, { __resultsMap: map });
@@ -191,8 +231,10 @@ export function ResultsMap({ className = "" }: { className?: string }) {
         });
       })
       .catch(() => setFailed(true));
+    const pinMap = pins.current;
     return () => {
       cancelled = true;
+      pinMap.clear();
       map?.remove();
       mapRef.current = null;
       setReady(false);
@@ -308,37 +350,123 @@ export function ResultsMap({ className = "" }: { className?: string }) {
     return () => window.clearTimeout(timer);
   }, [ready, hovered, selected, results]);
 
-  // Selecting a listing (its card or its pin) draws a line to each of the renter's places,
-  // labelled with the trip, and fits the map around them; unselecting returns to the view before.
+  // Selecting a listing (its card or its pin) draws a trip to each of the renter's places: the
+  // named ones ("UW") straight away, then the nearest place of each kind asked for ("close to
+  // groceries" → the nearest grocery store, with a pin) once the listing's nearby lookup answers.
+  // Each starts as a straight line with an estimate and becomes the routed path when the router
+  // answers. They stay until the listing is unselected; the view fits around them, and
+  // unselecting returns to the view before.
   useEffect(() => {
     const map = mapRef.current;
     if (!ready || !map) return;
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const result = selected ? results.find((r) => r.listing.id === selected) : undefined;
-    const routes = result ? routesToPlaces(result, targets ?? []) : [];
-    const lines: FeatureCollection = {
-      type: "FeatureCollection",
-      features: routes.map((route) => ({
+    const placeRoutes = result ? routesToPlaces(result, targets ?? []) : [];
+    let stale = false;
+
+    const fit = (points: [number, number][], duration: number) => {
+      if (!points.length) return;
+      const lngs = points.map((point) => point[0]);
+      const lats = points.map((point) => point[1]);
+      map.fitBounds(
+        [
+          [Math.min(...lngs), Math.min(...lats)],
+          [Math.max(...lngs), Math.max(...lats)],
+        ],
+        { padding: 80, maxZoom: 15, duration: reduce ? 0 : duration },
+      );
+    };
+
+    const draw = (routes: RouteToPlace[]) => {
+      const straight = routes.map((route): FeatureCollection["features"][number] => ({
         type: "Feature",
         properties: { id: route.id },
         geometry: { type: "LineString", coordinates: [route.from, route.to] },
-      })),
-    };
-    (map.getSource("routes") as GeoJSONSource | undefined)?.setData(lines);
-    // The trip sits on each line's midpoint in a small label.
-    let stale = false;
-    void import("maplibre-gl").then((maplibregl) => {
-      if (stale) return;
-      routeMarkers.current.forEach((marker) => marker.remove());
-      routeMarkers.current = routes.map((route) => {
-        const element = document.createElement("div");
-        element.className = "route-label";
-        element.textContent = routeLabel(route);
-        return new maplibregl.Marker({ element })
-          .setLngLat([(route.from[0] + route.to[0]) / 2, (route.from[1] + route.to[1]) / 2])
-          .addTo(map);
+      }));
+      (map.getSource("routes") as GeoJSONSource | undefined)?.setData({
+        type: "FeatureCollection",
+        features: straight,
       });
-    });
+      void import("maplibre-gl").then((maplibregl) => {
+        if (stale) return;
+        routeMarkers.current.forEach((marker) => marker.remove());
+        // The trip sits on each line's midpoint in a small label.
+        const labels = routes.map((route) => {
+          const element = document.createElement("div");
+          element.className = "route-label";
+          element.textContent = routeLabel(route);
+          return new maplibregl.Marker({ element })
+            .setLngLat([(route.from[0] + route.to[0]) / 2, (route.from[1] + route.to[1]) / 2])
+            .addTo(map);
+        });
+        // The store (or park, stop…) each "close to" trip leads to.
+        const places = routes.flatMap((route) =>
+          route.place
+            ? [
+                new maplibregl.Marker({
+                  element: amenityPinElement(route.place, route.distanceM),
+                  anchor: "left",
+                  offset: [-7, 0],
+                })
+                  .setLngLat(route.to)
+                  .addTo(map),
+              ]
+            : [],
+        );
+        routeMarkers.current = [...labels, ...places];
+        // Then the real trips, along the streets and transit lines, as the router answers. A trip
+        // it can't route keeps its straight line and estimate.
+        void Promise.all(routes.map((route) => fetchPath(route.from, route.to, route.mode))).then(
+          (paths) => {
+            if (stale) return;
+            const features = routes.flatMap((route, i) => {
+              const path = paths[i];
+              if (!path?.legs.length) return straight[i] ? [straight[i]] : [];
+              const middle = pathMiddle(path);
+              const label = labels[i];
+              if (label) {
+                label.getElement().textContent = routedLabel(route, path);
+                if (middle) label.setLngLat(middle);
+              }
+              return pathFeatures(route.id, path);
+            });
+            (map.getSource("routes") as GeoJSONSource | undefined)?.setData({
+              type: "FeatureCollection",
+              features,
+            });
+            // Real paths bend away from the straight line: fit the view to them.
+            if (!paths.some(Boolean) || !result) return;
+            const { lng, lat } = result.listing.location;
+            fit(
+              [
+                [lng, lat],
+                ...features.flatMap((feature) =>
+                  feature.geometry.type === "LineString"
+                    ? (feature.geometry.coordinates as [number, number][])
+                    : [],
+                ),
+              ],
+              500,
+            );
+          },
+        );
+      });
+    };
+
+    draw(placeRoutes);
+    if (result) {
+      const amenities = (targets ?? []).filter((target) => target.kind === "amenity");
+      void Promise.all(amenities.map((target) => nearestPlace(result.listing.id, target))).then(
+        (places) => {
+          if (stale) return;
+          const amenityRoutes = amenities.flatMap((target, i) => {
+            const place = places[i];
+            return place ? [routeToAmenity(result, target, place)] : [];
+          });
+          if (amenityRoutes.length) draw([...placeRoutes, ...amenityRoutes]);
+        },
+      );
+    }
 
     const cleanup = () => {
       stale = true;
@@ -355,7 +483,7 @@ export function ResultsMap({ className = "" }: { className?: string }) {
       homeView.current = { center: [center.lng, center.lat], zoom: map.getZoom() };
     }
     const { lng, lat } = result.listing.location;
-    if (routes.length === 0) {
+    if (placeRoutes.length === 0) {
       map.easeTo({
         center: [lng, lat],
         zoom: Math.max(map.getZoom(), HOVER_ZOOM),
@@ -363,16 +491,7 @@ export function ResultsMap({ className = "" }: { className?: string }) {
       });
       return cleanup;
     }
-    const points = [[lng, lat], ...routes.map((route) => route.to)];
-    const lngs = points.map((point) => point[0]!);
-    const lats = points.map((point) => point[1]!);
-    map.fitBounds(
-      [
-        [Math.min(...lngs), Math.min(...lats)],
-        [Math.max(...lngs), Math.max(...lats)],
-      ],
-      { padding: 80, maxZoom: 15, duration: reduce ? 0 : 700 },
-    );
+    fit([[lng, lat], ...placeRoutes.map((route) => route.to)], 700);
     return cleanup;
   }, [ready, selected, results, targets]);
 
@@ -395,48 +514,203 @@ export function ResultsMap({ className = "" }: { className?: string }) {
     }
   }, [ready, crimeOn, crime, theme]);
 
-  // Hover and selection from the list highlight the matching pin or circle.
+  // Hover and selection from the list highlight the matching pin or circle, and fade the rest.
   useEffect(() => {
     const map = mapRef.current;
     if (!ready || !map) return;
     const ids = [hovered, selected].filter((id): id is string => id !== null);
     const filter: FilterSpecification = ["in", ["get", "id"], ["literal", ids]];
-    const pinFilter: FilterSpecification = ["all", ["!", ["has", "point_count"]], filter];
-    map.setFilter("pins-active", pinFilter);
     map.setFilter("approx-fill", filter);
     map.setFilter("approx-line", filter);
     map.setFilter("approx-active-fill", filter);
     map.setFilter("approx-active", filter);
-    // A halo and centre dot mark each highlighted listing, approximate circles included.
-    const focus: FeatureCollection = {
-      type: "FeatureCollection",
-      features: results
-        .filter((result) => ids.includes(result.listing.id))
-        .map((result) => ({
-          type: "Feature",
-          properties: {},
-          geometry: {
-            type: "Point",
-            coordinates: [result.listing.location.lng, result.listing.location.lat],
-          },
-        })),
-    };
-    (map.getSource("focus") as GeoJSONSource | undefined)?.setData(focus);
-    // Fade every other listing while one is pointed at, so the active one stands out.
-    const active: ExpressionSpecification = ["in", ["get", "id"], ["literal", ids]];
-    // Approximate dots stay lighter than confirmed ones in both states.
-    const base = (full: number): ExpressionSpecification => [
-      "case",
-      ["get", "approx"],
-      full * APPROX_OPACITY,
-      full,
-    ];
-    const pinOpacity: ExpressionSpecification = ids.length
-      ? ["case", active, 1, base(0.3)]
-      : base(1);
-    map.setPaintProperty("pins", "circle-opacity", pinOpacity);
-    map.setPaintProperty("pins", "circle-stroke-opacity", pinOpacity);
+    // Clusters step back too, so a selected listing's trips read over them.
+    map.setPaintProperty("clusters", "circle-opacity", ids.length ? 0.25 : 0.95);
+    map.setPaintProperty("clusters", "circle-stroke-opacity", ids.length ? 0.25 : 1);
+    map.setPaintProperty("cluster-count", "text-opacity", ids.length ? 0.25 : 1);
+    // The pointed-at listing gets its own pin even inside a cluster.
+    syncPins.current();
   }, [ready, hovered, selected, results]);
+
+  // The nearby panel's category: its places as numbered pins, and the walk to the one picked.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!ready || !map) return;
+    const listing = selected ? results.find((r) => r.listing.id === selected)?.listing : undefined;
+    const source = map.getSource("nearby-route") as GeoJSONSource | undefined;
+    source?.setData({ type: "FeatureCollection", features: [] });
+    if (!nearby || !listing) return;
+    const from: [number, number] = [listing.location.lng, listing.location.lat];
+    const target = nearby.places[nearby.active];
+    let ours = true;
+    const markers: Marker[] = [];
+    void import("maplibre-gl").then((maplibregl) => {
+      if (!ours) return;
+      nearby.places.forEach((place, i) => {
+        const marker = new maplibregl.Marker({
+          element: nearbyPinElement(i, place.name, i === nearby.active, () => nearby.pick(i)),
+          anchor: "left",
+          offset: [-11, 0],
+        })
+          .setLngLat([place.location.lng, place.location.lat])
+          .addTo(map);
+        markers.push(marker);
+      });
+    });
+    if (target) {
+      const to: [number, number] = [target.location.lng, target.location.lat];
+      source?.setData({
+        type: "FeatureCollection",
+        features: [
+          {
+            type: "Feature",
+            properties: {},
+            geometry: { type: "LineString", coordinates: [from, to] },
+          },
+        ],
+      });
+      void fetchPath(from, to, "walk").then((path) => {
+        if (ours && path?.legs.length) {
+          source?.setData({ type: "FeatureCollection", features: pathFeatures("nearby", path) });
+        }
+      });
+    }
+    // A pick in the panel brings the listing and the whole category into view, clear of the
+    // rail and the cards. Its first showing leaves the view on the listing's own trips.
+    const firstShowing = nearbyShown.current !== listing.id;
+    nearbyShown.current = listing.id;
+    if (firstShowing)
+      return () => {
+        ours = false;
+        markers.forEach((marker) => marker.remove());
+      };
+    const points = [from, ...nearby.places.map((p) => [p.location.lng, p.location.lat])];
+    const lngs = points.map((p) => p[0]!);
+    const lats = points.map((p) => p[1]!);
+    map.fitBounds(
+      [
+        [Math.min(...lngs), Math.min(...lats)],
+        [Math.max(...lngs), Math.max(...lats)],
+      ],
+      {
+        // The top leaves room for the listing's card, which sits above its pin.
+        padding: { top: 220, bottom: 150, left: 260, right: 80 },
+        maxZoom: 16,
+        duration: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 500,
+      },
+    );
+    return () => {
+      ours = false;
+      markers.forEach((marker) => marker.remove());
+    };
+  }, [ready, nearby, selected, results]);
+
+  // A hovered trip line ("Est. 2 min walk to groceries") pins that place, with a line to it.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!ready || !map) return;
+    const line: FeatureCollection = {
+      type: "FeatureCollection",
+      features: amenity
+        ? [
+            {
+              type: "Feature",
+              properties: {},
+              geometry: {
+                type: "LineString",
+                coordinates: [
+                  [amenity.from.lng, amenity.from.lat],
+                  [amenity.location.lng, amenity.location.lat],
+                ],
+              },
+            },
+          ]
+        : [],
+    };
+    (map.getSource("amenity-line") as GeoJSONSource | undefined)?.setData(line);
+    if (!amenity) return;
+    let marker: Marker | null = null;
+    let ours = true;
+    // The walk itself, along the streets, once the router answers.
+    void fetchPath(
+      [amenity.from.lng, amenity.from.lat],
+      [amenity.location.lng, amenity.location.lat],
+      "walk",
+    ).then((path) => {
+      if (!ours || !path?.legs.length) return;
+      (map.getSource("amenity-line") as GeoJSONSource | undefined)?.setData({
+        type: "FeatureCollection",
+        features: pathFeatures("amenity", path),
+      });
+    });
+    void import("maplibre-gl").then((maplibregl) => {
+      if (!ours) return;
+      marker = new maplibregl.Marker({
+        element: amenityPinElement(amenity.name, amenity.distanceM),
+        anchor: "left",
+        offset: [-7, 0],
+      })
+        .setLngLat([amenity.location.lng, amenity.location.lat])
+        .addTo(map);
+    });
+    return () => {
+      ours = false;
+      marker?.remove();
+    };
+  }, [ready, amenity]);
+
+  // The selected listing's card opens on its pin; closing it (or clicking the map) unselects.
+  // While a place north of it is picked in the nearby panel, the card opens below the pin
+  // instead, so it doesn't cover the walk there.
+  const selectedListing = selected
+    ? results.find((r) => r.listing.id === selected)?.listing
+    : undefined;
+  const pickedPlace = nearby?.places[nearby.active];
+  const cardBelow =
+    !!selectedListing && !!pickedPlace && pickedPlace.location.lat > selectedListing.location.lat;
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!ready || !map) return;
+    const result = selected ? results.find((r) => r.listing.id === selected) : undefined;
+    let ours = true;
+    let popup: Popup | null = null;
+    void import("maplibre-gl").then((maplibregl) => {
+      if (!ours || !result || !pinCards) return;
+      const { lng, lat } = result.listing.location;
+      popup = new maplibregl.Popup({
+        ...(cardBelow ? { anchor: "top" as const } : {}),
+        // Clear of the pin's photo above the point and its chip below.
+        offset: {
+          top: [0, 46],
+          "top-left": [0, 46],
+          "top-right": [0, 46],
+          bottom: [0, -26],
+          "bottom-left": [0, -26],
+          "bottom-right": [0, -26],
+          left: [26, 0],
+          right: [-26, 0],
+          center: [0, 0],
+        },
+        closeButton: false,
+        maxWidth: "300px",
+        className: "map-card-popup",
+      })
+        .setLngLat([lng, lat])
+        .setDOMContent(listingCard(result, (href) => router.push(href)))
+        .addTo(map);
+      popup.on("close", () => {
+        if (ours && appStore.getState().selectedListingId === result.listing.id) {
+          appStore.getState().setSelectedListingId(null);
+        }
+      });
+      card.current = popup;
+    });
+    return () => {
+      ours = false;
+      popup?.remove();
+      card.current = null;
+    };
+  }, [ready, selected, results, router, pinCards, cardBelow]);
 
   return (
     <div className={`bg-muted relative ${className}`}>
@@ -471,7 +745,17 @@ export function ResultsMap({ className = "" }: { className?: string }) {
               {crimeOn && <CrimeLegend state={crime} hover={crimeHover} theme={theme} />}
             </div>
           )}
-          <Legend />
+          {/* What's around the selected listing (desktop, beside the list). */}
+          {ready && pinCards && selected ? (
+            <NearbyPanel
+              key={selected}
+              listingId={selected}
+              near={selectedListing?.location ?? { lng: WATERLOO[0], lat: WATERLOO[1] }}
+              onShow={setNearby}
+            />
+          ) : (
+            <Legend />
+          )}
         </>
       )}
     </div>
@@ -614,11 +898,12 @@ function addLayers(map: MapLibreMap) {
     type: "circle",
     source: "listings",
     filter: ["has", "point_count"],
+    // A dark disc with a light ring, in the pins' style.
     paint: {
-      "circle-color": BAND_COLORS.high,
-      "circle-opacity": 0.85,
-      "circle-radius": ["step", ["get", "point_count"], 14, 10, 18, 50, 24],
-      "circle-stroke-color": "#ffffff",
+      "circle-color": "#1c1c1f",
+      "circle-opacity": 0.95,
+      "circle-radius": ["step", ["get", "point_count"], 16, 10, 20, 50, 26],
+      "circle-stroke-color": "#f4f4f5",
       "circle-stroke-width": 2,
     },
   });
@@ -634,68 +919,65 @@ function addLayers(map: MapLibreMap) {
     },
     paint: { "text-color": "#ffffff" },
   });
-  map.addLayer({
-    id: "pins",
-    type: "circle",
-    source: "listings",
-    filter: ["!", ["has", "point_count"]],
-    // Approximate locations are the same colour, lighter, so confirmed addresses stand out.
-    paint: {
-      "circle-color": bandColor,
-      "circle-radius": 7,
-      "circle-opacity": ["case", ["get", "approx"], APPROX_OPACITY, 1],
-      "circle-stroke-color": "#ffffff",
-      "circle-stroke-width": 2,
-      "circle-stroke-opacity": ["case", ["get", "approx"], APPROX_OPACITY, 1],
-    },
-  });
-  map.addLayer({
-    id: "pins-active",
-    type: "circle",
-    source: "listings",
-    filter: ["in", ["get", "id"], ["literal", []]],
-    paint: {
-      "circle-color": bandColor,
-      "circle-radius": 11,
-      "circle-stroke-color": ACTIVE_COLOR,
-      "circle-stroke-width": 4,
-    },
-  });
-  // Lines from the selected listing to the renter's places (their labels are HTML markers).
-  map.addSource("routes", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
-  map.addLayer(
-    {
-      id: "routes",
+  // Trips are drawn above the clusters, each on a dark casing so it reads over the grey streets
+  // and the faded pins around it. Walked legs are dashed; ridden legs (and the straight line
+  // before a route arrives) are solid with a glow.
+  const casing = (id: string, source: string, filter?: FilterSpecification) =>
+    map.addLayer({
+      id,
       type: "line",
-      source: "routes",
-      layout: { "line-cap": "round" },
-      paint: { "line-color": ACTIVE_COLOR, "line-width": 3, "line-dasharray": [1.5, 1.5] },
-    },
-    "clusters",
-  );
-  map.addSource("focus", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
+      source,
+      ...(filter ? { filter } : {}),
+      layout: { "line-cap": "round", "line-join": "round" },
+      paint: { "line-color": "#141416", "line-width": 8, "line-opacity": 0.85 },
+    });
+  // The walk to the nearest place behind a hovered trip line.
+  map.addSource("amenity-line", { type: "geojson", data: empty });
+  casing("amenity-line-casing", "amenity-line");
   map.addLayer({
-    id: "focus-halo",
-    type: "circle",
-    source: "focus",
-    paint: {
-      "circle-color": ACTIVE_COLOR,
-      "circle-opacity": 0.15,
-      "circle-radius": 26,
-      "circle-stroke-color": ACTIVE_COLOR,
-      "circle-stroke-width": 2.5,
-    },
+    id: "amenity-line",
+    type: "line",
+    source: "amenity-line",
+    layout: { "line-cap": "round", "line-join": "round" },
+    paint: { "line-color": ACTIVE_COLOR, "line-width": 4, "line-dasharray": [0.6, 1.6] },
+  });
+  // The walk to the place picked in the nearby panel.
+  map.addSource("nearby-route", { type: "geojson", data: empty });
+  casing("nearby-route-casing", "nearby-route");
+  map.addLayer({
+    id: "nearby-route",
+    type: "line",
+    source: "nearby-route",
+    layout: { "line-cap": "round", "line-join": "round" },
+    paint: { "line-color": ACTIVE_COLOR, "line-width": 4, "line-dasharray": [0.6, 1.6] },
+  });
+  // Trips from the selected listing to the renter's places (their labels are HTML markers).
+  map.addSource("routes", { type: "geojson", data: empty });
+  const riddenLegs: FilterSpecification = ["!=", ["get", "walk"], true];
+  casing("routes-casing", "routes");
+  map.addLayer({
+    id: "routes-glow",
+    type: "line",
+    source: "routes",
+    filter: riddenLegs,
+    layout: { "line-cap": "round", "line-join": "round" },
+    paint: { "line-color": ACTIVE_COLOR, "line-width": 14, "line-blur": 8, "line-opacity": 0.45 },
   });
   map.addLayer({
-    id: "focus-dot",
-    type: "circle",
-    source: "focus",
-    paint: {
-      "circle-color": ACTIVE_COLOR,
-      "circle-radius": 6,
-      "circle-stroke-color": "#ffffff",
-      "circle-stroke-width": 2,
-    },
+    id: "routes-walk",
+    type: "line",
+    source: "routes",
+    filter: ["==", ["get", "walk"], true],
+    layout: { "line-cap": "round", "line-join": "round" },
+    paint: { "line-color": ACTIVE_COLOR, "line-width": 4, "line-dasharray": [0.6, 1.6] },
+  });
+  map.addLayer({
+    id: "routes",
+    type: "line",
+    source: "routes",
+    filter: riddenLegs,
+    layout: { "line-cap": "round", "line-join": "round" },
+    paint: { "line-color": ACTIVE_COLOR, "line-width": 4 },
   });
 }
 
@@ -760,49 +1042,6 @@ function openPlaceList(
 let placeList: Popup | null = null;
 
 function bindEvents(map: MapLibreMap, maplibregl: typeof import("maplibre-gl")) {
-  const { setHoveredListingId, setSelectedListingId } = appStore.getState();
-  // Hovering an approximate-location dot says how approximate it is.
-  const approxTip = new maplibregl.Popup({
-    closeButton: false,
-    closeOnClick: false,
-    offset: 10,
-    className: "approx-tip",
-  });
-  // Only dots respond: the approximate-area circle is display-only, since its handlers fired with
-  // the dots' and undid their clicks (a dot inside a shown circle couldn't be selected).
-  for (const layer of ["pins"]) {
-    map.on("mousemove", layer, (event) => {
-      const feature = event.features?.[0];
-      const id = feature?.properties?.id;
-      if (typeof id === "string") setHoveredListingId(id);
-      map.getCanvas().style.cursor = "pointer";
-      const radiusM = Number(feature?.properties?.radiusM ?? 0);
-      if (radiusM > 0 && feature?.geometry.type === "Point") {
-        approxTip
-          .setLngLat(feature.geometry.coordinates as [number, number])
-          .setText(t("results.map.approxTip", { m: radiusM }))
-          .addTo(map);
-      } else approxTip.remove();
-    });
-    map.on("mouseleave", layer, () => {
-      setHoveredListingId(null);
-      map.getCanvas().style.cursor = "";
-      approxTip.remove();
-    });
-    map.on("click", layer, (event) => {
-      const id = event.features?.[0]?.properties?.id;
-      if (typeof id !== "string") return;
-      // Several units in the same building: list them instead of picking one.
-      const group = listingsAtSamePlace(appStore.getState().results, id);
-      if (group.length > 1) {
-        openPlaceList(map, maplibregl, [event.lngLat.lng, event.lngLat.lat], group);
-        return;
-      }
-      // Clicking the selected listing again unselects it. Otherwise the list scrolls to the
-      // card itself, once it's rendered (it may be past "Show more").
-      setSelectedListingId(appStore.getState().selectedListingId === id ? null : id);
-    });
-  }
   map.on("click", "clusters", async (event) => {
     const feature = event.features?.[0];
     const clusterId = feature?.properties?.cluster_id;
@@ -830,6 +1069,103 @@ function bindEvents(map: MapLibreMap, maplibregl: typeof import("maplibre-gl")) 
   });
   map.on("mouseenter", "clusters", () => (map.getCanvas().style.cursor = "pointer"));
   map.on("mouseleave", "clusters", () => (map.getCanvas().style.cursor = ""));
+}
+
+/** One listing's HTML pin, kept with the result it was drawn from so new results redraw it. */
+interface Pin {
+  marker: Marker;
+  element: HTMLButtonElement;
+  result: SearchResultItem;
+}
+
+/** Highlight a pin that's hovered or selected; fade the others while any is. */
+function markPin(element: HTMLElement, id: string, active: string[]) {
+  element.classList.toggle("is-active", active.includes(id));
+  element.classList.toggle("is-faded", active.length > 0 && !active.includes(id));
+}
+
+/**
+ * Photo pins for listings that aren't in a cluster, plus the hovered or selected one wherever it
+ * is. The clustered GeoJSON source decides which listings stand alone at this zoom; after every
+ * move and data change the pins follow it. Returns the sync, for hover and selection changes.
+ */
+function bindPins(
+  map: MapLibreMap,
+  maplibregl: typeof import("maplibre-gl"),
+  pins: Map<string, Pin>,
+): () => void {
+  const { setHoveredListingId, setSelectedListingId } = appStore.getState();
+  // Hovering an approximate-location pin says how approximate it is.
+  const approxTip = new maplibregl.Popup({
+    closeButton: false,
+    closeOnClick: false,
+    offset: 30,
+    className: "approx-tip",
+  });
+
+  const create = (result: SearchResultItem): Pin => {
+    const { id, location, locationPrecision } = result.listing;
+    const element = pinElement(result);
+    element.addEventListener("mouseenter", () => {
+      setHoveredListingId(id);
+      if (locationPrecision !== "exact") {
+        const m = resultsToGeoJSON([result]).points.features[0]?.properties.radiusM ?? 0;
+        approxTip
+          .setLngLat([location.lng, location.lat])
+          .setText(t("results.map.approxTip", { m }))
+          .addTo(map);
+      }
+    });
+    element.addEventListener("mouseleave", () => {
+      setHoveredListingId(null);
+      approxTip.remove();
+    });
+    element.addEventListener("click", (event) => {
+      // Keep the map's own click (which closes the card) from firing too.
+      event.stopPropagation();
+      // Several units in the same building: list them instead of picking one.
+      const group = listingsAtSamePlace(appStore.getState().results, id);
+      if (group.length > 1) {
+        openPlaceList(map, maplibregl, [location.lng, location.lat], group);
+        return;
+      }
+      // Clicking the selected listing again unselects it.
+      setSelectedListingId(appStore.getState().selectedListingId === id ? null : id);
+    });
+    const marker = new maplibregl.Marker({ element, anchor: "center" })
+      .setLngLat([location.lng, location.lat])
+      .addTo(map);
+    return { marker, element, result };
+  };
+
+  const sync = () => {
+    if (!map.getSource("listings") || !map.isSourceLoaded("listings")) return;
+    const { results, hoveredListingId, selectedListingId } = appStore.getState();
+    const byId = new Map(results.map((result) => [result.listing.id, result]));
+    const alone = new Set<string>();
+    for (const feature of map.querySourceFeatures("listings")) {
+      const id = feature.properties?.id;
+      if (!feature.properties?.point_count && typeof id === "string" && byId.has(id)) alone.add(id);
+    }
+    const active = [hoveredListingId, selectedListingId].filter((id): id is string => !!id);
+    for (const id of active) if (byId.has(id)) alone.add(id);
+    for (const [id, pin] of pins) {
+      if (!alone.has(id) || pin.result !== byId.get(id)) {
+        pin.marker.remove();
+        pins.delete(id);
+      }
+    }
+    for (const id of alone) {
+      const pin = pins.get(id) ?? create(byId.get(id)!);
+      pins.set(id, pin);
+      markPin(pin.element, id, active);
+    }
+  };
+  map.on("moveend", sync);
+  map.on("sourcedata", (event) => {
+    if (event.sourceId === "listings" && event.isSourceLoaded) sync();
+  });
+  return sync;
 }
 
 /** How opaque an approximate-location dot is, against 1 for a confirmed address. */

@@ -461,7 +461,13 @@
       "straightLine": "{km} km to {target}",
       "walkable": "{km} km to {target} — walking distance",
       "transport": "{km} km to {target} — take transit or a car",
-      "missing": "Location for {target} unavailable"
+      "missing": "Location for {target} unavailable",
+      "routed": {
+        "transit": "{minutes} min by transit to {target}",
+        "drive": "{minutes} min drive to {target}",
+        "walk": "{minutes} min walk to {target}",
+        "bike": "{minutes} min by bike to {target}"
+      }
     },
     "safety": "Police-reported crime: {rate}× the city rate ({years})",
     "safetyNoData": "Police-reported crime: not enough data",
@@ -499,6 +505,8 @@
       "placePopup": "Your place",
       "unitsHere": "{count} listings at this spot",
       "routeEstimate": "Est. {minutes} min by {mode}, {km} km",
+      "routeRouted": "{minutes} min by {mode}, {km} km",
+      "routeRoutedVia": "{minutes} min by {mode} ({routes}), {km} km",
       "crime": {
         "toggle": "Crime rates",
         "title": "Police-reported major crime, vs the city",
@@ -514,7 +522,21 @@
         "source": "Police-reported crime, {years} average, by neighbourhood.",
         "unavailable": "Crime rates couldn't be loaded. Try again later."
       },
-      "approxTip": "Approximate location: within about {m} m"
+      "approxTip": "Approximate location: within about {m} m",
+      "cardScore": "{score} match",
+      "cardView": "View details",
+      "nearby": {
+        "label": "Places near this listing",
+        "title": "Nearby",
+        "places": "Nearest places in this category",
+        "count": "{n} / {total}",
+        "search": "Search for a place",
+        "searchPlaceholder": "Search for a place, like Walmart",
+        "searchClose": "Close search",
+        "searching": "Searching…",
+        "searchNone": "No places called “{q}” around Waterloo.",
+        "searchError": "Place search isn't available right now."
+      }
     },
     "mobile": {
       "showMap": "Map",

@@ -75,8 +75,6 @@ export function SearchView({ prompt, shared }: { prompt: string | null; shared: 
   const notices = useAppStore((s) => s.notices);
   const selectedId = useAppStore((s) => s.selectedListingId);
   const setSelected = useAppStore((s) => s.setSelectedListingId);
-  // "Seen N days ago" is measured from when this view opened.
-  const [now] = useState(() => Date.now());
   // Desktop shows the map beside the list; phones switch between them (SPEC 11.2).
   const desktop = useMediaQuery("(min-width: 1024px)");
   const [mobileView, setMobileView] = useState<"list" | "map">("list");
@@ -103,8 +101,6 @@ export function SearchView({ prompt, shared }: { prompt: string | null; shared: 
   const visibleCount = Math.min(ordered.length, pageCount);
   const selectedIndex = selectedId ? results.findIndex((r) => r.listing.id === selectedId) : -1;
   const selectedResult = selectedIndex >= 0 ? results[selectedIndex] : undefined;
-  // A pin past "Show more" opens its card over the map instead of growing the list.
-  const selectedOffList = selectedIndex >= visibleCount;
 
   // A pin whose card is in the list scrolls the list to it (SPEC 11.2).
   useEffect(() => {
@@ -148,7 +144,7 @@ export function SearchView({ prompt, shared }: { prompt: string | null; shared: 
     intent?.rawPrompt === prompt ? void runSearch() : void parseAndSearch(prompt);
 
   return (
-    <div className="lg:grid lg:grid-cols-[minmax(0,45fr)_minmax(0,55fr)]">
+    <div className="lg:grid lg:grid-cols-[minmax(0,36fr)_minmax(0,64fr)]">
       <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-4 py-6 lg:max-w-none lg:px-6">
         <h1 className="sr-only">{t("search.title")}</h1>
 
@@ -263,17 +259,10 @@ export function SearchView({ prompt, shared }: { prompt: string | null; shared: 
                 {t(order === "carbon" ? "results.order.carbon" : "results.order.distance")}
               </p>
             )}
-            <ol className={`flex flex-col gap-3 ${busy ? "opacity-60" : ""}`}>
+            <ol className={`flex flex-col gap-1 ${busy ? "opacity-60" : ""}`}>
               {ordered.slice(0, visibleCount).map((result) => (
                 <li key={result.listing.id}>
-                  <ResultCard
-                    result={result}
-                    targets={intent?.travelTargets ?? []}
-                    areas={intent?.areas ?? []}
-                    safetyOn={intent?.safety.enabled ?? false}
-                    acInSearch={intent?.criteria.airConditioning !== undefined}
-                    now={now}
-                  />
+                  <ResultCard result={result} targets={intent?.travelTargets ?? []} />
                 </li>
               ))}
             </ol>
@@ -306,20 +295,13 @@ export function SearchView({ prompt, shared }: { prompt: string | null; shared: 
       </div>
       {desktop ? (
         <div className="sticky top-14 h-[calc(100dvh-3.5rem)] border-l">
+          {/* The picked pin's card opens on the pin itself, whether or not it's in the list. */}
           <ResultsMap className="size-full" />
-          {selectedOffList && (
-            <MapListingCard
-              result={selectedResult}
-              intent={intent}
-              now={now}
-              onClose={() => setSelected(null)}
-            />
-          )}
         </div>
       ) : (
         mobileView === "map" && (
           <div className="fixed inset-x-0 top-14 bottom-0 z-30">
-            <ResultsMap className="size-full" />
+            <ResultsMap className="size-full" pinCards={false} />
             <Button
               onClick={() => setMobileView("list")}
               className="absolute top-3 left-1/2 z-10 h-10 -translate-x-1/2 rounded-full px-4 shadow-lg"
@@ -330,7 +312,6 @@ export function SearchView({ prompt, shared }: { prompt: string | null; shared: 
             <MapListingCard
               result={selectedResult}
               intent={intent}
-              now={now}
               onClose={() => setSelected(null)}
             />
           </div>
@@ -341,24 +322,21 @@ export function SearchView({ prompt, shared }: { prompt: string | null; shared: 
 }
 
 /**
- * The picked pin's card over the map: always on a phone's map view, and on desktop when the
- * card isn't in the list yet (SPEC 11.2).
+ * The picked pin's card over a phone's map view (SPEC 11.2). On desktop it opens on the pin.
  */
 function MapListingCard({
   result,
   intent,
-  now,
   onClose,
 }: {
   result: SearchResultItem | undefined;
   intent: SearchIntent | null;
-  now: number;
   onClose: () => void;
 }) {
   if (!result) return null;
   return (
     <div className="animate-in slide-in-from-bottom-4 absolute inset-x-0 bottom-0 z-10 max-h-[70%] overflow-y-auto p-3 lg:right-auto lg:bottom-4 lg:left-4 lg:w-[26rem]">
-      <div className="relative">
+      <div className="bg-card relative rounded-2xl border shadow-lg">
         <Button
           variant="secondary"
           size="icon-sm"
@@ -368,13 +346,7 @@ function MapListingCard({
         >
           <X aria-hidden />
         </Button>
-        <ResultCard
-          result={result}
-          targets={intent?.travelTargets ?? []}
-          safetyOn={intent?.safety.enabled ?? false}
-          acInSearch={intent?.criteria.airConditioning !== undefined}
-          now={now}
-        />
+        <ResultCard result={result} targets={intent?.travelTargets ?? []} />
       </div>
     </div>
   );

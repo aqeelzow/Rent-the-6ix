@@ -99,8 +99,14 @@ export async function loadNearby(
     FROM l
     CROSS JOIN unnest(string_to_array(${categories.join(",")}, ',')) AS c(category)
     CROSS JOIN LATERAL (
-      SELECT * FROM pois WHERE pois.category = c.category
-      ORDER BY pois.location <-> l.location LIMIT ${PLACES_PER_CATEGORY}
+      -- A place in several pieces (a campus: osm:relation/…#1, #2) counts once, at its nearest
+      -- piece, so the University of Waterloo doesn't take every slot.
+      SELECT * FROM (
+        SELECT DISTINCT ON (pois.name) pois.*, pois.location <-> l.location AS gap
+        FROM pois WHERE pois.category = c.category
+        ORDER BY pois.name, gap
+      ) nearest_piece
+      ORDER BY gap LIMIT ${PLACES_PER_CATEGORY}
     ) p
     UNION ALL
     SELECT 'stop', s.id, s.name, NULL, NULL, s.is_rapid, s.route_types,

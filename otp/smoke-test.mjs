@@ -1,8 +1,8 @@
 // One route per mode against a running OTP (P1.15). Run through otp/smoke-test.sh, which puts
 // this on the compose network so it can reach the otp container by name.
 //
-// Default trip: Parkdale → U of T St George, a trip that should exercise streetcar, subway and
-// walking, overridable with FROM_LAT/FROM_LON/TO_LAT/TO_LON/DATE/TIME.
+// Default trip: University of Waterloo → Downtown Kitchener (#24's check), which should take the
+// ION, overridable with FROM_LAT/FROM_LON/TO_LAT/TO_LON/DATE/TIME.
 const base = process.argv[2] ?? "http://otp:8080";
 // `-e NAME` without a value passes an empty string, so an unset variable must not read as 0.
 const text = (name, fallback) => {
@@ -16,12 +16,12 @@ const number = (name, fallback) => {
   return Number.isFinite(parsed) ? parsed : fallback;
 };
 const from = {
-  lat: number("FROM_LAT", 43.6395), // Parkdale
-  lon: number("FROM_LON", -79.431),
+  lat: number("FROM_LAT", 43.4723), // University of Waterloo, Davis Centre
+  lon: number("FROM_LON", -80.5449),
 };
 const to = {
-  lat: number("TO_LAT", 43.6629), // U of T St George
-  lon: number("TO_LON", -79.3957),
+  lat: number("TO_LAT", 43.4516), // Downtown Kitchener, Kitchener City Hall
+  lon: number("TO_LON", -80.4925),
 };
 const date = text("DATE", new Date().toISOString().slice(0, 10));
 const time = text("TIME", "08:30:00");

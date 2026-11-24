@@ -103,6 +103,11 @@ export interface SourceAdapter {
   fetchDetail?(session: Session, listing: RawListing): Promise<DetailPatch>;
   /** How this source's browser session is opened (delay, saved profile); defaults otherwise. */
   sessionOptions?(): SessionOptions;
+  /**
+   * Index pages a full pass takes, read by default instead of the usual few newest pages: for an
+   * index that is a list of places (Facebook's map circles) rather than newest-first pages.
+   */
+  fullPages?: number;
 }
 
 export const emptyRawListing = {

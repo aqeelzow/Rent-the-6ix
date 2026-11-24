@@ -234,7 +234,7 @@ function rentalsNetworkAdapter(
     }),
     async fetchIndex(session, cursor) {
       const page = cursor ? Number(cursor) : 1;
-      const url = `${origin}${searchPath}${page > 1 ? `?p=${page}` : ""}`;
+      const url = `${origin}${searchPath}${page > 1 ? `${searchPath.includes("?") ? "&" : "?"}p=${page}` : ""}`;
       const { json, html } = await session.visit(url, {
         captureJson: (u) => u.startsWith(`${origin}/graphql`),
         settleMs: 3000,
@@ -249,11 +249,18 @@ function rentalsNetworkAdapter(
   };
 }
 
+/**
+ * The City of Waterloo's bounding box (west, south, east, north), from its neighbourhoods.
+ * rentals.ca/waterloo alone covers the whole region, and about 4 in 5 of its results were in
+ * Kitchener or Cambridge, which geocode then deleted.
+ */
+export const WATERLOO_BBOX = "-80.626,43.432,-80.467,43.532";
+
 // rentals.ca embeds its results in the page; the /graphql capture stays for the network's other
 // sites. TorontoRentals.com was dropped: it has no Waterloo sister site.
 export const rentalsCa = rentalsNetworkAdapter(
   "rentals_ca",
   "Rentals.ca",
   "https://rentals.ca",
-  "/waterloo",
+  `/waterloo?bbox=${WATERLOO_BBOX}`,
 );
