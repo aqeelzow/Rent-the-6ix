@@ -160,7 +160,34 @@ export type RouteToPlace = {
   mode: SearchIntent["travelTargets"][number]["mode"];
   minutes: number;
   distanceM: number;
+  /** For a "close to groceries" target, the store it leads to. */
+  place?: string;
 };
+
+/**
+ * The trip from a listing to the nearest place of an amenity target's kind ("groceries" → the
+ * nearest grocery store), by the target's fastest mode, as an estimate until it's routed.
+ */
+export function routeToAmenity(
+  result: SearchResultItem,
+  target: SearchIntent["travelTargets"][number],
+  place: { name: string; location: { lng: number; lat: number } },
+): RouteToPlace {
+  const { location } = result.listing;
+  const metres = distanceM(location, place.location);
+  const fastest = targetModes(target)
+    .map((mode) => ({ mode, minutes: estimateTravelMinutes(metres, mode) }))
+    .sort((a, b) => a.minutes - b.minutes)[0]!;
+  return {
+    id: target.id,
+    label: target.label,
+    from: [location.lng, location.lat],
+    to: [place.location.lng, place.location.lat],
+    ...fastest,
+    distanceM: metres,
+    place: place.name,
+  };
+}
 
 export function routesToPlaces(
   result: SearchResultItem,

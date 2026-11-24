@@ -36,10 +36,11 @@ import {
   listingsAtSamePlace,
   resultsToGeoJSON,
   routesToPlaces,
+  routeToAmenity,
   type RouteToPlace,
   type ScoreBand,
 } from "./map-data";
-import { useAmenityPin } from "./amenity-pin";
+import { nearestPlace, useAmenityPin } from "./amenity-pin";
 import { fetchPath, pathFeatures, pathMiddle, ridden, type RoutedPath } from "./route-path";
 import { ACTIVE_COLOR, amenityPinElement, greyBasemap, listingCard, pinElement } from "./map-pins";
 
@@ -338,79 +339,123 @@ export function ResultsMap({
     return () => window.clearTimeout(timer);
   }, [ready, hovered, selected, results]);
 
-  // Selecting a listing (its card or its pin) draws a line to each of the renter's places,
-  // labelled with the trip, and fits the map around them; unselecting returns to the view before.
+  // Selecting a listing (its card or its pin) draws a trip to each of the renter's places: the
+  // named ones ("UW") straight away, then the nearest place of each kind asked for ("close to
+  // groceries" → the nearest grocery store, with a pin) once the listing's nearby lookup answers.
+  // Each starts as a straight line with an estimate and becomes the routed path when the router
+  // answers. They stay until the listing is unselected; the view fits around them, and
+  // unselecting returns to the view before.
   useEffect(() => {
     const map = mapRef.current;
     if (!ready || !map) return;
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const result = selected ? results.find((r) => r.listing.id === selected) : undefined;
-    const routes = result ? routesToPlaces(result, targets ?? []) : [];
-    const lines: FeatureCollection = {
-      type: "FeatureCollection",
-      features: routes.map((route) => ({
+    const placeRoutes = result ? routesToPlaces(result, targets ?? []) : [];
+    let stale = false;
+
+    const fit = (points: [number, number][], duration: number) => {
+      if (!points.length) return;
+      const lngs = points.map((point) => point[0]);
+      const lats = points.map((point) => point[1]);
+      map.fitBounds(
+        [
+          [Math.min(...lngs), Math.min(...lats)],
+          [Math.max(...lngs), Math.max(...lats)],
+        ],
+        { padding: 80, maxZoom: 15, duration: reduce ? 0 : duration },
+      );
+    };
+
+    const draw = (routes: RouteToPlace[]) => {
+      const straight = routes.map((route): FeatureCollection["features"][number] => ({
         type: "Feature",
         properties: { id: route.id },
         geometry: { type: "LineString", coordinates: [route.from, route.to] },
-      })),
-    };
-    (map.getSource("routes") as GeoJSONSource | undefined)?.setData(lines);
-    // The trip sits on each line's midpoint in a small label.
-    let stale = false;
-    void import("maplibre-gl").then((maplibregl) => {
-      if (stale) return;
-      routeMarkers.current.forEach((marker) => marker.remove());
-      routeMarkers.current = routes.map((route) => {
-        const element = document.createElement("div");
-        element.className = "route-label";
-        element.textContent = routeLabel(route);
-        return new maplibregl.Marker({ element })
-          .setLngLat([(route.from[0] + route.to[0]) / 2, (route.from[1] + route.to[1]) / 2])
-          .addTo(map);
+      }));
+      (map.getSource("routes") as GeoJSONSource | undefined)?.setData({
+        type: "FeatureCollection",
+        features: straight,
       });
-      // Then the real trips, along the streets and transit lines, as the router answers. A trip
-      // it can't route keeps its straight line and estimate.
-      void Promise.all(routes.map((route) => fetchPath(route.from, route.to, route.mode))).then(
-        (paths) => {
+      void import("maplibre-gl").then((maplibregl) => {
+        if (stale) return;
+        routeMarkers.current.forEach((marker) => marker.remove());
+        // The trip sits on each line's midpoint in a small label.
+        const labels = routes.map((route) => {
+          const element = document.createElement("div");
+          element.className = "route-label";
+          element.textContent = routeLabel(route);
+          return new maplibregl.Marker({ element })
+            .setLngLat([(route.from[0] + route.to[0]) / 2, (route.from[1] + route.to[1]) / 2])
+            .addTo(map);
+        });
+        // The store (or park, stop…) each "close to" trip leads to.
+        const places = routes.flatMap((route) =>
+          route.place
+            ? [
+                new maplibregl.Marker({
+                  element: amenityPinElement(route.place, route.distanceM),
+                  anchor: "left",
+                  offset: [-7, 0],
+                })
+                  .setLngLat(route.to)
+                  .addTo(map),
+              ]
+            : [],
+        );
+        routeMarkers.current = [...labels, ...places];
+        // Then the real trips, along the streets and transit lines, as the router answers. A trip
+        // it can't route keeps its straight line and estimate.
+        void Promise.all(routes.map((route) => fetchPath(route.from, route.to, route.mode))).then(
+          (paths) => {
+            if (stale) return;
+            const features = routes.flatMap((route, i) => {
+              const path = paths[i];
+              if (!path?.legs.length) return straight[i] ? [straight[i]] : [];
+              const middle = pathMiddle(path);
+              const label = labels[i];
+              if (label) {
+                label.getElement().textContent = routedLabel(route, path);
+                if (middle) label.setLngLat(middle);
+              }
+              return pathFeatures(route.id, path);
+            });
+            (map.getSource("routes") as GeoJSONSource | undefined)?.setData({
+              type: "FeatureCollection",
+              features,
+            });
+            // Real paths bend away from the straight line: fit the view to them.
+            if (!paths.some(Boolean) || !result) return;
+            const { lng, lat } = result.listing.location;
+            fit(
+              [
+                [lng, lat],
+                ...features.flatMap((feature) =>
+                  feature.geometry.type === "LineString"
+                    ? (feature.geometry.coordinates as [number, number][])
+                    : [],
+                ),
+              ],
+              500,
+            );
+          },
+        );
+      });
+    };
+
+    draw(placeRoutes);
+    if (result) {
+      const amenities = (targets ?? []).filter((target) => target.kind === "amenity");
+      void Promise.all(amenities.map((target) => nearestPlace(result.listing.id, target))).then(
+        (places) => {
           if (stale) return;
-          const features = routes.flatMap((route, i) => {
-            const path = paths[i];
-            if (!path?.legs.length) return lines.features[i] ? [lines.features[i]] : [];
-            const marker = routeMarkers.current[i];
-            const middle = pathMiddle(path);
-            if (marker) {
-              marker.getElement().textContent = routedLabel(route, path);
-              if (middle) marker.setLngLat(middle);
-            }
-            return pathFeatures(route.id, path);
+          const amenityRoutes = amenities.flatMap((target, i) => {
+            const place = places[i];
+            return place ? [routeToAmenity(result, target, place)] : [];
           });
-          (map.getSource("routes") as GeoJSONSource | undefined)?.setData({
-            type: "FeatureCollection",
-            features,
-          });
-          // Real paths bend away from the straight line: fit the view to them.
-          if (!paths.some(Boolean)) return;
-          const points = features.flatMap((feature) =>
-            feature.geometry.type === "LineString"
-              ? (feature.geometry.coordinates as [number, number][])
-              : [],
-          );
-          const lngs = points.map((point) => point[0]);
-          const lats = points.map((point) => point[1]);
-          map.fitBounds(
-            [
-              [Math.min(...lngs), Math.min(...lats)],
-              [Math.max(...lngs), Math.max(...lats)],
-            ],
-            {
-              padding: 80,
-              maxZoom: 15,
-              duration: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 500,
-            },
-          );
+          if (amenityRoutes.length) draw([...placeRoutes, ...amenityRoutes]);
         },
       );
-    });
+    }
 
     const cleanup = () => {
       stale = true;
@@ -427,7 +472,7 @@ export function ResultsMap({
       homeView.current = { center: [center.lng, center.lat], zoom: map.getZoom() };
     }
     const { lng, lat } = result.listing.location;
-    if (routes.length === 0) {
+    if (placeRoutes.length === 0) {
       map.easeTo({
         center: [lng, lat],
         zoom: Math.max(map.getZoom(), HOVER_ZOOM),
@@ -435,16 +480,7 @@ export function ResultsMap({
       });
       return cleanup;
     }
-    const points = [[lng, lat], ...routes.map((route) => route.to)];
-    const lngs = points.map((point) => point[0]!);
-    const lats = points.map((point) => point[1]!);
-    map.fitBounds(
-      [
-        [Math.min(...lngs), Math.min(...lats)],
-        [Math.max(...lngs), Math.max(...lats)],
-      ],
-      { padding: 80, maxZoom: 15, duration: reduce ? 0 : 700 },
-    );
+    fit([[lng, lat], ...placeRoutes.map((route) => route.to)], 700);
     return cleanup;
   }, [ready, selected, results, targets]);
 
@@ -784,7 +820,7 @@ function addLayers(map: MapLibreMap) {
       type: "line",
       source: "amenity-line",
       layout: { "line-cap": "round" },
-      paint: { "line-color": "#f4f4f5", "line-width": 2, "line-dasharray": [1.5, 1.5] },
+      paint: { "line-color": ACTIVE_COLOR, "line-width": 3, "line-dasharray": [0.5, 2] },
     },
     "clusters",
   );
