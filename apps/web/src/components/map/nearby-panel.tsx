@@ -151,7 +151,6 @@ export function NearbyPanel({
                     className={active ? "is-active" : undefined}
                   >
                     {t(`listing.nearby.categories.${g.category}` as MessageKey)}
-                    {active && <sup>({g.places.length})</sup>}
                   </button>
                 </li>
               );
