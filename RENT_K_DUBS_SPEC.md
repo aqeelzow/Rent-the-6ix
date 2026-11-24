@@ -54,7 +54,7 @@ The table identifies candidate replacements for Toronto datasets. For ArcGIS sou
 | Asking-rent benchmark | StatCan 46-10-0092-01, Toronto CMA | Same table, [Kitchener–Cambridge–Waterloo CMA](https://www150.statcan.gc.ca/n1/daily-quotidien/250625/dq250625b-eng.pdf) | Found |
 | Zone rents | CMHC RMS, Toronto zones | CMHC RMS, KCW CMA zones | Verify zones |
 | Transit cost | TTC fare cap | [GRT monthly pass $104](https://www.grt.ca/en/fares-passes/fares.aspx); U-Pass for UW, Laurier, Conestoga students | Found |
-| Utility allowances | City of Toronto AMR + utility allowances | No Waterloo equivalent found; use the Ontario co-op utility allowance schedule or drop | Open question |
+| Utility allowances | City of Toronto AMR + utility allowances | Omit the monthly utility estimate for now ([source check](docs/datasets.md#utility-cost-source-check)) | Decided in #8 |
 | OSM extract (OTP, POIs) | Geofabrik Ontario, Toronto bbox | Same file, Waterloo bbox | No change but bbox |
 
 Licences to record in `sources`: Region of Waterloo Open Data Licence v2.0, City of Waterloo open data licence, Statistics Canada Open Licence, ODbL for OSM. WRPS publishes no licence on the occurrence page; ask before republishing derived rates.
@@ -158,7 +158,7 @@ Either way, keep the rules unchanged: opt-in, never "safe" or "unsafe", the disc
 
 - Re-pull StatCan 46-10-0092-01 for the Kitchener–Cambridge–Waterloo CMA (all bedroom sizes, latest 8 quarters). Label: “Kitchener–Cambridge–Waterloo CMA average asking rent.” Keep the benchmark geography visible.
 - Transit row: GRT adult monthly pass $104. Add a renter setting "I have a U-Pass" (UW, Laurier, Conestoga students) that sets transit cost to $0 in the monthly-cost view, with the note that the U-Pass is paid through tuition.
-- Utilities: the Toronto AMR utility rows have no Waterloo counterpart. Until one is chosen, keep the 20 utility rows as Ontario-wide sample figures with `sample: true` and say so in the UI.
+- Omit estimated utility costs from monthly totals for now. Waterloo Region's rent-geared-to-income figures apply to its subsidized housing program. Listings still report utility inclusion when stated.
 - `engine/carbon.ts`: replace the TTC notes with GRT; transit stays "not counted" unless GRT publishes per-passenger-km figures.
 
 ## Branding, copy and database
@@ -312,7 +312,7 @@ Six phases; each keeps `main` deployable. Phase K0 decides what K2 and K3 can bu
 - [ ] K0.3 Pick the Waterloo neighbourhood layer and check city coverage.
 - [ ] K0.4 Confirm the GRT GTFS URL and ION's `route_type`.
 - [ ] K0.5 Verify Waterloo inventory from Kijiji, Rentals.ca, Zillow and Realtor.ca. Confirm the provisional 300-listing target using unique active listings inside the city boundary.
-- [ ] K0.6 Pick the utility-cost source; pick the domain.
+- [ ] K0.6 Pick the domain. The utility-cost estimate is deferred in #8.
 
 **K1 — Rename and neutralise (app still runs on sample data)**
 
@@ -365,7 +365,7 @@ Optional follow-up: build the Waterloo routing graph and verify UW to downtown K
 - [ ] **Waterloo neighbourhoods:** planning districts (fewer, census-aligned) or neighbourhood associations (named, may not cover the whole city)?
 - [ ] **Thin comparables:** Waterloo has far fewer listings than Toronto, so many 3-bed or outer-neighbourhood estimates will say "Not enough data". Widen the comparables radius ladder for Waterloo, or accept it?
 - [ ] **Student market:** build lease-term and sublet fields in the first release or P1? Without them, 4-month furnished sublets skew rent estimates near UW and Laurier.
-- [ ] **Utilities:** which source replaces Toronto's utility allowances, or drop utilities from monthly cost?
+- [x] **Utilities:** omit the estimate from monthly costs for now (#8).
 - [ ] **Domain and hosting:** new domain; reuse the Vultr instance or a new one?
 - [ ] **WRPS licence:** WRPS states no licence on the occurrence page; ask before showing derived rates.
 
