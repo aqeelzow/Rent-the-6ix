@@ -23,7 +23,7 @@ Based on `main` at `b4c0c4a` (2026-11-17).
 
 Choose Waterloo planning districts or neighbourhood-association areas in K0 and use stable `WPD-<code>` neighbourhood IDs. Use the City of Waterloo municipal boundary for listing coverage. Drop ward pages, loaders and filters.
 
-For census figures, assign each 2021 dissemination area to the neighbourhood containing its centroid and sum the counts. Show median household income where one dissemination area dominates, with “Not enough data” elsewhere.
+For renter-household and tenure counts, use one 2021 Census Profile record per dissemination area (DA) and characteristic. Assign each DA to the neighbourhood containing its centroid. For population, total private dwellings, and private dwellings occupied by usual residents, sum the published counts once per dissemination block using block geography. Use the DA tenure total for the renter-household share. Show median household income where one DA dominates, with “Not enough data” elsewhere.
 
 **Boundary rules**
 
@@ -44,7 +44,7 @@ The table identifies candidate replacements for Toronto datasets. For ArcGIS sou
 | Neighbourhoods | Neighbourhoods (158) | Waterloo planning districts or [neighbourhood associations](https://services.arcgis.com/ZpeBVw5o1kjit7LT/ArcGIS/rest/services/NeighbourhoodAssociations/FeatureServer) | Found; Waterloo layer choice open |
 | City boundary | Wards union | Region `Municipal_Boundary`, filtered to the City of Waterloo | Found |
 | Address points (geocoding) | Toronto One Address Repository (\~525k) | Waterloo address points (has ward, district, lat/lon) | Found; verify Waterloo URL |
-| Census indicators | Neighbourhood Profiles XLSX (158 columns) | StatCan 2021 Census Profile at DA level, aggregated (see Geography) | Verify table id and DA boundary file |
+| Census indicators | Neighbourhood Profiles XLSX (158 columns) | StatCan 2021 Census Profile for tenure, Geographic Attribute File for block population and dwelling counts | [Sources and join keys](docs/datasets.md#census-and-rent-benchmarks) |
 | Transit stops + rapid flag | TTC GTFS via CKAN | [GRT GTFS](https://www.grt.ca/about-grt/open-data/) (Region open data portal) | Found; producer URL moved, verify |
 | Development applications | Toronto Development Applications | Waterloo [O. Reg. 73/23 quarterly planning data](https://www.waterloo.ca/planning-and-development/explore-planning-and-land-use-data/) | Found; Waterloo may be tabular only |
 | Libraries, parks, community centres, schools | City datasets | Waterloo open data layers; OSM as fallback | Verify per layer |
@@ -149,7 +149,7 @@ The explorer shows neighbourhoods only: remove the ward toggle from the map and 
 
 WRPS publishes one occurrence row per call with a "general location", but the page does not say what that location is. P0 opens the 2025 file (38.7 MB XLSX) and decides:
 
-1. **Points, blocks or intersections:** geocode, count by neighbourhood, divide by 2021 Census population from the same DA aggregation, average 2023–2025. Use the closest offence groups to the five TPS indicators (assault, break and enter, auto theft, robbery, theft over $5,000). Rewrite every caveat in `engine/safety.ts` to name WRPS, and state that the rates are computed by Rent the Loo from WRPS data, not published by WRPS.
+1. **Points, blocks or intersections:** geocode, count by neighbourhood, divide by 2021 Census population aggregated from dissemination blocks, average 2023–2025. Use the closest offence groups to the five TPS indicators (assault, break and enter, auto theft, robbery, theft over $5,000). Rewrite every caveat in `engine/safety.ts` to name WRPS, and state that the rates are computed by Rent the Loo from WRPS data, not published by WRPS.
 2. **Only municipality or patrol zone:** too coarse for a neighbourhood rate. Turn the safety preference, its chip, and map layer off, and say on `/data` why.
 
 Either way, keep the rules unchanged: opt-in, never "safe" or "unsafe", the disclaimer everywhere crime appears, and the parser never sets a limit. Occurrence data counts calls, not confirmed crimes; that becomes an extra caveat.
@@ -329,7 +329,7 @@ Six phases; each keeps `main` deployable. Phase K0 decides what K2 and K3 can bu
 - [ ] K2.3 Address points loader. Check: 20 random Waterloo addresses geocode within 10 m.
 - [ ] K2.4 GRT stops + rapid flag. Check: every ION station flagged rapid.
 - [ ] K2.5 POIs and known places regenerated.
-- [ ] K2.6 Census DA aggregation. Check: neighbourhood renter counts sum to Waterloo's 2021 total within rounding.
+- [ ] K2.6 Aggregate census tenure by DA and population and dwelling counts by block. Check the totals against Waterloo's 2021 city figures and account for suppression and rounding in DA tenure counts.
 - [ ] K2.7 Development applications.
 - [ ] K2.8 Crime rates (if K0.2 = option 1), else safety off with `/data` note.
 - [ ] K2.9 Area indicators; remove ward pages, ward toggle and election box; explorer shows neighbourhoods only.
