@@ -42,10 +42,10 @@ async function addresses(sql: Sql): Promise<void> {
 
 async function pois(sql: Sql): Promise<void> {
   const load = await loadPois(sql);
-  console.log(`  pois: ${load.written} rows`, load.byCategory);
-  // Every category is required: an empty one means a source silently stopped contributing
-  // (the City's facility layers are MultiPoint, which is easy to mis-parse into zero rows).
+  console.log(`  pois: ${load.written} rows, ${load.removed} removed`, load.byCategory);
+  // Every category is required: an empty one means its OSM tags stopped matching.
   const missing = [
+    "university",
     "library",
     "park",
     "community_centre",
