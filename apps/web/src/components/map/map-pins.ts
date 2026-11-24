@@ -198,3 +198,22 @@ export function greyBasemap(map: MapLibreMap): void {
     }
   }
 }
+
+/** "350 m" or "1.2 km". */
+export function shortDistance(metres: number): string {
+  if (metres < 1000) return `${Math.round(metres / 10) * 10} m`;
+  return `${(Math.round(metres / 100) / 10).toFixed(1)} km`;
+}
+
+/** The nearest grocery store (or park, pharmacy…) behind a hovered trip line: a dot and its name. */
+export function amenityPinElement(name: string, distanceM: number): HTMLDivElement {
+  const pin = document.createElement("div");
+  pin.className = "amenity-pin";
+  const dot = document.createElement("span");
+  dot.className = "amenity-pin-dot";
+  const label = document.createElement("span");
+  label.className = "amenity-pin-label";
+  label.textContent = `${name} · ${shortDistance(distanceM)}`;
+  pin.append(dot, label);
+  return pin;
+}

@@ -4,6 +4,7 @@ import { Bookmark, Building2 } from "lucide-react";
 import Link from "next/link";
 import { ListingPhoto } from "@/components/listing/listing-photo";
 import { BAND_COLORS, scoreBand } from "@/components/map/map-data";
+import { clearAmenityPin, showNearestAmenity } from "@/components/map/amenity-pin";
 import { ACTIVE_COLOR } from "@/components/map/map-pins";
 import { t, type MessageKey } from "@/lib/format/messages";
 import { formatCad, formatCount } from "@/lib/format/number";
@@ -67,6 +68,8 @@ export function ResultCard({
 
   const price = priceSummary(valuation);
   const trip = travelSummaries(result, targets)[0];
+  // An amenity trip ("Est. 2 min walk to groceries") pins that place on the map while hovered.
+  const pinsPlace = trip?.kind === "estimated" && targets[0]?.kind === "amenity";
   const score = Math.round(matchScore.total);
   const rent = `${formatCad(listing.monthlyRentCad)}${
     listing.rentIsPerRoom ? r("perRoom") : r("perMonth")
@@ -125,7 +128,20 @@ export function ResultCard({
         </p>
         {trip && (
           <p
-            className={`text-muted-foreground mt-0.5 truncate text-xs ${trip.kind === "estimated" ? "figures" : ""}`}
+            // Above the row's stretched link, so it gets the hover; a click still selects the row.
+            onMouseEnter={
+              pinsPlace ? () => void showNearestAmenity(listing, targets[0]) : undefined
+            }
+            onMouseLeave={pinsPlace ? clearAmenityPin : undefined}
+            onClick={
+              pinsPlace
+                ? () => {
+                    if (window.matchMedia("(min-width: 1024px)").matches)
+                      setSelected(selected ? null : id, "list");
+                  }
+                : undefined
+            }
+            className={`text-muted-foreground mt-0.5 max-w-full truncate text-xs ${trip.kind === "estimated" ? "figures" : ""} ${pinsPlace ? "relative z-10 w-fit cursor-pointer underline decoration-dotted underline-offset-2" : ""}`}
           >
             {travelText(trip)}
           </p>

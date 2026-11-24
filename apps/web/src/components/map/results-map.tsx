@@ -39,7 +39,8 @@ import {
   type RouteToPlace,
   type ScoreBand,
 } from "./map-data";
-import { ACTIVE_COLOR, greyBasemap, listingCard, pinElement } from "./map-pins";
+import { useAmenityPin } from "./amenity-pin";
+import { ACTIVE_COLOR, amenityPinElement, greyBasemap, listingCard, pinElement } from "./map-pins";
 
 // Basemap: MapTiler with a key, else OpenFreeMap (no key needed). SPEC 3.
 const MAPTILER_KEY = process.env.NEXT_PUBLIC_MAPTILER_KEY;
@@ -136,6 +137,7 @@ export function ResultsMap({
   const targets = useAppStore((s) => s.intent?.travelTargets);
   const hovered = useAppStore((s) => s.hoveredListingId);
   const selected = useAppStore((s) => s.selectedListingId);
+  const amenity = useAmenityPin((s) => s.pin);
   // The layer is offered only while "Consider reported crime levels" is on; off on every visit,
   // and loaded the first time the renter turns it on. Turning the preference off hides it too.
   const crimeOffered = useAppStore((s) => s.intent?.safety.enabled ?? false);
@@ -423,6 +425,48 @@ export function ResultsMap({
     syncPins.current();
   }, [ready, hovered, selected, results]);
 
+  // A hovered trip line ("Est. 2 min walk to groceries") pins that place, with a line to it.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!ready || !map) return;
+    const line: FeatureCollection = {
+      type: "FeatureCollection",
+      features: amenity
+        ? [
+            {
+              type: "Feature",
+              properties: {},
+              geometry: {
+                type: "LineString",
+                coordinates: [
+                  [amenity.from.lng, amenity.from.lat],
+                  [amenity.location.lng, amenity.location.lat],
+                ],
+              },
+            },
+          ]
+        : [],
+    };
+    (map.getSource("amenity-line") as GeoJSONSource | undefined)?.setData(line);
+    if (!amenity) return;
+    let marker: Marker | null = null;
+    let ours = true;
+    void import("maplibre-gl").then((maplibregl) => {
+      if (!ours) return;
+      marker = new maplibregl.Marker({
+        element: amenityPinElement(amenity.name, amenity.distanceM),
+        anchor: "left",
+        offset: [-7, 0],
+      })
+        .setLngLat([amenity.location.lng, amenity.location.lat])
+        .addTo(map);
+    });
+    return () => {
+      ours = false;
+      marker?.remove();
+    };
+  }, [ready, amenity]);
+
   // The selected listing's card opens on its pin; closing it (or clicking the map) unselects.
   useEffect(() => {
     const map = mapRef.current;
@@ -664,6 +708,18 @@ function addLayers(map: MapLibreMap) {
     },
     paint: { "text-color": "#ffffff" },
   });
+  // A dashed line from a listing to the nearest place behind its hovered trip line.
+  map.addSource("amenity-line", { type: "geojson", data: empty });
+  map.addLayer(
+    {
+      id: "amenity-line",
+      type: "line",
+      source: "amenity-line",
+      layout: { "line-cap": "round" },
+      paint: { "line-color": "#f4f4f5", "line-width": 2, "line-dasharray": [1.5, 1.5] },
+    },
+    "clusters",
+  );
   // Lines from the selected listing to the renter's places (their labels are HTML markers).
   map.addSource("routes", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
   // A soft glow under a solid line, in the selection colour.
