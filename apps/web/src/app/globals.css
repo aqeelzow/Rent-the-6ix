@@ -229,8 +229,9 @@
 
 /* The trip on a line from the selected listing to a renter's place (results map). */
 .route-label {
-  background: #e8590c;
-  color: #ffffff;
+  background: #1c1c1f;
+  color: #3ddc97;
+  border: 1px solid rgb(61 220 151 / 0.5);
   border-radius: 9999px;
   padding: 0.2rem 0.6rem;
   font-family: var(--font-sans);
@@ -257,4 +258,204 @@
 }
 .maplibregl-popup.approx-tip .maplibregl-popup-tip {
   display: none;
+}
+
+/* Results map pins (map-pins.ts): the listing's photo in a circle with its rent in a chip below.
+   The button is the photo, centred on the point; the chip hangs under it. #3ddc97 is the
+   selection colour shared with the list (ACTIVE_COLOR). */
+.map-pin {
+  position: relative;
+  display: block;
+  width: 2.5rem;
+  height: 2.5rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  transition: transform 150ms ease;
+}
+.map-pin > * {
+  transition: opacity 150ms ease;
+}
+.map-pin:focus-visible {
+  outline: none;
+}
+.map-pin-photo {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  border-radius: 9999px;
+  background: #f4f4f5;
+  color: #3f3f46;
+  border: 2px solid #f4f4f5;
+  box-shadow: 0 4px 12px rgb(0 0 0 / 0.45);
+}
+.map-pin-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.map-pin-photo svg {
+  width: 55%;
+  height: 55%;
+}
+.map-pin-chip {
+  position: absolute;
+  top: calc(100% + 0.25rem);
+  left: 50%;
+  transform: translateX(-50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.15rem 0.45rem;
+  border-radius: 0.4rem;
+  background: #1c1c1f;
+  color: #f4f4f5;
+  border: 1px solid #3f3f46;
+  font-family: var(--font-sans);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  box-shadow: 0 2px 8px rgb(0 0 0 / 0.35);
+}
+.map-pin-chip i,
+.map-card-facts i {
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 9999px;
+  flex: none;
+}
+.map-pin-approx .map-pin-photo {
+  border-style: dashed;
+  opacity: 0.75;
+}
+/* MapLibre sets an inline opacity on markers, so the fade goes on what's inside. */
+.map-pin.is-faded > * {
+  opacity: 0.35;
+}
+.map-pin.is-active,
+.map-pin:hover,
+.map-pin:focus-visible {
+  z-index: 2;
+  transform: scale(1.12);
+}
+.map-pin.is-active .map-pin-photo,
+.map-pin:focus-visible .map-pin-photo {
+  border-color: #3ddc97;
+  box-shadow:
+    0 0 0 3px rgb(61 220 151 / 0.35),
+    0 4px 14px rgb(0 0 0 / 0.5);
+}
+.map-pin.is-active .map-pin-chip {
+  border-color: #3ddc97;
+}
+@media (prefers-reduced-motion: reduce) {
+  .map-pin,
+  .map-pin > * {
+    transition: none;
+  }
+}
+
+/* The selected listing's card on the map. Two classes, to beat MapLibre's white popup. */
+.maplibregl-popup.map-card-popup .maplibregl-popup-content {
+  background: #1c1c1f;
+  color: #f4f4f5;
+  border: 1px solid #3f3f46;
+  border-radius: 1rem;
+  padding: 0.875rem;
+  box-shadow: 0 12px 32px rgb(0 0 0 / 0.5);
+  font-family: var(--font-sans);
+}
+.maplibregl-popup.map-card-popup .maplibregl-popup-tip {
+  display: none;
+}
+.map-card {
+  display: flex;
+  width: 16rem;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+.map-card-head {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  min-width: 0;
+}
+.map-card-photo {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  overflow: hidden;
+  border-radius: 9999px;
+  background: #f4f4f5;
+  color: #3f3f46;
+}
+.map-card-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.map-card-photo svg {
+  width: 55%;
+  height: 55%;
+}
+.map-card-text {
+  min-width: 0;
+}
+.map-card-title {
+  overflow: hidden;
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.map-card-address {
+  overflow: hidden;
+  margin-top: 0.125rem;
+  color: #a1a1aa;
+  font-size: 0.75rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.map-card-facts {
+  display: flex;
+  flex-wrap: wrap;
+  border: 1px solid #3f3f46;
+  border-radius: 0.6rem;
+}
+.map-card-facts span {
+  display: inline-flex;
+  flex: 1 1 auto;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  padding: 0.4rem 0.5rem;
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.map-card-facts span + span {
+  border-left: 1px solid #3f3f46;
+}
+.map-card-view {
+  display: block;
+  border: 1px solid #3f3f46;
+  border-radius: 0.6rem;
+  padding: 0.5rem;
+  color: #f4f4f5;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  text-align: center;
+  text-decoration: none;
+}
+.map-card-view:hover,
+.map-card-view:focus-visible {
+  border-color: #3ddc97;
+  outline: none;
 }

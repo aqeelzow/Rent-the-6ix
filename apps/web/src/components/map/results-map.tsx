@@ -11,6 +11,7 @@ import type {
   Popup,
 } from "maplibre-gl";
 import { Layers, LoaderCircle } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { useTheme } from "@/lib/theme/theme";
 import type { AreaChoropleth, SearchResultItem } from "@/lib/store/types";
@@ -38,6 +39,7 @@ import {
   type RouteToPlace,
   type ScoreBand,
 } from "./map-data";
+import { ACTIVE_COLOR, greyBasemap, listingCard, pinElement } from "./map-pins";
 
 // Basemap: MapTiler with a key, else OpenFreeMap (no key needed). SPEC 3.
 const MAPTILER_KEY = process.env.NEXT_PUBLIC_MAPTILER_KEY;
@@ -96,9 +98,6 @@ type CrimeHover = { name: string; value: number | null } | null;
  * An opt-in "Crime rates" layer shades neighbourhoods by police-reported
  * crime relative to the city, with its caveats beside it (SPEC 7.6).
  */
-/** The highlighted listing's ring: a warm orange no score band or place pin uses. */
-const ACTIVE_COLOR = "#e8590c";
-
 /** The trip on a route line: an estimate from distance, so it says so, with the distance. */
 function routeLabel(route: RouteToPlace): string {
   return t("results.map.routeEstimate", {
@@ -114,12 +113,23 @@ const PLACE_ZOOM = 15;
 /** How close the map comes in on a listing hovered in the list (street level). */
 const HOVER_ZOOM = 14.5;
 
-export function ResultsMap({ className = "" }: { className?: string }) {
+export function ResultsMap({
+  className = "",
+  pinCards = true,
+}: {
+  className?: string;
+  /** Open the selected listing's card on its pin. Off where the page shows its own card. */
+  pinCards?: boolean;
+}) {
   const container = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MapLibreMap | null>(null);
   const markers = useRef<Marker[]>([]);
   const popups = useRef<Popup[]>([]);
   const routeMarkers = useRef<Marker[]>([]);
+  const pins = useRef(new Map<string, Pin>());
+  const syncPins = useRef<() => void>(() => {});
+  const card = useRef<Popup | null>(null);
+  const router = useRouter();
   const [ready, setReady] = useState(false);
   const [failed, setFailed] = useState(false);
   const results = useAppStore((s) => s.results);
@@ -182,8 +192,10 @@ export function ResultsMap({ className = "" }: { className?: string }) {
         });
         map.on("load", () => {
           if (!map) return;
+          if (theme === "dark") greyBasemap(map);
           addLayers(map);
           bindEvents(map, maplibregl);
+          syncPins.current = bindPins(map, maplibregl, pins.current);
           mapRef.current = map;
           // Lets browser tests find pins on screen; never in production builds.
           if (process.env.NODE_ENV !== "production") Object.assign(window, { __resultsMap: map });
@@ -191,8 +203,10 @@ export function ResultsMap({ className = "" }: { className?: string }) {
         });
       })
       .catch(() => setFailed(true));
+    const pinMap = pins.current;
     return () => {
       cancelled = true;
+      pinMap.clear();
       map?.remove();
       mapRef.current = null;
       setReady(false);
@@ -395,48 +409,63 @@ export function ResultsMap({ className = "" }: { className?: string }) {
     }
   }, [ready, crimeOn, crime, theme]);
 
-  // Hover and selection from the list highlight the matching pin or circle.
+  // Hover and selection from the list highlight the matching pin or circle, and fade the rest.
   useEffect(() => {
     const map = mapRef.current;
     if (!ready || !map) return;
     const ids = [hovered, selected].filter((id): id is string => id !== null);
     const filter: FilterSpecification = ["in", ["get", "id"], ["literal", ids]];
-    const pinFilter: FilterSpecification = ["all", ["!", ["has", "point_count"]], filter];
-    map.setFilter("pins-active", pinFilter);
     map.setFilter("approx-fill", filter);
     map.setFilter("approx-line", filter);
     map.setFilter("approx-active-fill", filter);
     map.setFilter("approx-active", filter);
-    // A halo and centre dot mark each highlighted listing, approximate circles included.
-    const focus: FeatureCollection = {
-      type: "FeatureCollection",
-      features: results
-        .filter((result) => ids.includes(result.listing.id))
-        .map((result) => ({
-          type: "Feature",
-          properties: {},
-          geometry: {
-            type: "Point",
-            coordinates: [result.listing.location.lng, result.listing.location.lat],
-          },
-        })),
-    };
-    (map.getSource("focus") as GeoJSONSource | undefined)?.setData(focus);
-    // Fade every other listing while one is pointed at, so the active one stands out.
-    const active: ExpressionSpecification = ["in", ["get", "id"], ["literal", ids]];
-    // Approximate dots stay lighter than confirmed ones in both states.
-    const base = (full: number): ExpressionSpecification => [
-      "case",
-      ["get", "approx"],
-      full * APPROX_OPACITY,
-      full,
-    ];
-    const pinOpacity: ExpressionSpecification = ids.length
-      ? ["case", active, 1, base(0.3)]
-      : base(1);
-    map.setPaintProperty("pins", "circle-opacity", pinOpacity);
-    map.setPaintProperty("pins", "circle-stroke-opacity", pinOpacity);
+    // The pointed-at listing gets its own pin even inside a cluster.
+    syncPins.current();
   }, [ready, hovered, selected, results]);
+
+  // The selected listing's card opens on its pin; closing it (or clicking the map) unselects.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!ready || !map) return;
+    const result = selected ? results.find((r) => r.listing.id === selected) : undefined;
+    let ours = true;
+    let popup: Popup | null = null;
+    void import("maplibre-gl").then((maplibregl) => {
+      if (!ours || !result || !pinCards) return;
+      const { lng, lat } = result.listing.location;
+      popup = new maplibregl.Popup({
+        // Clear of the pin's photo above the point and its chip below.
+        offset: {
+          top: [0, 46],
+          "top-left": [0, 46],
+          "top-right": [0, 46],
+          bottom: [0, -26],
+          "bottom-left": [0, -26],
+          "bottom-right": [0, -26],
+          left: [26, 0],
+          right: [-26, 0],
+          center: [0, 0],
+        },
+        closeButton: false,
+        maxWidth: "300px",
+        className: "map-card-popup",
+      })
+        .setLngLat([lng, lat])
+        .setDOMContent(listingCard(result, (href) => router.push(href)))
+        .addTo(map);
+      popup.on("close", () => {
+        if (ours && appStore.getState().selectedListingId === result.listing.id) {
+          appStore.getState().setSelectedListingId(null);
+        }
+      });
+      card.current = popup;
+    });
+    return () => {
+      ours = false;
+      popup?.remove();
+      card.current = null;
+    };
+  }, [ready, selected, results, router, pinCards]);
 
   return (
     <div className={`bg-muted relative ${className}`}>
@@ -614,11 +643,12 @@ function addLayers(map: MapLibreMap) {
     type: "circle",
     source: "listings",
     filter: ["has", "point_count"],
+    // A dark disc with a light ring, in the pins' style.
     paint: {
-      "circle-color": BAND_COLORS.high,
-      "circle-opacity": 0.85,
-      "circle-radius": ["step", ["get", "point_count"], 14, 10, 18, 50, 24],
-      "circle-stroke-color": "#ffffff",
+      "circle-color": "#1c1c1f",
+      "circle-opacity": 0.95,
+      "circle-radius": ["step", ["get", "point_count"], 16, 10, 20, 50, 26],
+      "circle-stroke-color": "#f4f4f5",
       "circle-stroke-width": 2,
     },
   });
@@ -634,69 +664,34 @@ function addLayers(map: MapLibreMap) {
     },
     paint: { "text-color": "#ffffff" },
   });
-  map.addLayer({
-    id: "pins",
-    type: "circle",
-    source: "listings",
-    filter: ["!", ["has", "point_count"]],
-    // Approximate locations are the same colour, lighter, so confirmed addresses stand out.
-    paint: {
-      "circle-color": bandColor,
-      "circle-radius": 7,
-      "circle-opacity": ["case", ["get", "approx"], APPROX_OPACITY, 1],
-      "circle-stroke-color": "#ffffff",
-      "circle-stroke-width": 2,
-      "circle-stroke-opacity": ["case", ["get", "approx"], APPROX_OPACITY, 1],
-    },
-  });
-  map.addLayer({
-    id: "pins-active",
-    type: "circle",
-    source: "listings",
-    filter: ["in", ["get", "id"], ["literal", []]],
-    paint: {
-      "circle-color": bandColor,
-      "circle-radius": 11,
-      "circle-stroke-color": ACTIVE_COLOR,
-      "circle-stroke-width": 4,
-    },
-  });
   // Lines from the selected listing to the renter's places (their labels are HTML markers).
   map.addSource("routes", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
+  // A soft glow under a solid line, in the selection colour.
+  map.addLayer(
+    {
+      id: "routes-glow",
+      type: "line",
+      source: "routes",
+      layout: { "line-cap": "round", "line-join": "round" },
+      paint: {
+        "line-color": ACTIVE_COLOR,
+        "line-width": 12,
+        "line-blur": 8,
+        "line-opacity": 0.45,
+      },
+    },
+    "clusters",
+  );
   map.addLayer(
     {
       id: "routes",
       type: "line",
       source: "routes",
-      layout: { "line-cap": "round" },
-      paint: { "line-color": ACTIVE_COLOR, "line-width": 3, "line-dasharray": [1.5, 1.5] },
+      layout: { "line-cap": "round", "line-join": "round" },
+      paint: { "line-color": ACTIVE_COLOR, "line-width": 3 },
     },
     "clusters",
   );
-  map.addSource("focus", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
-  map.addLayer({
-    id: "focus-halo",
-    type: "circle",
-    source: "focus",
-    paint: {
-      "circle-color": ACTIVE_COLOR,
-      "circle-opacity": 0.15,
-      "circle-radius": 26,
-      "circle-stroke-color": ACTIVE_COLOR,
-      "circle-stroke-width": 2.5,
-    },
-  });
-  map.addLayer({
-    id: "focus-dot",
-    type: "circle",
-    source: "focus",
-    paint: {
-      "circle-color": ACTIVE_COLOR,
-      "circle-radius": 6,
-      "circle-stroke-color": "#ffffff",
-      "circle-stroke-width": 2,
-    },
-  });
 }
 
 /**
@@ -760,49 +755,6 @@ function openPlaceList(
 let placeList: Popup | null = null;
 
 function bindEvents(map: MapLibreMap, maplibregl: typeof import("maplibre-gl")) {
-  const { setHoveredListingId, setSelectedListingId } = appStore.getState();
-  // Hovering an approximate-location dot says how approximate it is.
-  const approxTip = new maplibregl.Popup({
-    closeButton: false,
-    closeOnClick: false,
-    offset: 10,
-    className: "approx-tip",
-  });
-  // Only dots respond: the approximate-area circle is display-only, since its handlers fired with
-  // the dots' and undid their clicks (a dot inside a shown circle couldn't be selected).
-  for (const layer of ["pins"]) {
-    map.on("mousemove", layer, (event) => {
-      const feature = event.features?.[0];
-      const id = feature?.properties?.id;
-      if (typeof id === "string") setHoveredListingId(id);
-      map.getCanvas().style.cursor = "pointer";
-      const radiusM = Number(feature?.properties?.radiusM ?? 0);
-      if (radiusM > 0 && feature?.geometry.type === "Point") {
-        approxTip
-          .setLngLat(feature.geometry.coordinates as [number, number])
-          .setText(t("results.map.approxTip", { m: radiusM }))
-          .addTo(map);
-      } else approxTip.remove();
-    });
-    map.on("mouseleave", layer, () => {
-      setHoveredListingId(null);
-      map.getCanvas().style.cursor = "";
-      approxTip.remove();
-    });
-    map.on("click", layer, (event) => {
-      const id = event.features?.[0]?.properties?.id;
-      if (typeof id !== "string") return;
-      // Several units in the same building: list them instead of picking one.
-      const group = listingsAtSamePlace(appStore.getState().results, id);
-      if (group.length > 1) {
-        openPlaceList(map, maplibregl, [event.lngLat.lng, event.lngLat.lat], group);
-        return;
-      }
-      // Clicking the selected listing again unselects it. Otherwise the list scrolls to the
-      // card itself, once it's rendered (it may be past "Show more").
-      setSelectedListingId(appStore.getState().selectedListingId === id ? null : id);
-    });
-  }
   map.on("click", "clusters", async (event) => {
     const feature = event.features?.[0];
     const clusterId = feature?.properties?.cluster_id;
@@ -830,6 +782,103 @@ function bindEvents(map: MapLibreMap, maplibregl: typeof import("maplibre-gl")) 
   });
   map.on("mouseenter", "clusters", () => (map.getCanvas().style.cursor = "pointer"));
   map.on("mouseleave", "clusters", () => (map.getCanvas().style.cursor = ""));
+}
+
+/** One listing's HTML pin, kept with the result it was drawn from so new results redraw it. */
+interface Pin {
+  marker: Marker;
+  element: HTMLButtonElement;
+  result: SearchResultItem;
+}
+
+/** Highlight a pin that's hovered or selected; fade the others while any is. */
+function markPin(element: HTMLElement, id: string, active: string[]) {
+  element.classList.toggle("is-active", active.includes(id));
+  element.classList.toggle("is-faded", active.length > 0 && !active.includes(id));
+}
+
+/**
+ * Photo pins for listings that aren't in a cluster, plus the hovered or selected one wherever it
+ * is. The clustered GeoJSON source decides which listings stand alone at this zoom; after every
+ * move and data change the pins follow it. Returns the sync, for hover and selection changes.
+ */
+function bindPins(
+  map: MapLibreMap,
+  maplibregl: typeof import("maplibre-gl"),
+  pins: Map<string, Pin>,
+): () => void {
+  const { setHoveredListingId, setSelectedListingId } = appStore.getState();
+  // Hovering an approximate-location pin says how approximate it is.
+  const approxTip = new maplibregl.Popup({
+    closeButton: false,
+    closeOnClick: false,
+    offset: 30,
+    className: "approx-tip",
+  });
+
+  const create = (result: SearchResultItem): Pin => {
+    const { id, location, locationPrecision } = result.listing;
+    const element = pinElement(result);
+    element.addEventListener("mouseenter", () => {
+      setHoveredListingId(id);
+      if (locationPrecision !== "exact") {
+        const m = resultsToGeoJSON([result]).points.features[0]?.properties.radiusM ?? 0;
+        approxTip
+          .setLngLat([location.lng, location.lat])
+          .setText(t("results.map.approxTip", { m }))
+          .addTo(map);
+      }
+    });
+    element.addEventListener("mouseleave", () => {
+      setHoveredListingId(null);
+      approxTip.remove();
+    });
+    element.addEventListener("click", (event) => {
+      // Keep the map's own click (which closes the card) from firing too.
+      event.stopPropagation();
+      // Several units in the same building: list them instead of picking one.
+      const group = listingsAtSamePlace(appStore.getState().results, id);
+      if (group.length > 1) {
+        openPlaceList(map, maplibregl, [location.lng, location.lat], group);
+        return;
+      }
+      // Clicking the selected listing again unselects it.
+      setSelectedListingId(appStore.getState().selectedListingId === id ? null : id);
+    });
+    const marker = new maplibregl.Marker({ element, anchor: "center" })
+      .setLngLat([location.lng, location.lat])
+      .addTo(map);
+    return { marker, element, result };
+  };
+
+  const sync = () => {
+    if (!map.getSource("listings") || !map.isSourceLoaded("listings")) return;
+    const { results, hoveredListingId, selectedListingId } = appStore.getState();
+    const byId = new Map(results.map((result) => [result.listing.id, result]));
+    const alone = new Set<string>();
+    for (const feature of map.querySourceFeatures("listings")) {
+      const id = feature.properties?.id;
+      if (!feature.properties?.point_count && typeof id === "string" && byId.has(id)) alone.add(id);
+    }
+    const active = [hoveredListingId, selectedListingId].filter((id): id is string => !!id);
+    for (const id of active) if (byId.has(id)) alone.add(id);
+    for (const [id, pin] of pins) {
+      if (!alone.has(id) || pin.result !== byId.get(id)) {
+        pin.marker.remove();
+        pins.delete(id);
+      }
+    }
+    for (const id of alone) {
+      const pin = pins.get(id) ?? create(byId.get(id)!);
+      pins.set(id, pin);
+      markPin(pin.element, id, active);
+    }
+  };
+  map.on("moveend", sync);
+  map.on("sourcedata", (event) => {
+    if (event.sourceId === "listings" && event.isSourceLoaded) sync();
+  });
+  return sync;
 }
 
 /** How opaque an approximate-location dot is, against 1 for a confirmed address. */

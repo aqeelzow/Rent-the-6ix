@@ -103,8 +103,6 @@ export function SearchView({ prompt, shared }: { prompt: string | null; shared: 
   const visibleCount = Math.min(ordered.length, pageCount);
   const selectedIndex = selectedId ? results.findIndex((r) => r.listing.id === selectedId) : -1;
   const selectedResult = selectedIndex >= 0 ? results[selectedIndex] : undefined;
-  // A pin past "Show more" opens its card over the map instead of growing the list.
-  const selectedOffList = selectedIndex >= visibleCount;
 
   // A pin whose card is in the list scrolls the list to it (SPEC 11.2).
   useEffect(() => {
@@ -306,20 +304,13 @@ export function SearchView({ prompt, shared }: { prompt: string | null; shared: 
       </div>
       {desktop ? (
         <div className="sticky top-14 h-[calc(100dvh-3.5rem)] border-l">
+          {/* The picked pin's card opens on the pin itself, whether or not it's in the list. */}
           <ResultsMap className="size-full" />
-          {selectedOffList && (
-            <MapListingCard
-              result={selectedResult}
-              intent={intent}
-              now={now}
-              onClose={() => setSelected(null)}
-            />
-          )}
         </div>
       ) : (
         mobileView === "map" && (
           <div className="fixed inset-x-0 top-14 bottom-0 z-30">
-            <ResultsMap className="size-full" />
+            <ResultsMap className="size-full" pinCards={false} />
             <Button
               onClick={() => setMobileView("list")}
               className="absolute top-3 left-1/2 z-10 h-10 -translate-x-1/2 rounded-full px-4 shadow-lg"
@@ -341,8 +332,7 @@ export function SearchView({ prompt, shared }: { prompt: string | null; shared: 
 }
 
 /**
- * The picked pin's card over the map: always on a phone's map view, and on desktop when the
- * card isn't in the list yet (SPEC 11.2).
+ * The picked pin's card over a phone's map view (SPEC 11.2). On desktop it opens on the pin.
  */
 function MapListingCard({
   result,

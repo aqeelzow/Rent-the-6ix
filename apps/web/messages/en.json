@@ -514,7 +514,9 @@
         "source": "Police-reported crime, {years} average, by neighbourhood.",
         "unavailable": "Crime rates couldn't be loaded. Try again later."
       },
-      "approxTip": "Approximate location: within about {m} m"
+      "approxTip": "Approximate location: within about {m} m",
+      "cardScore": "{score} match",
+      "cardView": "View details"
     },
     "mobile": {
       "showMap": "Map",

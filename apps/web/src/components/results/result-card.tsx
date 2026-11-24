@@ -138,7 +138,7 @@ export function ResultCard({
       onFocus={() => setHovered(id)}
       onBlur={() => setHovered(null)}
       aria-current={selected ? "true" : undefined}
-      className={`bg-card relative flex flex-col rounded-3xl border p-1.5 shadow-sm transition-shadow hover:shadow-md ${selected ? "ring-2 ring-[#e8590c]" : highlighted ? "ring-primary/60 ring-2" : ""}`}
+      className={`bg-card relative flex flex-col rounded-3xl border p-1.5 shadow-sm transition-shadow hover:shadow-md ${selected ? "ring-2 ring-[#3ddc97]" : highlighted ? "ring-primary/60 ring-2" : ""}`}
     >
       {/* One calm tint for every card; the price pill carries the label's colour. */}
       <div className="bg-accent text-accent-foreground flex flex-col gap-4 rounded-[1.25rem] p-5">
