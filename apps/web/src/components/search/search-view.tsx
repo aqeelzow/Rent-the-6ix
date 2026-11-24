@@ -75,8 +75,6 @@ export function SearchView({ prompt, shared }: { prompt: string | null; shared: 
   const notices = useAppStore((s) => s.notices);
   const selectedId = useAppStore((s) => s.selectedListingId);
   const setSelected = useAppStore((s) => s.setSelectedListingId);
-  // "Seen N days ago" is measured from when this view opened.
-  const [now] = useState(() => Date.now());
   // Desktop shows the map beside the list; phones switch between them (SPEC 11.2).
   const desktop = useMediaQuery("(min-width: 1024px)");
   const [mobileView, setMobileView] = useState<"list" | "map">("list");
@@ -261,17 +259,10 @@ export function SearchView({ prompt, shared }: { prompt: string | null; shared: 
                 {t(order === "carbon" ? "results.order.carbon" : "results.order.distance")}
               </p>
             )}
-            <ol className={`flex flex-col gap-3 ${busy ? "opacity-60" : ""}`}>
+            <ol className={`flex flex-col gap-1 ${busy ? "opacity-60" : ""}`}>
               {ordered.slice(0, visibleCount).map((result) => (
                 <li key={result.listing.id}>
-                  <ResultCard
-                    result={result}
-                    targets={intent?.travelTargets ?? []}
-                    areas={intent?.areas ?? []}
-                    safetyOn={intent?.safety.enabled ?? false}
-                    acInSearch={intent?.criteria.airConditioning !== undefined}
-                    now={now}
-                  />
+                  <ResultCard result={result} targets={intent?.travelTargets ?? []} />
                 </li>
               ))}
             </ol>
@@ -321,7 +312,6 @@ export function SearchView({ prompt, shared }: { prompt: string | null; shared: 
             <MapListingCard
               result={selectedResult}
               intent={intent}
-              now={now}
               onClose={() => setSelected(null)}
             />
           </div>
@@ -337,18 +327,16 @@ export function SearchView({ prompt, shared }: { prompt: string | null; shared: 
 function MapListingCard({
   result,
   intent,
-  now,
   onClose,
 }: {
   result: SearchResultItem | undefined;
   intent: SearchIntent | null;
-  now: number;
   onClose: () => void;
 }) {
   if (!result) return null;
   return (
     <div className="animate-in slide-in-from-bottom-4 absolute inset-x-0 bottom-0 z-10 max-h-[70%] overflow-y-auto p-3 lg:right-auto lg:bottom-4 lg:left-4 lg:w-[26rem]">
-      <div className="relative">
+      <div className="bg-card relative rounded-2xl border shadow-lg">
         <Button
           variant="secondary"
           size="icon-sm"
@@ -358,13 +346,7 @@ function MapListingCard({
         >
           <X aria-hidden />
         </Button>
-        <ResultCard
-          result={result}
-          targets={intent?.travelTargets ?? []}
-          safetyOn={intent?.safety.enabled ?? false}
-          acInSearch={intent?.criteria.airConditioning !== undefined}
-          now={now}
-        />
+        <ResultCard result={result} targets={intent?.travelTargets ?? []} />
       </div>
     </div>
   );
