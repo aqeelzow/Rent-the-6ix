@@ -114,12 +114,12 @@ export function ResultCard({
       onFocus={() => setHovered(id)}
       onBlur={() => setHovered(null)}
       aria-current={selected ? "true" : undefined}
-      className={`relative flex items-center gap-3 rounded-2xl border px-3 py-3 transition-colors ${
+      className={`relative flex items-center gap-3.5 rounded-2xl border px-3.5 py-4 transition-colors ${
         selected ? "bg-accent" : hovered ? "bg-accent/60 border-transparent" : "border-transparent"
       }`}
       style={selected ? { borderColor: ACTIVE_COLOR } : undefined}
     >
-      <div className="bg-muted text-muted-foreground grid size-12 shrink-0 place-items-center overflow-hidden rounded-full">
+      <div className="bg-muted text-muted-foreground grid size-14 shrink-0 place-items-center overflow-hidden rounded-full">
         <ListingPhoto
           src={listing.imageUrl}
           className="size-full object-cover"

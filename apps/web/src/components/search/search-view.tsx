@@ -144,7 +144,7 @@ export function SearchView({ prompt, shared }: { prompt: string | null; shared: 
     intent?.rawPrompt === prompt ? void runSearch() : void parseAndSearch(prompt);
 
   return (
-    <div className="lg:grid lg:grid-cols-[minmax(0,45fr)_minmax(0,55fr)]">
+    <div className="lg:grid lg:grid-cols-[minmax(0,36fr)_minmax(0,64fr)]">
       <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-4 py-6 lg:max-w-none lg:px-6">
         <h1 className="sr-only">{t("search.title")}</h1>
 
