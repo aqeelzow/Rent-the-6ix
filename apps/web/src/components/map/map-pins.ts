@@ -217,3 +217,21 @@ export function amenityPinElement(name: string, distanceM: number): HTMLDivEleme
   pin.append(dot, label);
   return pin;
 }
+
+/** A numbered place near the selected listing ("01"), mint when it's the one picked. */
+export function nearbyPinElement(index: number, name: string, active: boolean): HTMLDivElement {
+  const pin = document.createElement("div");
+  pin.className = active ? "nearby-pin is-active" : "nearby-pin";
+  pin.setAttribute("aria-label", name);
+  const badge = document.createElement("span");
+  badge.className = "nearby-badge";
+  badge.textContent = String(index + 1).padStart(2, "0");
+  pin.append(badge);
+  if (active) {
+    const label = document.createElement("span");
+    label.className = "amenity-pin-label";
+    label.textContent = name;
+    pin.append(label);
+  }
+  return pin;
+}

@@ -41,8 +41,16 @@ import {
   type ScoreBand,
 } from "./map-data";
 import { nearestPlace, useAmenityPin } from "./amenity-pin";
+import { NearbyPanel, type NearbyFocus } from "./nearby-panel";
 import { fetchPath, pathFeatures, pathMiddle, ridden, type RoutedPath } from "./route-path";
-import { ACTIVE_COLOR, amenityPinElement, greyBasemap, listingCard, pinElement } from "./map-pins";
+import {
+  ACTIVE_COLOR,
+  amenityPinElement,
+  greyBasemap,
+  listingCard,
+  nearbyPinElement,
+  pinElement,
+} from "./map-pins";
 
 // Basemap: MapTiler with a key, else OpenFreeMap (no key needed). SPEC 3.
 const MAPTILER_KEY = process.env.NEXT_PUBLIC_MAPTILER_KEY;
@@ -153,6 +161,9 @@ export function ResultsMap({
   const hovered = useAppStore((s) => s.hoveredListingId);
   const selected = useAppStore((s) => s.selectedListingId);
   const amenity = useAmenityPin((s) => s.pin);
+  const [nearby, setNearby] = useState<NearbyFocus | null>(null);
+  // The listing whose nearby panel has already shown once: only later picks move the view.
+  const nearbyShown = useRef<string | null>(null);
   // The layer is offered only while "Consider reported crime levels" is on; off on every visit,
   // and loaded the first time the renter turns it on. Turning the preference off hides it too.
   const crimeOffered = useAppStore((s) => s.intent?.safety.enabled ?? false);
@@ -521,6 +532,79 @@ export function ResultsMap({
     syncPins.current();
   }, [ready, hovered, selected, results]);
 
+  // The nearby panel's category: its places as numbered pins, and the walk to the one picked.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!ready || !map) return;
+    const listing = selected ? results.find((r) => r.listing.id === selected)?.listing : undefined;
+    const source = map.getSource("nearby-route") as GeoJSONSource | undefined;
+    source?.setData({ type: "FeatureCollection", features: [] });
+    if (!nearby || !listing) return;
+    const from: [number, number] = [listing.location.lng, listing.location.lat];
+    const target = nearby.places[nearby.active];
+    let ours = true;
+    const markers: Marker[] = [];
+    void import("maplibre-gl").then((maplibregl) => {
+      if (!ours) return;
+      nearby.places.forEach((place, i) => {
+        const marker = new maplibregl.Marker({
+          element: nearbyPinElement(i, place.name, i === nearby.active),
+          anchor: "left",
+          offset: [-11, 0],
+        })
+          .setLngLat([place.location.lng, place.location.lat])
+          .addTo(map);
+        markers.push(marker);
+      });
+    });
+    if (target) {
+      const to: [number, number] = [target.location.lng, target.location.lat];
+      source?.setData({
+        type: "FeatureCollection",
+        features: [
+          {
+            type: "Feature",
+            properties: {},
+            geometry: { type: "LineString", coordinates: [from, to] },
+          },
+        ],
+      });
+      void fetchPath(from, to, "walk").then((path) => {
+        if (ours && path?.legs.length) {
+          source?.setData({ type: "FeatureCollection", features: pathFeatures("nearby", path) });
+        }
+      });
+    }
+    // A pick in the panel brings the listing and the whole category into view, clear of the
+    // rail and the cards. Its first showing leaves the view on the listing's own trips.
+    const firstShowing = nearbyShown.current !== listing.id;
+    nearbyShown.current = listing.id;
+    if (firstShowing)
+      return () => {
+        ours = false;
+        markers.forEach((marker) => marker.remove());
+      };
+    const points = [from, ...nearby.places.map((p) => [p.location.lng, p.location.lat])];
+    const lngs = points.map((p) => p[0]!);
+    const lats = points.map((p) => p[1]!);
+    map.fitBounds(
+      [
+        [Math.min(...lngs), Math.min(...lats)],
+        [Math.max(...lngs), Math.max(...lats)],
+      ],
+      {
+        // The top leaves room for the listing's card, which sits above its pin.
+        padding: { top: 220, bottom: 150, left: 260, right: 80 },
+        maxZoom: 16,
+        duration: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 500,
+      },
+    );
+    return () => {
+      ours = false;
+      markers.forEach((marker) => marker.remove());
+    };
+  }, [ready, nearby, selected, results]);
+
   // A hovered trip line ("Est. 2 min walk to groceries") pins that place, with a line to it.
   useEffect(() => {
     const map = mapRef.current;
@@ -576,6 +660,14 @@ export function ResultsMap({
   }, [ready, amenity]);
 
   // The selected listing's card opens on its pin; closing it (or clicking the map) unselects.
+  // While a place north of it is picked in the nearby panel, the card opens below the pin
+  // instead, so it doesn't cover the walk there.
+  const selectedListing = selected
+    ? results.find((r) => r.listing.id === selected)?.listing
+    : undefined;
+  const pickedPlace = nearby?.places[nearby.active];
+  const cardBelow =
+    !!selectedListing && !!pickedPlace && pickedPlace.location.lat > selectedListing.location.lat;
   useEffect(() => {
     const map = mapRef.current;
     if (!ready || !map) return;
@@ -586,6 +678,7 @@ export function ResultsMap({
       if (!ours || !result || !pinCards) return;
       const { lng, lat } = result.listing.location;
       popup = new maplibregl.Popup({
+        ...(cardBelow ? { anchor: "top" as const } : {}),
         // Clear of the pin's photo above the point and its chip below.
         offset: {
           top: [0, 46],
@@ -617,7 +710,7 @@ export function ResultsMap({
       popup?.remove();
       card.current = null;
     };
-  }, [ready, selected, results, router, pinCards]);
+  }, [ready, selected, results, router, pinCards, cardBelow]);
 
   return (
     <div className={`bg-muted relative ${className}`}>
@@ -652,7 +745,12 @@ export function ResultsMap({
               {crimeOn && <CrimeLegend state={crime} hover={crimeHover} theme={theme} />}
             </div>
           )}
-          <Legend />
+          {/* What's around the selected listing (desktop, beside the list). */}
+          {ready && pinCards && selected ? (
+            <NearbyPanel key={selected} listingId={selected} onShow={setNearby} />
+          ) : (
+            <Legend />
+          )}
         </>
       )}
     </div>
@@ -835,6 +933,16 @@ function addLayers(map: MapLibreMap) {
     id: "amenity-line",
     type: "line",
     source: "amenity-line",
+    layout: { "line-cap": "round", "line-join": "round" },
+    paint: { "line-color": ACTIVE_COLOR, "line-width": 4, "line-dasharray": [0.6, 1.6] },
+  });
+  // The walk to the place picked in the nearby panel.
+  map.addSource("nearby-route", { type: "geojson", data: empty });
+  casing("nearby-route-casing", "nearby-route");
+  map.addLayer({
+    id: "nearby-route",
+    type: "line",
+    source: "nearby-route",
     layout: { "line-cap": "round", "line-join": "round" },
     paint: { "line-color": ACTIVE_COLOR, "line-width": 4, "line-dasharray": [0.6, 1.6] },
   });

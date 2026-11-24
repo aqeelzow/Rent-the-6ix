@@ -502,3 +502,161 @@
   white-space: nowrap;
   box-shadow: 0 2px 8px rgb(0 0 0 / 0.35);
 }
+
+/* The nearby panel over the results map (nearby-panel.tsx): a rail of categories on the left, the
+   active one large, and the category's places as cards along the bottom. */
+.nearby-rail {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  z-index: 5;
+  transform: translateY(-50%);
+  width: 15rem;
+  padding: 1.5rem 1rem 1.5rem 1.5rem;
+  background: linear-gradient(to right, rgb(20 20 22 / 0.9) 50%, rgb(20 20 22 / 0));
+  /* Fade the panel's top and bottom too, so it reads as a wash over the map, not a box. */
+  mask-image: linear-gradient(to bottom, transparent, #000 18%, #000 82%, transparent);
+  padding-block: 3rem;
+  color: #f4f4f5;
+  font-family: var(--font-sans);
+}
+.nearby-rail-title {
+  margin-bottom: 0.75rem;
+  color: #a1a1aa;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.nearby-rail ol {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+.nearby-rail button {
+  border-radius: 0.375rem;
+  padding: 0.15rem 0;
+  color: #a1a1aa;
+  font-size: 0.875rem;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    color 150ms ease,
+    font-size 150ms ease;
+}
+.nearby-rail button:hover {
+  color: #f4f4f5;
+}
+.nearby-rail button:focus-visible {
+  outline: 2px solid #3ddc97;
+  outline-offset: 2px;
+}
+.nearby-rail button.is-active {
+  margin: 0.35rem 0;
+  color: #f4f4f5;
+  font-size: 1.75rem;
+  font-weight: 600;
+  line-height: 1.1;
+}
+.nearby-rail sup {
+  margin-left: 0.2rem;
+  color: #3ddc97;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+.nearby-strip {
+  position: absolute;
+  right: 4rem;
+  /* Above the scale bar and the map credits. */
+  bottom: 2.75rem;
+  left: 1rem;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  pointer-events: none;
+}
+.nearby-strip-count {
+  flex: none;
+  color: #a1a1aa;
+  font-family: var(--font-sans);
+  font-size: 0.6875rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+}
+.nearby-strip ol {
+  display: flex;
+  gap: 0.5rem;
+  overflow-x: auto;
+  pointer-events: auto;
+}
+.nearby-strip button {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-width: 12rem;
+  max-width: 16rem;
+  border: 1px solid #3f3f46;
+  border-radius: 0.75rem;
+  padding: 0.55rem 0.75rem;
+  background: rgb(28 28 31 / 0.95);
+  color: #f4f4f5;
+  font-family: var(--font-sans);
+  text-align: left;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgb(0 0 0 / 0.4);
+}
+.nearby-strip button.is-active,
+.nearby-strip button:focus-visible {
+  border-color: #3ddc97;
+  outline: none;
+}
+.nearby-card-text {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+.nearby-card-name {
+  overflow: hidden;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.nearby-card-distance {
+  color: #a1a1aa;
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+}
+.nearby-badge {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 1.6rem;
+  height: 1.6rem;
+  border-radius: 9999px;
+  background: #1c1c1f;
+  border: 2px solid #3ddc97;
+  color: #f4f4f5;
+  font-family: var(--font-sans);
+  font-size: 0.625rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.is-active > .nearby-badge,
+.nearby-pin.is-active .nearby-badge {
+  background: #3ddc97;
+  color: #141416;
+}
+.nearby-pin {
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  pointer-events: none;
+}
+.nearby-pin.is-active {
+  z-index: 6;
+}

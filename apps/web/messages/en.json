@@ -524,7 +524,13 @@
       },
       "approxTip": "Approximate location: within about {m} m",
       "cardScore": "{score} match",
-      "cardView": "View details"
+      "cardView": "View details",
+      "nearby": {
+        "label": "Places near this listing",
+        "title": "Nearby",
+        "places": "Nearest places in this category",
+        "count": "{n} / {total}"
+      }
     },
     "mobile": {
       "showMap": "Map",
