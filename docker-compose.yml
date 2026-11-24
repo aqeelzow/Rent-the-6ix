@@ -63,8 +63,10 @@ services:
       web:
         condition: service_healthy
 
-  # The router (OpenTripPlanner) is deliberately absent: travel is distance, and the code only
-  # routes when TRAVEL_ROUTING=1 and OTP_URL are both set. otp/ still holds the graph build script.
+  # The router (OpenTripPlanner, #24) runs as its own container, outside this stack:
+  # otp/build.sh builds the Waterloo graph and otp/serve.sh serves it on the host's
+  # 127.0.0.1:8080. The web app draws routed paths and times through it when OTP_URL is set;
+  # search ranking still uses distance estimates.
 
 volumes:
   caddy_data:

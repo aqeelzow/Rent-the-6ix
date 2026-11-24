@@ -40,6 +40,7 @@ import {
   type ScoreBand,
 } from "./map-data";
 import { useAmenityPin } from "./amenity-pin";
+import { fetchPath, pathFeatures, pathMiddle, ridden, type RoutedPath } from "./route-path";
 import { ACTIVE_COLOR, amenityPinElement, greyBasemap, listingCard, pinElement } from "./map-pins";
 
 // Basemap: MapTiler with a key, else OpenFreeMap (no key needed). SPEC 3.
@@ -106,6 +107,19 @@ function routeLabel(route: RouteToPlace): string {
     mode: t(`filters.modes.${route.mode}` as MessageKey),
     km: new Intl.NumberFormat("en-CA", { maximumFractionDigits: 1 }).format(route.distanceM / 1000),
   });
+}
+
+/** The routed trip on a line, once OpenTripPlanner has answered (#24): real minutes, no "Est.". */
+function routedLabel(route: RouteToPlace, path: RoutedPath): string {
+  const routes = ridden(path);
+  const params = {
+    minutes: path.minutes,
+    mode: t(`filters.modes.${route.mode}` as MessageKey),
+    km: new Intl.NumberFormat("en-CA", { maximumFractionDigits: 1 }).format(path.distanceM / 1000),
+  };
+  return routes.length
+    ? t("results.map.routeRoutedVia", { ...params, routes: routes.join(", ") })
+    : t("results.map.routeRouted", params);
 }
 
 /** How close the map comes in on a place pin that's clicked (a few blocks around it). */
@@ -354,6 +368,48 @@ export function ResultsMap({
           .setLngLat([(route.from[0] + route.to[0]) / 2, (route.from[1] + route.to[1]) / 2])
           .addTo(map);
       });
+      // Then the real trips, along the streets and transit lines, as the router answers. A trip
+      // it can't route keeps its straight line and estimate.
+      void Promise.all(routes.map((route) => fetchPath(route.from, route.to, route.mode))).then(
+        (paths) => {
+          if (stale) return;
+          const features = routes.flatMap((route, i) => {
+            const path = paths[i];
+            if (!path?.legs.length) return lines.features[i] ? [lines.features[i]] : [];
+            const marker = routeMarkers.current[i];
+            const middle = pathMiddle(path);
+            if (marker) {
+              marker.getElement().textContent = routedLabel(route, path);
+              if (middle) marker.setLngLat(middle);
+            }
+            return pathFeatures(route.id, path);
+          });
+          (map.getSource("routes") as GeoJSONSource | undefined)?.setData({
+            type: "FeatureCollection",
+            features,
+          });
+          // Real paths bend away from the straight line: fit the view to them.
+          if (!paths.some(Boolean)) return;
+          const points = features.flatMap((feature) =>
+            feature.geometry.type === "LineString"
+              ? (feature.geometry.coordinates as [number, number][])
+              : [],
+          );
+          const lngs = points.map((point) => point[0]);
+          const lats = points.map((point) => point[1]);
+          map.fitBounds(
+            [
+              [Math.min(...lngs), Math.min(...lats)],
+              [Math.max(...lngs), Math.max(...lats)],
+            ],
+            {
+              padding: 80,
+              maxZoom: 15,
+              duration: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 500,
+            },
+          );
+        },
+      );
     });
 
     const cleanup = () => {
@@ -451,6 +507,18 @@ export function ResultsMap({
     if (!amenity) return;
     let marker: Marker | null = null;
     let ours = true;
+    // The walk itself, along the streets, once the router answers.
+    void fetchPath(
+      [amenity.from.lng, amenity.from.lat],
+      [amenity.location.lng, amenity.location.lat],
+      "walk",
+    ).then((path) => {
+      if (!ours || !path?.legs.length) return;
+      (map.getSource("amenity-line") as GeoJSONSource | undefined)?.setData({
+        type: "FeatureCollection",
+        features: pathFeatures("amenity", path),
+      });
+    });
     void import("maplibre-gl").then((maplibregl) => {
       if (!ours) return;
       marker = new maplibregl.Marker({
@@ -723,11 +791,25 @@ function addLayers(map: MapLibreMap) {
   // Lines from the selected listing to the renter's places (their labels are HTML markers).
   map.addSource("routes", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
   // A soft glow under a solid line, in the selection colour.
+  // Ridden legs (and the straight line before a route arrives) glow; walked legs are dashed.
+  const riddenLegs: FilterSpecification = ["!=", ["get", "walk"], true];
+  map.addLayer(
+    {
+      id: "routes-walk",
+      type: "line",
+      source: "routes",
+      filter: ["==", ["get", "walk"], true],
+      layout: { "line-cap": "round", "line-join": "round" },
+      paint: { "line-color": ACTIVE_COLOR, "line-width": 3, "line-dasharray": [0.5, 2] },
+    },
+    "clusters",
+  );
   map.addLayer(
     {
       id: "routes-glow",
       type: "line",
       source: "routes",
+      filter: riddenLegs,
       layout: { "line-cap": "round", "line-join": "round" },
       paint: {
         "line-color": ACTIVE_COLOR,
@@ -743,6 +825,7 @@ function addLayers(map: MapLibreMap) {
       id: "routes",
       type: "line",
       source: "routes",
+      filter: riddenLegs,
       layout: { "line-cap": "round", "line-join": "round" },
       paint: { "line-color": ACTIVE_COLOR, "line-width": 3 },
     },

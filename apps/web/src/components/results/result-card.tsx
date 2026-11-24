@@ -2,10 +2,12 @@
 
 import { Bookmark, Building2 } from "lucide-react";
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { ListingPhoto } from "@/components/listing/listing-photo";
 import { BAND_COLORS, scoreBand } from "@/components/map/map-data";
 import { clearAmenityPin, showNearestAmenity } from "@/components/map/amenity-pin";
 import { ACTIVE_COLOR } from "@/components/map/map-pins";
+import { fetchPath } from "@/components/map/route-path";
 import { t, type MessageKey } from "@/lib/format/messages";
 import { formatCad, formatCount } from "@/lib/format/number";
 import { selectIsShortlisted } from "@/lib/store/searchSlice";
@@ -33,6 +35,34 @@ function travelText(summary: TravelSummary): string {
     });
   }
   return r("travel.missing", { target: summary.target });
+}
+
+/**
+ * The routed minutes for a trip to a named place (#24), once OpenTripPlanner answers; null until
+ * then, or when there's no router or no trip, and the row keeps its estimate.
+ */
+function useRoutedMinutes(
+  listing: SearchResultItem["listing"],
+  target: SearchIntent["travelTargets"][number] | undefined,
+  trip: TravelSummary | undefined,
+): number | null {
+  const [routed, setRouted] = useState<{ key: string; minutes: number } | null>(null);
+  const to = target?.kind === "place" ? target.resolved : undefined;
+  const mode = trip?.kind === "estimated" ? trip.mode : null;
+  const key = to && mode ? `${listing.id}|${to.lng},${to.lat}|${mode}` : null;
+  useEffect(() => {
+    if (!key || !to || !mode) return;
+    let current = true;
+    void fetchPath([listing.location.lng, listing.location.lat], [to.lng, to.lat], mode).then(
+      (path) => {
+        if (current && path) setRouted({ key, minutes: path.minutes });
+      },
+    );
+    return () => {
+      current = false;
+    };
+  }, [key, listing.location.lng, listing.location.lat, to, mode]);
+  return routed && routed.key === key ? routed.minutes : null;
 }
 
 /** "2 bed · 1 bath", or whichever of them the listing states. */
@@ -70,6 +100,7 @@ export function ResultCard({
   const trip = travelSummaries(result, targets)[0];
   // An amenity trip ("Est. 2 min walk to groceries") pins that place on the map while hovered.
   const pinsPlace = trip?.kind === "estimated" && targets[0]?.kind === "amenity";
+  const routedMinutes = useRoutedMinutes(listing, targets[0], trip);
   const score = Math.round(matchScore.total);
   const rent = `${formatCad(listing.monthlyRentCad)}${
     listing.rentIsPerRoom ? r("perRoom") : r("perMonth")
@@ -143,7 +174,12 @@ export function ResultCard({
             }
             className={`text-muted-foreground mt-0.5 max-w-full truncate text-xs ${trip.kind === "estimated" ? "figures" : ""} ${pinsPlace ? "relative z-10 w-fit cursor-pointer underline decoration-dotted underline-offset-2" : ""}`}
           >
-            {travelText(trip)}
+            {routedMinutes !== null && trip.kind === "estimated"
+              ? r(`travel.routed.${trip.mode}`, {
+                  minutes: formatCount(routedMinutes),
+                  target: trip.target,
+                })
+              : travelText(trip)}
           </p>
         )}
       </div>
