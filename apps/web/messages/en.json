@@ -529,7 +529,13 @@
         "label": "Places near this listing",
         "title": "Nearby",
         "places": "Nearest places in this category",
-        "count": "{n} / {total}"
+        "count": "{n} / {total}",
+        "search": "Search for a place",
+        "searchPlaceholder": "Search for a place, like Walmart",
+        "searchClose": "Close search",
+        "searching": "Searching…",
+        "searchNone": "No places called “{q}” around Waterloo.",
+        "searchError": "Place search isn't available right now."
       }
     },
     "mobile": {

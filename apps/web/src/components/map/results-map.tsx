@@ -747,7 +747,12 @@ export function ResultsMap({
           )}
           {/* What's around the selected listing (desktop, beside the list). */}
           {ready && pinCards && selected ? (
-            <NearbyPanel key={selected} listingId={selected} onShow={setNearby} />
+            <NearbyPanel
+              key={selected}
+              listingId={selected}
+              near={selectedListing?.location ?? { lng: WATERLOO[0], lat: WATERLOO[1] }}
+              onShow={setNearby}
+            />
           ) : (
             <Legend />
           )}
