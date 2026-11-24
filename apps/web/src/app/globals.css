@@ -264,7 +264,6 @@
    The button is the photo, centred on the point; the chip hangs under it. #3ddc97 is the
    selection colour shared with the list (ACTIVE_COLOR). */
 .map-pin {
-  position: relative;
   display: block;
   width: 2.5rem;
   height: 2.5rem;
@@ -272,10 +271,11 @@
   border: 0;
   background: none;
   cursor: pointer;
-  transition: transform 150ms ease;
 }
 .map-pin > * {
-  transition: opacity 150ms ease;
+  transition:
+    opacity 150ms ease,
+    transform 150ms ease;
 }
 .map-pin:focus-visible {
   outline: none;
@@ -332,14 +332,26 @@
   border-style: dashed;
   opacity: 0.75;
 }
-/* MapLibre sets an inline opacity on markers, so the fade goes on what's inside. */
+/* MapLibre sets an inline opacity on markers, so the fade goes on what's inside. Faded pins
+   also shrink and drop their chips, so a selected listing's route reads through them. */
 .map-pin.is-faded > * {
-  opacity: 0.35;
+  opacity: 0.2;
 }
+.map-pin.is-faded .map-pin-photo {
+  transform: scale(0.7);
+}
+.map-pin.is-faded .map-pin-chip {
+  visibility: hidden;
+}
+/* MapLibre places the marker with an inline transform, so the scaling goes on the photo. */
 .map-pin.is-active,
 .map-pin:hover,
 .map-pin:focus-visible {
   z-index: 2;
+}
+.map-pin.is-active .map-pin-photo,
+.map-pin:hover .map-pin-photo,
+.map-pin:focus-visible .map-pin-photo {
   transform: scale(1.12);
 }
 .map-pin.is-active .map-pin-photo,

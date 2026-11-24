@@ -513,6 +513,10 @@ export function ResultsMap({
     map.setFilter("approx-line", filter);
     map.setFilter("approx-active-fill", filter);
     map.setFilter("approx-active", filter);
+    // Clusters step back too, so a selected listing's trips read over them.
+    map.setPaintProperty("clusters", "circle-opacity", ids.length ? 0.25 : 0.95);
+    map.setPaintProperty("clusters", "circle-stroke-opacity", ids.length ? 0.25 : 1);
+    map.setPaintProperty("cluster-count", "text-opacity", ids.length ? 0.25 : 1);
     // The pointed-at listing gets its own pin even inside a cluster.
     syncPins.current();
   }, [ready, hovered, selected, results]);
@@ -812,61 +816,56 @@ function addLayers(map: MapLibreMap) {
     },
     paint: { "text-color": "#ffffff" },
   });
-  // A dashed line from a listing to the nearest place behind its hovered trip line.
+  // Trips are drawn above the clusters, each on a dark casing so it reads over the grey streets
+  // and the faded pins around it. Walked legs are dashed; ridden legs (and the straight line
+  // before a route arrives) are solid with a glow.
+  const casing = (id: string, source: string, filter?: FilterSpecification) =>
+    map.addLayer({
+      id,
+      type: "line",
+      source,
+      ...(filter ? { filter } : {}),
+      layout: { "line-cap": "round", "line-join": "round" },
+      paint: { "line-color": "#141416", "line-width": 8, "line-opacity": 0.85 },
+    });
+  // The walk to the nearest place behind a hovered trip line.
   map.addSource("amenity-line", { type: "geojson", data: empty });
-  map.addLayer(
-    {
-      id: "amenity-line",
-      type: "line",
-      source: "amenity-line",
-      layout: { "line-cap": "round" },
-      paint: { "line-color": ACTIVE_COLOR, "line-width": 3, "line-dasharray": [0.5, 2] },
-    },
-    "clusters",
-  );
-  // Lines from the selected listing to the renter's places (their labels are HTML markers).
-  map.addSource("routes", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
-  // A soft glow under a solid line, in the selection colour.
-  // Ridden legs (and the straight line before a route arrives) glow; walked legs are dashed.
+  casing("amenity-line-casing", "amenity-line");
+  map.addLayer({
+    id: "amenity-line",
+    type: "line",
+    source: "amenity-line",
+    layout: { "line-cap": "round", "line-join": "round" },
+    paint: { "line-color": ACTIVE_COLOR, "line-width": 4, "line-dasharray": [0.6, 1.6] },
+  });
+  // Trips from the selected listing to the renter's places (their labels are HTML markers).
+  map.addSource("routes", { type: "geojson", data: empty });
   const riddenLegs: FilterSpecification = ["!=", ["get", "walk"], true];
-  map.addLayer(
-    {
-      id: "routes-walk",
-      type: "line",
-      source: "routes",
-      filter: ["==", ["get", "walk"], true],
-      layout: { "line-cap": "round", "line-join": "round" },
-      paint: { "line-color": ACTIVE_COLOR, "line-width": 3, "line-dasharray": [0.5, 2] },
-    },
-    "clusters",
-  );
-  map.addLayer(
-    {
-      id: "routes-glow",
-      type: "line",
-      source: "routes",
-      filter: riddenLegs,
-      layout: { "line-cap": "round", "line-join": "round" },
-      paint: {
-        "line-color": ACTIVE_COLOR,
-        "line-width": 12,
-        "line-blur": 8,
-        "line-opacity": 0.45,
-      },
-    },
-    "clusters",
-  );
-  map.addLayer(
-    {
-      id: "routes",
-      type: "line",
-      source: "routes",
-      filter: riddenLegs,
-      layout: { "line-cap": "round", "line-join": "round" },
-      paint: { "line-color": ACTIVE_COLOR, "line-width": 3 },
-    },
-    "clusters",
-  );
+  casing("routes-casing", "routes");
+  map.addLayer({
+    id: "routes-glow",
+    type: "line",
+    source: "routes",
+    filter: riddenLegs,
+    layout: { "line-cap": "round", "line-join": "round" },
+    paint: { "line-color": ACTIVE_COLOR, "line-width": 14, "line-blur": 8, "line-opacity": 0.45 },
+  });
+  map.addLayer({
+    id: "routes-walk",
+    type: "line",
+    source: "routes",
+    filter: ["==", ["get", "walk"], true],
+    layout: { "line-cap": "round", "line-join": "round" },
+    paint: { "line-color": ACTIVE_COLOR, "line-width": 4, "line-dasharray": [0.6, 1.6] },
+  });
+  map.addLayer({
+    id: "routes",
+    type: "line",
+    source: "routes",
+    filter: riddenLegs,
+    layout: { "line-cap": "round", "line-join": "round" },
+    paint: { "line-color": ACTIVE_COLOR, "line-width": 4 },
+  });
 }
 
 /**
