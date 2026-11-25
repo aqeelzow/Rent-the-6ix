@@ -14,6 +14,7 @@ Open this folder as an Obsidian vault and start here. Open **Local graph** at de
 flowchart LR
   Census[Census snapshot] --> Load[Civic loaders]
   Feeds[City, GRT and OpenStreetMap] --> Load
+  Worker[Listing ingestion worker] --> DB
   Seeds[Demo and benchmark seeds] --> DB[(PostgreSQL and PostGIS)]
   Load --> DB
   Feeds --> Places[Known-place catalogue]
@@ -28,5 +29,5 @@ flowchart LR
 
 - [Data imports](Data%20imports.md) records the upstream feeds and seeds.
 - [Database](Database.md) shows how the data is stored and joined.
-- [Search and places](Search%20and%20places.md) follows a prompt to a Waterloo result.
+- [Search and places](Search%20and%20places.md) diagrams prompt parsing, place resolution, listing ranking, and percentile jobs.
 - [Listing and area views](Listing%20and%20area%20views.md) shows what renters see.
